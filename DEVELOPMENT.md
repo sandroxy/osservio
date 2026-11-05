@@ -1,7 +1,8 @@
 # Development
 
 The repository contains native Android and iOS log capture, HTTP observation,
-memory storage, and log inspection modules. Current work is native only; framework adapters follow
+memory storage, optional OkHttp/URLSession integration, and log inspection modules.
+Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
 ## Sources of truth
@@ -9,7 +10,8 @@ native behavior and interaction validation. No artifacts have been published.
 - [Architecture](doc/architecture.md) defines the intended runtime boundaries.
 - [Logging](doc/logging.md) describes the implemented native subset and limits.
 - [HTTP observation](doc/http.md) describes admission, privacy, body ownership,
-  lifecycle, and storage limits. Networking hooks are separate integrations.
+  lifecycle, and storage limits. [Network coverage](doc/network-integration.md)
+  describes the optional integrations and their different observation points.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.
@@ -42,6 +44,10 @@ xcodebuild -scheme OsservioUI -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .build/ios-sdk CODE_SIGNING_ALLOWED=NO \
   SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+xcodebuild -scheme OsservioURLSession -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath .build/ios-network CODE_SIGNING_ALLOWED=NO \
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
 ```
 
 `swift test` exercises Core and Store on the development Mac. The UIKit source
@@ -70,6 +76,13 @@ The Android pipeline tests are owned by Store because they exercise the concrete
 store with Core. Both platforms consume [shared text fixtures](testing/README.md)
 and test lifecycle, rate limits, capacity, immutable snapshots, rejection, sink
 failure, and contention. The Android unit tests are JVM tests, not device UI tests.
+The optional OkHttp tests use loopback MockWebServer and instrumented streams.
+URLSession tests use Foundation with a host-configured synthetic URLProtocol.
+Their coverage and limits are described in the network integration contract.
+
+The OkHttp module locks its resolved development and test dependencies. Normal
+checks must not rewrite the lockfile. Use Gradle's `--write-locks` only while
+reviewing an intentional dependency change, then run the integration tests.
 
 Build outputs, local configuration, and temporary verification evidence are
 ignored. The Gradle wrapper JAR is an intentional build-tool input; its provenance

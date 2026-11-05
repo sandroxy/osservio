@@ -1,0 +1,10 @@
+dependencies {
+    api project(":osservio-core")
+    // The host owns its network stack. Installing this optional module must not upgrade it implicitly.
+    compileOnly "com.squareup.okhttp3:okhttp:5.5.1"
+    testImplementation project(":osservio-store")
+    testImplementation "com.squareup.okhttp3:okhttp:5.5.1"
+    testImplementation "com.squareup.okhttp3:mockwebserver3:5.5.1"
+    testImplementation "junit:junit:4.13.2"
+}
+dependencyLocking { lockAllConfigurations() }

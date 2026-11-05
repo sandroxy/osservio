@@ -55,7 +55,7 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
         try captureController.register(self)
     }
 
-    public func begin(method: String, url: String, headers: [HTTPHeader] = []) -> HTTPBeginResult {
+    public func begin(method: String, url: String, headers: [HTTPHeader] = [], source: HTTPSource = .host) -> HTTPBeginResult {
         let access = captureController.record(requiresDetailed: true) { context -> HTTPBeginResult in
             expire(at: context.monotonicMillis)
             if rateSession != context.sessionID {
@@ -71,7 +71,7 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
             let id = UUID().uuidString
             let event = HTTPEvent(id: id, context: context, timestamp: captureController.clock.wallTimeMillis(),
                                   method: privacy.method(method), url: privacy.url(url),
-                                  headers: sanitized.values, limited: sanitized.limited)
+                                  headers: sanitized.values, limited: sanitized.limited, source: source)
             let result = write(HTTPUpdate(event: event, isNew: true))
             guard result == .recorded else { return HTTPBeginResult(result: result, token: nil) }
             active[id] = Exchange(event: event, started: context.monotonicMillis,
@@ -112,13 +112,13 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
 
     @discardableResult
     public func receiveResponse(_ token: HTTPExchangeToken, statusCode: Int, headers: [HTTPHeader],
-                                bodyIsDecoded: Bool = false) -> HTTPRecordResult {
+                                bodyIsDecoded: Bool = false, url: String? = nil) -> HTTPRecordResult {
         update(token) { exchange, _ in
             guard (100...599).contains(statusCode), exchange.event.state == .pending else { return .invalid }
             let sanitized = privacy.headers(headers)
             exchange.response.supportsText = privacy.supportsBody(headers, decoded: bodyIsDecoded)
             exchange.event = HTTPEvent(previous: exchange.event, headers: sanitized.values,
-                                       limited: sanitized.limited, code: statusCode, state: .receiving)
+                                       limited: sanitized.limited, code: statusCode, responseURL: url.map(privacy.url), state: .receiving)
             return write(HTTPUpdate(event: exchange.event, isNew: false))
         }
     }
@@ -152,24 +152,34 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
         })
     }
 
+    /// Ends SDK observation without asserting a transport outcome or cancelling the host request.
+    @discardableResult
+    public func stopObserving(_ token: HTTPExchangeToken) -> HTTPRecordResult {
+        update(token) { exchange, _ in
+            let result = endObservation(exchange)
+            active.removeValue(forKey: token.id)
+            return result
+        }
+    }
+
     func captureSessionDidEnd() {
-        for exchange in active.values { endObservation(exchange) }
+        for exchange in active.values { _ = endObservation(exchange) }
         active.removeAll()
     }
 
     private func expire(at now: UInt64) {
         let expired = active.filter { now >= $0.value.started && now - $0.value.started >= exchangeLifetimeMillis }.map(\.key)
         for id in expired {
-            if let exchange = active.removeValue(forKey: id) { endObservation(exchange) }
+            if let exchange = active.removeValue(forKey: id) { _ = endObservation(exchange) }
         }
     }
 
-    private func endObservation(_ exchange: Exchange) {
+    private func endObservation(_ exchange: Exchange) -> HTTPRecordResult {
         let state: HTTPBodyState = privacy.bodyPolicy == .omit ? .omitted : .incomplete
         let event = HTTPEvent(previous: exchange.event, state: .captureEnded,
                               request: HTTPBodyReference(state: state, blobID: nil, observedBytes: exchange.request.observed),
                               response: HTTPBodyReference(state: state, blobID: nil, observedBytes: exchange.response.observed))
-        _ = write(HTTPUpdate(event: event, isNew: false))
+        return write(HTTPUpdate(event: event, isNew: false))
     }
 
     private func update(_ token: HTTPExchangeToken, _ body: (Exchange, UInt64) -> HTTPRecordResult) -> HTTPRecordResult {

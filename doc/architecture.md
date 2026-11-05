@@ -3,8 +3,10 @@
 This document defines the intended design of Osservio. The implemented native
 subset consists of shared capture lifecycle, explicit logging and HTTP
 observation in Core, bounded memory history in Store, and log inspection in UI.
-See [the logging contract](logging.md) and [HTTP observation](http.md) for
-current behavior. HTTP networking hooks and inspection are not implemented yet.
+Optional collectors observe host-owned OkHttp and URLSession requests. See
+[the logging contract](logging.md), [HTTP observation](http.md), and
+[network coverage](network-integration.md) for current behavior.
+A native HTTP inspector is not implemented yet.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

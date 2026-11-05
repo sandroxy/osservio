@@ -7,12 +7,12 @@
   "native": {
     "android": {
       "group": "io.github.sandroxy",
-      "artifacts": ["osservio-core", "osservio-store", "osservio-ui"],
+      "artifacts": ["osservio-core", "osservio-store", "osservio-ui", "osservio-okhttp"],
       "minimumSdk": 23,
       "compileSdk": 36
     },
     "ios": {
-      "modules": ["OsservioCore", "OsservioStore", "OsservioUI"],
+      "modules": ["OsservioCore", "OsservioStore", "OsservioUI", "OsservioURLSession"],
       "minimumVersion": "13.0"
     }
   }

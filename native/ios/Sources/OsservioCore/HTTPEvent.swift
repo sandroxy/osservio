@@ -4,6 +4,7 @@ public enum HTTPState: String, Sendable { case pending, receiving, completed, fa
 public enum HTTPBodyDirection: String, Sendable { case request, response }
 public enum HTTPBodyState: String, Sendable { case pending, omitted, unsupported, incomplete, invalidText, available, truncated }
 public enum HTTPFailure: String, Sendable { case transport, timeout, tls, connection, unknown }
+public enum HTTPSource: String, Sendable { case host, okHttp, urlSession }
 
 public struct HTTPHeader: Sendable, Equatable {
     public let name: String
@@ -27,7 +28,9 @@ public struct HTTPEvent: Sendable {
     public let revision: Int64
     public let timestampMillis: Int64
     public let method: String
+    public let source: HTTPSource
     public let url: String
+    public let responseURL: String?
     public let requestHeaders: [HTTPHeader]
     public let responseHeaders: [HTTPHeader]
     public let headersLimited: Bool
@@ -40,9 +43,9 @@ public struct HTTPEvent: Sendable {
     public let textByteCount: Int
 
     init(id: String, context: CaptureContext, timestamp: Int64, method: String, url: String,
-         headers: [HTTPHeader], limited: Bool) {
+         headers: [HTTPHeader], limited: Bool, source: HTTPSource) {
         self.id = id; sessionID = context.sessionID; sequence = context.sequence; revision = 0
-        timestampMillis = timestamp; self.method = method; self.url = url
+        timestampMillis = timestamp; self.method = method; self.url = url; self.source = source; responseURL = nil
         requestHeaders = headers; responseHeaders = []; headersLimited = limited
         statusCode = nil; state = .pending; failure = nil; durationMillis = nil
         requestBody = HTTPBodyReference(state: .pending, blobID: nil, observedBytes: 0)
@@ -51,15 +54,16 @@ public struct HTTPEvent: Sendable {
     }
 
     init(previous: HTTPEvent, headers: [HTTPHeader]? = nil, limited: Bool = false,
-         code: Int? = nil, state: HTTPState, failure: HTTPFailure? = nil, duration: UInt64? = nil,
+         code: Int? = nil, responseURL: String? = nil, state: HTTPState, failure: HTTPFailure? = nil, duration: UInt64? = nil,
          request: HTTPBodyReference? = nil, response: HTTPBodyReference? = nil) {
         id = previous.id; sessionID = previous.sessionID; sequence = previous.sequence
         revision = previous.revision + 1; timestampMillis = previous.timestampMillis
-        method = previous.method; url = previous.url; requestHeaders = previous.requestHeaders
+        method = previous.method; url = previous.url; source = previous.source
+        self.responseURL = responseURL ?? previous.responseURL; requestHeaders = previous.requestHeaders
         responseHeaders = headers ?? previous.responseHeaders; headersLimited = limited || previous.headersLimited
         statusCode = code ?? previous.statusCode; self.state = state; self.failure = failure
         durationMillis = duration; requestBody = request ?? previous.requestBody; responseBody = response ?? previous.responseBody
-        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders)
+        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (self.responseURL?.utf8.count ?? 0)
     }
 
     private static func size(method: String, url: String, headers: [HTTPHeader]) -> Int {

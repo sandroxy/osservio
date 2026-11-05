@@ -79,6 +79,11 @@ public final class HTTPRecorder {
     }
 
     public BeginResult begin(String method, String url, List<HTTPHeader> headers) {
+        return begin(method, url, headers, HTTPEvent.Source.HOST);
+    }
+
+    public BeginResult begin(String method, String url, List<HTTPHeader> headers, HTTPEvent.Source source) {
+        if (source == null) return new BeginResult(Result.INVALID, null);
         CaptureController.Access<BeginResult> access = captureController.record(true, context -> {
             expire(context.monotonicMillis);
             if (!rateSession.equals(context.sessionId)) { rateSession = context.sessionId; windowStart = context.sessionStartMillis; windowCount = 0; }
@@ -88,7 +93,7 @@ public final class HTTPRecorder {
             if (active.size() >= activeLimit) return new BeginResult(Result.ACTIVE_LIMIT, null);
             HTTPPrivacyPolicy.Headers sanitized = privacy.headers(headers);
             String id = UUID.randomUUID().toString();
-            HTTPEvent event = new HTTPEvent(id, context, captureController.clock.wallTimeMillis(), privacy.method(method), privacy.url(url), sanitized.values, sanitized.limited);
+            HTTPEvent event = new HTTPEvent(id, context, captureController.clock.wallTimeMillis(), privacy.method(method), privacy.url(url), sanitized.values, sanitized.limited, source);
             Result result = write(new HTTPUpdate(event, true));
             if (result != Result.RECORDED) return new BeginResult(result, null);
             active.put(id, new Exchange(event, context.monotonicMillis, privacy.supportsBody(headers, false)));
@@ -118,11 +123,15 @@ public final class HTTPRecorder {
     }
 
     public Result receiveResponse(Token token, int statusCode, List<HTTPHeader> headers, boolean bodyIsDecoded) {
+        return receiveResponse(token, statusCode, headers, bodyIsDecoded, null);
+    }
+
+    public Result receiveResponse(Token token, int statusCode, List<HTTPHeader> headers, boolean bodyIsDecoded, String url) {
         return update(token, (exchange, now) -> {
             if (statusCode < 100 || statusCode > 599 || exchange.event.state != HTTPEvent.State.PENDING) return Result.INVALID;
             HTTPPrivacyPolicy.Headers sanitized = privacy.headers(headers);
             exchange.response.supportsText = privacy.supportsBody(headers, bodyIsDecoded);
-            exchange.event = new HTTPEvent(exchange.event, sanitized.values, sanitized.limited, statusCode, HTTPEvent.State.RECEIVING, null, null, null, null);
+            exchange.event = new HTTPEvent(exchange.event, sanitized.values, sanitized.limited, statusCode, url == null ? null : privacy.url(url), HTTPEvent.State.RECEIVING, null, null, null, null);
             return write(new HTTPUpdate(exchange.event, false));
         });
     }
@@ -135,7 +144,7 @@ public final class HTTPRecorder {
                 || ((state == HTTPEvent.State.FAILED) != (failure != null))) return Result.INVALID;
             FinalBody request = finalizeBody(exchange.request, token.id + ".request", requestComplete);
             FinalBody response = finalizeBody(exchange.response, token.id + ".response", responseComplete && state == HTTPEvent.State.COMPLETED);
-            exchange.event = new HTTPEvent(exchange.event, null, false, null, state, failure,
+            exchange.event = new HTTPEvent(exchange.event, null, false, null, null, state, failure,
                 now >= exchange.started ? now - exchange.started : null, request.reference, response.reference);
             List<HTTPBody> bodies = new ArrayList<>();
             if (request.body != null) bodies.add(request.body);
@@ -152,6 +161,15 @@ public final class HTTPRecorder {
         return result(captureController.record(true, context -> { expire(context.monotonicMillis); return Result.RECORDED; }));
     }
 
+    /** Ends SDK observation without asserting a transport outcome or cancelling the host request. */
+    public Result stopObserving(Token token) {
+        return update(token, (exchange, now) -> {
+            Result result = endObservation(exchange);
+            active.remove(token.id);
+            return result;
+        });
+    }
+
     private void captureSessionDidEnd() {
         for (Exchange exchange : active.values()) endObservation(exchange);
         active.clear();
@@ -165,12 +183,12 @@ public final class HTTPRecorder {
         }
     }
 
-    private void endObservation(Exchange exchange) {
+    private Result endObservation(Exchange exchange) {
         HTTPEvent.BodyState state = privacy.bodyPolicy == HTTPPrivacyPolicy.BodyPolicy.OMIT ? HTTPEvent.BodyState.OMITTED : HTTPEvent.BodyState.INCOMPLETE;
-        HTTPEvent event = new HTTPEvent(exchange.event, null, false, null, HTTPEvent.State.CAPTURE_ENDED, null, null,
+        HTTPEvent event = new HTTPEvent(exchange.event, null, false, null, null, HTTPEvent.State.CAPTURE_ENDED, null, null,
             new HTTPEvent.BodyReference(state, null, exchange.request.observed),
             new HTTPEvent.BodyReference(state, null, exchange.response.observed));
-        write(new HTTPUpdate(event, false));
+        return write(new HTTPUpdate(event, false));
     }
 
     private Result update(Token token, ExchangeOperation body) {

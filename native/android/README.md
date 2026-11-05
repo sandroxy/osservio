@@ -1,7 +1,7 @@
 # Android integration
 
-Osservio currently provides source-level integration with three Android library
-modules. There are no published Maven artifacts. The build uses JDK 17, Gradle
+Osservio provides source-level integration with Core, Store, UI, and an optional
+OkHttp adapter. There are no published Maven artifacts. The build uses JDK 17, Gradle
 8.14.5, Android Gradle Plugin 8.12.3, and Android SDK 36; library bytecode targets
 Java 11 and the minimum Android API is 23. These minimums are build settings,
 not evidence that every OS version has been tested.
@@ -16,6 +16,7 @@ includeBuild('../osservio/native/android') {
         substitute(module('io.github.sandroxy:osservio-core')).using(project(':osservio-core'))
         substitute(module('io.github.sandroxy:osservio-store')).using(project(':osservio-store'))
         substitute(module('io.github.sandroxy:osservio-ui')).using(project(':osservio-ui'))
+        substitute(module('io.github.sandroxy:osservio-okhttp')).using(project(':osservio-okhttp'))
     }
 }
 ```
@@ -70,3 +71,38 @@ Use `LogMessage.privateText(value)` for text that must not enter history.
 scrubber. Read [the logging contract](../../doc/logging.md) for privacy, limits,
 concurrency, rejection results, and the absence of persistent storage or
 automatic capture.
+
+## OkHttp requests
+
+The optional adapter is compiled and tested against OkHttp 5.5.1. The host owns
+its OkHttp runtime dependency; the adapter uses a compile-only dependency so it
+does not silently replace the host's networking version. Other OkHttp versions
+have not been verified. Add the local adapter dependency and the tested runtime
+version when configuring the host:
+
+```groovy
+implementation 'io.github.sandroxy:osservio-okhttp:0.1.0-dev.0'
+implementation 'com.squareup.okhttp3:okhttp:5.5.1'
+```
+
+Reuse the log recorder's capture controller, and add one application interceptor
+to the host's configured client builder:
+
+```java
+import com.sandrox.osservio.core.HTTPPrivacyPolicy;
+import com.sandrox.osservio.core.HTTPRecorder;
+import com.sandrox.osservio.okhttp.OsservioInterceptor;
+import com.sandrox.osservio.store.MemoryHTTPStore;
+
+MemoryHTTPStore requests = new MemoryHTTPStore();
+HTTPRecorder http = new HTTPRecorder(requests, recorder.captureController,
+    new HTTPPrivacyPolicy());
+// builder is the OkHttpClient.Builder already configured by the host.
+builder.addInterceptor(new OsservioInterceptor(http));
+```
+
+Use `addInterceptor`, not `addNetworkInterceptor`. Retain the recorder and store
+with the client. The default policy omits bodies and sensitive URL/header
+content. Inspection uses `HTTPHistory`; a native HTTP viewer is not available
+yet. Read [network coverage](../../doc/network-integration.md) and
+[HTTP privacy and limits](../../doc/http.md) before enabling body content.

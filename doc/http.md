@@ -3,8 +3,8 @@
 `HTTPRecorder` admits HTTP observations supplied by a native collector or the
 host. `MemoryHTTPStore` provides bounded metadata history and a separate body
 budget. These APIs do not install an interceptor, create a networking client,
-read a response stream, or make requests. Automatic networking integration and
-an HTTP inspector are not implemented by these modules yet.
+read a response stream, or make requests. Optional [network integrations](network-integration.md)
+observe selected host clients. A native HTTP inspector is not implemented yet.
 
 ## Ownership and lifecycle
 
@@ -27,7 +27,8 @@ documented by that collector. Do not claim that these APIs observe every network
 stack or every wire transaction.
 
 Each exchange has a stable identity, its capture session's initial sequence,
-and increasing metadata revisions. It can move from pending to receiving, then
+increasing metadata revisions, and an explicit observation source. Initial and
+final response URLs use the same privacy policy. It can move from pending to receiving, then
 completed, failed, cancelled, or closed early. Completion means the collector confirmed the response body finished, such as
 through EOF or a networking completion callback. It does not mean that the
 server accepted a business operation.
@@ -43,6 +44,10 @@ subsequent capture operations; `maintenance` allows a viewer to trigger that
 check without new traffic. There is no background cleanup timer. Idle buffers
 remain bounded but are not guaranteed to be released at a wall-clock deadline.
 Explicit stop or session replacement releases them during that control call.
+
+`stopObserving` ends one SDK observation without asserting a transport outcome
+or cancelling the host request. It releases that observation's buffers and
+attempts to record `captureEnded`.
 
 ## Privacy
 

@@ -6,11 +6,11 @@ Osservio aims to provide in-app debugging and diagnostics for applications acros
 platforms, from development and acceptance testing to investigating problems in
 released apps and reviewing evidence after a failure.
 
-Native Android and iOS logging modules and HTTP observation APIs are available for local source integration.
-No SDK artifacts have been published. The current implementation covers explicit
-host logging, bounded in-memory history, native log inspection, and explicitly
-submitted HTTP observations; parts of the
-broader product described below remain unimplemented.
+Native Android and iOS logging and HTTP observation modules are available for
+local source integration. No SDK artifacts have been published. The current
+implementation covers explicit host logging, bounded in-memory history, native
+log inspection, and opt-in OkHttp and URLSession request observation. Parts of
+the broader product described below remain unimplemented.
 
 ## Available now
 
@@ -24,11 +24,14 @@ broader product described below remain unimplemented.
 - Independent capture and presentation lifetimes: closing the inspector does
   not stop capture, and stopping capture does not clear history.
 - HTTP observation with request states, privacy policy, and independent body
-  budgets. Late responses cannot recreate cleared or evicted records. Networking
-  integrations and an HTTP inspector are not implemented yet.
+  budgets, with optional integration for host-owned OkHttp clients and URLSession
+  data requests. Late responses cannot recreate cleared or evicted records.
+  An HTTP inspector is not implemented yet.
 
-Automatic system-log, network, and crash capture, persistence across launches,
-incident export, and framework adapters are not implemented. Core behavior and
+Automatic system-log and crash capture, global network interception, persistence
+across launches, incident export, and framework adapters are not implemented.
+Network observation covers only explicitly integrated methods; see
+[network coverage](doc/network-integration.md). Core behavior and
 native interaction will be refined on Android and iOS before expanding to React
 Native, Uni, and Flutter.
 
