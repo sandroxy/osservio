@@ -1,10 +1,11 @@
 # Architecture
 
 This document defines the intended design of Osservio. The implemented native
-subset consists of shared capture lifecycle and explicit log capture in Core,
-bounded memory history in
-Store, and native inspection in UI. See [the logging contract](logging.md) for
-current behavior. The broader boundaries below do not establish implemented
+subset consists of shared capture lifecycle, explicit logging and HTTP
+observation in Core, bounded memory history in Store, and log inspection in UI.
+See [the logging contract](logging.md) and [HTTP observation](http.md) for
+current behavior. HTTP networking hooks and inspection are not implemented yet.
+The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 
 ## Product scope

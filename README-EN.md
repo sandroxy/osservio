@@ -6,9 +6,10 @@ Osservio aims to provide in-app debugging and diagnostics for applications acros
 platforms, from development and acceptance testing to investigating problems in
 released apps and reviewing evidence after a failure.
 
-Native Android and iOS logging modules are available for local source integration.
+Native Android and iOS logging modules and HTTP observation APIs are available for local source integration.
 No SDK artifacts have been published. The current implementation covers explicit
-host logging, bounded in-memory history, and native inspection; parts of the
+host logging, bounded in-memory history, native log inspection, and explicitly
+submitted HTTP observations; parts of the
 broader product described below remain unimplemented.
 
 ## Available now
@@ -22,6 +23,9 @@ broader product described below remain unimplemented.
   copy, clear, and view pause/resume, in English and Simplified Chinese.
 - Independent capture and presentation lifetimes: closing the inspector does
   not stop capture, and stopping capture does not clear history.
+- HTTP observation with request states, privacy policy, and independent body
+  budgets. Late responses cannot recreate cleared or evicted records. Networking
+  integrations and an HTTP inspector are not implemented yet.
 
 Automatic system-log, network, and crash capture, persistence across launches,
 incident export, and framework adapters are not implemented. Core behavior and
@@ -29,7 +33,8 @@ native interaction will be refined on Android and iOS before expanding to React
 Native, Uni, and Flutter.
 
 Source integration: [Android](native/android/README.md) ·
-[iOS](native/ios/README.md) · [Logging behavior and limits](doc/logging.md).
+[iOS](native/ios/README.md) · [Logging behavior and limits](doc/logging.md) ·
+[HTTP observation contract](doc/http.md).
 These detailed guides are currently in English. Native builds, automated tests,
 and device acceptance establish different kinds of evidence; the implementation
 and default resource limits do not imply completed production performance testing.

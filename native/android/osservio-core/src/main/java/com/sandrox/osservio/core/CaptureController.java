@@ -1,6 +1,10 @@
 package com.sandrox.osservio.core;
 
 import java.util.Objects;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -36,6 +40,7 @@ public final class CaptureController {
 
     enum Admission { VALUE, INACTIVE, BUSY, SEQUENCE_EXHAUSTED }
     interface Operation<Input, Output> { Output apply(Input input); }
+    interface SessionObserver { void captureSessionDidEnd(); }
     static final class Access<T> {
         final Admission admission;
         final T value;
@@ -50,6 +55,7 @@ public final class CaptureController {
     private String sessionId = UUID.randomUUID().toString();
     private long sequence;
     private long sessionStartMillis;
+    private final List<WeakReference<SessionObserver>> observers = new ArrayList<>();
 
     public CaptureController() { this(false, LogClock.SYSTEM); }
     public CaptureController(boolean baselineEnabled, LogClock clock) {
@@ -113,6 +119,20 @@ public final class CaptureController {
     /** Null means contention, never a stopped session. */
     public Status status() { return inspect(value -> value); }
 
+    void register(SessionObserver observer) {
+        if (!enter()) throw new IllegalStateException("Capture is busy");
+        try {
+            pruneObservers();
+            if (observers.size() >= 16) throw new IllegalArgumentException("Too many capture observers");
+            observers.add(new WeakReference<>(observer));
+        } finally { lock.unlock(); }
+    }
+
+    private void pruneObservers() {
+        Iterator<WeakReference<SessionObserver>> iterator = observers.iterator();
+        while (iterator.hasNext()) if (iterator.next().get() == null) iterator.remove();
+    }
+
     <T> T inspect(Operation<Status, T> body) {
         if (!enter()) return null;
         try {
@@ -143,6 +163,11 @@ public final class CaptureController {
         if (detailed && now >= deadline) { detailed = false; replaceSession(now); }
     }
     private void replaceSession(long now) {
+        pruneObservers();
+        for (WeakReference<SessionObserver> reference : observers) {
+            SessionObserver observer = reference.get();
+            if (observer != null) observer.captureSessionDidEnd();
+        }
         sessionId = UUID.randomUUID().toString();
         sequence = 0;
         sessionStartMillis = now;

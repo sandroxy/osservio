@@ -1,0 +1,10 @@
+empty	8		text/plain	available	~
+ascii	8	aGVsbG8=	text/plain	available	aGVsbG8=
+exact_unicode	4	8J+YgA==	application/json	available	8J+YgA==
+scalar_truncation	3	YfCfmIB6	text/plain	truncated	YQ==
+exact_prefix	4	YWJjZGVm	text/plain	truncated	YWJjZA==
+invalid_utf8	8	Yf9i	text/plain	invalidText	-
+invalid_overlong_prefix	2	4ICAeA==	text/plain	invalidText	-
+binary_omitted	8	aGVsbG8=	application/octet-stream	unsupported	-
+charset_omitted	8	aGVsbG8=	text/plain; charset=utf-16	unsupported	-
+empty_prefix	1	8J+YgHo=	text/plain	truncated	~

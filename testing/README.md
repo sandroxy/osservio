@@ -16,3 +16,14 @@ argument, expected mode, remaining detailed-session milliseconds, and whether
 the visible session identity changed. It covers baseline fallback, expiry,
 replacement, repeated controls, and stopping all capture. Contention and shared
 recorder ordering are verified separately with bounded concurrency tests.
+
+`http-url-cases.tsv` covers origin normalization and removal of credentials,
+paths, queries, and fragments. Each row contains a name, whether paths are
+approved, raw input, and the expected display URL.
+
+`http-body-cases.tsv` covers UTF-8 boundaries, invalid encodings, empty content,
+and unsupported formats. Rows contain a name, prefix byte limit, Base64 input,
+content type, expected body state, and Base64 output. `-` means that no blob may
+be produced; `~` means an available empty string. Both native suites
+also test stale callbacks, independent metadata/body eviction, clearing,
+capacity, ordering, concurrency, and sink failure.

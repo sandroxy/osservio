@@ -1,13 +1,15 @@
 # Development
 
-The repository contains native Android and iOS log capture, memory storage, and
-inspection modules. Current work is native only; framework adapters follow
+The repository contains native Android and iOS log capture, HTTP observation,
+memory storage, and log inspection modules. Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
 ## Sources of truth
 
 - [Architecture](doc/architecture.md) defines the intended runtime boundaries.
 - [Logging](doc/logging.md) describes the implemented native subset and limits.
+- [HTTP observation](doc/http.md) describes admission, privacy, body ownership,
+  lifecycle, and storage limits. Networking hooks are separate integrations.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.

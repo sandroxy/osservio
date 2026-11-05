@@ -22,6 +22,16 @@ enum CaptureAccess<Value> {
     case value(Value), inactive, busy, sequenceExhausted
 }
 
+protocol CaptureSessionObserver: AnyObject {
+    // Called under admission lock. Implementations only release buffers and submit bounded sanitized updates.
+    func captureSessionDidEnd()
+}
+
+private final class WeakCaptureObserver {
+    weak var value: (any CaptureSessionObserver)?
+    init(_ value: any CaptureSessionObserver) { self.value = value }
+}
+
 /// Shared admission and lifecycle for native recorders. No collectors are installed automatically.
 public final class CaptureController: @unchecked Sendable {
     private let lock = NSLock()
@@ -31,6 +41,7 @@ public final class CaptureController: @unchecked Sendable {
     private var sessionID = UUID().uuidString
     private var sequence: Int64 = 0
     private var sessionStartMillis: UInt64
+    private var observers: [WeakCaptureObserver] = []
 
     public init(baselineEnabled: Bool = false, clock: any LogClock = SystemLogClock()) {
         self.baselineEnabled = baselineEnabled
@@ -87,6 +98,14 @@ public final class CaptureController: @unchecked Sendable {
     /// Nil means contention. It never means that capture has stopped.
     public func status() -> CaptureStatus? { inspect { $0 } }
 
+    func register(_ observer: any CaptureSessionObserver) throws {
+        guard lock.try() else { throw CaptureConfigurationError.busy }
+        defer { lock.unlock() }
+        observers.removeAll { $0.value == nil }
+        guard observers.count < 16 else { throw CaptureConfigurationError.invalidLimit }
+        observers.append(WeakCaptureObserver(observer))
+    }
+
     func inspect<Value>(_ body: (CaptureStatus) -> Value) -> Value? {
         guard lock.try() else { return nil }
         defer { lock.unlock() }
@@ -122,6 +141,8 @@ public final class CaptureController: @unchecked Sendable {
     }
 
     private func replaceSession(at now: UInt64) {
+        observers.removeAll { $0.value == nil }
+        for observer in observers { observer.value?.captureSessionDidEnd() }
         sessionID = UUID().uuidString
         sequence = 0
         sessionStartMillis = now
