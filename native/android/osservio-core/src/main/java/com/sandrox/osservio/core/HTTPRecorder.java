@@ -158,7 +158,12 @@ public final class HTTPRecorder {
 
     /** Lazy timeout/expiry cleanup, also useful when refreshing without new traffic. */
     public Result maintenance() {
-        return result(captureController.record(true, context -> { expire(context.monotonicMillis); return Result.RECORDED; }));
+        Result value = captureController.inspect(status -> {
+            if (status.mode != CaptureController.Mode.DETAILED) return Result.INACTIVE;
+            expire(captureController.clock.monotonicMillis());
+            return Result.RECORDED;
+        });
+        return value == null ? Result.BUSY : value;
     }
 
     /** Ends SDK observation without asserting a transport outcome or cancelling the host request. */

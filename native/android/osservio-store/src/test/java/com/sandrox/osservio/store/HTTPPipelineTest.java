@@ -17,6 +17,20 @@ import static org.junit.Assert.*;
 public final class HTTPPipelineTest {
     private static final List<HTTPHeader> TEXT = Collections.singletonList(new HTTPHeader("Content-Type", "application/json; charset=utf-8"));
     private static final List<HTTPHeader> EMPTY = Collections.emptyList();
+
+    @Test public void inspectorMaintenanceDoesNotConsumeObservationSequences() {
+        CaptureController capture = new CaptureController();
+        MemoryLogStore logs = new MemoryLogStore();
+        LogRecorder logger = new LogRecorder(logs, capture);
+        HTTPRecorder http = new HTTPRecorder(new MemoryHTTPStore(), capture, new HTTPPrivacyPolicy());
+        assertEquals(HTTPRecorder.Result.INACTIVE, http.maintenance());
+        capture.startDetailed();
+        assertEquals(LogRecorder.Result.RECORDED, logger.record(LogLevel.INFO, "test", LogMessage.publicText("before")));
+        for (int i = 0; i < 20; i++) assertEquals(HTTPRecorder.Result.RECORDED, http.maintenance());
+        assertEquals(LogRecorder.Result.RECORDED, logger.record(LogLevel.INFO, "test", LogMessage.publicText("after")));
+        assertEquals(1, logs.snapshot().events.get(0).sequence);
+        assertEquals(2, logs.snapshot().events.get(1).sequence);
+    }
     private static final class Clock implements LogClock {
         long now = 100;
         @Override public long monotonicMillis() { return now; }

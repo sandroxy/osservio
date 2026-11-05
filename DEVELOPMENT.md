@@ -1,7 +1,7 @@
 # Development
 
 The repository contains native Android and iOS log capture, HTTP observation,
-memory storage, optional OkHttp/URLSession integration, and log inspection modules.
+memory storage, optional OkHttp/URLSession integration, and native log/HTTP inspection modules.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 

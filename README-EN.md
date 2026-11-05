@@ -9,7 +9,7 @@ released apps and reviewing evidence after a failure.
 Native Android and iOS logging and HTTP observation modules are available for
 local source integration. No SDK artifacts have been published. The current
 implementation covers explicit host logging, bounded in-memory history, native
-log inspection, and opt-in OkHttp and URLSession request observation. Parts of
+log and HTTP inspection, and opt-in OkHttp and URLSession request observation. Parts of
 the broader product described below remain unimplemented.
 
 ## Available now
@@ -26,7 +26,8 @@ the broader product described below remain unimplemented.
 - HTTP observation with request states, privacy policy, and independent body
   budgets, with optional integration for host-owned OkHttp clients and URLSession
   data requests. Late responses cannot recreate cleared or evicted records.
-  An HTTP inspector is not implemented yet.
+  Native HTTP inspection includes search, state filters, metadata details, and
+  lazy body lookup with explicit truncation, missing-content, and coverage notes.
 
 Automatic system-log and crash capture, global network interception, persistence
 across launches, incident export, and framework adapters are not implemented.

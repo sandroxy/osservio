@@ -77,8 +77,11 @@ automatic capture.
 The optional adapter is compiled and tested against OkHttp 5.5.1. The host owns
 its OkHttp runtime dependency; the adapter uses a compile-only dependency so it
 does not silently replace the host's networking version. Other OkHttp versions
-have not been verified. Add the local adapter dependency and the tested runtime
-version when configuring the host:
+are not implied to be compatible. The 5.5.1 Android runtime requires the host
+to compile with SDK 37 or later and a corresponding supported Android build
+toolchain. Core, Store, and UI do not acquire that requirement. The SDK does not
+select or upgrade the host runtime. The following runtime declaration is for
+a host that already meets its requirements:
 
 ```groovy
 implementation 'io.github.sandroxy:osservio-okhttp:0.1.0-dev.0'
@@ -103,6 +106,9 @@ builder.addInterceptor(new OsservioInterceptor(http));
 
 Use `addInterceptor`, not `addNetworkInterceptor`. Retain the recorder and store
 with the client. The default policy omits bodies and sensitive URL/header
-content. Inspection uses `HTTPHistory`; a native HTTP viewer is not available
-yet. Read [network coverage](../../doc/network-integration.md) and
+content. Use `HTTPInspectorView(activity, http, requests)` for network-only
+inspection, or `InspectorView(activity, recorder, history, http, requests)` for
+native log and network sections. Import these types from
+`com.sandrox.osservio.ui`. Attach the view with a bounded height and the same
+host-owned presentation/inset handling described above. Read [network coverage](../../doc/network-integration.md) and
 [HTTP privacy and limits](../../doc/http.md) before enabling body content.

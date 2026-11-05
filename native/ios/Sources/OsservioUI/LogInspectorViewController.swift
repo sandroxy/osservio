@@ -40,7 +40,7 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
 
     public override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Osservio"
+        title = copyText("logs")
         view.backgroundColor = .systemBackground
         navigationItem.searchController = search
         navigationItem.hidesSearchBarWhenScrolling = false

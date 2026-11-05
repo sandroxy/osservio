@@ -9,7 +9,14 @@ its default body omission, finite capture lifetime, and bounded memory policy.
 ## OkHttp
 
 Install `OsservioInterceptor` once as an application interceptor on the client
-that sends the requests of interest. OkHttp 5.5.1 is the verified version. The
+that sends the requests of interest. The adapter compiles and runs JVM tests
+against OkHttp 5.5.1. Its Android artifact requires a host with compileSdk 37 or
+later; the base Osservio libraries still compile with SDK 36. An API 36 consumer
+uses OkHttp 5.4.0 only for offline loopback compatibility checks. This test
+configuration is not a recommendation to downgrade a production client: 5.5.1
+includes certificate-blocking protections described in the
+[upstream changelog](https://github.com/lysine-dev/okhttp/blob/parent-5.5.1/CHANGELOG.md).
+The host selects and maintains its supported runtime and toolchain. The
 adapter does not bring an OkHttp runtime into the host or change TLS, cookies,
 cache, proxies, timeouts, redirect policy, authentication, or request headers.
 

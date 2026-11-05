@@ -71,8 +71,12 @@ preserves native task cancellation. The wrapper does not invalidate the session,
 replace its delegate, install a URL protocol, or modify requests.
 
 Only requests submitted through these methods are observed. The default policy
-omits bodies and sensitive URL/header content. Inspect retained data through
-`HTTPHistory`; a native HTTP viewer is not available yet. Read
+omits bodies and sensitive URL/header content. On the main actor, present
+`InspectorViewController(logRecorder: recorder, logHistory: history,
+httpRecorder: http, httpHistory: requests)` directly for native log/network tabs
+with a Done control. For network-only inspection, embed
+`HTTPInspectorViewController(recorder: http, history: requests)` in a navigation
+controller and supply dismissal appropriate to your presentation. Read
 [network coverage](../../doc/network-integration.md) and
 [HTTP privacy and limits](../../doc/http.md) before enabling body content.
 

@@ -147,9 +147,11 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
     /// Performs lazy timeout/expiry cleanup. Useful when refreshing the inspector without new traffic.
     @discardableResult
     public func maintenance() -> HTTPRecordResult {
-        result(captureController.record(requiresDetailed: true) { context in
-            expire(at: context.monotonicMillis); return .recorded
-        })
+        captureController.inspect { status in
+            guard status.mode == .detailed else { return HTTPRecordResult.inactive }
+            expire(at: captureController.clock.monotonicMillis())
+            return HTTPRecordResult.recorded
+        } ?? .busy
     }
 
     /// Ends SDK observation without asserting a transport outcome or cancelling the host request.

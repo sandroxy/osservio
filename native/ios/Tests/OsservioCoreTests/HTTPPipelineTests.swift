@@ -11,6 +11,19 @@ final class HTTPPipelineTests: XCTestCase {
     }
     private let textHeaders = [HTTPHeader(name: "Content-Type", value: "application/json; charset=utf-8")]
 
+    func testInspectorMaintenanceDoesNotConsumeObservationSequences() throws {
+        let capture = CaptureController()
+        let logs = try MemoryLogStore()
+        let logger = try LogRecorder(sink: logs, captureController: capture)
+        let http = try HTTPRecorder(sink: MemoryHTTPStore(), captureController: capture, privacy: HTTPPrivacyPolicy())
+        XCTAssertEqual(http.maintenance(), .inactive)
+        try capture.startDetailed()
+        XCTAssertEqual(logger.record(.info, category: "test", message: .publicText("before")), .recorded)
+        for _ in 0..<20 { XCTAssertEqual(http.maintenance(), .recorded) }
+        XCTAssertEqual(logger.record(.info, category: "test", message: .publicText("after")), .recorded)
+        XCTAssertEqual(logs.snapshot()?.events.map(\.sequence), [1, 2])
+    }
+
     private func fixture(_ name: String) throws -> [[String]] {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }

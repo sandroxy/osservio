@@ -4,7 +4,7 @@
 host. `MemoryHTTPStore` provides bounded metadata history and a separate body
 budget. These APIs do not install an interceptor, create a networking client,
 read a response stream, or make requests. Optional [network integrations](network-integration.md)
-observe selected host clients. A native HTTP inspector is not implemented yet.
+observe selected host clients. The native inspector provides a metadata list and explicit body lookup.
 
 ## Ownership and lifecycle
 
@@ -145,3 +145,31 @@ wait for the store's bounded critical section; do not call it from capture.
 The current records are native in-memory types, not a serialized interchange
 protocol or a persistent archive format. No network data survives termination
 through these modules.
+
+## Native inspection
+
+The combined native inspector has independent Logs and Network sections. HTTP
+controls start or end detailed capture on the supplied shared controller. Ending
+detail returns to its configured baseline/off state; closing the inspector and
+pausing rendering do not change capture. Clearing requests affects HTTP history
+only, not the log store or host calls.
+
+The visible list refreshes at most every 250 ms; hidden sections stop polling.
+Scrolling pauses rendering to keep rows stable. Search covers initial/final URL,
+method, and status code, never body content. Filters separate awaiting-completion
+entries from HTTP errors and incomplete outcomes. An HTTP 503 response can be
+fully received; it is not presented as a transport failure.
+
+Details are snapshots with an explicit refresh action. Headers and observation
+provenance are available in Overview. Request/response bodies are queried only
+when the user selects them, displayed as bounded selectable raw text, and copied
+only on explicit action. Body policy, incomplete capture, unsupported format,
+truncation, storage contention, and independent eviction remain distinguishable.
+If metadata has been removed, the detail view labels its last viewed snapshot; it
+does not resurrect it. Previously displayed text can remain visible until the
+view is refreshed or closed.
+
+Observation cleanup during refresh does not consume an event sequence or cancel
+a host call. Expiry remains lazy, as described above. Neither the UI nor an
+HTTP status code establishes business success, user intent, or complete traffic
+coverage. See [network coverage](network-integration.md) for collector differences.
