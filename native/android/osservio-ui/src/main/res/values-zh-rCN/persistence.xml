@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_archive_title">留存</string>
+    <string name="osservio_archive_refresh">刷新留存记录</string>
+    <string name="osservio_archive_back">返回记录</string>
+    <string name="osservio_archive_hint">这里只展示已写入磁盘的运行线索，不代表发生过崩溃。列表按需刷新，异常终止时未写入的线索可能丢失。</string>
+    <string name="osservio_archive_empty">暂无已留存的运行记录。</string>
+    <string name="osservio_archive_reading">正在读取留存线索…</string>
+    <string name="osservio_archive_loaded">读取时间</string>
+    <string name="osservio_archive_current">本次运行</string>
+    <string name="osservio_archive_previous_run">此前运行</string>
+    <string name="osservio_archive_counts">%1$d 条线索 · 已淘汰 %2$d 条</string>
+    <string name="osservio_archive_run_info">%1$s · 进程 %2$s\n最新线索：%3$s\n运行标识：%4$s</string>
+    <string name="osservio_archive_missing">这次运行的记录已不再保留，请刷新列表。</string>
+    <string name="osservio_archive_copy_summary">复制概览</string>
+    <string name="osservio_archive_snapshot">当前显示已读取的留存快照。返回列表可重新读取最新记录。</string>
+    <string name="osservio_archive_status">%1$s · 待写入 %2$d 条 · 已写入 %3$d 条 · 未留存 %4$d 条</string>
+    <string name="osservio_archive_state_opening">正在打开存储</string>
+    <string name="osservio_archive_state_ready">存储可用</string>
+    <string name="osservio_archive_state_failed">留存不可用</string>
+    <string name="osservio_archive_state_closing">正在关闭存储</string>
+    <string name="osservio_archive_state_closed">存储已关闭</string>
+    <string name="osservio_archive_error_busy">存储正忙，请重试。</string>
+    <string name="osservio_archive_error_closed">此存储实例已关闭。</string>
+    <string name="osservio_archive_error_unavailable">存储不可用，实时历史仍可能可用。</string>
+    <string name="osservio_archive_error_unsupported_schema">暂不支持此数据库版本，原文件已保留。</string>
+    <string name="osservio_archive_error_corrupt">存储文件已损坏，原文件已保留。</string>
+    <string name="osservio_archive_error_storage_full">存储配额或可用空间已耗尽。</string>
+    <string name="osservio_archive_error_invalid_record">留存线索未通过校验，未对原记录做静默修复。</string>
+</resources>

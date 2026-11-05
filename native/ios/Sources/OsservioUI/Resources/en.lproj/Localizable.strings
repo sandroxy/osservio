@@ -189,3 +189,32 @@
 "crumb_kind_memoryTrim" = "Memory trim callback";
 "crumb_kind_thermalState" = "Thermal state changed";
 "crumb_kind_responsiveness" = "Responsiveness observation";
+
+// Committed breadcrumb evidence.
+"archive_title" = "Saved";
+"archive_refresh" = "Refresh saved runs";
+"archive_back" = "Runs";
+"archive_hint" = "Saved runs contain committed breadcrumbs, not crash verdicts. This view refreshes on request; unsaved events may be lost on termination.";
+"archive_empty" = "No saved runs.";
+"archive_reading" = "Reading saved evidence…";
+"archive_loaded" = "Read at";
+"archive_current" = "Current run";
+"archive_previous_run" = "Earlier run";
+"archive_counts" = "Events: %d · Evicted: %lld";
+"archive_run_info" = "%1$@ · Process %2$@\nLast event: %3$@\nRun ID: %4$@";
+"archive_missing" = "This run is no longer retained. Refresh the list.";
+"archive_copy_summary" = "Copy summary";
+"archive_snapshot" = "This is a saved snapshot. Return to the run list to read newer evidence.";
+"archive_status" = "%1$@ · Queued: %2$d · Committed: %3$lld · Not saved: %4$lld";
+"archive_state_opening" = "Opening storage";
+"archive_state_ready" = "Storage ready";
+"archive_state_failed" = "Saving unavailable";
+"archive_state_closing" = "Closing storage";
+"archive_state_closed" = "Storage closed";
+"archive_error_busy" = "Storage is busy. Try again.";
+"archive_error_closed" = "This store is closed.";
+"archive_error_unavailable" = "Storage is unavailable. Live history may still be usable.";
+"archive_error_unsupported_schema" = "This database version is unsupported. The file was preserved.";
+"archive_error_corrupt" = "Storage is damaged. The file was preserved.";
+"archive_error_storage_full" = "The storage budget or available space is exhausted.";
+"archive_error_invalid_record" = "Saved evidence failed validation. It was not silently repaired.";

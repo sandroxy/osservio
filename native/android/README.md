@@ -178,6 +178,8 @@ breadcrumbRecorder, breadcrumbs` after the WebSocket arguments of
 `InspectorView`. Its Context section provides one-shot environment reads and a
 searchable breadcrumb timeline. The example uses memory-only history. To retain
 selected contexts across launches, substitute `SQLiteBreadcrumbStore` as
-described in [breadcrumb persistence](../../doc/breadcrumb-storage.md). See
+described in [breadcrumb persistence](../../doc/breadcrumb-storage.md). Pass
+the same store as an additional final constructor argument to the combined or
+runtime inspector for saved-run browsing. See
 [runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, and metric definitions.

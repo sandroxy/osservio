@@ -112,7 +112,8 @@ capture is off. They do not enter a history or create an archive by themselves.
 ## Native inspection
 
 `RuntimeInspectorView` (Android) and `RuntimeInspectorViewController` (iOS)
-provide Environment and Breadcrumbs sections. Supply the environment provider,
+provide Environment and Breadcrumbs sections, plus Saved when an archive is
+supplied. Supply the environment provider,
 breadcrumb recorder, and history explicitly, or pass them to the combined
 inspector to add its Context tab. UI imports Core only; it neither creates
 collectors nor takes ownership of their shutdown.

@@ -120,7 +120,7 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
 }
 
 @MainActor
-private final class BreadcrumbDetailViewController: UIViewController {
+final class BreadcrumbDetailViewController: UIViewController {
     private let event: BreadcrumbEvent
     init(event: BreadcrumbEvent) { self.event = event; super.init(nibName: nil, bundle: nil) }
     @available(*, unavailable)

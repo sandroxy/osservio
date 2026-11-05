@@ -31,10 +31,11 @@ public final class InspectorViewController: UITabBarController {
     public convenience init(logRecorder: LogRecorder, logHistory: any LogHistory,
                             httpRecorder: HTTPRecorder, httpHistory: any HTTPHistory,
                             webSocketRecorder: WebSocketRecorder, webSocketHistory: any WebSocketHistory,
-                            environment: any EnvironmentProvider, breadcrumbRecorder: BreadcrumbRecorder, breadcrumbHistory: any BreadcrumbHistory) {
+                            environment: any EnvironmentProvider, breadcrumbRecorder: BreadcrumbRecorder, breadcrumbHistory: any BreadcrumbHistory,
+                            breadcrumbArchive: (any BreadcrumbArchive)? = nil) {
         self.init(logRecorder: logRecorder, logHistory: logHistory, httpRecorder: httpRecorder, httpHistory: httpHistory,
                   webSocketRecorder: webSocketRecorder, webSocketHistory: webSocketHistory)
-        let runtime = RuntimeInspectorViewController(provider: environment, recorder: breadcrumbRecorder, history: breadcrumbHistory)
+        let runtime = RuntimeInspectorViewController(provider: environment, recorder: breadcrumbRecorder, history: breadcrumbHistory, archive: breadcrumbArchive)
         viewControllers?.append(section(runtime, key: "runtime_title", icon: "info.circle"))
     }
     @available(*, unavailable)

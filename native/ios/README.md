@@ -137,7 +137,9 @@ and `breadcrumbHistory` arguments to the combined inspector's WebSocket
 initializer. Its Context tab provides environment snapshots and a searchable
 breadcrumb timeline. The example uses memory-only history. To retain selected
 contexts across launches, substitute `SQLiteBreadcrumbStore` as described in
-[breadcrumb persistence](../../doc/breadcrumb-storage.md). See
+[breadcrumb persistence](../../doc/breadcrumb-storage.md), and pass it as
+`breadcrumbArchive` to the combined inspector (or `archive` to the runtime
+inspector) for saved-run browsing. See
 [runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, limits, and collector ownership.
 

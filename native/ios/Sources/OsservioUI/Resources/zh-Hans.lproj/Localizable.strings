@@ -189,3 +189,32 @@
 "crumb_kind_memoryTrim" = "内存回收通知";
 "crumb_kind_thermalState" = "温度状态变化";
 "crumb_kind_responsiveness" = "响应状况观察";
+
+// Committed breadcrumb evidence.
+"archive_title" = "留存";
+"archive_refresh" = "刷新留存记录";
+"archive_back" = "返回记录";
+"archive_hint" = "这里只展示已写入磁盘的运行线索，不代表发生过崩溃。列表按需刷新，异常终止时未写入的线索可能丢失。";
+"archive_empty" = "暂无已留存的运行记录。";
+"archive_reading" = "正在读取留存线索…";
+"archive_loaded" = "读取时间";
+"archive_current" = "本次运行";
+"archive_previous_run" = "此前运行";
+"archive_counts" = "%d 条线索 · 已淘汰 %lld 条";
+"archive_run_info" = "%1$@ · 进程 %2$@\n最新线索：%3$@\n运行标识：%4$@";
+"archive_missing" = "这次运行的记录已不再保留，请刷新列表。";
+"archive_copy_summary" = "复制概览";
+"archive_snapshot" = "当前显示已读取的留存快照。返回列表可重新读取最新记录。";
+"archive_status" = "%1$@ · 待写入 %2$d 条 · 已写入 %3$lld 条 · 未留存 %4$lld 条";
+"archive_state_opening" = "正在打开存储";
+"archive_state_ready" = "存储可用";
+"archive_state_failed" = "留存不可用";
+"archive_state_closing" = "正在关闭存储";
+"archive_state_closed" = "存储已关闭";
+"archive_error_busy" = "存储正忙，请重试。";
+"archive_error_closed" = "此存储实例已关闭。";
+"archive_error_unavailable" = "存储不可用，实时历史仍可能可用。";
+"archive_error_unsupported_schema" = "暂不支持此数据库版本，原文件已保留。";
+"archive_error_corrupt" = "存储文件已损坏，原文件已保留。";
+"archive_error_storage_full" = "存储配额或可用空间已耗尽。";
+"archive_error_invalid_record" = "留存线索未通过校验，未对原记录做静默修复。";

@@ -142,6 +142,20 @@ Database initialization, validation, or write failure disables persistence for
 that store instance while live recording continues. The file is preserved,
 including corruption and unsupported schema failures; no automatic delete,
 reset, or retry is performed. Readers surface errors instead of showing an empty
-successful history. Current archive APIs provide read and flush access; a native
-archive browser, explicit archive deletion, incident capture, and export are
-not implemented by this storage component.
+successful history. Current archive APIs provide read and flush access. Explicit archive deletion,
+incident capture, and export are not implemented by this storage component.
+
+## Native archive inspection
+
+Pass the store as `breadcrumbArchive` to the combined inspector, or as `archive`
+to the standalone runtime inspector (the final constructor argument on Android).
+The Saved section queries committed runs on entry and on explicit refresh. It
+does not poll disk, flush, enable capture, or reconstruct missing data. Storage
+state and per-instance queued/committed/discarded counts remain visible.
+
+Open a run for a dated immutable event snapshot with search, details, and
+explicit clipboard actions. Current and prior runs are labeled separately;
+no run is identified as a crash without independent evidence. A failed refresh
+preserves the previous displayed snapshot with its read time and visible error.
+Clear in the live Breadcrumbs section affects only memory. Hiding the archive
+invalidates pending UI deliveries; the bounded storage query may still finish.

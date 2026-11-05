@@ -7,12 +7,15 @@ import UIKit
 public final class RuntimeInspectorViewController: UIViewController {
     private let environment: EnvironmentInspectorViewController
     private let breadcrumbs: BreadcrumbInspectorViewController
+    private let archive: BreadcrumbArchiveViewController?
     private let content = UIView()
     private let selection = UISegmentedControl(items: [RuntimePresentation.text("runtime_environment"), RuntimePresentation.text("runtime_breadcrumbs")])
     private var current: UIViewController?
-    public init(provider: any EnvironmentProvider, recorder: BreadcrumbRecorder, history: any BreadcrumbHistory) {
+    public init(provider: any EnvironmentProvider, recorder: BreadcrumbRecorder, history: any BreadcrumbHistory,
+                archive: (any BreadcrumbArchive)? = nil) {
         environment = EnvironmentInspectorViewController(provider: provider)
         breadcrumbs = BreadcrumbInspectorViewController(recorder: recorder, history: history)
+        self.archive = archive.map { BreadcrumbArchiveViewController(archive: $0) }
         super.init(nibName: nil, bundle: nil)
     }
     @available(*, unavailable)
@@ -21,6 +24,7 @@ public final class RuntimeInspectorViewController: UIViewController {
         super.viewDidLoad()
         title = RuntimePresentation.text("runtime_title")
         view.backgroundColor = .systemBackground
+        if archive != nil { selection.insertSegment(withTitle: RuntimePresentation.text("archive_title"), at: 2, animated: false) }
         selection.selectedSegmentIndex = 0
         selection.addTarget(self, action: #selector(selectSection), for: .valueChanged)
         let stack = UIStackView(arrangedSubviews: [selection, content])
@@ -37,7 +41,10 @@ public final class RuntimeInspectorViewController: UIViewController {
     @objc private func selectSection() {
         current?.willMove(toParent: nil)
         current?.view.removeFromSuperview(); current?.removeFromParent()
-        let next: UIViewController = selection.selectedSegmentIndex == 0 ? environment : breadcrumbs
+        let next: UIViewController
+        if selection.selectedSegmentIndex == 0 { next = environment }
+        else if selection.selectedSegmentIndex == 2, let archive { next = archive }
+        else { next = breadcrumbs }
         addChild(next); next.view.translatesAutoresizingMaskIntoConstraints = false; content.addSubview(next.view)
         NSLayoutConstraint.activate([
             next.view.topAnchor.constraint(equalTo: content.topAnchor), next.view.bottomAnchor.constraint(equalTo: content.bottomAnchor),
