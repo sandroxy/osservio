@@ -11,36 +11,53 @@ import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.HTTPRecorder;
 import com.sandrox.osservio.core.LogHistory;
 import com.sandrox.osservio.core.LogRecorder;
+import com.sandrox.osservio.core.WebSocketRecorder;
+import com.sandrox.osservio.core.WebSocketHistory;
+import java.util.Objects;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** Native sections sharing host-owned histories and capture. The host owns presentation and insets. */
 // Explicit runtime dependencies require programmatic construction.
 @SuppressLint("ViewConstructor")
 public final class InspectorView extends LinearLayout {
+    private final RadioGroup tabs;
+    private final Map<Integer, View> sections = new LinkedHashMap<>();
     public InspectorView(Context context, LogRecorder logRecorder, LogHistory logHistory,
                          HTTPRecorder httpRecorder, HTTPHistory httpHistory) {
         super(context);
         setOrientation(VERTICAL);
-        RadioGroup tabs = new RadioGroup(context);
+        tabs = new RadioGroup(context);
         tabs.setOrientation(HORIZONTAL);
-        RadioButton logs = tab(context, R.string.osservio_logs);
-        RadioButton network = tab(context, R.string.osservio_network);
-        tabs.addView(logs, new RadioGroup.LayoutParams(0, -2, 1));
-        tabs.addView(network, new RadioGroup.LayoutParams(0, -2, 1));
-        tabs.check(logs.getId());
         addView(tabs, new LayoutParams(-1, -2));
-        LogInspectorView logView = new LogInspectorView(context, logRecorder, logHistory);
-        HTTPInspectorView httpView = new HTTPInspectorView(context, httpRecorder, httpHistory);
-        httpView.setVisibility(GONE);
-        addView(logView, new LayoutParams(-1, 0, 1));
-        addView(httpView, new LayoutParams(-1, 0, 1));
+        addSection(R.string.osservio_logs, new LogInspectorView(context, logRecorder, logHistory));
+        addSection(R.string.osservio_network, new HTTPInspectorView(context, httpRecorder, httpHistory));
         tabs.setOnCheckedChangeListener((group, checked) -> {
             View focused = findFocus();
             if (focused != null) focused.clearFocus();
             InputMethodManager keyboard = context.getSystemService(InputMethodManager.class);
             if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
-            logView.setVisibility(checked == logs.getId() ? VISIBLE : GONE);
-            httpView.setVisibility(checked == network.getId() ? VISIBLE : GONE);
+            for (Map.Entry<Integer, View> section : sections.entrySet()) {
+                section.getValue().setVisibility(section.getKey() == checked ? VISIBLE : GONE);
+            }
         });
+    }
+    public InspectorView(Context context, LogRecorder logRecorder, LogHistory logHistory,
+                         HTTPRecorder httpRecorder, HTTPHistory httpHistory,
+                         WebSocketRecorder webSocketRecorder, WebSocketHistory webSocketHistory) {
+        this(context, logRecorder, logHistory, httpRecorder, httpHistory);
+        WebSocketInspectorView sockets = new WebSocketInspectorView(context,
+            Objects.requireNonNull(webSocketRecorder, "webSocketRecorder"), Objects.requireNonNull(webSocketHistory, "webSocketHistory"));
+        addSection(R.string.osservio_ws_title, sockets);
+    }
+    private void addSection(int label, View view) {
+        RadioButton button = tab(getContext(), label);
+        boolean first = sections.isEmpty();
+        view.setVisibility(first ? VISIBLE : GONE);
+        sections.put(button.getId(), view);
+        tabs.addView(button, new RadioGroup.LayoutParams(0, -2, 1));
+        addView(view, new LayoutParams(-1, 0, 1));
+        if (first) tabs.check(button.getId());
     }
     private static RadioButton tab(Context context, int label) {
         RadioButton button = new RadioButton(context);

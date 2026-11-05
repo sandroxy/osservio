@@ -2,14 +2,14 @@
 
 This document defines the intended design of Osservio. The implemented native
 subset consists of shared capture lifecycle, explicit logging, HTTP and
-WebSocket observation in Core, bounded memory history in Store, and log/HTTP
+WebSocket observation in Core, bounded memory history in Store, and log/HTTP/WebSocket
 inspection in UI. WebSocket accepts explicit host observations and optional
 OkHttp/URLSession wrappers;
 see [its contract](websocket.md).
 Optional collectors observe host-owned OkHttp and URLSession requests. See
 [the logging contract](logging.md), [HTTP observation](http.md), and
 [network coverage](network-integration.md) for current behavior.
-Native tabs expose logs and network history without changing capture on presentation.
+Native tabs expose logs, HTTP history, and WebSocket connections without changing capture on presentation.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

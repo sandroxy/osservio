@@ -138,3 +138,9 @@ same wrapper; original callback data and native return values are preserved.
 The default policy omits message text. See [WebSocket
 coverage](../../doc/network-integration.md#okhttp-sockets) for lifecycle, privacy,
 late enablement, and the distinction between queue acceptance and peer receipt.
+
+Use `WebSocketInspectorView(activity, sockets, messages)` alone, or add `sockets,
+messages` as the final constructor arguments to `InspectorView` for the combined
+log, HTTP, and WebSocket interface. Connection groups lead to event timelines;
+payload lookup and copying happen in event detail. The same presentation and
+theme requirements apply.

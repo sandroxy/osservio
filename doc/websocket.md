@@ -1,8 +1,9 @@
 # Native WebSocket observations
 
 Core and Store accept explicit native WebSocket observations. Optional wrappers
-observe host-owned OkHttp sockets and URLSession WebSocket tasks. No global hook
-or WebSocket viewer is installed. Osservio does not implement the WebSocket
+observe host-owned OkHttp sockets and URLSession WebSocket tasks. Native viewers
+show connection groups and event timelines. No global hook is installed.
+Osservio does not implement the WebSocket
 protocol or replace a host's network stack. Integration and platform differences
 are documented in [network coverage](network-integration.md#websocket-clients).
 
@@ -112,3 +113,27 @@ Shared Unicode and lifecycle fixtures, plus native tests for privacy, invalid
 transitions, overload, stale tokens, eviction, clearing, and sink rejection,
 verify this contract. Separate wrapper tests exercise native client behavior;
 neither set establishes physical-device performance.
+
+## Native inspection
+
+`WebSocketInspectorView` on Android and `WebSocketInspectorViewController` on
+iOS group the retained timeline by connection ID. A group shows matching event
+count and the latest matching observation, not a live socket state. Open a group
+to browse its events. Search uses sanitized URLs, identifiers, and event labels;
+message bodies are not loaded or searched by the list. Filters select all
+events, errors/observation gaps, or messages and send results.
+
+Event detail separates metadata from explicit content lookup and copying. It
+preserves correlation IDs, source, capture session, sequence, and observed time.
+Missing submissions, omitted or truncated content, and independently evicted
+payloads remain visible. Viewing a historical close code does not establish the
+current state of another capture session or connection.
+
+Visible lists refresh at most four times per second. Scrolling pauses rendering;
+resuming refreshes the retained window. Detail is refreshed manually. Hiding the
+viewer stops its refresh work without stopping capture. Clear removes the entire
+WebSocket history, including when invoked from one connection's timeline; it
+does not close host sockets. Detailed capture controls are shared with the other
+recorders on the same controller. The combined inspector accepts an additional
+recorder/history pair to expose the WebSocket section. Both viewers follow the
+host's native theme and provide English and Simplified Chinese copy.

@@ -32,7 +32,8 @@ the broader product described below remain unimplemented.
 WebSocket observation supports explicit host events and opt-in OkHttp/URLSession
 wrappers, with a bounded timeline and independent text budget. Submission, queue
 admission, send results, and close events remain distinct; none proves peer
-receipt. A WebSocket viewer is not implemented yet; see the
+receipt. Native inspectors group events by connection and provide timeline
+filters and on-demand content lookup; see the
 [WebSocket observation contract](doc/websocket.md).
 
 Automatic system-log and crash capture, global network interception, persistence

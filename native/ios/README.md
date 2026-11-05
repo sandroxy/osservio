@@ -104,6 +104,11 @@ Osservio does not replace the delegate or retain all tasks in a registry.
 The default policy omits text content. See [WebSocket coverage and callback
 limits](../../doc/network-integration.md#urlsession-websocket-tasks).
 
+Embed `WebSocketInspectorViewController(recorder: sockets, history: messages)`
+in a navigation controller, or pass `webSocketRecorder: sockets,
+webSocketHistory: messages` to the combined `InspectorViewController` initializer.
+Connection groups open event timelines and details with explicit content lookup.
+
 The package also declares a macOS target version so Core and Store tests can run
 on the development machine. The UIKit source is excluded on macOS; this does
 not provide a macOS inspector or establish macOS product support.

@@ -3,7 +3,7 @@
 The repository contains native Android and iOS log capture, HTTP observation,
 memory storage, optional OkHttp/URLSession integration, and native log/HTTP inspection modules.
 WebSocket Core and Store accept explicit host observations and optional native
-client wrappers; there is not yet a WebSocket viewer.
+client wrappers, with native connection groups, event timelines, and message details.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 

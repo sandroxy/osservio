@@ -11,12 +11,22 @@ public final class InspectorViewController: UITabBarController {
         let logs = LogInspectorViewController(recorder: logRecorder, history: logHistory)
         let network = HTTPInspectorViewController(recorder: httpRecorder, history: httpHistory)
         viewControllers = [(logs, "logs", "doc.text"), (network, "network", "network")].map { controller, key, icon in
-            let navigation = UINavigationController(rootViewController: controller)
-            navigation.tabBarItem = UITabBarItem(title: HTTPPresentation.text(key), image: UIImage(systemName: icon), tag: 0)
-            controller.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self,
-                                                                          action: #selector(closeInspector))
-            return navigation
+            section(controller, key: key, icon: icon)
         }
+    }
+    public convenience init(logRecorder: LogRecorder, logHistory: any LogHistory,
+                            httpRecorder: HTTPRecorder, httpHistory: any HTTPHistory,
+                            webSocketRecorder: WebSocketRecorder, webSocketHistory: any WebSocketHistory) {
+        self.init(logRecorder: logRecorder, logHistory: logHistory, httpRecorder: httpRecorder, httpHistory: httpHistory)
+        let sockets = WebSocketInspectorViewController(recorder: webSocketRecorder, history: webSocketHistory)
+        viewControllers?.append(section(sockets, key: "ws_title", icon: "arrow.left.arrow.right"))
+    }
+    private func section(_ controller: UIViewController, key: String, icon: String) -> UINavigationController {
+        let navigation = UINavigationController(rootViewController: controller)
+        navigation.tabBarItem = UITabBarItem(title: HTTPPresentation.text(key), image: UIImage(systemName: icon), tag: 0)
+        controller.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self,
+                                                                      action: #selector(closeInspector))
+        return navigation
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
