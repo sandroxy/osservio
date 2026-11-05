@@ -1,24 +1,22 @@
 package com.sandrox.osservio.store;
 
+import static com.sandrox.osservio.store.EvidenceSQLite.flag;
+import static com.sandrox.osservio.store.EvidenceSQLite.integer;
+import static com.sandrox.osservio.store.EvidenceSQLite.kindName;
+import static com.sandrox.osservio.store.EvidenceSQLite.text;
+import static com.sandrox.osservio.store.EvidenceSQLite.textColumn;
+import static com.sandrox.osservio.store.EvidenceSQLite.validId;
+
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.system.ErrnoException;
-import android.system.Os;
-import android.system.OsConstants;
-import android.system.StructStat;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.PersistenceStatus;
 import com.sandrox.osservio.core.RetainedBreadcrumbs;
 import com.sandrox.osservio.core.RetainedRun;
 import java.io.File;
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /** Confined to one storage worker. Platform SQLite owns transaction rollback and recovery. */
 final class BreadcrumbDatabase implements AutoCloseable {
@@ -32,14 +30,8 @@ final class BreadcrumbDatabase implements AutoCloseable {
 
     BreadcrumbDatabase(File file, BreadcrumbPersistenceOptions options, String runId, long processId, long startedAt) {
         this.options = options; this.runId = runId; this.processId = processId; this.startedAt = startedAt;
-        checkFile(file, options.databaseByteLimit);
-        // Recovery also needs journal page records and sector-aligned headers, not just database bytes.
-        checkFile(new File(file.getPath() + "-journal"), 2L * options.databaseByteLimit + 65536L);
-        int flags = SQLiteDatabase.CREATE_IF_NECESSARY | SQLiteDatabase.NO_LOCALIZED_COLLATORS;
-        // The platform default error handler deletes corrupted files. Preserve them and report the failure instead.
-        database = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null, flags, corrupted -> { });
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, APPLICATION_ID, REVISION, SCHEMA);
         try {
-            configure();
             transaction(() -> {
                 if (scalar("SELECT count(*) FROM recording_runs") > 16) throw EvidenceStorageException.invalid();
                 pruneRuns(startedAt);
@@ -57,42 +49,17 @@ final class BreadcrumbDatabase implements AutoCloseable {
         transaction(() -> database.execSQL("DELETE FROM recording_runs WHERE id=?", new Object[] {id}));
     }
     void deleteAllRuns() { transaction(() -> database.execSQL("DELETE FROM recording_runs")); }
-    private void configure() {
-        long owner = scalar("PRAGMA application_id");
-        long version = scalar("PRAGMA user_version");
-        boolean empty = scalar("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'") == 0;
-        if (!(owner == 0 && version == 0 && empty) && (owner != APPLICATION_ID || version != REVISION)) {
-            throw new EvidenceStorageException(PersistenceStatus.Error.UNSUPPORTED_SCHEMA);
-        }
-        database.disableWriteAheadLogging();
-        try (Cursor row = query("PRAGMA journal_mode=DELETE")) {
-            if (!row.moveToFirst() || !"delete".equals(row.getString(0))) throw new EvidenceStorageException(PersistenceStatus.Error.UNAVAILABLE);
-        }
-        database.execSQL("PRAGMA synchronous=FULL");
-        database.setForeignKeyConstraintsEnabled(true);
-        database.execSQL("PRAGMA temp_store=MEMORY");
-        database.execSQL("PRAGMA cache_size=-256");
-        if (scalar("PRAGMA busy_timeout=0") != 0) throw new EvidenceStorageException(PersistenceStatus.Error.UNAVAILABLE);
-        long pageSize = scalar("PRAGMA page_size");
-        if (pageSize < 512 || pageSize > 65536) throw new EvidenceStorageException(PersistenceStatus.Error.CORRUPT);
-        long pages = options.databaseByteLimit / pageSize;
-        if (scalar("PRAGMA max_page_count=" + pages) > pages) throw new EvidenceStorageException(PersistenceStatus.Error.STORAGE_FULL);
-        if (owner == 0 && version == 0 && empty) {
-            transaction(() -> {
-                database.execSQL("CREATE TABLE recording_runs (ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, "
-                    + "platform TEXT NOT NULL, process_id INTEGER NOT NULL, started_at INTEGER NOT NULL, last_recorded_at INTEGER NOT NULL, "
-                    + "last_written_at INTEGER NOT NULL, evicted_events INTEGER NOT NULL DEFAULT 0)");
-                database.execSQL("CREATE TABLE breadcrumbs (ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, "
-                    + "run_id TEXT NOT NULL REFERENCES recording_runs(id) ON DELETE CASCADE, session_id TEXT NOT NULL, "
-                    + "sequence INTEGER NOT NULL CHECK(sequence > 0), timestamp INTEGER NOT NULL, elapsed TEXT, kind TEXT NOT NULL, "
-                    + "label TEXT NOT NULL, message TEXT, private INTEGER NOT NULL CHECK(private IN (0,1)), "
-                    + "truncated INTEGER NOT NULL CHECK(truncated IN (0,1)), value INTEGER, text_bytes INTEGER NOT NULL CHECK(text_bytes >= 0))");
-                database.execSQL("CREATE INDEX breadcrumb_run_order ON breadcrumbs(run_id, ordinal)");
-                database.execSQL("PRAGMA application_id=" + APPLICATION_ID);
-                database.execSQL("PRAGMA user_version=" + REVISION);
-            });
-        }
-    }
+    private static final String[] SCHEMA = {
+        "CREATE TABLE recording_runs (ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, "
+            + "platform TEXT NOT NULL, process_id INTEGER NOT NULL, started_at INTEGER NOT NULL, last_recorded_at INTEGER NOT NULL, "
+            + "last_written_at INTEGER NOT NULL, evicted_events INTEGER NOT NULL DEFAULT 0)",
+        "CREATE TABLE breadcrumbs (ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, "
+            + "run_id TEXT NOT NULL REFERENCES recording_runs(id) ON DELETE CASCADE, session_id TEXT NOT NULL, "
+            + "sequence INTEGER NOT NULL CHECK(sequence > 0), timestamp INTEGER NOT NULL, elapsed TEXT, kind TEXT NOT NULL, "
+            + "label TEXT NOT NULL, message TEXT, private INTEGER NOT NULL CHECK(private IN (0,1)), "
+            + "truncated INTEGER NOT NULL CHECK(truncated IN (0,1)), value INTEGER, text_bytes INTEGER NOT NULL CHECK(text_bytes >= 0))",
+        "CREATE INDEX breadcrumb_run_order ON breadcrumbs(run_id, ordinal)"
+    };
     void write(List<BreadcrumbEvent> events, long now) {
         if (events.isEmpty()) return;
         if (events.size() > options.pendingEventLimit) throw EvidenceStorageException.invalid();
@@ -203,61 +170,5 @@ final class BreadcrumbDatabase implements AutoCloseable {
         try (Cursor row = query(sql, args)) { if (!row.moveToFirst()) throw EvidenceStorageException.invalid(); return integer(row, 0); }
     }
     private Cursor query(String sql, String... args) { return database.rawQuery(sql, args); }
-    private void transaction(Runnable body) {
-        database.beginTransaction();
-        Throwable original = null;
-        try { body.run(); database.setTransactionSuccessful(); }
-        catch (RuntimeException | Error failure) { original = failure; throw failure; }
-        finally {
-            try { database.endTransaction(); }
-            catch (RuntimeException cleanup) {
-                // SQLite may already have rolled back after SQLITE_FULL. Preserve the operation's failure.
-                if (original != null) original.addSuppressed(cleanup);
-                else throw cleanup;
-            }
-        }
-    }
-    private static long integer(Cursor row, int column) {
-        if (row.getType(column) != Cursor.FIELD_TYPE_INTEGER) throw EvidenceStorageException.invalid();
-        return row.getLong(column);
-    }
-    private static boolean flag(Cursor row, int column) {
-        long value = integer(row, column);
-        if (value != 0 && value != 1) throw EvidenceStorageException.invalid();
-        return value == 1;
-    }
-    // Retrieve bounded original UTF-8 bytes, not a cursor's replacement-decoded string. Invalid types become an invalid UTF-8 sentinel.
-    private static String textColumn(String name, int limit) {
-        return "CASE WHEN " + name + " IS NULL THEN NULL WHEN typeof(" + name + ")='text' THEN substr(CAST(" + name + " AS BLOB),1," + (limit + 1) + ") ELSE x'ff' END";
-    }
-    private static String text(Cursor row, int column, int limit) {
-        if (row.getType(column) != Cursor.FIELD_TYPE_BLOB) throw EvidenceStorageException.invalid();
-        byte[] bytes = row.getBlob(column);
-        if (bytes.length > limit) throw EvidenceStorageException.invalid();
-        try { return StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString(); }
-        catch (CharacterCodingException failure) { throw EvidenceStorageException.invalid(); }
-    }
-    static boolean validId(String id) {
-        if (id == null || id.length() != 36) return false;
-        for (int i = 0; i < id.length(); i++) {
-            char c = id.charAt(i);
-            if (i == 8 || i == 13 || i == 18 || i == 23) { if (c != '-') return false; }
-            else if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return false;
-        }
-        return true;
-    }
-    private static String kindName(BreadcrumbEvent.Kind kind) {
-        String[] words = kind.name().toLowerCase(Locale.ROOT).split("_");
-        StringBuilder name = new StringBuilder(words[0]);
-        for (int i = 1; i < words.length; i++) name.append(Character.toUpperCase(words[i].charAt(0))).append(words[i].substring(1));
-        return name.toString();
-    }
-    private static void checkFile(File file, long limit) {
-        try {
-            StructStat info = Os.lstat(file.getAbsolutePath());
-            if (!OsConstants.S_ISREG(info.st_mode) || info.st_size > limit) throw new EvidenceStorageException(PersistenceStatus.Error.STORAGE_FULL);
-        } catch (ErrnoException failure) {
-            if (failure.errno != OsConstants.ENOENT) throw new EvidenceStorageException(PersistenceStatus.Error.UNAVAILABLE);
-        }
-    }
+    private void transaction(Runnable body) { EvidenceSQLite.transaction(database, body); }
 }

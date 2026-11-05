@@ -1,0 +1,7 @@
+empty	public	~	1	~	1	~	false
+private	private	c2VjcmV0	2000	W3ByaXZhdGVd	1	~	false
+ascii_exact	public	YQ==	4096	YQ==	4096	~	false
+ascii_over	public	YQ==	4097	YQ==	4096	~	true
+astral	public	8J+Zgg==	1025	8J+Zgg==	1024	~	true
+han	public	5rGJ	1366	5rGJ	1365	~	true
+mixed	public	YfCfmYI=	820	YfCfmYI=	819	YQ==	true

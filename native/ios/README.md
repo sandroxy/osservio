@@ -143,6 +143,18 @@ inspector) for saved-run browsing. See
 [runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, limits, and collector ownership.
 
+## Manual problem snapshots
+
+Core's `IncidentSnapshot` accepts an optional privacy-classified note, an existing
+environment observation, and a bounded breadcrumb snapshot. Store's
+`SQLiteIncidentStore(directory:)` saves these explicitly and exposes asynchronous
+list, read, delete, and close operations. Supply a dedicated private directory
+and retain the store at application scope. It does not change live histories or
+capture controls. Success follows the database commit; dispatch callbacks to the
+main actor before updating views. See [manual problem snapshots](../../doc/incidents.md)
+for examples, budgets, retention, and failure behavior. Native incident UI and
+export are not implemented yet.
+
 The package also declares a macOS target version so Core and Store tests can run
 on the development machine. The UIKit source is excluded on macOS; this does
 not provide a macOS inspector or establish macOS product support.

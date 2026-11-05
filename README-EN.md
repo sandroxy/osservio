@@ -43,6 +43,12 @@ receipt. Native inspectors group events by connection and provide timeline
 filters and on-demand content lookup; see the
 [WebSocket observation contract](doc/websocket.md).
 
+Native APIs also let hosts explicitly save manual problem snapshots with a
+privacy-classified note, an existing environment observation, and bounded
+breadcrumb context. Snapshots can be queried or deleted after restart, with
+independent count, age, and storage limits. Native snapshot inspection and export
+are not implemented yet; see [manual problem snapshots](doc/incidents.md).
+
 Automatic system-log and crash capture, global network interception, incident
 export, and framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see

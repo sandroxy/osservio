@@ -59,3 +59,11 @@ states, Unicode truncation, exact 64-bit integers, and invalid types/ranges.
 Columns are name, key, fact type, Base64 input, validity, Base64 expected display
 value, and truncation. Empty text uses `~`. Both platforms require every known
 field to have an explicit state and preserve snapshot immutability.
+
+`incident-note-cases.tsv` describes manual snapshot note privacy and the fixed
+4,096-byte UTF-8 prefix. Columns are name, privacy, Base64 input unit, input
+repetitions, Base64 expected unit, expected repetitions, Base64 expected suffix,
+and truncation. `~` means empty text. Both suites also verify missing versus empty
+breadcrumb context, newest-window selection, omitted versus source-evicted counts,
+preserved observation times, duplicate rejection, and strict environment
+restoration without silently repairing oversized values.

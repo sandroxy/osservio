@@ -16,19 +16,9 @@ final class BreadcrumbDatabase {
          processID: Int64, startedAtMillis: Int64) throws {
         self.options = options; self.runID = runID; self.platform = platform
         self.processID = processID; startedAt = startedAtMillis
-        // Enforce recovery input limits before the engine can read a journal.
-        let recoveryFiles = [(url, Int64(options.databaseByteLimit)),
-                             (URL(fileURLWithPath: url.path + "-journal"), 2 * Int64(options.databaseByteLimit) + 65_536)]
-        for (file, limit) in recoveryFiles where FileManager.default.fileExists(atPath: file.path) {
-            let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
-            guard attributes[.type] as? FileAttributeType == .typeRegular,
-                  let bytes = attributes[.size] as? NSNumber, bytes.int64Value <= limit else {
-                throw PersistenceError.storageFull
-            }
-        }
-        connection = try SQLiteConnection(url: url)
+        connection = try EvidenceSQLite.open(url: url, byteLimit: options.databaseByteLimit,
+            applicationID: Self.applicationID, revision: Self.revision, schema: Self.schema)
         do {
-            try configure()
             try connection.transaction {
                 let count = try scalar("SELECT count(*) FROM recording_runs")
                 guard count <= 16 else { throw PersistenceError.invalidRecord }
@@ -57,49 +47,26 @@ final class BreadcrumbDatabase {
             return try row.integer(0)
         }
     }
-    private func configure() throws {
-        let owner = try scalar("PRAGMA application_id")
-        let version = try scalar("PRAGMA user_version")
-        let empty = try scalar("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'") == 0
-        if !(owner == 0 && version == 0 && empty), owner != Self.applicationID || version != Self.revision {
-            throw PersistenceError.unsupportedSchema
-        }
-        try connection.statement("PRAGMA journal_mode=DELETE") { row in
-            guard try row.step(), try row.text(0, byteLimit: 16) == "delete" else { throw PersistenceError.unavailable }
-        }
-        try connection.execute("PRAGMA synchronous=FULL")
-        try connection.execute("PRAGMA foreign_keys=ON")
-        try connection.execute("PRAGMA temp_store=MEMORY")
-        try connection.execute("PRAGMA cache_size=-256")
-        let pageSize = try scalar("PRAGMA page_size")
-        guard pageSize >= 512, pageSize <= 65_536 else { throw PersistenceError.corrupt }
-        let pages = Int64(options.databaseByteLimit) / pageSize
-        guard try scalar("PRAGMA max_page_count=\(pages)") <= pages else { throw PersistenceError.storageFull }
-        if owner == 0 && version == 0 && empty {
-            try connection.transaction {
-                try connection.execute("""
-                    CREATE TABLE recording_runs (
-                        ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE,
-                        platform TEXT NOT NULL, process_id INTEGER NOT NULL,
-                        started_at INTEGER NOT NULL, last_recorded_at INTEGER NOT NULL,
-                        last_written_at INTEGER NOT NULL, evicted_events INTEGER NOT NULL DEFAULT 0)
-                    """)
-                try connection.execute("""
-                    CREATE TABLE breadcrumbs (
-                        ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE,
-                        run_id TEXT NOT NULL REFERENCES recording_runs(id) ON DELETE CASCADE,
-                        session_id TEXT NOT NULL, sequence INTEGER NOT NULL CHECK(sequence > 0),
-                        timestamp INTEGER NOT NULL, elapsed TEXT, kind TEXT NOT NULL,
-                        label TEXT NOT NULL, message TEXT, private INTEGER NOT NULL CHECK(private IN (0,1)),
-                        truncated INTEGER NOT NULL CHECK(truncated IN (0,1)), value INTEGER,
-                        text_bytes INTEGER NOT NULL CHECK(text_bytes >= 0))
-                    """)
-                try connection.execute("CREATE INDEX breadcrumb_run_order ON breadcrumbs(run_id, ordinal)")
-                try connection.execute("PRAGMA application_id=\(Self.applicationID)")
-                try connection.execute("PRAGMA user_version=\(Self.revision)")
-            }
-        }
-    }
+    private static let schema = [
+        """
+        CREATE TABLE recording_runs (
+            ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE,
+            platform TEXT NOT NULL, process_id INTEGER NOT NULL,
+            started_at INTEGER NOT NULL, last_recorded_at INTEGER NOT NULL,
+            last_written_at INTEGER NOT NULL, evicted_events INTEGER NOT NULL DEFAULT 0)
+        """,
+        """
+        CREATE TABLE breadcrumbs (
+            ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE,
+            run_id TEXT NOT NULL REFERENCES recording_runs(id) ON DELETE CASCADE,
+            session_id TEXT NOT NULL, sequence INTEGER NOT NULL CHECK(sequence > 0),
+            timestamp INTEGER NOT NULL, elapsed TEXT, kind TEXT NOT NULL,
+            label TEXT NOT NULL, message TEXT, private INTEGER NOT NULL CHECK(private IN (0,1)),
+            truncated INTEGER NOT NULL CHECK(truncated IN (0,1)), value INTEGER,
+            text_bytes INTEGER NOT NULL CHECK(text_bytes >= 0))
+        """,
+        "CREATE INDEX breadcrumb_run_order ON breadcrumbs(run_id, ordinal)"
+    ]
     func write(_ events: [BreadcrumbEvent], now: Int64) throws {
         guard !events.isEmpty else { return }
         guard events.count <= options.pendingEventLimit,

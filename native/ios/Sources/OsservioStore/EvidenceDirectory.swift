@@ -4,9 +4,10 @@ import OsservioCore
 
 /// Private SDK directory and an exclusive process/instance lease. All operations run on the storage worker.
 final class EvidenceDirectory {
+    enum Contents: String { case breadcrumbs, incidents }
     let databaseURL: URL
     private var descriptor: Int32 = -1
-    init(url: URL) throws {
+    init(url: URL, contents: Contents = .breadcrumbs) throws {
         let manager = FileManager.default
         var attributes: [FileAttributeKey: Any] = [.posixPermissions: 0o700]
         #if os(iOS)
@@ -24,8 +25,8 @@ final class EvidenceDirectory {
         var directory = url
         var resources = URLResourceValues(); resources.isExcludedFromBackup = true
         try directory.setResourceValues(resources)
-        databaseURL = url.appendingPathComponent("breadcrumbs.sqlite")
-        let lease = url.appendingPathComponent("breadcrumbs.owner")
+        databaseURL = url.appendingPathComponent(contents.rawValue + ".sqlite")
+        let lease = url.appendingPathComponent(contents.rawValue + ".owner")
         descriptor = Darwin.open(lease.path, O_CREAT | O_RDWR | O_NOFOLLOW, 0o600)
         guard descriptor >= 0 else { throw PersistenceError.unavailable }
         guard flock(descriptor, LOCK_EX | LOCK_NB) == 0 else {

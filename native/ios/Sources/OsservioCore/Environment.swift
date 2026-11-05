@@ -45,6 +45,18 @@ public struct EnvironmentSnapshot: Sendable {
         }
         return EnvironmentSnapshot(platform: platform, timestampMillis: timestampMillis, values: values)
     }
+    /// Restores previously sanitized facts and their original truncation flags. Oversized stored values are rejected.
+    public static func restore(platform: EnvironmentPlatform, publicFacts: [EnvironmentKey: EnvironmentFact],
+                               truncatedKeys: Set<EnvironmentKey>, timestampMillis: Int64) throws -> EnvironmentSnapshot {
+        let checked = try capture(platform: platform, publicFacts: publicFacts, timestampMillis: timestampMillis)
+        guard !checked.values.values.contains(where: { $0.isTruncated }) else { throw EnvironmentError.invalidValue }
+        var values = checked.values
+        for key in truncatedKeys {
+            guard let value = values[key], case .text = value.fact else { throw EnvironmentError.invalidValue }
+            values[key] = EnvironmentValue(fact: value.fact, isTruncated: true)
+        }
+        return EnvironmentSnapshot(platform: platform, timestampMillis: timestampMillis, values: values)
+    }
 }
 private extension EnvironmentKey {
     var numeric: Bool {

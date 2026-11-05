@@ -9,6 +9,8 @@ optional Runtime module observes native lifecycle callbacks and queries system
 metadata. Native context views expose these queries. Store optionally commits
 restart-relevant breadcrumbs through platform SQLite with bounded asynchronous
 admission and archive queries.
+Core and Store also provide explicit manual incident snapshots with independent
+SQLite retention, strict restoration, asynchronous queries, and deletion.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -25,6 +27,8 @@ native behavior and interaction validation. No artifacts have been published.
   native signal ownership, environment privacy, and platform-specific metrics.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
+- [Manual problem snapshots](doc/incidents.md) defines explicit attachment
+  selection, incident persistence, privacy, and failure semantics.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.
@@ -89,7 +93,10 @@ and execute exclusively in an iOS test run.
 Run the SQLite store tests on the simulator with the same package test scheme,
 using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
 `-only-testing:OsservioCoreTests/BreadcrumbDatabaseTests`, and
-`-only-testing:OsservioCoreTests/SQLiteBreadcrumbStoreTests`. These tests use
+`-only-testing:OsservioCoreTests/SQLiteBreadcrumbStoreTests`. Include
+`-only-testing:OsservioCoreTests/IncidentDatabaseTests` and
+`-only-testing:OsservioCoreTests/SQLiteIncidentStoreTests` for manual snapshot
+storage and shared SQLite policy changes. These tests use
 fresh, test-owned temporary directories and remove only their own fixtures.
 
 For Android, install JDK 17 and Android SDK 36. Set `ANDROID_HOME` to your SDK or

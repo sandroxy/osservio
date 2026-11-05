@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /** Immutable source-sanitized environment. Missing facts never become zero or empty text. */
 public final class EnvironmentSnapshot {
@@ -70,6 +71,19 @@ public final class EnvironmentSnapshot {
                 default: throw invalid();
             }
             values.put(key, new Value(fact, truncated));
+        }
+        return new EnvironmentSnapshot(platform, timestampMillis, values);
+    }
+    /** Restores previously sanitized facts and flags. It does not silently truncate oversized stored values. */
+    public static EnvironmentSnapshot restore(Platform platform, Map<Key, Fact> publicFacts, Set<Key> truncatedKeys, long timestampMillis) {
+        EnvironmentSnapshot checked = capture(platform, publicFacts, timestampMillis);
+        Objects.requireNonNull(truncatedKeys, "truncatedKeys");
+        Map<Key, Value> values = new EnumMap<>(checked.values);
+        for (Value value : values.values()) if (value.isTruncated) throw invalid();
+        for (Key key : truncatedKeys) {
+            Value value = values.get(key);
+            if (value == null || value.fact.type != Fact.Type.TEXT) throw invalid();
+            values.put(key, new Value(value.fact, true));
         }
         return new EnvironmentSnapshot(platform, timestampMillis, values);
     }

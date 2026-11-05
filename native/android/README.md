@@ -183,3 +183,15 @@ the same store as an additional final constructor argument to the combined or
 runtime inspector for saved-run browsing. See
 [runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, and metric definitions.
+
+## Manual problem snapshots
+
+Core's `IncidentSnapshot` accepts an optional privacy-classified note, an existing
+environment observation, and a bounded breadcrumb snapshot. Store's
+`SQLiteIncidentStore(applicationContext)` saves these explicitly and exposes
+asynchronous list, read, delete, and close operations. It uses independent private
+storage; no live histories or capture controls are changed. Success follows the
+database commit. Keep this store at application scope and marshal its callbacks
+to the main thread before updating views. See [manual problem snapshots](../../doc/incidents.md)
+for examples, budgets, retention, and failure behavior. Native incident UI and
+export are not implemented yet.

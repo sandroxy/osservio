@@ -93,7 +93,7 @@ public final class SQLiteBreadcrumbStore implements BreadcrumbSink, BreadcrumbHi
     @Override public void readRuns(RunsCompletion completion) { perform(completion::complete, false, BreadcrumbDatabase::runs); }
     @Override public void readRun(String id, RunCompletion completion) {
         Objects.requireNonNull(completion, "completion");
-        if (!BreadcrumbDatabase.validId(id)) { completion.complete(null, PersistenceStatus.Error.INVALID_RECORD); return; }
+        if (!EvidenceSQLite.validId(id)) { completion.complete(null, PersistenceStatus.Error.INVALID_RECORD); return; }
         perform(completion::complete, false, db -> db.read(id));
     }
     @Override public void flush(Completion completion) {
@@ -102,7 +102,7 @@ public final class SQLiteBreadcrumbStore implements BreadcrumbSink, BreadcrumbHi
     }
     @Override public void deleteRun(String id, Completion completion) {
         Objects.requireNonNull(completion, "completion");
-        if (!BreadcrumbDatabase.validId(id)) { completion.complete(PersistenceStatus.Error.INVALID_RECORD); return; }
+        if (!EvidenceSQLite.validId(id)) { completion.complete(PersistenceStatus.Error.INVALID_RECORD); return; }
         perform((ignored, error) -> completion.complete(error), true, db -> { db.deleteRun(id); return null; });
     }
     @Override public void deleteAllRuns(Completion completion) {
