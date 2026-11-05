@@ -7,6 +7,10 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.HorizontalScrollView;
+import com.sandrox.osservio.core.BreadcrumbRecorder;
+import com.sandrox.osservio.core.BreadcrumbHistory;
+import com.sandrox.osservio.core.EnvironmentProvider;
 import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.HTTPRecorder;
 import com.sandrox.osservio.core.LogHistory;
@@ -29,7 +33,10 @@ public final class InspectorView extends LinearLayout {
         setOrientation(VERTICAL);
         tabs = new RadioGroup(context);
         tabs.setOrientation(HORIZONTAL);
-        addView(tabs, new LayoutParams(-1, -2));
+        HorizontalScrollView navigation = new HorizontalScrollView(context);
+        navigation.setHorizontalScrollBarEnabled(false); navigation.setFillViewport(true);
+        navigation.addView(tabs);
+        addView(navigation, new LayoutParams(-1, -2));
         addSection(R.string.osservio_logs, new LogInspectorView(context, logRecorder, logHistory));
         addSection(R.string.osservio_network, new HTTPInspectorView(context, httpRecorder, httpHistory));
         tabs.setOnCheckedChangeListener((group, checked) -> {
@@ -55,9 +62,16 @@ public final class InspectorView extends LinearLayout {
         boolean first = sections.isEmpty();
         view.setVisibility(first ? VISIBLE : GONE);
         sections.put(button.getId(), view);
-        tabs.addView(button, new RadioGroup.LayoutParams(0, -2, 1));
+        tabs.addView(button, new RadioGroup.LayoutParams(-2, -2));
         addView(view, new LayoutParams(-1, 0, 1));
         if (first) tabs.check(button.getId());
+    }
+    public InspectorView(Context context, LogRecorder logRecorder, LogHistory logHistory,
+                         HTTPRecorder httpRecorder, HTTPHistory httpHistory,
+                         WebSocketRecorder webSocketRecorder, WebSocketHistory webSocketHistory,
+                         EnvironmentProvider environment, BreadcrumbRecorder breadcrumbRecorder, BreadcrumbHistory breadcrumbHistory) {
+        this(context, logRecorder, logHistory, httpRecorder, httpHistory, webSocketRecorder, webSocketHistory);
+        addSection(R.string.osservio_runtime_title, new RuntimeInspectorView(context, environment, breadcrumbRecorder, breadcrumbHistory));
     }
     private static RadioButton tab(Context context, int label) {
         RadioButton button = new RadioButton(context);

@@ -28,6 +28,11 @@ the broader product described below remain unimplemented.
   data requests. Late responses cannot recreate cleared or evicted records.
   Native HTTP inspection includes search, state filters, metadata details, and
   lazy body lookup with explicit truncation, missing-content, and coverage notes.
+- Bounded breadcrumbs and host markers work in baseline capture. Optional native
+  modules observe lifecycle signals and query device, app, and memory facts on
+  demand. Native context views provide snapshot refresh, breadcrumb search,
+  details, copying, and separate baseline controls. Breadcrumbs are currently
+  memory-only. See [runtime context](doc/runtime-context.md).
 
 WebSocket observation supports explicit host events and opt-in OkHttp/URLSession
 wrappers, with a bounded timeline and independent text budget. Submission, queue

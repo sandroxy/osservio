@@ -1,0 +1,6 @@
+public	host.ready	public	cmVhZHk=	12	recorded	cmVhZHk=	false	memoryOnly
+private	host.error	private	YWNjb3VudC1zZWNyZXQ=	9	recorded	W3ByaXZhdGVd	false	restartRelevant
+unicode	host.page	public	8J+ZguaxieWtl3h5	10	recorded	8J+ZguaxieWtlw==	true	restartRelevant
+empty	host.empty	public	~	12	recorded	~	false	memoryOnly
+invalid-label	user/account	public	dGV4dA==	12	invalidLabel	-	false	memoryOnly
+long-label	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	public	dGV4dA==	12	invalidLabel	-	false	memoryOnly

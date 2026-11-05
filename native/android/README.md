@@ -17,6 +17,7 @@ includeBuild('../osservio/native/android') {
         substitute(module('io.github.sandroxy:osservio-store')).using(project(':osservio-store'))
         substitute(module('io.github.sandroxy:osservio-ui')).using(project(':osservio-ui'))
         substitute(module('io.github.sandroxy:osservio-okhttp')).using(project(':osservio-okhttp'))
+        substitute(module('io.github.sandroxy:osservio-runtime')).using(project(':osservio-runtime'))
     }
 }
 ```
@@ -144,3 +145,37 @@ messages` as the final constructor arguments to `InspectorView` for the combined
 log, HTTP, and WebSocket interface. Connection groups lead to event timelines;
 payload lookup and copying happen in event detail. The same presentation and
 theme requirements apply.
+
+## Runtime context
+
+Add `implementation 'io.github.sandroxy:osservio-runtime:0.1.0-dev.0'` for native
+lifecycle observations and environment queries. It adds no manifest permission
+or automatic startup. Retain these objects in a host composition root:
+
+```java
+import com.sandrox.osservio.core.BreadcrumbRecorder;
+import com.sandrox.osservio.store.MemoryBreadcrumbStore;
+import com.sandrox.osservio.runtime.RuntimeEnvironment;
+import com.sandrox.osservio.runtime.RuntimeSignals;
+
+MemoryBreadcrumbStore breadcrumbs = new MemoryBreadcrumbStore();
+BreadcrumbRecorder breadcrumbRecorder = new BreadcrumbRecorder(breadcrumbs, recorder.captureController);
+RuntimeSignals signals = new RuntimeSignals(application, breadcrumbRecorder);
+RuntimeEnvironment environment = new RuntimeEnvironment(application);
+// Controls run on the main thread. Check enabled and retry if capture is busy.
+signals.start();
+boolean enabled = recorder.captureController.setBaselineEnabled(true);
+```
+
+The SDK default remains off. The explicit baseline choice permits compact
+breadcrumbs outside detailed sessions. Stop `signals` and close `environment`
+when releasing their ownership; do not tie these lifetimes to inspector
+visibility. Activity callbacks retain compiled class names, not view contents.
+
+Attach `RuntimeInspectorView(activity, environment, breadcrumbRecorder,
+breadcrumbs)` with host-owned presentation and insets, or append `environment,
+breadcrumbRecorder, breadcrumbs` after the WebSocket arguments of
+`InspectorView`. Its Context section provides one-shot environment reads and a
+searchable breadcrumb timeline. History is memory-only, including events marked
+restart-relevant. See [runtime context](../../doc/runtime-context.md) for native
+coverage, privacy, and metric definitions.

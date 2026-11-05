@@ -28,6 +28,15 @@ public final class InspectorViewController: UITabBarController {
                                                                       action: #selector(closeInspector))
         return navigation
     }
+    public convenience init(logRecorder: LogRecorder, logHistory: any LogHistory,
+                            httpRecorder: HTTPRecorder, httpHistory: any HTTPHistory,
+                            webSocketRecorder: WebSocketRecorder, webSocketHistory: any WebSocketHistory,
+                            environment: any EnvironmentProvider, breadcrumbRecorder: BreadcrumbRecorder, breadcrumbHistory: any BreadcrumbHistory) {
+        self.init(logRecorder: logRecorder, logHistory: logHistory, httpRecorder: httpRecorder, httpHistory: httpHistory,
+                  webSocketRecorder: webSocketRecorder, webSocketHistory: webSocketHistory)
+        let runtime = RuntimeInspectorViewController(provider: environment, recorder: breadcrumbRecorder, history: breadcrumbHistory)
+        viewControllers?.append(section(runtime, key: "runtime_title", icon: "info.circle"))
+    }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     @objc private func closeInspector() { dismiss(animated: true) }

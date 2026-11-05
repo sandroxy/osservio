@@ -1,0 +1,5 @@
+dependencies {
+    api project(":osservio-core")
+    testImplementation project(":osservio-store")
+    testImplementation "junit:junit:4.13.2"
+}

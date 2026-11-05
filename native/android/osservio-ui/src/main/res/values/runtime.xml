@@ -1,0 +1,67 @@
+<resources>
+    <string name="osservio_runtime_pair" translatable="false">%1$s · %2$s</string>
+    <string name="osservio_runtime_notice" translatable="false">%1$s\n\n%2$s</string>
+    <string name="osservio_crumb_subtitle" translatable="false">%1$s · #%2$d%3$s</string>
+    <string name="osservio_runtime_title">Context</string>
+    <string name="osservio_runtime_environment">Environment</string>
+    <string name="osservio_runtime_breadcrumbs">Breadcrumbs</string>
+    <string name="osservio_runtime_yes">Yes</string>
+    <string name="osservio_runtime_no">No</string>
+    <string name="osservio_runtime_unavailable">Unavailable</string>
+    <string name="osservio_runtime_unsupported">Not supported on this platform</string>
+    <string name="osservio_runtime_reading">Reading environment…</string>
+    <string name="osservio_runtime_read_failed">Environment could not be read. Try refreshing.</string>
+    <string name="osservio_runtime_snapshot">Snapshot taken</string>
+    <string name="osservio_runtime_previous">Showing the previous snapshot</string>
+    <string name="osservio_runtime_copy_environment">Copy snapshot</string>
+    <string name="osservio_runtime_environment_hint">This is a point-in-time sample. Memory measurements differ by platform. On iOS, battery level is unavailable unless the host already monitors it.</string>
+    <string name="osservio_crumb_enable_baseline">Enable baseline</string>
+    <string name="osservio_crumb_disable_baseline">Disable baseline</string>
+    <string name="osservio_crumb_baseline_hint">Baseline applies outside detailed sessions. Changing it does not end an active detailed session.</string>
+    <string name="osservio_crumb_summary">%1$s · Retained: %2$d\nEvicted: %3$d · Rate-limited: %4$d</string>
+    <string name="osservio_crumb_search">Search kind, label, or message</string>
+    <string name="osservio_crumb_empty">No breadcrumbs yet. Enable baseline or detailed capture to record host and runtime observations.</string>
+    <string name="osservio_crumb_clear">Clear breadcrumbs</string>
+    <string name="osservio_crumb_copy">Copy event</string>
+    <string name="osservio_crumb_session">Capture session</string>
+    <string name="osservio_crumb_sequence">Sequence</string>
+    <string name="osservio_crumb_elapsed">Elapsed in session</string>
+    <string name="osservio_crumb_label">Label</string>
+    <string name="osservio_crumb_retention">Retention intent</string>
+    <string name="osservio_crumb_restart_relevant">Restart-relevant; saving depends on the configured store</string>
+    <string name="osservio_crumb_memory_only">Memory only</string>
+    <string name="osservio_crumb_value">Platform code or measured value</string>
+    <string name="osservio_crumb_private">Private content omitted</string>
+    <string name="osservio_crumb_detail_hint">This is the event snapshot opened from the timeline. It remains readable if history is cleared.</string>
+    <string name="osservio_env_os_version">OS version</string>
+    <string name="osservio_env_app_identifier">App identifier</string>
+    <string name="osservio_env_app_version">App version</string>
+    <string name="osservio_env_app_build">App build</string>
+    <string name="osservio_env_manufacturer">Manufacturer</string>
+    <string name="osservio_env_device_model">Device model reported by OS</string>
+    <string name="osservio_env_architecture">Process architecture</string>
+    <string name="osservio_env_physical_memory_bytes">Physical memory</string>
+    <string name="osservio_env_process_resident_bytes">Process resident memory (RSS)</string>
+    <string name="osservio_env_process_proportional_bytes">Process proportional memory (PSS)</string>
+    <string name="osservio_env_process_footprint_bytes">Process memory footprint</string>
+    <string name="osservio_env_runtime_heap_bytes">Managed heap in use</string>
+    <string name="osservio_env_runtime_heap_limit_bytes">Managed heap limit</string>
+    <string name="osservio_env_process_id">Process ID</string>
+    <string name="osservio_env_battery_percent">Battery level</string>
+    <string name="osservio_env_low_power_mode">Low power mode</string>
+    <string name="osservio_env_thermal_state">Thermal state reported by OS</string>
+    <string name="osservio_crumb_kind_host_marker">Host marker</string>
+    <string name="osservio_crumb_kind_app_active">App active</string>
+    <string name="osservio_crumb_kind_app_inactive">App inactive</string>
+    <string name="osservio_crumb_kind_app_foreground">App entering foreground</string>
+    <string name="osservio_crumb_kind_app_background">App entered background</string>
+    <string name="osservio_crumb_kind_activity_started">Activity started</string>
+    <string name="osservio_crumb_kind_activity_resumed">Activity resumed</string>
+    <string name="osservio_crumb_kind_activity_paused">Activity paused</string>
+    <string name="osservio_crumb_kind_activity_stopped">Activity stopped</string>
+    <string name="osservio_crumb_kind_activity_destroyed">Activity destroyed</string>
+    <string name="osservio_crumb_kind_memory_warning">Memory warning</string>
+    <string name="osservio_crumb_kind_memory_trim">Memory trim callback</string>
+    <string name="osservio_crumb_kind_thermal_state">Thermal state changed</string>
+    <string name="osservio_crumb_kind_responsiveness">Responsiveness observation</string>
+</resources>

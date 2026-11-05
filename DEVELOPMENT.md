@@ -4,6 +4,10 @@ The repository contains native Android and iOS log capture, HTTP observation,
 memory storage, optional OkHttp/URLSession integration, and native log/HTTP inspection modules.
 WebSocket Core and Store accept explicit host observations and optional native
 client wrappers, with native connection groups, event timelines, and message details.
+Core/Store also provide baseline breadcrumbs and typed environment facts. The
+optional Runtime module observes native lifecycle callbacks and queries system
+metadata. Native context views expose these queries; durable breadcrumb storage
+is not yet implemented.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -16,6 +20,8 @@ native behavior and interaction validation. No artifacts have been published.
   describes the optional integrations and their different observation points.
 - [WebSocket observations](doc/websocket.md) describe bounded message evidence,
   lifecycle validation, privacy, and independent payload retention.
+- [Runtime context](doc/runtime-context.md) describes baseline breadcrumbs,
+  native signal ownership, environment privacy, and platform-specific metrics.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.
@@ -52,12 +58,30 @@ xcodebuild -scheme OsservioURLSession -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .build/ios-network CODE_SIGNING_ALLOWED=NO \
   SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+xcodebuild -scheme OsservioRuntime -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath .build/ios-runtime CODE_SIGNING_ALLOWED=NO \
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
 ```
 
 `swift test` exercises Core and Store on the development Mac. The UIKit source
 is conditionally excluded there, so the iOS build is a separate required check.
 The simulator build compiles UI and resources without launching an application.
 Device behavior and supported-OS coverage require separate acceptance.
+
+Run Runtime's UIKit notification ownership and system-query tests on an available
+iOS simulator using the package's test scheme (replace the simulator ID):
+
+```sh
+xcodebuild -scheme Osservio-Package \
+  -destination 'platform=iOS Simulator,id=SIMULATOR_ID,arch=arm64' \
+  -derivedDataPath .build/ios-runtime -only-testing:OsservioRuntimeTests \
+  CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES test
+```
+
+The product-specific `OsservioRuntime` scheme is a build scheme, not a test
+scheme. Runtime tests on macOS cover callback leases only; UIKit checks compile
+and execute exclusively in an iOS test run.
 
 For Android, install JDK 17 and Android SDK 36. Set `ANDROID_HOME` to your SDK or
 use the ignored `native/android/local.properties` with `sdk.dir`. From

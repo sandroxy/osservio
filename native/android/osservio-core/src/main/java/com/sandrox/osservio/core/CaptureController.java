@@ -14,10 +14,12 @@ public final class CaptureController {
 
     public static final class Status {
         public final Mode mode;
+        public final boolean baselineEnabled;
         public final String sessionId;
         public final long remainingMillis;
-        private Status(Mode mode, String sessionId, long remainingMillis) {
+        private Status(Mode mode, boolean baselineEnabled, String sessionId, long remainingMillis) {
             this.mode = mode;
+            this.baselineEnabled = baselineEnabled;
             this.sessionId = sessionId;
             this.remainingMillis = remainingMillis;
         }
@@ -139,7 +141,7 @@ public final class CaptureController {
             long now = clock.monotonicMillis();
             expire(now);
             Mode mode = currentMode();
-            return body.apply(new Status(mode, mode == Mode.OFF ? null : sessionId, detailed ? deadline - now : 0));
+            return body.apply(new Status(mode, baselineEnabled, mode == Mode.OFF ? null : sessionId, detailed ? deadline - now : 0));
         } finally { lock.unlock(); }
     }
 

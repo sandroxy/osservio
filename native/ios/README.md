@@ -109,6 +109,36 @@ in a navigation controller, or pass `webSocketRecorder: sockets,
 webSocketHistory: messages` to the combined `InspectorViewController` initializer.
 Connection groups open event timelines and details with explicit content lookup.
 
+## Runtime context
+
+Link `OsservioRuntime` to opt into native lifecycle observations and environment
+queries. Retain these objects in the host composition root. On the main actor:
+
+```swift
+import OsservioRuntime
+
+let breadcrumbs = try MemoryBreadcrumbStore()
+let breadcrumbRecorder = try BreadcrumbRecorder(sink: breadcrumbs, captureController: recorder.captureController)
+let signals = RuntimeSignals(recorder: breadcrumbRecorder)
+let environment = RuntimeEnvironment()
+signals.start()
+// Check the result and retry if the controller is busy.
+let enabled = recorder.captureController.setBaselineEnabled(true)
+```
+
+The SDK default remains off. This explicit baseline choice permits compact
+breadcrumbs outside detailed sessions. Call `signals.stop()` when releasing
+observer ownership. Environment queries do not enable battery monitoring.
+
+Embed `RuntimeInspectorViewController(provider: environment, recorder:
+breadcrumbRecorder, history: breadcrumbs)` in a navigation controller with
+host-owned dismissal. Alternatively, add `environment`, `breadcrumbRecorder`,
+and `breadcrumbHistory` arguments to the combined inspector's WebSocket
+initializer. Its Context tab provides environment snapshots and a searchable
+breadcrumb timeline. History is memory-only, including events marked as
+restart-relevant. See [runtime context](../../doc/runtime-context.md) for native
+coverage, privacy, limits, and collector ownership.
+
 The package also declares a macOS target version so Core and Store tests can run
 on the development machine. The UIKit source is excluded on macOS; this does
 not provide a macOS inspector or establish macOS product support.

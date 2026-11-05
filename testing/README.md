@@ -40,3 +40,16 @@ completion distinctions, and stale terminal callbacks. Native tests independentl
 exercise connection/rate limits, session invalidation, terminal sink rejection,
 independent payload eviction, and send-result correlation after a submission has
 left the history window. Invalid result outcomes and stale completions are rejected.
+
+`breadcrumb-cases.tsv` describes label validation, privacy classification, UTF-8
+prefix limits, and retention intent. Columns are name, static label, privacy,
+Base64 input, byte limit, result, Base64 output (`-` for rejection, `~` for empty),
+truncation, and retention. Tests also verify baseline/detail/off transitions,
+shared sequence ordering, elapsed session time, rate windows, and bounded storage.
+Retention intent alone does not establish persistence.
+
+`environment-values.tsv` covers typed facts, explicit unavailable/unsupported
+states, Unicode truncation, exact 64-bit integers, and invalid types/ranges.
+Columns are name, key, fact type, Base64 input, validity, Base64 expected display
+value, and truncation. Empty text uses `~`. Both platforms require every known
+field to have an explicit state and preserve snapshot immutability.

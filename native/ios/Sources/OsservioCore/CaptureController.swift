@@ -6,6 +6,7 @@ public enum CaptureMode: String, Sendable { case off, baseline, detailed }
 
 public struct CaptureStatus: Sendable {
     public let mode: CaptureMode
+    public let baselineEnabled: Bool
     public let sessionID: String?
     public let remainingMillis: UInt64
 }
@@ -112,7 +113,7 @@ public final class CaptureController: @unchecked Sendable {
         let now = clock.monotonicMillis()
         expire(at: now)
         let mode = currentMode
-        return body(CaptureStatus(mode: mode, sessionID: mode == .off ? nil : sessionID,
+        return body(CaptureStatus(mode: mode, baselineEnabled: baselineEnabled, sessionID: mode == .off ? nil : sessionID,
                                   remainingMillis: deadline == 0 ? 0 : deadline - now))
     }
 

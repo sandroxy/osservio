@@ -9,7 +9,10 @@ see [its contract](websocket.md).
 Optional collectors observe host-owned OkHttp and URLSession requests. See
 [the logging contract](logging.md), [HTTP observation](http.md), and
 [network coverage](network-integration.md) for current behavior.
-Native tabs expose logs, HTTP history, and WebSocket connections without changing capture on presentation.
+Baseline breadcrumbs, one-shot environment queries, and optional native runtime
+signals are described in [runtime context](runtime-context.md).
+Native tabs expose logs, HTTP history, WebSocket connections, and runtime context
+without changing capture on presentation.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 
@@ -148,8 +151,9 @@ interaction must be exercised before adding framework adapters or adapter
 prototypes. The log modules share text-boundary fixtures without introducing an
 interchange protocol prematurely. Core declares `LogSink` and `LogHistory`;
 Store implements them, UI consumes them, and the host wires the concrete store
-and recorder. There is no automatic collector, durable journal, or baseline
-capture backend in this subset.
+and recorder. The optional Runtime module supplies explicitly started lifecycle
+observers and one-shot environment queries; no durable journal or fatal crash
+backend is implemented yet.
 
 Publish a capability description for each supported runtime, network stack, and
 integration mode. It must identify prerequisites, available observations,
