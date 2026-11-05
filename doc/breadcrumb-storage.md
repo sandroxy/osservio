@@ -59,8 +59,8 @@ event/text budgets, committed events, persistence drops, failed batches, and the
 last stable error category; contention returns no status snapshot.
 
 One worker opens the database, batches writes, answers queries, and closes
-resources. Reservations include writes already in progress. At most four query
-or flush operations can be pending. Callback permits are returned before host
+resources. Reservations include writes already in progress. At most four query,
+flush, or deletion operations can be pending. Callback permits are returned before host
 code runs; callbacks may run on any thread, including synchronously on rejection.
 Keep callbacks short and dispatch UI updates to the main thread.
 
@@ -92,7 +92,7 @@ implementation limits, not measured production performance guarantees.
 | Pending persistence events | 64 | 1–256 |
 | Pending label/message bytes | 131,072 | 64–1,048,576 |
 | Batch interval | 1 second | 100 ms–5 seconds |
-| Pending query/flush operations | 4 | Fixed |
+| Pending query/flush/deletion operations | 4 | Fixed |
 
 Oldest events are evicted to satisfy count and text budgets. A run reports its
 evicted-event count. Age and run-count cleanup execute when opening the store
@@ -142,8 +142,19 @@ Database initialization, validation, or write failure disables persistence for
 that store instance while live recording continues. The file is preserved,
 including corruption and unsupported schema failures; no automatic delete,
 reset, or retry is performed. Readers surface errors instead of showing an empty
-successful history. Current archive APIs provide read and flush access. Explicit archive deletion,
-incident capture, and export are not implemented by this storage component.
+successful history. Archive APIs provide read, flush, and explicit deletion.
+Incident capture and export are not implemented by this storage component.
+
+`deleteRun(id:)` removes one saved run; `deleteAllRuns` removes all saved runs.
+Both first drain pending writes and then delete transactionally on the same
+worker. Deleting an already absent ID succeeds. Deletion does not clear the live
+window, reset per-instance counters, or stop capture. Already opened immutable
+snapshots remain with their owners. Concurrent or subsequent
+capture can create saved evidence again, including the current run under its
+existing ID. Stop capture separately when the host needs to prevent new evidence.
+Deletion requires an available, supported database; it does not reset corrupt
+or unrelated files. It is logical deletion, not a promise of forensic erasure or
+immediate filesystem space reclamation.
 
 ## Native archive inspection
 
@@ -159,3 +170,7 @@ no run is identified as a crash without independent evidence. A failed refresh
 preserves the previous displayed snapshot with its read time and visible error.
 Clear in the live Breadcrumbs section affects only memory. Hiding the archive
 invalidates pending UI deliveries; the bounded storage query may still finish.
+Delete all from the saved-run list, or delete one run (a trailing swipe action in
+the iOS list; the delete action inside an opened Android run). Each action asks
+for confirmation and explains that capture continues. A confirmed deletion keeps
+running if the viewer closes, but its late UI delivery is discarded.

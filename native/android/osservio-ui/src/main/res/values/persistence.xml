@@ -14,7 +14,7 @@
     <string name="osservio_archive_missing">This run is no longer retained. Refresh the list.</string>
     <string name="osservio_archive_copy_summary">Copy summary</string>
     <string name="osservio_archive_snapshot">This is a saved snapshot. Return to the run list to read newer evidence.</string>
-    <string name="osservio_archive_status">%1$s · Queued: %2$d · Committed: %3$d · Not saved: %4$d</string>
+    <string name="osservio_archive_status">%1$s · This run · Queued: %2$d · Committed: %3$d · Not saved: %4$d</string>
     <string name="osservio_archive_state_opening">Opening storage</string>
     <string name="osservio_archive_state_ready">Storage ready</string>
     <string name="osservio_archive_state_failed">Saving unavailable</string>
@@ -27,4 +27,10 @@
     <string name="osservio_archive_error_corrupt">Storage is damaged. The file was preserved.</string>
     <string name="osservio_archive_error_storage_full">The storage budget or available space is exhausted.</string>
     <string name="osservio_archive_error_invalid_record">Saved evidence failed validation. It was not silently repaired.</string>
+    <string name="osservio_archive_delete_all">Delete saved runs</string>
+    <string name="osservio_archive_delete_run">Delete run</string>
+    <string name="osservio_archive_delete_confirmation">This permanently removes the selected saved evidence. Live history stays available. Capture continues, so newly collected evidence can appear again.</string>
+    <string name="osservio_archive_delete_confirm">Delete</string>
+    <string name="osservio_archive_cancel">Cancel</string>
+    <string name="osservio_archive_deleting">Deleting saved evidence…</string>
 </resources>

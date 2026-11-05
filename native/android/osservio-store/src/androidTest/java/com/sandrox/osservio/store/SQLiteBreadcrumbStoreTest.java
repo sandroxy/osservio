@@ -100,4 +100,24 @@ public final class SQLiteBreadcrumbStoreTest {
             close(store).success();
         }
     }
+    @Test public void explicitDeletionDrainsPendingWritesAndKeepsLiveHistory() throws Exception {
+        try (PersistenceFixture fixture = new PersistenceFixture()) {
+            SQLiteBreadcrumbStore previous = store(fixture); flush(previous).success();
+            assertEquals(BreadcrumbSink.WriteResult.STORED, previous.append(events(1, "previous").get(0))); close(previous).success();
+            SQLiteBreadcrumbStore store = store(fixture); flush(store).success();
+            assertEquals(BreadcrumbSink.WriteResult.STORED, store.append(events(1, "current").get(0)));
+            Result<Void> deleted = new Result<>(); store.deleteRun(previous.currentRunId, error -> deleted.complete(null, error)); deleted.success();
+            Result<List<RetainedRun>> remaining = new Result<>(); store.readRuns(remaining::complete);
+            assertEquals(1, remaining.success().size()); assertEquals(store.currentRunId, remaining.value.get(0).id);
+            assertEquals(1, store.snapshot().events.size());
+            assertEquals(BreadcrumbSink.WriteResult.STORED, store.append(events(1, "pending").get(0)));
+            Result<Void> cleared = new Result<>(); store.deleteAllRuns(error -> cleared.complete(null, error)); cleared.success();
+            Result<List<RetainedRun>> empty = new Result<>(); store.readRuns(empty::complete); assertTrue(empty.success().isEmpty());
+            assertEquals(2, store.snapshot().events.size());
+            assertEquals(BreadcrumbSink.WriteResult.STORED, store.append(events(1, "after.delete").get(0))); flush(store).success();
+            Result<RetainedBreadcrumbs> recreated = new Result<>(); store.readRun(store.currentRunId, recreated::complete);
+            assertEquals(1, recreated.success().events.size()); assertEquals("after.delete", recreated.value.events.get(0).message);
+            close(store).success();
+        }
+    }
 }

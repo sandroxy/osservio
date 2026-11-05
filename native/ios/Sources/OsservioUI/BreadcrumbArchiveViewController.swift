@@ -44,7 +44,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
         if let updatedAt { notice += "\n" + RuntimePresentation.text("runtime_previous") + " · " + RuntimePresentation.date(updatedAt) }
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 2 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : runs.count }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 2 : runs.count }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if section == 0 { return notice + "\n\n" + PersistencePresentation.status(archive.persistenceStatus()) }
         return (runs.isEmpty && updatedAt != nil ? RuntimePresentation.text("archive_empty") + "\n\n" : "") + RuntimePresentation.text("archive_hint")
@@ -55,8 +55,8 @@ final class BreadcrumbArchiveViewController: UITableViewController {
         cell.accessoryType = .none; cell.accessibilityTraits = .button; cell.isUserInteractionEnabled = !reading
         cell.textLabel?.textColor = reading ? .secondaryLabel : .label
         if indexPath.section == 0 {
-            cell.textLabel?.text = RuntimePresentation.text("archive_refresh"); cell.detailTextLabel?.text = nil
-            cell.textLabel?.textColor = reading ? .secondaryLabel : view.tintColor
+            cell.textLabel?.text = RuntimePresentation.text(indexPath.row == 0 ? "archive_refresh" : "archive_delete_all"); cell.detailTextLabel?.text = nil
+            cell.textLabel?.textColor = reading ? .secondaryLabel : indexPath.row == 0 ? view.tintColor : .systemRed
         } else {
             let run = runs[indexPath.row]
             cell.textLabel?.text = PersistencePresentation.title(run)
@@ -69,7 +69,10 @@ final class BreadcrumbArchiveViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         guard !reading else { return }
-        if indexPath.section == 0 { read(); return }
+        if indexPath.section == 0 {
+            if indexPath.row == 0 { read() } else { confirmDeletion(id: nil) }
+            return
+        }
         reading = true; generation += 1; let request = generation
         notice = RuntimePresentation.text("archive_reading"); tableView.reloadData()
         archive.readRun(id: runs[indexPath.row].id) { [weak self] result in
@@ -85,6 +88,40 @@ final class BreadcrumbArchiveViewController: UITableViewController {
                 self.tableView.reloadData()
             }
         }
+    }
+    override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        guard indexPath.section == 1, !reading else { return nil }
+        let id = runs[indexPath.row].id
+        let action = UIContextualAction(style: .destructive, title: RuntimePresentation.text("archive_delete_run")) { [weak self] _, _, completed in
+            self?.confirmDeletion(id: id); completed(false)
+        }
+        let configuration = UISwipeActionsConfiguration(actions: [action]); configuration.performsFirstActionWithFullSwipe = false
+        return configuration
+    }
+    private func confirmDeletion(id: String?) {
+        guard !reading else { return }
+        let alert = UIAlertController(title: RuntimePresentation.text(id == nil ? "archive_delete_all" : "archive_delete_run"),
+            message: RuntimePresentation.text("archive_delete_confirmation"), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_delete_confirm"), style: .destructive) { [weak self] _ in self?.delete(id: id) })
+        present(alert, animated: true)
+    }
+    private func delete(id: String?) {
+        guard !reading else { return }
+        reading = true; generation += 1; let request = generation
+        notice = RuntimePresentation.text("archive_deleting"); tableView.reloadData()
+        let completed: @Sendable (Result<Void, PersistenceError>) -> Void = { [weak self] result in
+            Task { @MainActor [weak self] in
+                guard let self, self.generation == request else { return }
+                self.reading = false
+                switch result {
+                case .success: self.read()
+                case .failure(let error): self.failed(error); self.tableView.reloadData()
+                }
+            }
+        }
+        if let id { archive.deleteRun(id: id, completion: completed) }
+        else { archive.deleteAllRuns(completion: completed) }
     }
 }
 

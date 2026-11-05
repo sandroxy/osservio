@@ -143,4 +143,36 @@ final class SQLiteBreadcrumbStoreTests: XCTestCase {
             try await close(store).get()
         }
     }
+    func testExplicitDeletionDrainsPendingWritesAndKeepsLiveHistory() async throws {
+        try await fixture { directory in
+            let options = try BreadcrumbPersistenceOptions(flushIntervalMillis: 5_000)
+            let previous = try SQLiteBreadcrumbStore(directory: directory, options: options)
+            try await flush(previous)
+            XCTAssertEqual(try recorder(previous).record(.hostMarker, label: "previous", retention: .restartRelevant), .recorded)
+            try await close(previous).get()
+            let store = try SQLiteBreadcrumbStore(directory: directory, options: options)
+            try await flush(store)
+            let recording = try recorder(store)
+            XCTAssertEqual(recording.record(.hostMarker, label: "current", retention: .restartRelevant), .recorded)
+            let deleted: Result<Void, PersistenceError> = await withCheckedContinuation { continuation in
+                store.deleteRun(id: previous.currentRunID) { continuation.resume(returning: $0) }
+            }
+            try deleted.get()
+            let remaining = try await runs(store)
+            XCTAssertEqual(remaining.map(\.id), [store.currentRunID])
+            XCTAssertEqual(store.snapshot()?.events.count, 1)
+            XCTAssertEqual(recording.record(.hostMarker, label: "pending", retention: .restartRelevant), .recorded)
+            let cleared: Result<Void, PersistenceError> = await withCheckedContinuation { continuation in
+                store.deleteAllRuns { continuation.resume(returning: $0) }
+            }
+            try cleared.get()
+            let empty = try await runs(store)
+            XCTAssertTrue(empty.isEmpty); XCTAssertEqual(store.snapshot()?.events.count, 2)
+            XCTAssertEqual(recording.record(.hostMarker, label: "after.delete", retention: .restartRelevant), .recorded)
+            try await flush(store)
+            let recreated = await withCheckedContinuation { continuation in store.readRun(id: store.currentRunID) { continuation.resume(returning: $0) } }
+            XCTAssertEqual(try recreated.get()?.events.map(\.label), ["after.delete"])
+            try await close(store).get()
+        }
+    }
 }

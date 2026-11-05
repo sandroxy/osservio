@@ -82,6 +82,13 @@ public final class SQLiteBreadcrumbStore: BreadcrumbSink, BreadcrumbHistory, Bre
     public func flush(completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) {
         perform(completion, flush: true) { _ in () }
     }
+    public func deleteRun(id: String, completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) {
+        guard Array(id.utf8.prefix(37)).count == 36, UUID(uuidString: id) != nil else { completion(.failure(.invalidRecord)); return }
+        perform(completion, flush: true) { try $0.deleteRun(id: id) }
+    }
+    public func deleteAllRuns(completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) {
+        perform(completion, flush: true) { try $0.deleteAllRuns() }
+    }
     /// Stops admission and finishes admitted writes before releasing the database. Does not clear either history.
     public func close(completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) {
         guard lock.try() else { completion(.failure(.busy)); return }

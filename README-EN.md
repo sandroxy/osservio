@@ -33,7 +33,7 @@ the broader product described below remain unimplemented.
   demand. Native context views provide snapshot refresh, breadcrumb search,
   details, copying, and separate baseline controls. Choose memory-only history or
   opt-in SQLite persistence for restart-relevant breadcrumbs. Native saved-run
-  browsers provide search, details, copying, and storage health. See [runtime context](doc/runtime-context.md) and
+  browsers provide search, details, copying, storage health, and confirmed deletion. See [runtime context](doc/runtime-context.md) and
   [breadcrumb persistence](doc/breadcrumb-storage.md).
 
 WebSocket observation supports explicit host events and opt-in OkHttp/URLSession

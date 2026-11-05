@@ -13,4 +13,7 @@ public interface BreadcrumbArchive {
     void readRun(String id, RunCompletion completion);
     /** Barrier for admitted persistence work, excluding discarded observations reported in status. */
     void flush(Completion completion);
+    /** Deletes committed evidence after draining admitted writes. Live history and capture are unchanged. */
+    void deleteRun(String id, Completion completion);
+    void deleteAllRuns(Completion completion);
 }

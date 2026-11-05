@@ -205,7 +205,7 @@
 "archive_missing" = "这次运行的记录已不再保留，请刷新列表。";
 "archive_copy_summary" = "复制概览";
 "archive_snapshot" = "当前显示已读取的留存快照。返回列表可重新读取最新记录。";
-"archive_status" = "%1$@ · 待写入 %2$d 条 · 已写入 %3$lld 条 · 未留存 %4$lld 条";
+"archive_status" = "%1$@ · 本次运行：待写入 %2$d 条 · 已写入 %3$lld 条 · 未留存 %4$lld 条";
 "archive_state_opening" = "正在打开存储";
 "archive_state_ready" = "存储可用";
 "archive_state_failed" = "留存不可用";
@@ -218,3 +218,9 @@
 "archive_error_corrupt" = "存储文件已损坏，原文件已保留。";
 "archive_error_storage_full" = "存储配额或可用空间已耗尽。";
 "archive_error_invalid_record" = "留存线索未通过校验，未对原记录做静默修复。";
+"archive_delete_all" = "删除全部留存记录";
+"archive_delete_run" = "删除这次记录";
+"archive_delete_confirmation" = "所选留存记录将永久删除，实时历史仍然保留。采集不会停止，后续新采集的线索仍可能再次留存。";
+"archive_delete_confirm" = "删除";
+"archive_cancel" = "取消";
+"archive_deleting" = "正在删除留存记录…";

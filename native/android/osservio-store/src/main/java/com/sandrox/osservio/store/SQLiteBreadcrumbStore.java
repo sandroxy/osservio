@@ -100,6 +100,15 @@ public final class SQLiteBreadcrumbStore implements BreadcrumbSink, BreadcrumbHi
         Objects.requireNonNull(completion, "completion");
         perform((ignored, error) -> completion.complete(error), true, db -> null);
     }
+    @Override public void deleteRun(String id, Completion completion) {
+        Objects.requireNonNull(completion, "completion");
+        if (!BreadcrumbDatabase.validId(id)) { completion.complete(PersistenceStatus.Error.INVALID_RECORD); return; }
+        perform((ignored, error) -> completion.complete(error), true, db -> { db.deleteRun(id); return null; });
+    }
+    @Override public void deleteAllRuns(Completion completion) {
+        Objects.requireNonNull(completion, "completion");
+        perform((ignored, error) -> completion.complete(error), true, db -> { db.deleteAllRuns(); return null; });
+    }
     /** Nonblocking close. Completion follows queued work, final flush, and release of the directory lease. */
     public void close(Completion completion) {
         Objects.requireNonNull(completion, "completion");

@@ -44,6 +44,13 @@ final class BreadcrumbDatabase {
         catch { connection.close(); throw error }
     }
     func close() { connection.close() }
+    func deleteRun(id: String) throws {
+        guard Array(id.utf8.prefix(37)).count == 36, UUID(uuidString: id) != nil else { throw PersistenceError.invalidRecord }
+        try connection.transaction { try connection.execute("DELETE FROM recording_runs WHERE id=?", [.text(id)]) }
+    }
+    func deleteAllRuns() throws {
+        try connection.transaction { try connection.execute("DELETE FROM recording_runs") }
+    }
     private func scalar(_ sql: String) throws -> Int64 {
         try connection.statement(sql) { row in
             guard try row.step() else { throw PersistenceError.corrupt }

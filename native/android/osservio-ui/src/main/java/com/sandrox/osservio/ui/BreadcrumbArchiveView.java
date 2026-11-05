@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-/** Read-only archive queries. Presentation does not flush, enable capture, or infer crashes. */
+/** Explicit archive inspection and deletion. Opening the view does not flush, enable capture, or infer crashes. */
 @SuppressLint("ViewConstructor")
 final class BreadcrumbArchiveView extends LinearLayout {
     private final BreadcrumbArchive archive;
@@ -41,6 +41,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
     private final Button refresh;
     private final Button back;
     private final Button copy;
+    private final Button delete;
     private final EditText search;
     private final ListView list;
     private final Rows rows = new Rows();
@@ -68,6 +69,8 @@ final class BreadcrumbArchiveView extends LinearLayout {
         });
         for (Button button : new Button[] {back, refresh, copy}) controls.addView(button, new LayoutParams(0, -2, 1));
         addView(controls, new LayoutParams(-1, -2));
+        delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
+        addView(delete, new LayoutParams(-1, -2));
         notice = caption(); addView(notice, new LayoutParams(-1, -2));
         summary = caption(); summary.setTextIsSelectable(true); addView(summary, new LayoutParams(-1, -2));
         search = new EditText(context); search.setHint(R.string.osservio_crumb_search); search.setSingleLine(true); search.setMinHeight(dp(48));
@@ -139,12 +142,34 @@ final class BreadcrumbArchiveView extends LinearLayout {
         notice.setText(message);
     }
     private void render() {
-        refresh.setEnabled(!reading); list.setEnabled(!reading);
+        refresh.setEnabled(!reading); list.setEnabled(!reading); back.setEnabled(!reading);
+        delete.setEnabled(!reading); delete.setText(selected == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run);
         back.setVisibility(selected == null ? GONE : VISIBLE); copy.setVisibility(selected == null ? GONE : VISIBLE);
         refresh.setVisibility(selected == null ? VISIBLE : GONE); search.setVisibility(selected == null ? GONE : VISIBLE);
         summary.setText(selected == null ? PersistencePresentation.status(getContext(), archive.persistenceStatus())
             + "\n" + getContext().getString(R.string.osservio_archive_hint) : PersistencePresentation.run(getContext(), selected.run));
         filter();
+    }
+    private void confirmDeletion() {
+        if (reading || detail != null) return;
+        String id = selected == null ? null : selected.run.id;
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+            .setTitle(id == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run)
+            .setMessage(R.string.osservio_archive_delete_confirmation)
+            .setNegativeButton(R.string.osservio_archive_cancel, null)
+            .setPositiveButton(R.string.osservio_archive_delete_confirm, (ignored, button) -> delete(id)).create();
+        dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
+    }
+    private void delete(String id) {
+        int request = begin(); notice.setText(R.string.osservio_archive_deleting); Handler handler = main;
+        WeakReference<BreadcrumbArchiveView> reference = new WeakReference<>(this);
+        BreadcrumbArchive.Completion completed = error -> handler.post(() -> {
+            BreadcrumbArchiveView view = reference.get(); if (view == null || view.generation != request) return;
+            view.reading = false;
+            if (error == null) { view.selected = null; view.read(); }
+            else { view.failed(error); view.render(); }
+        });
+        if (id == null) archive.deleteAllRuns(completed); else archive.deleteRun(id, completed);
     }
     private void filter() {
         if (list == null) return;

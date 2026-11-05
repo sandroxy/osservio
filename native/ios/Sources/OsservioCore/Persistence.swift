@@ -52,4 +52,7 @@ public protocol BreadcrumbArchive: Sendable {
     func readRun(id: String, completion: @escaping @Sendable (Result<RetainedBreadcrumbs?, PersistenceError>) -> Void)
     /// A barrier for admitted persistence work, excluding discarded observations shown in status.
     func flush(completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void)
+    /// Deletes committed evidence after draining admitted writes. Does not clear live history or stop capture.
+    func deleteRun(id: String, completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void)
+    func deleteAllRuns(completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void)
 }

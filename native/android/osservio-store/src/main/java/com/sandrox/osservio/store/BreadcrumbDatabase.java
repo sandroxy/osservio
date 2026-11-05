@@ -52,6 +52,11 @@ final class BreadcrumbDatabase implements AutoCloseable {
         } catch (RuntimeException failure) { database.close(); throw failure; }
     }
     @Override public void close() { database.close(); }
+    void deleteRun(String id) {
+        if (!validId(id)) throw EvidenceStorageException.invalid();
+        transaction(() -> database.execSQL("DELETE FROM recording_runs WHERE id=?", new Object[] {id}));
+    }
+    void deleteAllRuns() { transaction(() -> database.execSQL("DELETE FROM recording_runs")); }
     private void configure() {
         long owner = scalar("PRAGMA application_id");
         long version = scalar("PRAGMA user_version");
