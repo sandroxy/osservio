@@ -10,8 +10,9 @@ In Xcode, add this checkout as a local Swift package. Link `OsservioCore` and
 The UI depends on Core, and Store depends on Core. Neither Core nor Store imports
 UIKit or starts capture automatically.
 
-`OsservioURLSession` is an optional product for observing data requests submitted
-through a host-owned URLSession. It depends only on Core and Foundation.
+`OsservioURLSession` is an optional product for observing data requests and
+WebSocket operations submitted through a host-owned URLSession. It depends only
+on Core and Foundation.
 
 Create these objects in a host-owned composition root and retain them across
 the screens that should share history:
@@ -79,6 +80,29 @@ with a Done control. For network-only inspection, embed
 controller and supply dismissal appropriate to your presentation. Read
 [network coverage](../../doc/network-integration.md) and
 [HTTP privacy and limits](../../doc/http.md) before enabling body content.
+
+## WebSocket tasks
+
+Use the same optional product and capture controller:
+
+```swift
+let messages = try MemoryWebSocketStore()
+let sockets = try WebSocketRecorder(sink: messages, captureController: recorder.captureController,
+                                  privacy: WebSocketPrivacyPolicy())
+let observedSockets = try ObservedWebSocketSession(session: URLSession.shared, recorder: sockets)
+// Use the host's request, then retain the wrapper for the connection's lifetime.
+let socket = observedSockets.webSocketTask(with: request)
+socket.resume()
+```
+
+Use wrapper `send(_:completionHandler:)` and `receive(completionHandler:)` for
+message observation. The host still creates its receive loop. To observe
+handshake and final completion, supply your existing delegated session instead
+of `.shared` and forward its callbacks to the matching wrapper with `didOpen()`,
+`didClose(with:)`, and `didComplete(with:)`. Keep this mapping in host code;
+Osservio does not replace the delegate or retain all tasks in a registry.
+The default policy omits text content. See [WebSocket coverage and callback
+limits](../../doc/network-integration.md#urlsession-websocket-tasks).
 
 The package also declares a macOS target version so Core and Store tests can run
 on the development machine. The UIKit source is excluded on macOS; this does

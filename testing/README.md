@@ -35,6 +35,8 @@ only, and the full size of truncated text is not invented.
 
 `websocket-lifecycle.tsv` is a sequential observation scenario: case name,
 operation, result, retained event count, and active connection count. It covers
-duplicate open rejection, closing/closed distinction, and stale terminal
-callbacks. Native tests independently exercise connection/rate limits, session
-invalidation, terminal sink rejection, and independent payload eviction.
+duplicate open rejection, callback capacity gaps, close request/peer close/final
+completion distinctions, and stale terminal callbacks. Native tests independently
+exercise connection/rate limits, session invalidation, terminal sink rejection,
+independent payload eviction, and send-result correlation after a submission has
+left the history window. Invalid result outcomes and stale completions are rejected.

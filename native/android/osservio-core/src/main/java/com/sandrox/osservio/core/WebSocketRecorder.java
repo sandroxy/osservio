@@ -93,15 +93,15 @@ public final class WebSocketRecorder {
         return access(context -> {
             Connection connection = connection(token, context);
             if (connection == null) return Result.STALE;
-            if (kind == null || kind == WebSocketEvent.Kind.CONNECTING || kind == WebSocketEvent.Kind.ATTACHED || kind == WebSocketEvent.Kind.MESSAGE
+            if (kind == null || kind == WebSocketEvent.Kind.CONNECTING || kind == WebSocketEvent.Kind.ATTACHED || kind == WebSocketEvent.Kind.MESSAGE || kind == WebSocketEvent.Kind.MESSAGE_RESULT
                 || headers == null || (!headers.isEmpty() && kind != WebSocketEvent.Kind.OPENED && kind != WebSocketEvent.Kind.FAILED)
                 || (statusCode != null && ((kind != WebSocketEvent.Kind.OPENED && kind != WebSocketEvent.Kind.FAILED) || statusCode < 100 || statusCode > 599))
-                || (closeCode != null && ((kind != WebSocketEvent.Kind.CLOSING && kind != WebSocketEvent.Kind.CLOSED && kind != WebSocketEvent.Kind.CANCEL_REQUESTED)
+                || (closeCode != null && ((kind != WebSocketEvent.Kind.CLOSE_REQUESTED && kind != WebSocketEvent.Kind.CLOSING && kind != WebSocketEvent.Kind.CLOSED && kind != WebSocketEvent.Kind.CANCEL_REQUESTED)
                     || closeCode < 1000 || closeCode > 4999))
                 || ((kind == WebSocketEvent.Kind.FAILED) != (failure != null))
                 || (kind == WebSocketEvent.Kind.OPENED && connection.opened)) return Result.INVALID;
             boolean terminal = kind == WebSocketEvent.Kind.CLOSED || kind == WebSocketEvent.Kind.FAILED
-                || kind == WebSocketEvent.Kind.CANCEL_REQUESTED || kind == WebSocketEvent.Kind.OBSERVATION_ENDED;
+                || kind == WebSocketEvent.Kind.CANCELLED || kind == WebSocketEvent.Kind.CANCEL_REQUESTED || kind == WebSocketEvent.Kind.OBSERVATION_ENDED;
             if (terminal) connections.remove(token.connectionId);
             if (kind == WebSocketEvent.Kind.OPENED) connection.opened = true;
             if (!admit(context)) return Result.RATE_LIMITED;
@@ -112,8 +112,11 @@ public final class WebSocketRecorder {
         });
     }
     public Result text(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, String value) {
+        return text(token, direction, outcome, value, UUID.randomUUID());
+    }
+    public Result text(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, String value, UUID messageId) {
         if (value == null) return Result.INVALID;
-        return message(token, direction, outcome, id -> {
+        return message(token, direction, outcome, messageId, id -> {
             if (!privacy.publicMessageText) return new Payload(WebSocketEvent.PayloadState.OMITTED, null, null);
             BoundedText bounded = BoundedText.prefix(value, privacy.messageByteLimit);
             if (bounded == null) return new Payload(WebSocketEvent.PayloadState.INVALID_TEXT, null, null);
@@ -124,17 +127,34 @@ public final class WebSocketRecorder {
     }
     /** Binary bytes stay with the host. Only their already-known count is accepted. */
     public Result binary(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, long byteCount) {
-        if (byteCount < 0) return Result.INVALID;
-        return message(token, direction, outcome, id -> new Payload(WebSocketEvent.PayloadState.BINARY, byteCount, null));
+        return binary(token, direction, outcome, byteCount, UUID.randomUUID());
     }
-    public Status status() { return captureController.inspect(ignored -> new Status(connections.size(), rateLimited)); }
-    private Result message(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, PayloadFactory payload) {
+    public Result binary(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, long byteCount, UUID messageId) {
+        if (byteCount < 0) return Result.INVALID;
+        return message(token, direction, outcome, messageId, id -> new Payload(WebSocketEvent.PayloadState.BINARY, byteCount, null));
+    }
+    /** Correlates a completion without retaining its original content. The submission may have been evicted. */
+    public Result sendResult(Token token, UUID messageId, WebSocketEvent.Outcome outcome, WebSocketEvent.Failure failure) {
         return access(context -> {
             Connection connection = connection(token, context);
             if (connection == null) return Result.STALE;
-            if (direction == null || outcome == null || ((direction == WebSocketEvent.Direction.INCOMING) != (outcome == WebSocketEvent.Outcome.RECEIVED))) return Result.INVALID;
+            if (messageId == null || (outcome != WebSocketEvent.Outcome.SENT && outcome != WebSocketEvent.Outcome.FAILED && outcome != WebSocketEvent.Outcome.UNOBSERVED)
+                || ((outcome == WebSocketEvent.Outcome.FAILED) != (failure != null))) return Result.INVALID;
             if (!admit(context)) return Result.RATE_LIMITED;
-            String id = UUID.randomUUID().toString();
+            return write(new WebSocketEvent(UUID.randomUUID().toString(), token.connectionId, context,
+                captureController.clock.wallTimeMillis(), connection.url, connection.source, WebSocketEvent.Kind.MESSAGE_RESULT,
+                Collections.emptyList(), false, null, null, failure, WebSocketEvent.Direction.OUTGOING, outcome, null, messageId.toString()), null);
+        });
+    }
+    public Status status() { return captureController.inspect(ignored -> new Status(connections.size(), rateLimited)); }
+    private Result message(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, UUID messageId, PayloadFactory payload) {
+        return access(context -> {
+            Connection connection = connection(token, context);
+            if (connection == null) return Result.STALE;
+            if (messageId == null || direction == null || outcome == null || outcome == WebSocketEvent.Outcome.UNOBSERVED
+                || ((direction == WebSocketEvent.Direction.INCOMING) != (outcome == WebSocketEvent.Outcome.RECEIVED))) return Result.INVALID;
+            if (!admit(context)) return Result.RATE_LIMITED;
+            String id = messageId.toString();
             Payload body = payload.create(id);
             return write(new WebSocketEvent(id, token.connectionId, context, captureController.clock.wallTimeMillis(),
                 connection.url, connection.source, WebSocketEvent.Kind.MESSAGE, Collections.emptyList(), false,

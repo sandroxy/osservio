@@ -1,12 +1,12 @@
 import Foundation
 
 public enum WebSocketKind: String, Sendable {
-    case connecting, attached, opened, message, closing, closed, failed, cancelRequested, observationEnded
+    case connecting, attached, opened, message, messageResult, closeRequested, closing, closed, failed, cancelled, cancelRequested, observationEnded, observationLimited
 }
 public enum WebSocketSource: String, Sendable { case host, okHttp, urlSession }
 public enum WebSocketDirection: String, Sendable { case incoming, outgoing }
 /// Queued and sent describe client API results, never proof of peer receipt.
-public enum WebSocketMessageOutcome: String, Sendable { case received, queued, sent, rejected, failed }
+public enum WebSocketMessageOutcome: String, Sendable { case received, submitted, queued, sent, rejected, failed, unobserved }
 public enum WebSocketPayloadState: String, Sendable { case omitted, binary, available, truncated, invalidText }
 public enum WebSocketFailure: String, Sendable { case transport, timeout, tls, connection, unknown }
 
@@ -40,6 +40,7 @@ public struct WebSocketEvent: Sendable {
     public let failure: WebSocketFailure?
     public let direction: WebSocketDirection?
     public let outcome: WebSocketMessageOutcome?
+    public let relatedMessageID: String?
     public let payload: WebSocketPayloadReference?
     public let textByteCount: Int
 
@@ -47,12 +48,12 @@ public struct WebSocketEvent: Sendable {
          source: WebSocketSource, kind: WebSocketKind, headers: [HTTPHeader] = [], headersLimited: Bool = false,
          statusCode: Int? = nil, closeCode: Int? = nil, failure: WebSocketFailure? = nil,
          direction: WebSocketDirection? = nil, outcome: WebSocketMessageOutcome? = nil,
-         payload: WebSocketPayloadReference? = nil) {
+         payload: WebSocketPayloadReference? = nil, relatedMessageID: String? = nil) {
         self.id = id; self.connectionID = connectionID; sessionID = context.sessionID; sequence = context.sequence
         timestampMillis = timestamp; self.url = url; self.source = source; self.kind = kind
         self.headers = headers; self.headersLimited = headersLimited; self.statusCode = statusCode
         self.closeCode = closeCode; self.failure = failure; self.direction = direction
-        self.outcome = outcome; self.payload = payload
+        self.outcome = outcome; self.payload = payload; self.relatedMessageID = relatedMessageID
         textByteCount = url.utf8.count + headers.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count }
     }
 }

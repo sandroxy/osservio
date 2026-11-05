@@ -86,12 +86,12 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
                           statusCode: Int? = nil, closeCode: Int? = nil, failure: WebSocketFailure? = nil) -> WebSocketRecordResult {
         access { context in
             guard token.sessionID == context.sessionID, let connection = self.connections[token.connectionID] else { return .stale }
-            guard [.opened, .closing, .closed, .failed, .cancelRequested, .observationEnded].contains(kind),
+            guard [.opened, .closeRequested, .closing, .closed, .failed, .cancelled, .cancelRequested, .observationEnded, .observationLimited].contains(kind),
                   statusCode == nil || ([.opened, .failed].contains(kind) && (100...599).contains(statusCode!)),
-                  closeCode == nil || ([.closing, .closed, .cancelRequested].contains(kind) && (1000...4999).contains(closeCode!)),
+                  closeCode == nil || ([.closeRequested, .closing, .closed, .cancelRequested].contains(kind) && (1000...4999).contains(closeCode!)),
                   (kind == .failed) == (failure != nil), kind != .opened || !connection.opened,
                   headers.isEmpty || [.opened, .failed].contains(kind) else { return .invalid }
-            let terminal = [.closed, .failed, .cancelRequested, .observationEnded].contains(kind)
+            let terminal = [.closed, .failed, .cancelled, .cancelRequested, .observationEnded].contains(kind)
             // A dropped terminal event must still release the observation slot.
             if terminal { self.connections.removeValue(forKey: token.connectionID) }
             if kind == .opened { self.connections[token.connectionID]?.opened = true }
@@ -106,8 +106,8 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
 
     @discardableResult
     public func text(_ token: WebSocketToken, direction: WebSocketDirection, outcome: WebSocketMessageOutcome,
-                     value: String) -> WebSocketRecordResult {
-        message(token, direction: direction, outcome: outcome) { id in
+                     value: String, messageID: UUID = UUID()) -> WebSocketRecordResult {
+        message(token, direction: direction, outcome: outcome, messageID: messageID) { id in
             guard self.privacy.publicMessageText else {
                 return (WebSocketPayloadReference(state: .omitted, blobID: nil, byteCount: nil), nil)
             }
@@ -123,10 +123,26 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
     /// Binary bytes remain with the host; only their already-known count is accepted.
     @discardableResult
     public func binary(_ token: WebSocketToken, direction: WebSocketDirection, outcome: WebSocketMessageOutcome,
-                       byteCount: Int64) -> WebSocketRecordResult {
+                       byteCount: Int64, messageID: UUID = UUID()) -> WebSocketRecordResult {
         guard byteCount >= 0 else { return .invalid }
-        return message(token, direction: direction, outcome: outcome) { _ in
+        return message(token, direction: direction, outcome: outcome, messageID: messageID) { _ in
             (WebSocketPayloadReference(state: .binary, blobID: nil, byteCount: byteCount), nil)
+        }
+    }
+
+    /// Correlates a client completion without retaining its original message until the callback.
+    /// The referenced submission may already be evicted. IDs come from the same explicit host operation.
+    @discardableResult
+    public func sendResult(_ token: WebSocketToken, messageID: UUID, outcome: WebSocketMessageOutcome,
+                           failure: WebSocketFailure? = nil) -> WebSocketRecordResult {
+        access { context in
+            guard token.sessionID == context.sessionID, let connection = self.connections[token.connectionID] else { return .stale }
+            guard [.sent, .failed, .unobserved].contains(outcome), (outcome == .failed) == (failure != nil) else { return .invalid }
+            guard self.admit(context) else { return .rateLimited }
+            return self.write(WebSocketEvent(id: UUID().uuidString, connectionID: token.connectionID, context: context,
+                timestamp: self.captureController.clock.wallTimeMillis(), url: connection.url, source: connection.source,
+                kind: .messageResult, failure: failure, direction: .outgoing, outcome: outcome,
+                relatedMessageID: messageID.uuidString))
         }
     }
 
@@ -136,12 +152,12 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
     func captureSessionDidEnd() { connections.removeAll() }
 
     private func message(_ token: WebSocketToken, direction: WebSocketDirection, outcome: WebSocketMessageOutcome,
-                         payload: (String) -> (WebSocketPayloadReference, WebSocketPayload?)) -> WebSocketRecordResult {
+                         messageID: UUID, payload: (String) -> (WebSocketPayloadReference, WebSocketPayload?)) -> WebSocketRecordResult {
         access { context in
             guard token.sessionID == context.sessionID, let connection = self.connections[token.connectionID] else { return .stale }
-            guard (direction == .incoming) == (outcome == .received) else { return .invalid }
+            guard outcome != .unobserved, (direction == .incoming) == (outcome == .received) else { return .invalid }
             guard self.admit(context) else { return .rateLimited }
-            let id = UUID().uuidString
+            let id = messageID.uuidString
             let body = payload(id)
             return self.write(WebSocketEvent(id: id, connectionID: token.connectionID, context: context,
                 timestamp: self.captureController.clock.wallTimeMillis(), url: connection.url, source: connection.source,

@@ -112,3 +112,29 @@ native log and network sections. Import these types from
 `com.sandrox.osservio.ui`. Attach the view with a bounded height and the same
 host-owned presentation/inset handling described above. Read [network coverage](../../doc/network-integration.md) and
 [HTTP privacy and limits](../../doc/http.md) before enabling body content.
+
+## OkHttp WebSockets
+
+The HTTP interceptor does not observe socket messages. Wrap the host's factory
+explicitly with the same optional adapter:
+
+```java
+import com.sandrox.osservio.core.WebSocketPrivacyPolicy;
+import com.sandrox.osservio.core.WebSocketRecorder;
+import com.sandrox.osservio.okhttp.ObservedWebSocketFactory;
+import com.sandrox.osservio.store.MemoryWebSocketStore;
+
+MemoryWebSocketStore messages = new MemoryWebSocketStore();
+WebSocketRecorder sockets = new WebSocketRecorder(messages, recorder.captureController,
+    new WebSocketPrivacyPolicy());
+// client is the host's existing configured OkHttpClient.
+ObservedWebSocketFactory observedSockets = new ObservedWebSocketFactory(client, sockets);
+// request and listener belong to the host.
+okhttp3.WebSocket socket = observedSockets.newWebSocket(request, listener);
+```
+
+Retain and operate on the returned socket normally. Host listeners receive this
+same wrapper; original callback data and native return values are preserved.
+The default policy omits message text. See [WebSocket
+coverage](../../doc/network-integration.md#okhttp-sockets) for lifecycle, privacy,
+late enablement, and the distinction between queue acceptance and peer receipt.

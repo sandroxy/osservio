@@ -29,9 +29,10 @@ the broader product described below remain unimplemented.
   Native HTTP inspection includes search, state filters, metadata details, and
   lazy body lookup with explicit truncation, missing-content, and coverage notes.
 
-The WebSocket core also accepts explicit host connection/message observations
-with a bounded timeline and independent text budget. Socket integrations and
-a WebSocket viewer are not implemented yet; see the
+WebSocket observation supports explicit host events and opt-in OkHttp/URLSession
+wrappers, with a bounded timeline and independent text budget. Submission, queue
+admission, send results, and close events remain distinct; none proves peer
+receipt. A WebSocket viewer is not implemented yet; see the
 [WebSocket observation contract](doc/websocket.md).
 
 Automatic system-log and crash capture, global network interception, persistence

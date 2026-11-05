@@ -106,6 +106,31 @@ final class WebSocketPipelineTests: XCTestCase {
         XCTAssertEqual(store.snapshot()?.events.last?.headers.first?.value, "[redacted]")
         XCTAssertEqual(capture.status()?.activeConnections, 0)
     }
+    func testSendCompletionRemainsCorrelatedAfterEvictionWithoutRecreatingContent() throws {
+        let store = try MemoryWebSocketStore(recordLimit: 1)
+        let capture = try recorder(store, publicText: true)
+        let token = try begin(capture)
+        let messageID = UUID()
+        XCTAssertEqual(capture.text(token, direction: .outgoing, outcome: .submitted, value: "body", messageID: messageID), .recorded)
+        let blob = try XCTUnwrap(store.snapshot()?.events.first?.payload?.blobID)
+        XCTAssertEqual(capture.text(token, direction: .outgoing, outcome: .unobserved, value: "invalid"), .invalid)
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .received), .invalid)
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .failed), .invalid)
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .sent, failure: .transport), .invalid)
+        store.clear()
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .sent), .recorded)
+        let result = try XCTUnwrap(store.snapshot()?.events.first)
+        XCTAssertEqual(result.kind, .messageResult)
+        XCTAssertEqual(result.relatedMessageID, messageID.uuidString)
+        XCTAssertNotEqual(result.id, messageID.uuidString)
+        XCTAssertNil(result.payload)
+        if case .unavailable = store.payload(id: blob) {} else { XCTFail("Completion must not restore a body") }
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .unobserved), .recorded)
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .failed, failure: .connection), .recorded)
+        try capture.captureController.startDetailed()
+        XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .sent), .stale)
+        XCTAssertEqual(store.snapshot()?.events.count, 1)
+    }
     func testRateLimitedTerminalReleasesConnection() throws {
         let store = try MemoryWebSocketStore()
         let capture = try recorder(store, rate: 2)

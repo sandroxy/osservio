@@ -1,9 +1,10 @@
 # Native WebSocket observations
 
-Core and Store accept explicit native WebSocket observations. This subset does
-not yet install a network wrapper, collect traffic automatically, or provide a
-WebSocket viewer. It does not implement the WebSocket protocol or replace a
-host's network stack.
+Core and Store accept explicit native WebSocket observations. Optional wrappers
+observe host-owned OkHttp sockets and URLSession WebSocket tasks. No global hook
+or WebSocket viewer is installed. Osservio does not implement the WebSocket
+protocol or replace a host's network stack. Integration and platform differences
+are documented in [network coverage](network-integration.md#websocket-clients).
 
 ## Evidence and lifecycle
 
@@ -14,31 +15,45 @@ sessions; the default creates a new identity. `attached` records that observatio
 began after creation, without inventing an earlier handshake or connection state.
 
 The history is an append-only timeline: connecting/attached, opened, messages,
-closing, closed, failure, explicit cancellation request, and explicit end of
-observation. A connecting event is not proof of a completed handshake. The
+send results, close requests, peer closing, closed, failure, cancellation, and
+explicit end or limitation of observation. A connecting event is not proof of a completed handshake. The
 observer can start after a handshake, and retained events may have missing
 predecessors. The store does not reconstruct missing state transitions.
 
 A token is rejected after a terminal observation, capture replacement, or expiry.
 Stopping capture releases the recorder's connection slots but does not close any
 socket or append a synthetic close. Even if a terminal event is rate-limited or
-its sink rejects it, the slot is released. A visible connection without a
+its sink rejects it, the slot is released once the operation acquires admission.
+Contention can prevent the terminal operation itself; such a slot remains
+bounded by connection capacity and is cleared when the capture session ends.
+A visible connection without a
 retained terminal event therefore has an unknown outcome. Expiry is checked
 lazily on capture operations and status reads.
 
 `incoming/received` means the collector received a complete message from its
-client API. Outgoing outcomes distinguish queued, sent, rejected, and failed.
+client API. Outgoing outcomes distinguish submitted, queued, sent, rejected, and failed.
 These outcomes are observations of the client API, **not acknowledgements from
 the remote application**. In particular, OkHttp's send result describes queue
 admission; URLSession's completion describes writing to the kernel. Native
 client APIs may assemble or decompress messages before observation; these are
 messages, not wire frames, packet counts, or compressed transfer sizes.
 
+An asynchronous submission uses an explicit message UUID. Its later
+`messageResult` references that ID without copying its body or keeping the
+original message alive. A result may outlive the submission in history; it must
+not recreate evicted content. `unobserved` reports that the wrapper lacked a
+callback permit, not that sending failed. Results require the same active token;
+late completions cannot enter a replacement capture session. Host-supplied IDs
+must identify their actual operation; the recorder does not infer correlations.
+
 Lifecycle validation rejects duplicate open events, incompatible fields,
 invalid HTTP/close code ranges, and failures without a failure category.
 Close codes are observed API evidence; reserved status values may represent a
-local outcome rather than a code transmitted on the wire. A cancellation
-request does not prove that the peer completed a close handshake.
+local outcome rather than a code transmitted on the wire. `closeRequested`
+describes a host API call; `closing` describes a peer close callback. A
+`cancelRequested` event ends observation and does not prove that the peer
+completed a close handshake. `cancelled` records cancellation whose initiator
+is unknown, for example native task completion after direct session invalidation.
 
 ## Privacy and bounded work
 
@@ -95,5 +110,5 @@ their limited context remains explicit. No WebSocket data survives process exit.
 
 Shared Unicode and lifecycle fixtures, plus native tests for privacy, invalid
 transitions, overload, stale tokens, eviction, clearing, and sink rejection,
-verify this contract. They do not establish socket integration, wire behavior,
-or device performance.
+verify this contract. Separate wrapper tests exercise native client behavior;
+neither set establishes physical-device performance.

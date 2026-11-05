@@ -2,8 +2,8 @@
 
 The repository contains native Android and iOS log capture, HTTP observation,
 memory storage, optional OkHttp/URLSession integration, and native log/HTTP inspection modules.
-WebSocket Core and Store accept explicit host observations without a socket
-collector or viewer.
+WebSocket Core and Store accept explicit host observations and optional native
+client wrappers; there is not yet a WebSocket viewer.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -82,6 +82,8 @@ and test lifecycle, rate limits, capacity, immutable snapshots, rejection, sink
 failure, and contention. The Android unit tests are JVM tests, not device UI tests.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.
 URLSession tests use Foundation with a host-configured synthetic URLProtocol.
+WebSocket tests use actual client connections to loopback MockWebServer and
+Apple's Network.framework server.
 Their coverage and limits are described in the network integration contract.
 
 The OkHttp module locks its resolved development and test dependencies. Normal

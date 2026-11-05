@@ -1,6 +1,8 @@
 start	connecting	recorded	1	1
 open	opened	recorded	2	1
 duplicate-open	opened	invalid	2	1
-closing	closing	recorded	3	1
-closed	closed	recorded	4	0
-late-close	closed	stale	4	0
+limited	observationLimited	recorded	3	1
+request-close	closeRequested	recorded	4	1
+closing	closing	recorded	5	1
+closed	closed	recorded	6	0
+late-close	closed	stale	6	0

@@ -23,7 +23,7 @@ public final class WebSocketPipelineTest {
                 WebSocketRecorder.BeginResult begin = recorder.begin("wss://example.com", EMPTY, WebSocketEvent.Source.HOST);
                 token = begin.token; result = begin.result;
                 assertEquals(WebSocketRecorder.Result.CONNECTION_LIMIT, recorder.begin("wss://example.com/other", EMPTY, WebSocketEvent.Source.HOST).result);
-            } else result = lifecycle(recorder, token, WebSocketEvent.Kind.valueOf(row[1].toUpperCase(java.util.Locale.ROOT)));
+            } else result = lifecycle(recorder, token, WebSocketEvent.Kind.valueOf(row[1].replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase(java.util.Locale.ROOT)));
             assertEquals(row[0], row[2], result.name().toLowerCase(java.util.Locale.ROOT));
             assertEquals(row[0], Integer.parseInt(row[3]), store.snapshot().events.size());
             assertEquals(row[0], Integer.parseInt(row[4]), recorder.status().activeConnections);
@@ -130,6 +130,32 @@ public final class WebSocketPipelineTest {
         recorder.text(token, WebSocketEvent.Direction.INCOMING, WebSocketEvent.Outcome.RECEIVED, "new");
         assertEquals(1, store.snapshot().events.size()); assertEquals(WebSocketEvent.Kind.MESSAGE, store.snapshot().events.get(0).kind);
         assertEquals(2, before.events.size());
+    }
+    @Test public void sendCompletionRemainsCorrelatedAfterEvictionWithoutRecreatingContent() {
+        MemoryWebSocketStore store = new MemoryWebSocketStore(1, 4096, 4096);
+        WebSocketRecorder recorder = recorder(store, true, 4096, 100);
+        WebSocketRecorder.Token token = begin(recorder);
+        java.util.UUID messageId = java.util.UUID.randomUUID();
+        assertEquals(WebSocketRecorder.Result.RECORDED, recorder.text(token, WebSocketEvent.Direction.OUTGOING,
+            WebSocketEvent.Outcome.SUBMITTED, "body", messageId));
+        String blob = store.snapshot().events.get(0).payload.blobId;
+        assertEquals(WebSocketRecorder.Result.INVALID, recorder.text(token, WebSocketEvent.Direction.OUTGOING, WebSocketEvent.Outcome.UNOBSERVED, "invalid"));
+        assertEquals(WebSocketRecorder.Result.INVALID, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.RECEIVED, null));
+        assertEquals(WebSocketRecorder.Result.INVALID, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.FAILED, null));
+        assertEquals(WebSocketRecorder.Result.INVALID, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.SENT, WebSocketEvent.Failure.TRANSPORT));
+        store.clear();
+        assertEquals(WebSocketRecorder.Result.RECORDED, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.SENT, null));
+        WebSocketEvent event = store.snapshot().events.get(0);
+        assertEquals(WebSocketEvent.Kind.MESSAGE_RESULT, event.kind);
+        assertEquals(messageId.toString(), event.relatedMessageId);
+        assertNotEquals(messageId.toString(), event.id);
+        assertNull(event.payload);
+        assertEquals(WebSocketHistory.PayloadLookup.State.UNAVAILABLE, store.payload(blob).state);
+        assertEquals(WebSocketRecorder.Result.RECORDED, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.UNOBSERVED, null));
+        assertEquals(WebSocketRecorder.Result.RECORDED, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.FAILED, WebSocketEvent.Failure.CONNECTION));
+        recorder.captureController.startDetailed();
+        assertEquals(WebSocketRecorder.Result.STALE, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.SENT, null));
+        assertEquals(1, store.snapshot().events.size());
     }
     @Test public void contentionAndSinkFailureReleaseTerminalSlot() {
         CaptureController capture = new CaptureController(); capture.startDetailed();
