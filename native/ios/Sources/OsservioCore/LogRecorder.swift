@@ -78,7 +78,7 @@ public final class LogRecorder: @unchecked Sendable {
             return .rateLimited
         }
         windowCount += 1
-        guard let bounded = Self.bound(message.text, bytes: messageByteLimit) else { return .invalidMessage }
+        guard let bounded = BoundedText.prefix(message.text, bytes: messageByteLimit) else { return .invalidMessage }
         let event = LogEvent(sessionID: sessionID, sequence: context.sequence,
                              timestampMillis: captureController.clock.wallTimeMillis(), level: level,
                              category: category, message: bounded.text,
@@ -102,15 +102,4 @@ public final class LogRecorder: @unchecked Sendable {
         }
     }
 
-    private static func bound(_ value: String, bytes limit: Int) -> (text: String, truncated: Bool)? {
-        var bytes = Array(value.utf8.prefix(limit + 1))
-        guard bytes.count > limit else { return (String(decoding: bytes, as: UTF8.self), false) }
-        bytes.removeLast()
-        // A UTF-8 scalar occupies at most four bytes. Never split one or append extra bytes.
-        for _ in 0..<4 {
-            if let text = String(bytes: bytes, encoding: .utf8) { return (text, true) }
-            bytes.removeLast()
-        }
-        return nil
-    }
 }

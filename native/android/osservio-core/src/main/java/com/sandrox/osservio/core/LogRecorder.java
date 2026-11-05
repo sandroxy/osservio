@@ -100,7 +100,7 @@ public final class LogRecorder {
             return Result.RATE_LIMITED;
         }
         windowCount++;
-        BoundedText bounded = bound(message.text, messageByteLimit);
+        BoundedText bounded = BoundedText.prefix(message.text, messageByteLimit);
         if (bounded == null) return Result.INVALID_MESSAGE;
         LogEvent event = new LogEvent(sessionId, context.sequence, captureController.clock.wallTimeMillis(), level,
             category, bounded.text, message.isPrivate, bounded.truncated);
@@ -125,23 +125,4 @@ public final class LogRecorder {
         return true;
     }
 
-    private static final class BoundedText {
-        final String text;
-        final boolean truncated;
-        BoundedText(String text, boolean truncated) { this.text = text; this.truncated = truncated; }
-    }
-
-    private static BoundedText bound(String value, int limit) {
-        int offset = 0;
-        int bytes = 0;
-        while (offset < value.length()) {
-            int point = value.codePointAt(offset);
-            if (point >= 0xD800 && point <= 0xDFFF) return null;
-            int size = point <= 0x7F ? 1 : point <= 0x7FF ? 2 : point <= 0xFFFF ? 3 : 4;
-            if (bytes > limit - size) break;
-            bytes += size;
-            offset += Character.charCount(point);
-        }
-        return new BoundedText(value.substring(0, offset), offset < value.length());
-    }
 }

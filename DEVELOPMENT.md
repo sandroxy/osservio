@@ -2,6 +2,8 @@
 
 The repository contains native Android and iOS log capture, HTTP observation,
 memory storage, optional OkHttp/URLSession integration, and native log/HTTP inspection modules.
+WebSocket Core and Store accept explicit host observations without a socket
+collector or viewer.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -12,6 +14,8 @@ native behavior and interaction validation. No artifacts have been published.
 - [HTTP observation](doc/http.md) describes admission, privacy, body ownership,
   lifecycle, and storage limits. [Network coverage](doc/network-integration.md)
   describes the optional integrations and their different observation points.
+- [WebSocket observations](doc/websocket.md) describe bounded message evidence,
+  lifecycle validation, privacy, and independent payload retention.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.

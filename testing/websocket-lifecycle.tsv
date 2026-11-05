@@ -1,0 +1,6 @@
+start	connecting	recorded	1	1
+open	opened	recorded	2	1
+duplicate-open	opened	invalid	2	1
+closing	closing	recorded	3	1
+closed	closed	recorded	4	0
+late-close	closed	stale	4	0

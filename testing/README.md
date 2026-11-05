@@ -27,3 +27,14 @@ content type, expected body state, and Base64 output. `-` means that no blob may
 be produced; `~` means an available empty string. Both native suites
 also test stale callbacks, independent metadata/body eviction, clearing,
 capacity, ordering, concurrency, and sink failure.
+
+`websocket-text-cases.tsv` contains a case name, byte limit, Base64 input,
+Base64 output, and truncation flag; `~` denotes empty text. The suites also
+verify that omitted text is not retained, binary data is represented by count
+only, and the full size of truncated text is not invented.
+
+`websocket-lifecycle.tsv` is a sequential observation scenario: case name,
+operation, result, retained event count, and active connection count. It covers
+duplicate open rejection, closing/closed distinction, and stale terminal
+callbacks. Native tests independently exercise connection/rate limits, session
+invalidation, terminal sink rejection, and independent payload eviction.
