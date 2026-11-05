@@ -11,12 +11,27 @@ desired lifetime. The optional inspector receives the same recorder and history.
 The host owns initialization, access to the inspector, and presentation. A view
 does not create another recorder or store.
 
-Capture starts inactive. `start` creates a new session with a unique identifier
-and resets its sequence and rate window, without clearing history. The default
+An independently constructed recorder starts inactive. `start` creates a new
+detailed session with a unique identifier and resets its sequence and rate
+window, without clearing history. The default
 session lasts 15 minutes; allowed durations range from 1 millisecond to 24 hours.
 Expiry uses a monotonic clock and requires no background timer. `stop` prevents
-new records without deleting earlier events. Starting an active recorder replaces
+new logs without deleting earlier events. Starting an active recorder replaces
 its session; it does not create a concurrent capture pipeline.
+
+For shared lifecycle control, create a `CaptureController` and pass it to each
+recorder. Its states are off, baseline, and detailed. Logs require detailed
+capture; enabling baseline alone does not admit logs or install collectors.
+Detailed capture expires back to the configured baseline or off state.
+`setBaselineEnabled` changes that fallback without restarting an active detailed
+session. `stopAll` disables both modes without clearing retained data.
+
+Calling `start` or `stop` on any attached recorder changes detailed capture for
+all recorders sharing its controller. They share session identity and sequence
+ordering, while retaining independent rate budgets and histories. Recorders
+using different controllers have independent lifecycles. Changing state outside
+an active detailed session creates a new session identity; repeating an already
+satisfied stop or baseline setting does not.
 
 The inspector exposes explicit start and stop controls. Opening, hiding, closing,
 or pausing it does not change capture. Scrolling pauses the displayed snapshot;
@@ -83,7 +98,7 @@ measured production performance guarantee.
 ## Results and concurrency
 
 Capture is synchronous and uses try-lock admission, with no background queue,
-disk I/O, or network I/O. A concurrent or reentrant recorder operation returns
+disk I/O, or network I/O. A concurrent or reentrant operation on the same capture controller returns
 busy instead of waiting. The supplied store also uses try-lock writes and
 snapshots. Capture may lose events under contention; it is not a lossless log.
 
@@ -108,7 +123,8 @@ the main thread; Core and Store may be called from other threads.
 
 Sequence numbers order admitted attempts within a session and may have gaps
 after rejection. Wall time is for display and can change when the device clock
-changes. These fields do not establish ordering across recorders or processes.
+changes. These fields establish ordering only within the same capture controller
+and session, not across independent controllers or processes.
 The native events are not a serialized interchange protocol.
 
 ## Inspection scope

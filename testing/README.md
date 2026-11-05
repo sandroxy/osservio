@@ -9,3 +9,10 @@ The fixtures verify private text removal, exact boundaries, and truncation at
 Unicode scalar boundaries. A scalar boundary can split a grapheme cluster.
 These fixtures define local native behavior; they are not a serialized event
 protocol or an archive format.
+
+`capture-lifecycle.tsv` is a sequential scenario consumed by both native test
+suites. Rows contain a case name, monotonic milliseconds, control operation,
+argument, expected mode, remaining detailed-session milliseconds, and whether
+the visible session identity changed. It covers baseline fallback, expiry,
+replacement, repeated controls, and stopping all capture. Contention and shared
+recorder ordering are verified separately with bounded concurrency tests.

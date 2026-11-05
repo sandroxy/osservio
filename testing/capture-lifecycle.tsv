@@ -1,0 +1,16 @@
+initial	100	status	-	off	0	same
+enable_baseline	100	baseline	true	baseline	0	changed
+repeat_baseline	100	baseline	true	baseline	0	same
+start_detail	100	detailed	1000	detailed	1000	changed
+before_expiry	1099	status	-	detailed	1	same
+expire_to_baseline	1100	status	-	baseline	0	changed
+baseline_remains	1101	status	-	baseline	0	same
+disable_baseline	1101	baseline	false	off	0	changed
+start_without_baseline	1200	detailed	10	detailed	10	changed
+enable_fallback_during_detail	1201	baseline	true	detailed	9	same
+expire_with_new_fallback	1210	status	-	baseline	0	changed
+restart_detail	1211	detailed	200	detailed	200	changed
+stop_detail	1212	stop_detailed	-	baseline	0	changed
+repeat_stop_detail	1213	stop_detailed	-	baseline	0	same
+stop_everything	1214	stop_all	-	off	0	changed
+repeat_stop_everything	1215	stop_all	-	off	0	same
