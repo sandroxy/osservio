@@ -6,8 +6,9 @@ WebSocket Core and Store accept explicit host observations and optional native
 client wrappers, with native connection groups, event timelines, and message details.
 Core/Store also provide baseline breadcrumbs and typed environment facts. The
 optional Runtime module observes native lifecycle callbacks and queries system
-metadata. Native context views expose these queries; durable breadcrumb storage
-is not yet implemented.
+metadata. Native context views expose these queries. Store optionally commits
+restart-relevant breadcrumbs through platform SQLite with bounded asynchronous
+admission and archive queries.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -22,6 +23,8 @@ native behavior and interaction validation. No artifacts have been published.
   lifecycle validation, privacy, and independent payload retention.
 - [Runtime context](doc/runtime-context.md) describes baseline breadcrumbs,
   native signal ownership, environment privacy, and platform-specific metrics.
+- [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
+  budgets, recovery, and the private database revision.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.
@@ -83,12 +86,19 @@ The product-specific `OsservioRuntime` scheme is a build scheme, not a test
 scheme. Runtime tests on macOS cover callback leases only; UIKit checks compile
 and execute exclusively in an iOS test run.
 
+Run the SQLite store tests on the simulator with the same package test scheme,
+using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
+`-only-testing:OsservioCoreTests/BreadcrumbDatabaseTests`, and
+`-only-testing:OsservioCoreTests/SQLiteBreadcrumbStoreTests`. These tests use
+fresh, test-owned temporary directories and remove only their own fixtures.
+
 For Android, install JDK 17 and Android SDK 36. Set `ANDROID_HOME` to your SDK or
 use the ignored `native/android/local.properties` with `sdk.dir`. From
 `native/android`:
 
 ```sh
 ./gradlew testDebugUnitTest assembleDebug lintDebug
+./gradlew :osservio-store:connectedDebugAndroidTest
 ```
 
 The wrapper pins Gradle 8.14.5 with a distribution checksum. Android Gradle Plugin
@@ -104,6 +114,11 @@ The Android pipeline tests are owned by Store because they exercise the concrete
 store with Core. Both platforms consume [shared text fixtures](testing/README.md)
 and test lifecycle, rate limits, capacity, immutable snapshots, rejection, sink
 failure, and contention. The Android unit tests are JVM tests, not device UI tests.
+Store instrumentation tests use actual Android SQLite on the selected device or
+emulator, with isolated test-owned directories. They verify reopen, transactional
+rollback, budgets, corruption, unsupported revisions, exclusive ownership,
+asynchronous admission, and close ordering. They do not establish physical-device
+performance or fatal crash capture.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.
 URLSession tests use Foundation with a host-configured synthetic URLProtocol.
 WebSocket tests use actual client connections to loopback MockWebServer and

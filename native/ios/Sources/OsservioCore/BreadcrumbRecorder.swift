@@ -41,10 +41,7 @@ public final class BreadcrumbRecorder: @unchecked Sendable {
     }
     private func ingest(_ context: CaptureContext, kind: BreadcrumbKind, label: String, message: LogMessage?,
                         value: Int64?, retention: BreadcrumbRetention) -> BreadcrumbRecordResult {
-        let labelBytes = Array(label.utf8.prefix(65))
-        guard !labelBytes.isEmpty, labelBytes.count <= 64, labelBytes.allSatisfy({
-            (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45 || $0 == 46 || $0 == 95
-        }) else { return .invalidLabel }
+        guard validBreadcrumbLabel(label) else { return .invalidLabel }
         if sessionID != context.sessionID { sessionID = context.sessionID; windowStart = context.sessionStartMillis; windowCount = 0 }
         if context.monotonicMillis >= windowStart, context.monotonicMillis - windowStart >= 1_000 {
             windowStart = context.monotonicMillis; windowCount = 0

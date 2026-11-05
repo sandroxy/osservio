@@ -10,6 +10,24 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class BreadcrumbPipelineTest {
+    @Test public void restorationPreservesEvidenceAndRejectsInvalidPersistedValues() throws Exception {
+        for (String line : Files.readAllLines(Paths.get(System.getProperty("osservio.fixtures"), "breadcrumb-restoration.tsv"), StandardCharsets.UTF_8)) {
+            String[] row = line.split("\t");
+            String message = decode(row[4]);
+            java.util.function.Supplier<BreadcrumbEvent> restore = () -> BreadcrumbEvent.restore(row[1], "12345678-1234-1234-1234-123456789abc",
+                Long.parseLong(row[2]), Long.MIN_VALUE, 9007199254740993L, BreadcrumbEvent.Kind.HOST_MARKER,
+                row[3], message, Boolean.parseBoolean(row[5]), Boolean.parseBoolean(row[6]), Long.MIN_VALUE, BreadcrumbEvent.Retention.RESTART_RELEVANT);
+            if (row[7].equals("invalid")) { assertThrows(row[0], IllegalArgumentException.class, restore::get); continue; }
+            BreadcrumbEvent event = restore.get();
+            assertEquals(row[1], event.id); assertEquals(message, event.message); assertEquals(Long.parseLong(row[2]), event.sequence);
+            assertEquals(row[3].getBytes(StandardCharsets.UTF_8).length + message.getBytes(StandardCharsets.UTF_8).length, event.textByteCount);
+            assertEquals(Long.MIN_VALUE, event.timestampMillis); assertEquals(Long.valueOf(Long.MIN_VALUE), event.value);
+            assertEquals(Long.valueOf(9007199254740993L), event.sessionElapsedMillis);
+        }
+        assertThrows(IllegalArgumentException.class, () -> BreadcrumbEvent.restore("12345678-1234-1234-1234-123456789abc",
+            "12345678-1234-1234-1234-123456789abc", 1, 0, 0L, BreadcrumbEvent.Kind.HOST_MARKER, "host.ready",
+            "\uD800", false, false, null, BreadcrumbEvent.Retention.RESTART_RELEVANT));
+    }
     private static final class Clock implements LogClock {
         long now;
         @Override public long wallTimeMillis() { return 1000 + now; }

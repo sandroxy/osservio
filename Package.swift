@@ -14,7 +14,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "OsservioCore", path: "native/ios/Sources/OsservioCore"),
-        .target(name: "OsservioStore", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioStore"),
+        .target(name: "OsservioStore", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioStore",
+                linkerSettings: [.linkedLibrary("sqlite3")]),
         .target(name: "OsservioUI", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioUI",
                 resources: [.process("Resources")]),
         .target(name: "OsservioURLSession", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioURLSession"),

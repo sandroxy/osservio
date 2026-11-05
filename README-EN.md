@@ -31,8 +31,10 @@ the broader product described below remain unimplemented.
 - Bounded breadcrumbs and host markers work in baseline capture. Optional native
   modules observe lifecycle signals and query device, app, and memory facts on
   demand. Native context views provide snapshot refresh, breadcrumb search,
-  details, copying, and separate baseline controls. Breadcrumbs are currently
-  memory-only. See [runtime context](doc/runtime-context.md).
+  details, copying, and separate baseline controls. Choose memory-only history or
+  opt-in SQLite persistence for restart-relevant breadcrumbs, with asynchronous
+  archive queries. See [runtime context](doc/runtime-context.md) and
+  [breadcrumb persistence](doc/breadcrumb-storage.md).
 
 WebSocket observation supports explicit host events and opt-in OkHttp/URLSession
 wrappers, with a bounded timeline and independent text budget. Submission, queue
@@ -41,8 +43,8 @@ receipt. Native inspectors group events by connection and provide timeline
 filters and on-demand content lookup; see the
 [WebSocket observation contract](doc/websocket.md).
 
-Automatic system-log and crash capture, global network interception, persistence
-across launches, incident export, and framework adapters are not implemented.
+Automatic system-log and crash capture, global network interception, incident
+export, and framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see
 [network coverage](doc/network-integration.md). Core behavior and
 native interaction will be refined on Android and iOS before expanding to React

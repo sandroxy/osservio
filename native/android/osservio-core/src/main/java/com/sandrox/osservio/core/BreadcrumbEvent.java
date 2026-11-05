@@ -37,4 +37,35 @@ public final class BreadcrumbEvent {
         this.isTruncated = isTruncated; this.value = value; this.retention = retention;
         textByteCount = label.getBytes(StandardCharsets.UTF_8).length + (message == null ? 0 : message.getBytes(StandardCharsets.UTF_8).length);
     }
+    /** Reconstitutes sanitized evidence, never classifies raw text or silently repairs invalid persisted values. */
+    public static BreadcrumbEvent restore(String id, String sessionId, long sequence, long timestampMillis, Long sessionElapsedMillis,
+                                          Kind kind, String label, String message, boolean isPrivate, boolean isTruncated,
+                                          Long value, Retention retention) {
+        if (!validUUID(id) || !validUUID(sessionId) || sequence <= 0 || (sessionElapsedMillis != null && sessionElapsedMillis < 0)
+            || kind == null || retention == null || !BreadcrumbRecorder.validLabel(label)
+            || (isPrivate && (!"[private]".equals(message) || isTruncated)) || (isTruncated && message == null)) throw invalid();
+        if (message != null) {
+            BoundedText bounded = BoundedText.prefix(message, 4096);
+            if (bounded == null || bounded.truncated) throw invalid();
+        }
+        return new BreadcrumbEvent(id, sessionId, sequence, timestampMillis, sessionElapsedMillis, kind, label, message,
+            isPrivate, isTruncated, value, retention);
+    }
+    private BreadcrumbEvent(String id, String sessionId, long sequence, long timestampMillis, Long sessionElapsedMillis,
+                            Kind kind, String label, String message, boolean isPrivate, boolean isTruncated, Long value, Retention retention) {
+        this.id = id; this.sessionId = sessionId; this.sequence = sequence; this.timestampMillis = timestampMillis;
+        this.sessionElapsedMillis = sessionElapsedMillis; this.kind = kind; this.label = label; this.message = message;
+        this.isPrivate = isPrivate; this.isTruncated = isTruncated; this.value = value; this.retention = retention;
+        textByteCount = label.getBytes(StandardCharsets.UTF_8).length + (message == null ? 0 : message.getBytes(StandardCharsets.UTF_8).length);
+    }
+    private static boolean validUUID(String id) {
+        if (id == null || id.length() != 36) return false;
+        for (int i = 0; i < 36; i++) {
+            char c = id.charAt(i);
+            if (i == 8 || i == 13 || i == 18 || i == 23) { if (c != '-') return false; }
+            else if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return false;
+        }
+        return true;
+    }
+    private static IllegalArgumentException invalid() { return new IllegalArgumentException("Invalid retained breadcrumb"); }
 }

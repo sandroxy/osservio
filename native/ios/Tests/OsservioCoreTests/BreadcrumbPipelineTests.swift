@@ -4,6 +4,27 @@ import OsservioStore
 import XCTest
 
 final class BreadcrumbPipelineTests: XCTestCase {
+    func testRestorationPreservesEvidenceAndRejectsInvalidPersistedValues() throws {
+        var root = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { root.deleteLastPathComponent() }
+        let fixture = try String(contentsOf: root.appendingPathComponent("testing/breadcrumb-restoration.tsv"), encoding: .utf8)
+        for line in fixture.split(separator: "\n") {
+            let row = line.split(separator: "\t").map(String.init)
+            let message = row[4] == "~" ? "" : try XCTUnwrap(String(data: XCTUnwrap(Data(base64Encoded: row[4])), encoding: .utf8))
+            func restore() throws -> BreadcrumbEvent {
+                try BreadcrumbEvent.restore(id: row[1], sessionID: "12345678-1234-1234-1234-123456789abc",
+                    sequence: XCTUnwrap(Int64(row[2])), timestampMillis: Int64.min, sessionElapsedMillis: 9_007_199_254_740_993,
+                    kind: .hostMarker, label: row[3], message: message, isPrivate: row[5] == "true", isTruncated: row[6] == "true",
+                    value: Int64.min, retention: .restartRelevant)
+            }
+            if row[7] == "invalid" { XCTAssertThrowsError(try restore(), row[0]); continue }
+            let event = try restore()
+            XCTAssertEqual(event.id, row[1]); XCTAssertEqual(event.message, message); XCTAssertEqual(event.sequence, Int64(row[2]))
+            XCTAssertEqual(event.textByteCount, row[3].utf8.count + message.utf8.count)
+            XCTAssertEqual(event.timestampMillis, Int64.min); XCTAssertEqual(event.value, Int64.min)
+            XCTAssertEqual(event.sessionElapsedMillis, 9_007_199_254_740_993)
+        }
+    }
     private final class Clock: LogClock, @unchecked Sendable {
         var now: UInt64 = 0
         func wallTimeMillis() -> Int64 { 1_000 + Int64(now) }

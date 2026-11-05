@@ -4,7 +4,7 @@ Core provides compact breadcrumbs and typed environment snapshots. The optional
 `OsservioRuntime` / `osservio-runtime` modules supply explicit native lifecycle
 observers and one-shot device/application queries. They add no permissions,
 startup provider, view inspection, or framework dependency. Native viewers query
-these contracts through Core; breadcrumb storage is currently memory-only.
+these contracts through Core. Storage can be memory-only or explicitly persistent.
 
 ## Breadcrumbs
 
@@ -41,8 +41,10 @@ does not stop observation. These budgets are not measured production guarantees.
 
 Each event carries `memoryOnly` or `restartRelevant` retention intent. The default
 is memory-only; platform lifecycle observers request restart relevance. The
-current `MemoryBreadcrumbStore` persists **neither** kind. An accepted event is
-not proof of a durable write or of evidence surviving a crash.
+`MemoryBreadcrumbStore` persists **neither** kind. The optional
+`SQLiteBreadcrumbStore` queues restart-relevant events for bounded asynchronous
+commit. See [breadcrumb persistence](breadcrumb-storage.md). An accepted event
+is not proof of a durable write or of evidence surviving a crash.
 
 ## Native signals
 

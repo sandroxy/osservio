@@ -176,6 +176,8 @@ Attach `RuntimeInspectorView(activity, environment, breadcrumbRecorder,
 breadcrumbs)` with host-owned presentation and insets, or append `environment,
 breadcrumbRecorder, breadcrumbs` after the WebSocket arguments of
 `InspectorView`. Its Context section provides one-shot environment reads and a
-searchable breadcrumb timeline. History is memory-only, including events marked
-restart-relevant. See [runtime context](../../doc/runtime-context.md) for native
+searchable breadcrumb timeline. The example uses memory-only history. To retain
+selected contexts across launches, substitute `SQLiteBreadcrumbStore` as
+described in [breadcrumb persistence](../../doc/breadcrumb-storage.md). See
+[runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, and metric definitions.

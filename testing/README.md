@@ -48,6 +48,12 @@ truncation, and retention. Tests also verify baseline/detail/off transitions,
 shared sequence ordering, elapsed session time, rate windows, and bounded storage.
 Retention intent alone does not establish persistence.
 
+`breadcrumb-restoration.tsv` exercises the boundary for reconstructing sanitized
+evidence: name, event UUID, sequence, label, Base64 message (`~` for empty),
+privacy flag, truncation flag, and validity. Readers must not regenerate identity,
+truncate oversized persisted messages, or accept private fields containing raw
+text. This fixture describes native values, not a serialized archive format.
+
 `environment-values.tsv` covers typed facts, explicit unavailable/unsupported
 states, Unicode truncation, exact 64-bit integers, and invalid types/ranges.
 Columns are name, key, fact type, Base64 input, validity, Base64 expected display

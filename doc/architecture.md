@@ -11,6 +11,9 @@ Optional collectors observe host-owned OkHttp and URLSession requests. See
 [network coverage](network-integration.md) for current behavior.
 Baseline breadcrumbs, one-shot environment queries, and optional native runtime
 signals are described in [runtime context](runtime-context.md).
+Store also supplies opt-in [SQLite breadcrumb persistence](breadcrumb-storage.md)
+through Core's archive and status contracts, with independent live and durable
+retention. The local database is not a cross-platform interchange protocol.
 Native tabs expose logs, HTTP history, WebSocket connections, and runtime context
 without changing capture on presentation.
 The broader boundaries below do not establish implemented
@@ -152,8 +155,8 @@ prototypes. The log modules share text-boundary fixtures without introducing an
 interchange protocol prematurely. Core declares `LogSink` and `LogHistory`;
 Store implements them, UI consumes them, and the host wires the concrete store
 and recorder. The optional Runtime module supplies explicitly started lifecycle
-observers and one-shot environment queries; no durable journal or fatal crash
-backend is implemented yet.
+observers and one-shot environment queries. SQLite persistence accepts only
+sanitized restart-relevant breadcrumbs. No fatal crash backend is implemented yet.
 
 Publish a capability description for each supported runtime, network stack, and
 integration mode. It must identify prerequisites, available observations,

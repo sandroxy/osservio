@@ -65,7 +65,7 @@ public final class BreadcrumbRecorder {
             return Result.SINK_FAILURE;
         } catch (RuntimeException failure) { return Result.SINK_FAILURE; }
     }
-    private static boolean validLabel(String label) {
+    static boolean validLabel(String label) {
         if (label == null || label.isEmpty() || label.length() > 64) return false;
         for (int i = 0; i < label.length(); i++) {
             char value = label.charAt(i);

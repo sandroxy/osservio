@@ -135,8 +135,10 @@ breadcrumbRecorder, history: breadcrumbs)` in a navigation controller with
 host-owned dismissal. Alternatively, add `environment`, `breadcrumbRecorder`,
 and `breadcrumbHistory` arguments to the combined inspector's WebSocket
 initializer. Its Context tab provides environment snapshots and a searchable
-breadcrumb timeline. History is memory-only, including events marked as
-restart-relevant. See [runtime context](../../doc/runtime-context.md) for native
+breadcrumb timeline. The example uses memory-only history. To retain selected
+contexts across launches, substitute `SQLiteBreadcrumbStore` as described in
+[breadcrumb persistence](../../doc/breadcrumb-storage.md). See
+[runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, limits, and collector ownership.
 
 The package also declares a macOS target version so Core and Store tests can run
