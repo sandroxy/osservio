@@ -1,0 +1,16 @@
+"all" = "全部";
+"search" = "搜索日志内容或分类";
+"pauseView" = "暂停刷新";
+"resumeView" = "继续刷新";
+"clear" = "清空日志";
+"startCapture" = "开始采集";
+"stopCapture" = "停止采集";
+"capturing" = "采集中";
+"stopped" = "采集已停止";
+"summary" = "%@ · 保留 %ld 条\n已淘汰 %lld 条 · 已限流 %lld 条";
+"empty" = "暂无日志\n开始采集后，由宿主写入日志。";
+"noMatches" = "没有符合筛选条件的日志。";
+"truncated" = "内容已截断";
+"copy" = "复制日志内容";
+"busy" = "采集器正忙，请重试。";
+"ok" = "好";

@@ -1,0 +1,16 @@
+"all" = "All";
+"search" = "Search messages or categories";
+"pauseView" = "Pause view";
+"resumeView" = "Resume view";
+"clear" = "Clear logs";
+"startCapture" = "Start capture";
+"stopCapture" = "Stop capture";
+"capturing" = "Capturing";
+"stopped" = "Capture stopped";
+"summary" = "%@ · %ld retained\n%lld evicted · %lld rate-limited";
+"empty" = "No logs yet.\nStart capture and write a log from the host.";
+"noMatches" = "No logs match these filters.";
+"truncated" = "Truncated";
+"copy" = "Copy message";
+"busy" = "Recorder is busy. Try again.";
+"ok" = "OK";

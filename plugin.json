@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "osservio",
+  "displayName": "Osservio",
+  "version": "0.1.0-dev.0",
+  "repository": "https://github.com/sandroxy/osservio.git",
+  "native": {
+    "android": {
+      "group": "io.github.sandroxy",
+      "artifacts": ["osservio-core", "osservio-store", "osservio-ui"],
+      "minimumSdk": 23,
+      "compileSdk": 36
+    },
+    "ios": {
+      "modules": ["OsservioCore", "OsservioStore", "OsservioUI"],
+      "minimumVersion": "13.0"
+    }
+  }
+}

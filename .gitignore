@@ -1,0 +1,48 @@
+# Local operating-system and editor state
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.xcuserstate
+xcuserdata/
+
+# Dependencies and generated outputs
+node_modules/
+.gradle/
+.kotlin/
+.build/
+.swiftpm/
+build/
+dist/
+DerivedData/
+Pods/
+.expo/
+.dart_tool/
+unpackage/
+coverage/
+.cache/
+__pycache__/
+*.pyc
+
+# Local configuration, artifacts, and verification records
+local.properties
+*.local.json
+*.local.xcconfig
+*.local.properties
+*.local.plist
+.env
+.env.*
+!.env.example
+.artifacts/
+.acceptance-runs/
+.work/
+
+# Credentials and signing material
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+
+# Private development notes
+/doc/dev/

@@ -1,0 +1,21 @@
+<resources>
+    <string name="osservio_all">All levels</string>
+    <string name="osservio_level">Log level</string>
+    <string name="osservio_search">Search messages or categories</string>
+    <string name="osservio_pause">Pause view</string>
+    <string name="osservio_resume">Resume view</string>
+    <string name="osservio_clear">Clear logs</string>
+    <string name="osservio_start">Start capture</string>
+    <string name="osservio_stop">Stop capture</string>
+    <string name="osservio_capturing">Capturing</string>
+    <string name="osservio_stopped">Capture stopped</string>
+    <string name="osservio_summary">%1$s · Retained: %2$d\nEvicted: %3$d · Rate-limited: %4$d</string>
+    <string name="osservio_detail" translatable="false">%1$s · #%2$d\n%3$s\n%4$s</string>
+    <string name="osservio_metadata" translatable="false">%1$s · %2$s · %3$s%4$s</string>
+    <string name="osservio_empty">No logs yet.\nStart capture and write a log from the host.</string>
+    <string name="osservio_no_matches">No logs match these filters.</string>
+    <string name="osservio_truncated">Truncated</string>
+    <string name="osservio_copy">Copy message</string>
+    <string name="osservio_close">Close</string>
+    <string name="osservio_busy">Recorder is busy. Try again.</string>
+</resources>

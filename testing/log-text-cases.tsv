@@ -1,0 +1,7 @@
+empty	public	9			false
+exact	public	9	MTIzNDU2Nzg5	MTIzNDU2Nzg5	false
+ascii-cut	public	9	MTIzNDU2Nzg5MA==	MTIzNDU2Nzg5	true
+private	private	9	dG9rZW49c3ludGhldGljLXNlY3JldA==	W3ByaXZhdGVd	false
+unicode-fit	public	10	5L2g5aW98J+Zgg==	5L2g5aW98J+Zgg==	false
+unicode-cut	public	9	5L2g5aW98J+Zglg=	5L2g5aW9	true
+combining	public	9	YWFhYWFhYWFlzIE=	YWFhYWFhYWFl	true

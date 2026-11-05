@@ -1,0 +1,19 @@
+<resources>
+    <string name="osservio_all">全部级别</string>
+    <string name="osservio_level">日志级别</string>
+    <string name="osservio_search">搜索日志内容或分类</string>
+    <string name="osservio_pause">暂停刷新</string>
+    <string name="osservio_resume">继续刷新</string>
+    <string name="osservio_clear">清空日志</string>
+    <string name="osservio_start">开始采集</string>
+    <string name="osservio_stop">停止采集</string>
+    <string name="osservio_capturing">采集中</string>
+    <string name="osservio_stopped">采集已停止</string>
+    <string name="osservio_summary">%1$s · 保留 %2$d 条\n已淘汰 %3$d 条 · 已限流 %4$d 条</string>
+    <string name="osservio_empty">暂无日志\n开始采集后，由宿主写入日志。</string>
+    <string name="osservio_no_matches">没有符合筛选条件的日志。</string>
+    <string name="osservio_truncated">内容已截断</string>
+    <string name="osservio_copy">复制日志内容</string>
+    <string name="osservio_close">关闭</string>
+    <string name="osservio_busy">采集器正忙，请重试。</string>
+</resources>

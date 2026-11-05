@@ -1,0 +1,24 @@
+import groovy.json.JsonSlurper
+
+plugins { id "com.android.library" version "8.12.3" apply false }
+
+def manifest = new JsonSlurper().parse(file("../../plugin.json"))
+subprojects {
+    apply plugin: "com.android.library"
+    group = manifest.native.android.group
+    version = manifest.version
+    android {
+        namespace = "com.sandrox." + project.name.replace('-', '.')
+        compileSdk = manifest.native.android.compileSdk
+        defaultConfig { minSdk = manifest.native.android.minimumSdk }
+        compileOptions { sourceCompatibility = JavaVersion.VERSION_11; targetCompatibility = JavaVersion.VERSION_11 }
+        lint {
+            warningsAsErrors = true
+            // Toolchain upgrades are validated with the native consumer, not selected by release notices.
+            disable "AndroidGradlePluginVersion"
+        }
+    }
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs.addAll(["-Xlint:all", "-Werror"])
+    }
+}

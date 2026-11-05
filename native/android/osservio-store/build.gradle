@@ -1,0 +1,7 @@
+dependencies {
+    api project(":osservio-core")
+    testImplementation "junit:junit:4.13.2"
+}
+android.testOptions.unitTests.all {
+    systemProperty "osservio.fixtures", rootProject.file("../../testing").absolutePath
+}
