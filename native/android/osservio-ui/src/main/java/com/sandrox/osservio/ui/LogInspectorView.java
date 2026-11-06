@@ -2,8 +2,6 @@ package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,7 +17,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -203,21 +200,7 @@ public final class LogInspectorView extends LinearLayout {
 
     private void showDetail(LogEvent event) {
         if (detail != null) return;
-        TextView text = new TextView(getContext());
-        text.setTextAppearance(android.R.style.TextAppearance_Material_Body1);
-        text.setTextIsSelectable(true);
-        text.setPadding(dp(20), dp(12), dp(20), dp(20));
-        String marker = event.isTruncated ? getContext().getString(R.string.osservio_truncated) + "\n" : "";
-        text.setText(getContext().getString(R.string.osservio_detail,
-            event.level.name(), event.sequence, marker, event.message));
-        ScrollView scroll = new ScrollView(getContext());
-        scroll.addView(text);
-        detail = new AlertDialog.Builder(getContext()).setTitle(event.category).setView(scroll)
-            .setNegativeButton(R.string.osservio_close, null)
-            .setPositiveButton(R.string.osservio_copy, (dialog, which) -> {
-                ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
-                if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", event.message));
-            }).create();
+        detail = LogDetailDialog.create(getContext(), event);
         detail.setOnDismissListener(dialog -> detail = null);
         detail.show();
     }

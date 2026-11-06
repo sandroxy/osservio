@@ -34,4 +34,18 @@
     <string name="osservio_incident_delete_confirmation">This permanently deletes the selected problem snapshots and their attachments. Live histories and saved breadcrumb runs remain available.</string>
     <string name="osservio_incident_counts">Breadcrumbs: %1$d · Not included: %2$d · Evicted earlier: %3$d</string>
     <string name="osservio_incident_status">%1$s · This store · Snapshots queued: %2$d · Saved: %3$d · Not saved: %4$d</string>
+    <string name="osservio_incident_evidence_title">Logs and network activity</string>
+    <string name="osservio_incident_evidence_search">Search log text, URLs, or connection IDs</string>
+    <string name="osservio_incident_evidence_time">Window observed at: %1$s</string>
+    <string name="osservio_incident_evidence_counts">Included: %1$d · Not included: %2$d · Evicted earlier: %3$d</string>
+    <string name="osservio_incident_evidence_payload_evicted">Body evictions reported by the source: %1$d</string>
+    <string name="osservio_incident_evidence_empty">No events in this attached window.</string>
+    <string name="osservio_incident_frozen_detail">Saved evidence. It does not refresh from live activity.</string>
+    <string name="osservio_incident_payload_missing">Content is missing from this snapshot.</string>
+    <string name="osservio_incident_payload_not_selected">This content was not selected for the snapshot.</string>
+    <string name="osservio_incident_payload_unavailable">This content was unavailable when the snapshot was prepared.</string>
+    <string name="osservio_incident_payload_busy">The content store was busy when the snapshot was prepared; this content was not copied.</string>
+    <string name="osservio_incident_payload_budget">This content exceeded the snapshot content budget and was not copied.</string>
+    <string name="osservio_incident_attachment_count">%1$s · %2$s</string>
+    <string name="osservio_log_evidence_detail">%1$s\n%2$s: %3$s\n%4$s</string>
 </resources>

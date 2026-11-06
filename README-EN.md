@@ -50,8 +50,8 @@ deletion. Marking freezes the time and breadcrumb window; failed saves preserve
 the draft for retry. The editor excludes description text by default. Opted-in
 text is public diagnostic content and is not automatically scrubbed for secrets.
 Native APIs also save bounded log, HTTP, and WebSocket attachments, with network
-content included only by explicit choice. Those attachments are not yet exposed
-in the Problems view. Snapshots have independent count, age, and storage limits;
+content included only by explicit choice. Saved attachments can be browsed, searched, and inspected in the Problems view;
+the composer does not yet offer their selection controls. Snapshots have independent count, age, and storage limits;
 export is not implemented yet. See [manual problem snapshots](doc/incidents.md).
 
 Automatic system-log and crash capture, global network interception, incident

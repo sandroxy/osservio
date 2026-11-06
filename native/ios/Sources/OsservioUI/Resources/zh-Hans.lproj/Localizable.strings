@@ -254,3 +254,15 @@
 "incident_delete_confirmation" = "这会永久删除选中的问题快照及其附件。实时历史和按次运行留存的线索不受影响。";
 "incident_counts" = "运行线索：%1$d · 未附带：%2$d · 此前已淘汰：%3$lld";
 "incident_status" = "%1$@ · 本次存储实例 · 等待保存：%2$d · 已保存：%3$lld · 未保存：%4$lld";
+"incident_evidence_title" = "日志与网络记录";
+"incident_evidence_search" = "搜索日志内容、网址或连接 ID";
+"incident_evidence_time" = "窗口观测时间：%@";
+"incident_evidence_counts" = "已附带：%1$d · 未附带：%2$d · 此前已淘汰：%3$lld";
+"incident_evidence_payload_evicted" = "来源记录的正文淘汰次数：%lld";
+"incident_evidence_empty" = "附带的窗口中没有记录。";
+"incident_frozen_detail" = "这是已保存的证据，不会随实时活动刷新。";
+"incident_payload_missing" = "这份快照中缺少正文。";
+"incident_payload_not_selected" = "保存快照时未选择附带这段正文。";
+"incident_payload_unavailable" = "准备快照时，这段正文已不可用。";
+"incident_payload_busy" = "准备快照时正文存储正忙，未能复制这段正文。";
+"incident_payload_budget" = "这段正文超出了快照的正文容量限制，未被复制。";

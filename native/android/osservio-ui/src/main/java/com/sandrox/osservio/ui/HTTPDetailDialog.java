@@ -16,12 +16,15 @@ import com.sandrox.osservio.core.HTTPEvent;
 import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.HTTPRecorder;
 import com.sandrox.osservio.core.HTTPSnapshot;
+import com.sandrox.osservio.core.IncidentPayload;
+import java.util.Map;
 
 /** One dialog owns one immutable detail snapshot. Refresh is explicit, so reading never jumps. */
 final class HTTPDetailDialog {
     private final Context context;
     private final HTTPHistory history;
     private final HTTPRecorder recorder;
+    private final Map<String, IncidentPayload> savedPayloads;
     private HTTPEvent event;
     private String notice = "";
     private final TextView text;
@@ -30,7 +33,14 @@ final class HTTPDetailDialog {
     final AlertDialog dialog;
 
     HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, HTTPRecorder recorder) {
-        this.context = context; this.event = event; this.history = history; this.recorder = recorder;
+        this(context, event, history, recorder, null);
+    }
+    HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads) {
+        this(context, event, null, null, savedPayloads);
+    }
+    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, HTTPRecorder recorder, Map<String, IncidentPayload> savedPayloads) {
+        this.context = context; this.event = event; this.history = history; this.recorder = recorder; this.savedPayloads = savedPayloads;
+        if (savedPayloads != null) notice = context.getString(R.string.osservio_incident_frozen_detail);
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         int inset = Math.round(16 * context.getResources().getDisplayMetrics().density);
@@ -50,16 +60,17 @@ final class HTTPDetailDialog {
         scroll = new ScrollView(context);
         scroll.addView(text);
         content.addView(scroll, new LinearLayout.LayoutParams(-1, -1));
-        dialog = new AlertDialog.Builder(context).setTitle(event.method).setView(content)
+        AlertDialog.Builder builder = new AlertDialog.Builder(context).setTitle(event.method).setView(content)
             .setNegativeButton(R.string.osservio_close, null)
-            .setNeutralButton(R.string.osservio_http_refresh, null)
-            .setPositiveButton(R.string.osservio_http_copy, null).create();
+            .setPositiveButton(R.string.osservio_http_copy, null);
+        if (history != null) builder.setNeutralButton(R.string.osservio_http_refresh, null);
+        dialog = builder.create();
         section.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { render(); }
             @Override public void onNothingSelected(AdapterView<?> parent) { }
         });
         dialog.setOnShowListener(ignored -> {
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> refresh());
+            if (history != null) dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> refresh());
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
                 ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
                 if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", text.getText()));
@@ -68,6 +79,7 @@ final class HTTPDetailDialog {
         });
     }
     private void refresh() {
+        if (history == null) { render(); return; }
         recorder.maintenance();
         HTTPSnapshot snapshot = history.snapshot();
         notice = context.getString(snapshot == null ? R.string.osservio_http_stale : R.string.osservio_http_missing);
@@ -81,9 +93,9 @@ final class HTTPDetailDialog {
     private void render() {
         boolean body = section.getSelectedItemPosition() != 0;
         text.setTypeface(body ? Typeface.MONOSPACE : Typeface.DEFAULT);
-        String content = body ? HTTPPresentation.body(context,
-            section.getSelectedItemPosition() == 1 ? event.requestBody : event.responseBody, history)
-            : HTTPPresentation.overview(context, event);
+        HTTPEvent.BodyReference reference = section.getSelectedItemPosition() == 1 ? event.requestBody : event.responseBody;
+        String content = !body ? HTTPPresentation.overview(context, event) : savedPayloads != null
+            ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
         text.setText(notice.isEmpty() ? content : context.getString(R.string.osservio_http_notice, notice, content));
         scroll.scrollTo(0, 0);
     }

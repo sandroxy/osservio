@@ -162,8 +162,9 @@ initializer. Problems provides an explicit composer and immutable archive browse
 Marking freezes the current context; saving is explicit, and failure retains the
 draft. Description text requires an explicit opt-in and must be safe to store.
 The UI uses Core contracts and does not own or close the supplied archive. The
-composer and browser currently expose notes, environment information, and
-breadcrumbs; saved log/network attachments are available through the archive API.
+browser also exposes saved log/network attachments, metadata search, and saved
+body states without live refresh. The composer currently selects notes,
+environment information, and breadcrumbs.
 Export is not implemented yet.
 
 The package also declares a macOS target version so Core and Store tests can run

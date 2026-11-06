@@ -34,8 +34,7 @@ enum WebSocketPresentation {
     }
     static func payload(_ reference: WebSocketPayloadReference?, history: any WebSocketHistory) -> String {
         guard let reference else { return text("ws_no_payload") }
-        var result = text("ws_payload_" + reference.state.rawValue)
-        result += "\n" + text("ws_bytes") + ": " + (reference.byteCount.map(String.init) ?? text("http_none"))
+        var result = payloadDescription(reference)
         guard let id = reference.blobID else { return result }
         switch history.payload(id: id) {
         case .available(let payload): result += "\n\n" + (payload.text.isEmpty ? text("http_body_empty") : payload.text)
@@ -43,5 +42,12 @@ enum WebSocketPresentation {
         case .busy: result += "\n\n" + text("http_body_busy")
         }
         return result
+    }
+    static func payload(_ reference: WebSocketPayloadReference?, savedPayloads: [String: IncidentPayload]) -> String {
+        guard let reference else { return text("ws_no_payload") }
+        return payloadDescription(reference) + (reference.blobID.map { "\n\n" + IncidentPayloadPresentation.content(savedPayloads[$0]) } ?? "")
+    }
+    private static func payloadDescription(_ reference: WebSocketPayloadReference) -> String {
+        text("ws_payload_" + reference.state.rawValue) + "\n" + text("ws_bytes") + ": " + (reference.byteCount.map(String.init) ?? text("http_none"))
     }
 }

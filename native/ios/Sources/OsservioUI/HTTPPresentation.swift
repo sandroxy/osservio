@@ -56,8 +56,7 @@ enum HTTPPresentation {
     }
 
     static func body(_ reference: HTTPBodyReference, history: any HTTPHistory) -> String {
-        let key = reference.state == .invalidText ? "invalid_text" : reference.state.rawValue
-        var result = text("http_body_" + key) + "\n" + text("http_observed_bytes") + ": \(reference.observedBytes)"
+        var result = bodyDescription(reference)
         guard let id = reference.blobID else { return result }
         switch history.body(id: id) {
         case .available(let body): result += "\n\n" + (body.text.isEmpty ? text("http_body_empty") : body.text)
@@ -65,5 +64,12 @@ enum HTTPPresentation {
         case .busy: result += "\n\n" + text("http_body_busy")
         }
         return result
+    }
+    static func body(_ reference: HTTPBodyReference, savedPayloads: [String: IncidentPayload]) -> String {
+        bodyDescription(reference) + (reference.blobID.map { "\n\n" + IncidentPayloadPresentation.content(savedPayloads[$0]) } ?? "")
+    }
+    private static func bodyDescription(_ reference: HTTPBodyReference) -> String {
+        let key = reference.state == .invalidText ? "invalid_text" : reference.state.rawValue
+        return text("http_body_" + key) + "\n" + text("http_observed_bytes") + ": \(reference.observedBytes)"
     }
 }

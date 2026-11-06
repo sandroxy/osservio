@@ -175,17 +175,23 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
 }
 
 @MainActor
-private final class HTTPDetailViewController: UIViewController {
+final class HTTPDetailViewController: UIViewController {
     private var event: HTTPEvent
-    private let history: any HTTPHistory
-    private let recorder: HTTPRecorder
+    private let history: (any HTTPHistory)?
+    private let recorder: HTTPRecorder?
+    private let savedPayloads: [String: IncidentPayload]?
     private let text = UITextView()
     private let section = UISegmentedControl(items: [HTTPPresentation.text("http_overview"),
         HTTPPresentation.text("http_request_body"), HTTPPresentation.text("http_response_body")])
     private var notice = ""
 
     init(event: HTTPEvent, history: any HTTPHistory, recorder: HTTPRecorder) {
-        self.event = event; self.history = history; self.recorder = recorder
+        self.event = event; self.history = history; self.recorder = recorder; savedPayloads = nil
+        super.init(nibName: nil, bundle: nil)
+    }
+    init(event: HTTPEvent, savedPayloads: [String: IncidentPayload]) {
+        self.event = event; self.savedPayloads = savedPayloads; history = nil; recorder = nil
+        notice = HTTPPresentation.text("incident_frozen_detail")
         super.init(nibName: nil, bundle: nil)
     }
     @available(*, unavailable)
@@ -209,14 +215,17 @@ private final class HTTPDetailViewController: UIViewController {
             stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8)
         ])
         navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(title: HTTPPresentation.text("http_copy"), style: .plain, target: self, action: #selector(copyText)),
-            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
+            UIBarButtonItem(title: HTTPPresentation.text("http_copy"), style: .plain, target: self, action: #selector(copyText))
         ]
-        navigationItem.rightBarButtonItems?.last?.accessibilityLabel = HTTPPresentation.text("http_refresh")
+        if history != nil {
+            let refresh = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
+            refresh.accessibilityLabel = HTTPPresentation.text("http_refresh"); navigationItem.rightBarButtonItems?.append(refresh)
+        }
         refresh()
     }
     @objc private func refresh() {
-        recorder.maintenance()
+        guard let history else { render(); return }
+        recorder?.maintenance()
         if let snapshot = history.snapshot() {
             if let current = snapshot.events.first(where: { $0.id == event.id }) { event = current; notice = "" }
             else { notice = HTTPPresentation.text("http_missing") }
@@ -227,8 +236,12 @@ private final class HTTPDetailViewController: UIViewController {
         let body = section.selectedSegmentIndex != 0
         text.font = body ? UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 15, weight: .regular))
             : .preferredFont(forTextStyle: .body)
-        let content = body ? HTTPPresentation.body(section.selectedSegmentIndex == 1 ? event.requestBody : event.responseBody,
-                                                   history: history) : HTTPPresentation.overview(event)
+        let content: String
+        let reference = section.selectedSegmentIndex == 1 ? event.requestBody : event.responseBody
+        if !body { content = HTTPPresentation.overview(event) }
+        else if let savedPayloads { content = HTTPPresentation.body(reference, savedPayloads: savedPayloads) }
+        else if let history { content = HTTPPresentation.body(reference, history: history) }
+        else { content = HTTPPresentation.text("incident_payload_missing") }
         text.text = (notice.isEmpty ? "" : notice + "\n\n") + content
         text.setContentOffset(.zero, animated: false)
     }

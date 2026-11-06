@@ -203,7 +203,7 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
 }
 
 @MainActor
-private final class LogDetailViewController: UIViewController {
+final class LogDetailViewController: UIViewController {
     private let event: LogEvent
     init(event: LogEvent) { self.event = event; super.init(nibName: nil, bundle: nil) }
     @available(*, unavailable)
@@ -219,7 +219,10 @@ private final class LogDetailViewController: UIViewController {
         text.backgroundColor = .systemBackground
         text.textColor = .label
         text.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
-        text.text = "\(event.level.rawValue.uppercased()) · #\(event.sequence)\n"
+        text.text = RuntimePresentation.date(event.timestampMillis) + "\n"
+            + HTTPPresentation.text("http_session") + ": " + event.sessionID + "\n"
+            + "\(event.level.rawValue.uppercased()) · #\(event.sequence)\n"
+            + (event.isPrivate ? RuntimePresentation.text("crumb_private") + "\n" : "")
             + (event.isTruncated ? copyText("truncated") + "\n" : "") + "\n" + event.message
         view = text
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: copyText("copy"), style: .plain,

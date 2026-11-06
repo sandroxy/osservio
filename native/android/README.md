@@ -202,6 +202,7 @@ Alternatively, pass `incidents` after the optional breadcrumb archive in the ful
 `InspectorView` constructor to add Problems. Marking freezes the current context;
 saving is explicit, and failure retains the draft. Description text requires an
 explicit opt-in and must be safe to store. The view uses Core contracts and does
-not own or close the supplied archive. The composer and browser currently expose
-notes, environment information, and breadcrumbs; saved log/network attachments
-are available through the archive API. Export is not implemented yet.
+not own or close the supplied archive. The browser also exposes saved log/network
+attachments, metadata search, and saved body states without live refresh. The
+composer currently selects notes, environment information, and breadcrumbs.
+Export is not implemented yet.

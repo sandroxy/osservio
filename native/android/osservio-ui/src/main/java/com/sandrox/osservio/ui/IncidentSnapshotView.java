@@ -34,6 +34,7 @@ final class IncidentSnapshotView extends LinearLayout {
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
     private AlertDialog detail;
+    private IncidentEvidenceView evidence;
 
     IncidentSnapshotView(Context context, IncidentSnapshot snapshot, Runnable goBack, Runnable deleteSnapshot) {
         super(context); this.snapshot = snapshot; setOrientation(VERTICAL);
@@ -62,6 +63,13 @@ final class IncidentSnapshotView extends LinearLayout {
         environment.setOnClickListener(view -> { if (snapshot.environment != null) showText(R.string.osservio_runtime_environment, RuntimePresentation.environment(context, snapshot.environment)); });
         header.addView(environment, new LayoutParams(-1, -2));
         header.addView(caption(snapshot.environment == null ? context.getString(R.string.osservio_incident_not_attached) : RuntimePresentation.date(snapshot.environment.timestampMillis)), new LayoutParams(-1, -2));
+        header.addView(caption(context.getString(R.string.osservio_incident_evidence_title)), new LayoutParams(-1, -2));
+        attachment(header, context.getString(R.string.osservio_logs), snapshot.logs == null ? null : snapshot.logs.events.size(),
+            () -> openEvidence(new IncidentEvidenceView(context, snapshot.logs, this::closeEvidence)));
+        attachment(header, "HTTP", snapshot.http == null ? null : snapshot.http.events.size(),
+            () -> openEvidence(new IncidentEvidenceView(context, snapshot.http, this::closeEvidence)));
+        attachment(header, context.getString(R.string.osservio_ws_title), snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
+            () -> openEvidence(new IncidentEvidenceView(context, snapshot.webSockets, this::closeEvidence)));
         header.addView(caption(IncidentPresentation.counts(context, snapshot.breadcrumbs)), new LayoutParams(-1, -2));
         list.addHeaderView(header, null, false);
         footer = caption(""); list.addFooterView(footer, null, false); list.setAdapter(rows);
@@ -82,8 +90,28 @@ final class IncidentSnapshotView extends LinearLayout {
         status.setText(busy ? getContext().getString(R.string.osservio_archive_deleting) : "");
     }
     void error(String message) { status.setText(message); }
-    void dismissDialogs() { if (detail != null) detail.dismiss(); }
+    void dismissDialogs() { if (detail != null) detail.dismiss(); if (evidence != null) evidence.dismissDialogs(); }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
+    private void attachment(LinearLayout header, String title, Integer count, Runnable open) {
+        Button button = new Button(getContext()); button.setText(getContext().getString(R.string.osservio_incident_attachment_count, title, IncidentPresentation.count(getContext(), count)));
+        button.setAllCaps(false); button.setMinHeight(dp(48)); button.setEnabled(count != null);
+        button.setOnClickListener(view -> open.run()); header.addView(button, new LayoutParams(-1, -2));
+    }
+    private void openEvidence(IncidentEvidenceView selected) {
+        hideKeyboard();
+        for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(GONE);
+        evidence = selected; addView(evidence, new LayoutParams(-1, -1));
+    }
+    private void closeEvidence() {
+        hideKeyboard();
+        if (evidence != null) { removeView(evidence); evidence = null; }
+        for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(VISIBLE);
+    }
+    private void hideKeyboard() {
+        View focused = findFocus(); if (focused != null) focused.clearFocus();
+        android.view.inputmethod.InputMethodManager keyboard = getContext().getSystemService(android.view.inputmethod.InputMethodManager.class);
+        if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
+    }
     private void filter() {
         events.clear(); String query = search.getText().toString().toLowerCase(Locale.ROOT);
         if (snapshot.breadcrumbs != null) for (int i = snapshot.breadcrumbs.events.size() - 1; i >= 0; i--) {

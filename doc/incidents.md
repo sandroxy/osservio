@@ -8,9 +8,9 @@ implicitly when a snapshot is made or saved.
 
 This API records a manual observation. It is not a crash detector, and the
 snapshot's existence does not establish a failure or its cause. All attachments
-can be saved through native APIs. The optional native composer and browser
-currently expose notes, environment information, and breadcrumbs; log and network
-attachments are not yet exposed by those views. Export is not implemented.
+can be saved through native APIs and inspected in the native browser. The
+composer currently selects notes, environment information, and breadcrumbs;
+log and network selection controls are not yet available. Export is not implemented.
 
 ## Evidence and privacy
 
@@ -104,8 +104,13 @@ successful save is reported only after the archive completes its commit.
 
 The browser reads summaries on entry or explicit refresh, with a read time and
 per-instance storage status. It does not continuously poll the database. Details
-are immutable: environment inspection and breadcrumb search never query live
-sources again. Copy actions use the displayed sanitized evidence. Individual
+are immutable: environment inspection, event search, and network details never
+query live sources again. Log, HTTP, and WebSocket groups show their observation
+times, retained and omitted counts, and source eviction counters. Missing groups
+and attached empty windows remain distinct. Search covers log text and network
+metadata, not body content. Body sections distinguish empty text from unselected,
+unavailable, busy, or over-budget content, and have no live refresh control.
+Copy actions use the displayed sanitized evidence. Individual
 and all-snapshot deletion require a native confirmation; cancelling leaves the
 archive untouched. iOS exposes individual deletion as a list-row swipe action;
 Android also offers it from the snapshot detail.

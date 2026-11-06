@@ -194,16 +194,22 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
 }
 
 @MainActor
-private final class WebSocketDetailViewController: UIViewController {
+final class WebSocketDetailViewController: UIViewController {
     private var event: WebSocketEvent
-    private let history: any WebSocketHistory
+    private let history: (any WebSocketHistory)?
+    private let savedPayloads: [String: IncidentPayload]?
     private let text = UITextView()
     private let section = UISegmentedControl(items: [WebSocketPresentation.text("http_overview"),
         WebSocketPresentation.text("ws_payload")])
     private var notice = ""
 
     init(event: WebSocketEvent, history: any WebSocketHistory) {
-        self.event = event; self.history = history
+        self.event = event; self.history = history; savedPayloads = nil
+        super.init(nibName: nil, bundle: nil)
+    }
+    init(event: WebSocketEvent, savedPayloads: [String: IncidentPayload]) {
+        self.event = event; self.savedPayloads = savedPayloads; history = nil
+        notice = WebSocketPresentation.text("incident_frozen_detail")
         super.init(nibName: nil, bundle: nil)
     }
     @available(*, unavailable)
@@ -227,13 +233,16 @@ private final class WebSocketDetailViewController: UIViewController {
             stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8)
         ])
         navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(title: WebSocketPresentation.text("http_copy"), style: .plain, target: self, action: #selector(copyText)),
-            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
+            UIBarButtonItem(title: WebSocketPresentation.text("http_copy"), style: .plain, target: self, action: #selector(copyText))
         ]
-        navigationItem.rightBarButtonItems?.last?.accessibilityLabel = WebSocketPresentation.text("http_refresh")
+        if history != nil {
+            let refresh = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
+            refresh.accessibilityLabel = WebSocketPresentation.text("http_refresh"); navigationItem.rightBarButtonItems?.append(refresh)
+        }
         refresh()
     }
     @objc private func refresh() {
+        guard let history else { render(); return }
         if let snapshot = history.snapshot() {
             if let current = snapshot.events.first(where: { $0.id == event.id }) { event = current; notice = "" }
             else { notice = WebSocketPresentation.text("ws_missing") }
@@ -244,7 +253,11 @@ private final class WebSocketDetailViewController: UIViewController {
         let body = section.selectedSegmentIndex != 0
         text.font = body ? UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 15, weight: .regular))
             : .preferredFont(forTextStyle: .body)
-        let content = body ? WebSocketPresentation.payload(event.payload, history: history) : WebSocketPresentation.overview(event)
+        let content: String
+        if !body { content = WebSocketPresentation.overview(event) }
+        else if let savedPayloads { content = WebSocketPresentation.payload(event.payload, savedPayloads: savedPayloads) }
+        else if let history { content = WebSocketPresentation.payload(event.payload, history: history) }
+        else { content = WebSocketPresentation.text("incident_payload_missing") }
         text.text = (notice.isEmpty ? "" : notice + "\n\n") + content
         text.setContentOffset(.zero, animated: false)
     }

@@ -4,8 +4,10 @@ import android.content.Context;
 import com.sandrox.osservio.core.WebSocketEvent;
 import com.sandrox.osservio.core.WebSocketHistory;
 import com.sandrox.osservio.core.HTTPHeader;
+import com.sandrox.osservio.core.IncidentPayload;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.Map;
 
 /** Metadata rows never load payloads. Content lookup is explicit in the detail view. */
 final class WebSocketPresentation {
@@ -93,7 +95,7 @@ final class WebSocketPresentation {
         text.append("\n\n").append(context.getString(key)).append(": ")
             .append(value == null ? context.getString(R.string.osservio_http_none) : value);
     }
-    static String payload(Context context, WebSocketEvent.PayloadReference reference, WebSocketHistory history) {
+    private static String payloadDescription(Context context, WebSocketEvent.PayloadReference reference) {
         if (reference == null) return context.getString(R.string.osservio_ws_no_payload);
         int key;
         switch (reference.state) {
@@ -104,8 +106,15 @@ final class WebSocketPresentation {
             case INVALID_TEXT: key = R.string.osservio_ws_payload_invalid_text; break;
             default: throw new IllegalArgumentException("Unknown WebSocket payload state");
         }
-        String result = context.getString(key) + "\n" + context.getString(R.string.osservio_ws_bytes) + ": "
+        return context.getString(key) + "\n" + context.getString(R.string.osservio_ws_bytes) + ": "
             + (reference.byteCount == null ? context.getString(R.string.osservio_http_none) : reference.byteCount);
+    }
+    static String payload(Context context, WebSocketEvent.PayloadReference reference, Map<String, IncidentPayload> savedPayloads) {
+        return payloadDescription(context, reference) + (reference == null || reference.blobId == null ? "" : "\n\n" + IncidentPayloadPresentation.content(context, savedPayloads.get(reference.blobId)));
+    }
+    static String payload(Context context, WebSocketEvent.PayloadReference reference, WebSocketHistory history) {
+        String result = payloadDescription(context, reference);
+        if (reference == null) return result;
         if (reference.blobId == null) return result;
         WebSocketHistory.PayloadLookup lookup = history.payload(reference.blobId);
         switch (lookup.state) {

@@ -4,9 +4,11 @@ import android.content.Context;
 import com.sandrox.osservio.core.HTTPEvent;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.HTTPHistory;
+import com.sandrox.osservio.core.IncidentPayload;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /** Text is built only from admitted metadata or an explicit body lookup. */
 final class HTTPPresentation {
@@ -82,7 +84,7 @@ final class HTTPPresentation {
         if (headers.isEmpty()) text.append(context.getString(R.string.osservio_http_none));
         for (HTTPHeader header : headers) text.append(header.name).append(": ").append(header.value).append('\n');
     }
-    static String body(Context context, HTTPEvent.BodyReference reference, HTTPHistory history) {
+    private static String bodyDescription(Context context, HTTPEvent.BodyReference reference) {
         int key;
         switch (reference.state) {
             case PENDING: key = R.string.osservio_http_body_pending; break;
@@ -94,8 +96,14 @@ final class HTTPPresentation {
             case TRUNCATED: key = R.string.osservio_http_body_truncated; break;
             default: throw new IllegalArgumentException("Unknown body state");
         }
-        String result = context.getString(key) + "\n" + context.getString(R.string.osservio_http_observed_bytes)
+        return context.getString(key) + "\n" + context.getString(R.string.osservio_http_observed_bytes)
             + ": " + reference.observedBytes;
+    }
+    static String body(Context context, HTTPEvent.BodyReference reference, Map<String, IncidentPayload> savedPayloads) {
+        return bodyDescription(context, reference) + (reference.blobId == null ? "" : "\n\n" + IncidentPayloadPresentation.content(context, savedPayloads.get(reference.blobId)));
+    }
+    static String body(Context context, HTTPEvent.BodyReference reference, HTTPHistory history) {
+        String result = bodyDescription(context, reference);
         if (reference.blobId == null) return result;
         HTTPHistory.BodyLookup lookup = history.body(reference.blobId);
         switch (lookup.state) {
