@@ -22,7 +22,8 @@ payload selection. Native composers freeze metadata and optionally copy referenc
 content once. The immutable browser exposes these attachments. Optional Export
 modules encode them into [portable JSON documents](../protocol/README.md) and
 prepare [bounded temporary ZIP files](incident-export.md) through Core's export
-port. Native sharing remains unimplemented.
+port. An optional host-owned exporter enables explicit native system sharing of
+saved evidence; UI depends on Core and rejects stale preparation callbacks.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

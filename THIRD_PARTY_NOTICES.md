@@ -42,3 +42,19 @@ uses its bounded data-provider and extraction APIs for two fixed entries, with
 cancellation checks and readback verification before exposing an export. Other
 Osservio products do not link ZIPFoundation. Android Export uses the platform
 `java.util.zip` implementation instead.
+
+## AndroidX Core
+
+The optional Android Export module uses AndroidX Core 1.17.0's FileProvider,
+copyright the Android Open Source Project and its contributors, under the Apache
+License, Version 2.0. See [the license text](licenses/AndroidX-Core-Apache-2.0.txt),
+[the exact upstream source artifact](https://dl.google.com/dl/android/maven2/androidx/core/core/1.17.0/core-1.17.0-sources.jar),
+and [the FileProvider contract](https://developer.android.com/reference/androidx/core/content/FileProvider).
+No modified or vendored upstream source is distributed here. The module AAR
+declares a dependency rather than embedding AndroidX classes.
+
+Osservio subclasses FileProvider to restrict operations to completed read-only
+exports. AndroidX owns canonical path containment and URI resolution. The module
+lockfile records the resolved AndroidX, Kotlin, and other transitive dependencies;
+applications distributing them must retain their corresponding notices. Runtime
+and manifest implications are described in [file export](doc/incident-export.md).

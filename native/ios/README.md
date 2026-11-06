@@ -171,7 +171,10 @@ For portable JSON encoding, link the optional `OsservioExport` product and call
 `IncidentDocuments.encode(snapshot)` on a background worker. It encodes only the
 frozen snapshot. For asynchronous ZIP preparation, use `IncidentFileExporter`
 with a dedicated private cache directory; see [file export](../../doc/incident-export.md).
-This optional product links ZIPFoundation. Native inspector sharing is not connected yet.
+This optional product links ZIPFoundation. Pass `incidentExporter: exporter` to
+the full combined inspector, or `exporter: exporter` to the standalone problem
+inspector, to enable system sharing of a saved snapshot. The UI does not own or
+close the exporter. Preparation is cancellable and never refreshes saved evidence.
 See [incident documents](../../protocol/README.md) for format, bounds, and errors.
 
 The package also declares a macOS target version so Core and Store tests can run

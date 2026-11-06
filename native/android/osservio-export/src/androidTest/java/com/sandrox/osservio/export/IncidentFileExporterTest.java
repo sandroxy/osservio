@@ -1,8 +1,15 @@
 package com.sandrox.osservio.export;
 
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.pm.ProviderInfo;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.system.Os;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.core.content.FileProvider;
 import com.sandrox.osservio.core.*;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -10,6 +17,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -27,11 +35,12 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public final class IncidentFileExporterTest {
+    private final Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     private File root;
     private final List<IncidentFileExporter> exporters = new ArrayList<>();
     @Before public void createFixtureDirectory() throws Exception {
-        root = new File(InstrumentationRegistry.getInstrumentation().getContext().getCacheDir(), "export-test-" + UUID.randomUUID());
-        assertTrue(root.mkdir()); Os.chmod(root.getAbsolutePath(), 0700);
+        root = new File(context.getCacheDir(), "osservio/exports/export-test-" + UUID.randomUUID());
+        assertTrue(root.mkdirs()); Os.chmod(root.getAbsolutePath(), 0700);
     }
     @After public void removeOnlyFixtureDirectory() throws Exception {
         for (IncidentFileExporter exporter : exporters) close(exporter);
@@ -75,6 +84,36 @@ public final class IncidentFileExporterTest {
         new Pending(exporter(new IncidentExportOptions(), LogClock.SYSTEM), snapshot).awaitFile();
     }
 
+    @Test public void sharingProviderOnlyOpensCompletedFilesForReadingWithinItsPrivateRoot() throws Exception {
+        IncidentExporter.PreparedFile prepared = new Pending(exporter(new IncidentExportOptions(), LogClock.SYSTEM),
+            IncidentDocumentFixture.make("complete")).awaitFile();
+        Uri uri = Uri.parse(prepared.contentURI.toString());
+        assertEquals("content", uri.getScheme());
+        ProviderInfo provider = context.getPackageManager().resolveContentProvider(uri.getAuthority(), 0);
+        assertNotNull(provider); assertFalse(provider.exported); assertTrue(provider.grantUriPermissions);
+        assertEquals("application/zip", context.getContentResolver().getType(uri));
+        try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
+            assertNotNull(cursor); assertTrue(cursor.moveToFirst());
+            assertEquals(prepared.file.getName(), cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)));
+            assertEquals(prepared.byteCount, cursor.getLong(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE)));
+        }
+        try (InputStream input = context.getContentResolver().openInputStream(uri)) {
+            assertNotNull(input); assertEquals('P', input.read()); assertEquals('K', input.read());
+        }
+        assertThrows(SecurityException.class, () -> context.getContentResolver().openFileDescriptor(uri, "rw"));
+        assertThrows(SecurityException.class, () -> context.getContentResolver().delete(uri, null, null));
+        assertTrue(prepared.file.exists());
+        Uri owner = FileProvider.getUriForFile(context, uri.getAuthority(), new File(root, "exports.owner"));
+        assertThrows(SecurityException.class, () -> context.getContentResolver().query(owner, null, null, null, null));
+        assertThrows(SecurityException.class, () -> context.getContentResolver().openInputStream(owner));
+        Uri partial = FileProvider.getUriForFile(context, uri.getAuthority(), new File(root, "osservio-ffffffff-ffff-ffff-ffff-ffffffffffff.partial"));
+        assertThrows(SecurityException.class, () -> context.getContentResolver().openInputStream(partial));
+        File outside = new File(context.getCacheDir(), "osservio-ffffffff-ffff-ffff-ffff-ffffffffffff.zip");
+        assertThrows(IllegalArgumentException.class, () -> FileProvider.getUriForFile(context, uri.getAuthority(), outside));
+        Uri traversal = Uri.parse("content://" + uri.getAuthority() + "/incidents/%2e%2e/%2e%2e/" + outside.getName());
+        assertThrows(SecurityException.class, () -> context.getContentResolver().openInputStream(traversal));
+    }
+
     @Test public void cancellationAfterWritingRemovesTheUnpublishedFile() throws Exception {
         GateClock clock = new GateClock(2);
         IncidentFileExporter exporter = exporter(new IncidentExportOptions(), clock);
@@ -95,10 +134,21 @@ public final class IncidentFileExporterTest {
         close(first); new Pending(second, snapshot).awaitFile();
     }
 
+    @Test public void missingSharingProviderRejectsPreparationAndDiscardsItsCompletedFile() throws Exception {
+        Context unavailable = new ContextWrapper(context) {
+            @Override public Context getApplicationContext() { return this; }
+            @Override public String getPackageName() { return "invalid.osservio.fixture"; }
+        };
+        IncidentFileExporter exporter = new IncidentFileExporter(unavailable, root, new IncidentExportOptions(), LogClock.SYSTEM);
+        exporters.add(exporter);
+        assertEquals(IncidentExporter.Error.UNAVAILABLE, new Pending(exporter, IncidentDocumentFixture.make("absent")).awaitError());
+        assertFalse(hasFilesEndingWith(".zip", ".partial"));
+    }
+
     @Test public void replacedOwnershipFileStopsTheOldExporter() throws Exception {
         File directory = new File(root, "cache");
-        IncidentFileExporter first = new IncidentFileExporter(directory, new IncidentExportOptions(), LogClock.SYSTEM);
-        IncidentFileExporter second = new IncidentFileExporter(directory, new IncidentExportOptions(), LogClock.SYSTEM);
+        IncidentFileExporter first = new IncidentFileExporter(context, directory, new IncidentExportOptions(), LogClock.SYSTEM);
+        IncidentFileExporter second = new IncidentFileExporter(context, directory, new IncidentExportOptions(), LogClock.SYSTEM);
         exporters.add(first); exporters.add(second);
         IncidentSnapshot snapshot = IncidentDocumentFixture.make("absent");
         new Pending(first, snapshot).awaitFile();
@@ -110,7 +160,7 @@ public final class IncidentFileExporterTest {
 
     @Test public void symbolicLinkCannotBecomeAnOwnedExport() throws Exception {
         File directory = new File(root, "cache");
-        IncidentFileExporter exporter = new IncidentFileExporter(directory, new IncidentExportOptions(), LogClock.SYSTEM); exporters.add(exporter);
+        IncidentFileExporter exporter = new IncidentFileExporter(context, directory, new IncidentExportOptions(), LogClock.SYSTEM); exporters.add(exporter);
         IncidentSnapshot snapshot = IncidentDocumentFixture.make("absent");
         File original = new Pending(exporter, snapshot).awaitFile().file;
         File outside = new File(root, "outside.txt"); write(outside, "keep");
@@ -176,10 +226,14 @@ public final class IncidentFileExporterTest {
         assertThrows(IllegalArgumentException.class, () -> new IncidentExportOptions(17, 1048576, 60000));
         assertThrows(IllegalArgumentException.class, () -> new IncidentExportOptions(1, 0, 60000));
         assertThrows(IllegalArgumentException.class, () -> new IncidentExportOptions(1, 1048576, 59999));
+        for (String address : new String[] {"file:///private/export.zip", "content:/export.zip", "content://owner/path?key=value",
+                "content://owner/path#part", "content://user@owner/path", "content://owner"}) {
+            assertThrows(IllegalArgumentException.class, () -> new IncidentExporter.PreparedFile(new File(root, "file.zip"), URI.create(address), 1));
+        }
     }
 
     private IncidentFileExporter exporter(IncidentExportOptions options, LogClock clock) {
-        IncidentFileExporter value = new IncidentFileExporter(root, options, clock); exporters.add(value); return value;
+        IncidentFileExporter value = new IncidentFileExporter(context, root, options, clock); exporters.add(value); return value;
     }
     private boolean hasFilesEndingWith(String... suffixes) {
         String[] names = root.list(); assertNotNull(names);

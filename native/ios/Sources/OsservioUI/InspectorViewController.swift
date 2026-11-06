@@ -32,14 +32,15 @@ public final class InspectorViewController: UITabBarController {
                             httpRecorder: HTTPRecorder, httpHistory: any HTTPHistory,
                             webSocketRecorder: WebSocketRecorder, webSocketHistory: any WebSocketHistory,
                             environment: any EnvironmentProvider, breadcrumbRecorder: BreadcrumbRecorder, breadcrumbHistory: any BreadcrumbHistory,
-                            breadcrumbArchive: (any BreadcrumbArchive)? = nil, incidentArchive: (any IncidentArchive)? = nil) {
+                            breadcrumbArchive: (any BreadcrumbArchive)? = nil, incidentArchive: (any IncidentArchive)? = nil,
+                            incidentExporter: (any IncidentExporter)? = nil) {
         self.init(logRecorder: logRecorder, logHistory: logHistory, httpRecorder: httpRecorder, httpHistory: httpHistory,
                   webSocketRecorder: webSocketRecorder, webSocketHistory: webSocketHistory)
         let runtime = RuntimeInspectorViewController(provider: environment, recorder: breadcrumbRecorder, history: breadcrumbHistory, archive: breadcrumbArchive)
         viewControllers?.append(section(runtime, key: "runtime_title", icon: "info.circle"))
         if let incidentArchive {
             let incidents = IncidentInspectorViewController(archive: incidentArchive, environment: environment, breadcrumbs: breadcrumbHistory,
-                logs: logHistory, http: httpHistory, webSockets: webSocketHistory)
+                logs: logHistory, http: httpHistory, webSockets: webSocketHistory, exporter: incidentExporter)
             viewControllers?.append(section(incidents, key: "incident_title", icon: "flag"))
         }
     }

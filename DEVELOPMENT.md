@@ -21,7 +21,8 @@ The composer freezes metadata at the mark and optionally copies captured network
 content once, preserving that copy through editing and failed-save retry.
 Optional Export modules encode a frozen snapshot into portable metadata and
 payload JSON documents and prepare temporary ZIP files on a bounded worker.
-Native sharing is not connected yet.
+Native saved-snapshot views offer system sharing when the host supplies an
+exporter, with cancellable preparation and stale-callback rejection.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -156,7 +157,11 @@ Export instrumentation compares Android's platform JSON encoding with shared
 independent fixtures and exercises ZIP preparation, cancellation, exclusive
 ownership, cache recovery, retention, and rejection. Swift's Export tests cover
 the corresponding contracts; also run them with `-only-testing:OsservioExportTests`
-on the iOS package test scheme. These tests do not exercise a native share sheet.
+on the iOS package test scheme. Android tests also check content-provider
+containment and read-only access. UIKit share-state checks exercise cancellation,
+immediate rejection, retry, appearance callbacks, and late completion; package
+tests drive appearance explicitly because they have no application event
+dispatcher. These checks do not establish system share-sheet behavior or delivery.
 Set `ANDROID_SERIAL` to the intended device or emulator
 when multiple devices are connected; do not inadvertently install test APKs on
 another device.
@@ -166,12 +171,16 @@ WebSocket tests use actual client connections to loopback MockWebServer and
 Apple's Network.framework server.
 Their coverage and limits are described in the network integration contract.
 
-The OkHttp module locks its resolved development and test dependencies. Normal
-checks must not rewrite the lockfile. Use Gradle's `--write-locks` only while
+The OkHttp and Export modules lock their resolved development and test dependencies.
+Normal checks must not rewrite the lockfile. Use Gradle's `--write-locks` only while
 reviewing an intentional dependency change, then run the integration tests.
 The optional iOS Export product pins ZIPFoundation with an exact dependency and
 `Package.resolved`. Review its version, behavior, license, and privacy manifest
 before an intentional update. It is not linked by Core, Store, UI, or collectors.
+Android Export pins AndroidX Core 1.17.0 for the existing API 36 toolchain. Its
+scoped `GradleDependency` notification exclusion records that Core 1.18+ requires
+compileSdk 36.1; correctness lint checks remain enabled. Review the dependency's
+transitive runtime and merged manifest as well as the provider code when updating.
 
 Build outputs, local configuration, and temporary verification evidence are
 ignored. The Gradle wrapper JAR is an intentional build-tool input; its provenance

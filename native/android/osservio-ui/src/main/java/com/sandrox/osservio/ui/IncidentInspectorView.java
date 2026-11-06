@@ -30,6 +30,7 @@ import com.sandrox.osservio.core.WebSocketSnapshot;
 import com.sandrox.osservio.core.IncidentLogs;
 import com.sandrox.osservio.core.IncidentHTTP;
 import com.sandrox.osservio.core.IncidentWebSockets;
+import com.sandrox.osservio.core.IncidentExporter;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +45,7 @@ public final class IncidentInspectorView extends FrameLayout {
     private final LogHistory logs;
     private final HTTPHistory http;
     private final WebSocketHistory webSockets;
+    private final IncidentExporter exporter;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final LinearLayout listing;
     private final TextView notice;
@@ -69,9 +71,13 @@ public final class IncidentInspectorView extends FrameLayout {
     }
     public IncidentInspectorView(Context context, IncidentArchive archive, EnvironmentProvider environment, BreadcrumbHistory breadcrumbs,
                                  LogHistory logs, HTTPHistory http, WebSocketHistory webSockets) {
+        this(context, archive, environment, breadcrumbs, logs, http, webSockets, null);
+    }
+    public IncidentInspectorView(Context context, IncidentArchive archive, EnvironmentProvider environment, BreadcrumbHistory breadcrumbs,
+                                 LogHistory logs, HTTPHistory http, WebSocketHistory webSockets, IncidentExporter exporter) {
         super(context); this.archive = Objects.requireNonNull(archive, "archive");
         this.environment = Objects.requireNonNull(environment, "environment"); this.breadcrumbs = Objects.requireNonNull(breadcrumbs, "breadcrumbs");
-        this.logs = logs; this.http = http; this.webSockets = webSockets;
+        this.logs = logs; this.http = http; this.webSockets = webSockets; this.exporter = exporter;
         setPadding(dp(16), dp(8), dp(16), 0);
         listing = new LinearLayout(context); listing.setOrientation(LinearLayout.VERTICAL); addView(listing, new LayoutParams(-1, -1));
         LinearLayout controls = new LinearLayout(context);
@@ -138,7 +144,7 @@ public final class IncidentInspectorView extends FrameLayout {
             if (error != null) view.failed(error);
             else if (snapshot == null) view.notice.setText(R.string.osservio_incident_missing);
             else {
-                view.selected = new IncidentSnapshotView(view.getContext(), snapshot, view::showList, () -> view.confirmDeletion(snapshot.id));
+                view.selected = new IncidentSnapshotView(view.getContext(), snapshot, view::showList, () -> view.confirmDeletion(snapshot.id), view.exporter);
                 view.listing.setVisibility(GONE); view.addView(view.selected, new LayoutParams(-1, -1));
             }
             view.render();

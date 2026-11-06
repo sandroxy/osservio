@@ -87,12 +87,12 @@ final class ExportCache implements AutoCloseable {
             Entry entry = retained.remove(0); remove(entry.file); bytes -= entry.bytes;
         }
     }
-    IncidentExporter.PreparedFile commit(File partial, long bytes, long now) throws IOException, ErrnoException {
+    File commit(File partial, long bytes, long now) throws IOException, ErrnoException {
         clean(now, bytes, partial);
         File target = new File(directory, partial.getName().replace(".partial", ".zip"));
         if (target.exists()) throw new ExportFailure(IncidentExporter.Error.UNAVAILABLE);
         Os.rename(partial.getAbsolutePath(), target.getAbsolutePath());
-        return new IncidentExporter.PreparedFile(target, bytes);
+        return target;
     }
     private static boolean privateFile(StructStat info) {
         return OsConstants.S_ISREG(info.st_mode) && info.st_uid == android.os.Process.myUid()

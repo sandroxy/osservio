@@ -11,6 +11,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private let logs: (any LogHistory)?
     private let http: (any HTTPHistory)?
     private let webSockets: (any WebSocketHistory)?
+    private let exporter: (any IncidentExporter)?
     private var snapshots: [IncidentSummary] = []
     private var reading = false
     private var generation = 0
@@ -18,9 +19,10 @@ public final class IncidentInspectorViewController: UITableViewController {
     private var notice = RuntimePresentation.text("incident_snapshot_hint")
     private var justSaved = false
     public init(archive: any IncidentArchive, environment: any EnvironmentProvider, breadcrumbs: any BreadcrumbHistory,
-                logs: (any LogHistory)? = nil, http: (any HTTPHistory)? = nil, webSockets: (any WebSocketHistory)? = nil) {
+                logs: (any LogHistory)? = nil, http: (any HTTPHistory)? = nil, webSockets: (any WebSocketHistory)? = nil,
+                exporter: (any IncidentExporter)? = nil) {
         self.archive = archive; self.environment = environment; self.breadcrumbs = breadcrumbs
-        self.logs = logs; self.http = http; self.webSockets = webSockets
+        self.logs = logs; self.http = http; self.webSockets = webSockets; self.exporter = exporter
         super.init(style: .insetGrouped)
     }
     @available(*, unavailable)
@@ -117,7 +119,7 @@ public final class IncidentInspectorViewController: UITableViewController {
                 self.reading = false
                 switch result {
                 case .success(let snapshot):
-                    if let snapshot { self.navigationController?.pushViewController(IncidentSnapshotViewController(snapshot: snapshot), animated: true) }
+                    if let snapshot { self.navigationController?.pushViewController(IncidentSnapshotViewController(snapshot: snapshot, exporter: self.exporter), animated: true) }
                     else { self.notice = RuntimePresentation.text("incident_missing") }
                 case .failure(let error): self.failed(error)
                 }

@@ -18,7 +18,8 @@ Encoding performs no history lookup, collection, storage query, file write, or
 transport. It never includes raw observations or reads the host's database.
 These APIs produce documents. The separate asynchronous
 [file exporter](../doc/incident-export.md) packages them into a temporary ZIP.
-Native sharing and importing documents into Osservio are not implemented yet.
+Native inspectors can use that exporter for explicit system sharing. Importing
+documents into Osservio is not implemented.
 
 ## Integration
 

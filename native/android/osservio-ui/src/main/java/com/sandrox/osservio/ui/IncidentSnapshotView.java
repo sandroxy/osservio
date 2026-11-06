@@ -18,6 +18,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.IncidentSnapshot;
+import com.sandrox.osservio.core.IncidentExporter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -35,8 +36,10 @@ final class IncidentSnapshotView extends LinearLayout {
     private final Rows rows = new Rows();
     private AlertDialog detail;
     private IncidentEvidenceView evidence;
+    private IncidentSharePresentation sharing;
+    private Button share;
 
-    IncidentSnapshotView(Context context, IncidentSnapshot snapshot, Runnable goBack, Runnable deleteSnapshot) {
+    IncidentSnapshotView(Context context, IncidentSnapshot snapshot, Runnable goBack, Runnable deleteSnapshot, IncidentExporter exporter) {
         super(context); this.snapshot = snapshot; setOrientation(VERTICAL);
         LinearLayout controls = new LinearLayout(context);
         back = button(R.string.osservio_incident_title); back.setOnClickListener(view -> goBack.run());
@@ -58,6 +61,11 @@ final class IncidentSnapshotView extends LinearLayout {
             note.setOnClickListener(view -> showText(R.string.osservio_incident_note, IncidentPresentation.note(context, snapshot.note)));
         }
         header.addView(note, new LayoutParams(-1, -2));
+        if (exporter != null) {
+            share = button(R.string.osservio_incident_share); header.addView(share, new LayoutParams(-1, -2));
+            sharing = new IncidentSharePresentation(this, share, exporter, snapshot,
+                message -> status.setText(message == 0 ? "" : context.getString(message)));
+        }
         Button environment = button(R.string.osservio_runtime_environment);
         environment.setEnabled(snapshot.environment != null);
         environment.setOnClickListener(view -> { if (snapshot.environment != null) showText(R.string.osservio_runtime_environment, RuntimePresentation.environment(context, snapshot.environment)); });
@@ -86,18 +94,30 @@ final class IncidentSnapshotView extends LinearLayout {
         filter();
     }
     void busy(boolean busy) {
+        if (busy && sharing != null) sharing.cancel();
+        if (share != null) share.setEnabled(!busy);
         back.setEnabled(!busy); delete.setEnabled(!busy);
         status.setText(busy ? getContext().getString(R.string.osservio_archive_deleting) : "");
     }
     void error(String message) { status.setText(message); }
-    void dismissDialogs() { if (detail != null) detail.dismiss(); if (evidence != null) evidence.dismissDialogs(); }
+    void dismissDialogs() {
+        if (sharing != null) sharing.cancel();
+        if (detail != null) detail.dismiss(); if (evidence != null) evidence.dismissDialogs();
+    }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
+    @Override protected void onVisibilityChanged(View changed, int visibility) {
+        super.onVisibilityChanged(changed, visibility); if (sharing != null && !isShown()) sharing.cancel();
+    }
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility); if (sharing != null && visibility != VISIBLE) sharing.cancel();
+    }
     private void attachment(LinearLayout header, String title, Integer count, Runnable open) {
         Button button = new Button(getContext()); button.setText(getContext().getString(R.string.osservio_incident_attachment_count, title, IncidentPresentation.count(getContext(), count)));
         button.setAllCaps(false); button.setMinHeight(dp(48)); button.setEnabled(count != null);
         button.setOnClickListener(view -> open.run()); header.addView(button, new LayoutParams(-1, -2));
     }
     private void openEvidence(IncidentEvidenceView selected) {
+        if (sharing != null) sharing.cancel();
         hideKeyboard();
         for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(GONE);
         evidence = selected; addView(evidence, new LayoutParams(-1, -1));

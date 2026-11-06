@@ -276,3 +276,13 @@
 "incident_body_none" = "这份窗口中没有可读取的已采集内容。";
 "incident_body_failed" = "未能准备这份内容，本次不附带。如需重新读取，请重新标记问题。";
 "incident_body_selected" = "已复制：%ld / %ld 份引用内容 · %ld 字节";
+
+"incident_share" = "分享快照";
+"incident_export_preparing" = "正在准备已保存的描述和附件…";
+"incident_export_busy" = "正在准备另一份导出文件，请稍后重试。";
+"incident_export_closed" = "宿主应用已关闭文件导出。";
+"incident_export_too_large" = "这份快照超过了导出大小上限。";
+"incident_export_storage_full" = "可用存储空间不足，无法准备这份文件。";
+"incident_export_invalid" = "这份快照未通过导出校验。";
+"incident_export_unavailable" = "暂时无法分享，已保存的快照仍然保留。请重试。";
+"incident_export_cancel" = "取消文件准备";

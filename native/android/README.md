@@ -214,5 +214,10 @@ For portable JSON encoding, add the optional local dependency
 `IncidentDocuments.encode(snapshot)` on a background worker. It encodes only the
 frozen snapshot. For asynchronous ZIP preparation, use `IncidentFileExporter`
 with an application context; see [file export](../../doc/incident-export.md).
-Native inspector sharing is not connected yet.
+Pass that exporter after `incidentArchive` in the full combined inspector, or
+after the optional histories in `IncidentInspectorView`, to enable Share on a
+saved snapshot. The optional Export module adds its narrowly scoped, read-only
+AndroidX FileProvider and runtime dependencies; the file-export guide describes
+their manifest and Kotlin compatibility implications. The UI does not own or
+close the exporter.
 See [incident documents](../../protocol/README.md) for format, bounds, and errors.

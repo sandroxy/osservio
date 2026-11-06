@@ -3,11 +3,13 @@ package com.sandrox.osservio.export;
 import android.content.Context;
 import android.system.ErrnoException;
 import android.system.Os;
+import androidx.core.content.FileProvider;
 import com.sandrox.osservio.core.IncidentExporter;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.LogClock;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,6 +20,7 @@ public final class IncidentFileExporter implements IncidentExporter {
     public interface CloseCompletion { void complete(Error error); }
     private interface DirectoryProvider { File directory(); }
     private final DirectoryProvider directory;
+    private final Context application;
     private final IncidentExportOptions options;
     private final LogClock clock;
     private final ReentrantLock lock = new ReentrantLock();
@@ -30,9 +33,10 @@ public final class IncidentFileExporter implements IncidentExporter {
     private ExportCache cache; // Worker-confined.
 
     public IncidentFileExporter(Context context) { this(context, new IncidentExportOptions()); }
-    public IncidentFileExporter(Context context, IncidentExportOptions options) { this(privateDirectory(context), options, LogClock.SYSTEM); }
-    IncidentFileExporter(File directory, IncidentExportOptions options, LogClock clock) { this(() -> directory, options, clock); }
-    private IncidentFileExporter(DirectoryProvider directory, IncidentExportOptions options, LogClock clock) {
+    public IncidentFileExporter(Context context, IncidentExportOptions options) { this(context, privateDirectory(context), options, LogClock.SYSTEM); }
+    IncidentFileExporter(Context context, File directory, IncidentExportOptions options, LogClock clock) { this(context, () -> directory, options, clock); }
+    private IncidentFileExporter(Context context, DirectoryProvider directory, IncidentExportOptions options, LogClock clock) {
+        this.application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");
         this.directory = directory; this.options = Objects.requireNonNull(options, "options"); this.clock = Objects.requireNonNull(clock, "clock");
     }
     private static DirectoryProvider privateDirectory(Context context) {
@@ -52,16 +56,23 @@ public final class IncidentFileExporter implements IncidentExporter {
         }
         ExportTask task = new ExportTask(); active = task;
         worker.execute(() -> {
-            PreparedFile result = null; Error error = null; File partial = null;
+            PreparedFile result = null; Error error = null; File partial = null; File completed = null;
             try {
                 task.check();
                 if (cache == null) cache = new ExportCache(directory.directory(), options);
                 cache.clean(clock.wallTimeMillis()); task.check();
                 IncidentDocuments documents = IncidentDocuments.encode(snapshot); task.check();
                 partial = cache.newPartial(); long size = IncidentZIP.write(documents, partial, task); task.check();
-                result = cache.commit(partial, size, clock.wallTimeMillis());
+                completed = cache.commit(partial, size, clock.wallTimeMillis());
+                URI address;
+                try { address = URI.create(FileProvider.getUriForFile(application, application.getPackageName() + ".osservio.exports", completed).toString()); }
+                catch (IllegalArgumentException unavailableProvider) { throw new ExportFailure(Error.UNAVAILABLE); }
+                result = new PreparedFile(completed, address, size);
             } catch (Exception failure) { error = ExportFailure.category(failure); }
-            finally { if (partial != null) discard(partial); }
+            finally {
+                if (partial != null) discard(partial);
+                if (result == null && completed != null) discard(completed);
+            }
             if (task.finish()) { if (result != null) discard(result.file); result = null; error = Error.CANCELLED; }
             lock.lock(); try { active = null; } finally { lock.unlock(); }
             completion.complete(result, error);

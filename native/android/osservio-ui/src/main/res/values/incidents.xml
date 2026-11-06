@@ -58,4 +58,12 @@
     <string name="osservio_incident_body_none">No captured content is available for this window.</string>
     <string name="osservio_incident_body_failed">Content could not be prepared and remains excluded. Mark the problem again to make a new attempt.</string>
     <string name="osservio_incident_body_selected">Content copied: %1$d / %2$d · Bytes: %3$d</string>
+    <string name="osservio_incident_share">Share snapshot</string>
+    <string name="osservio_incident_export_preparing">Preparing the saved description and attachments for sharing…</string>
+    <string name="osservio_incident_export_busy">Another export is being prepared. Try again shortly.</string>
+    <string name="osservio_incident_export_closed">File export has been closed by the app.</string>
+    <string name="osservio_incident_export_too_large">This snapshot exceeds the export size limit.</string>
+    <string name="osservio_incident_export_storage_full">There is not enough available storage to prepare this file.</string>
+    <string name="osservio_incident_export_invalid">This snapshot could not be validated for export.</string>
+    <string name="osservio_incident_export_unavailable">Sharing is unavailable. The saved snapshot is still available. Try again.</string>
 </resources>

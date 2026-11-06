@@ -1,7 +1,11 @@
 dependencies {
     api project(":osservio-core")
+    // Core 1.18+ requires compileSdk 36.1. Keep the reviewed provider on this SDK's API 36 toolchain.
+    //noinspection GradleDependency
+    implementation "androidx.core:core:1.17.0"
     androidTestImplementation "androidx.test:runner:1.7.0"
     androidTestImplementation "androidx.test.ext:junit:1.3.0"
 }
 android.defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 android.sourceSets.androidTest.assets.srcDir rootProject.file("../../testing")
+dependencyLocking { lockAllConfigurations() }

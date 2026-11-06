@@ -276,3 +276,13 @@
 "incident_body_none" = "No captured content is available for this window.";
 "incident_body_failed" = "Content could not be prepared and remains excluded. Mark the problem again to make a new attempt.";
 "incident_body_selected" = "Content copied: %ld / %ld · Bytes: %ld";
+
+"incident_share" = "Share snapshot";
+"incident_export_preparing" = "Preparing the saved description and attachments for sharing…";
+"incident_export_busy" = "Another export is being prepared. Try again shortly.";
+"incident_export_closed" = "File export has been closed by the app.";
+"incident_export_too_large" = "This snapshot exceeds the export size limit.";
+"incident_export_storage_full" = "There is not enough available storage to prepare this file.";
+"incident_export_invalid" = "This snapshot could not be validated for export.";
+"incident_export_unavailable" = "Sharing is unavailable. The saved snapshot is still available. Try again.";
+"incident_export_cancel" = "Cancel file preparation";

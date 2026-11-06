@@ -8,9 +8,14 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
     private let snapshot: IncidentSnapshot
     private var events: [BreadcrumbEvent]
     private let search = UISearchController(searchResultsController: nil)
-    init(snapshot: IncidentSnapshot) {
+    private let exportStatus = UILabel()
+    private var sharing: IncidentSharePresentation?
+    init(snapshot: IncidentSnapshot, exporter: (any IncidentExporter)? = nil) {
         self.snapshot = snapshot; events = (snapshot.breadcrumbs?.events ?? []).reversed()
         super.init(style: .insetGrouped)
+        if let exporter {
+            sharing = IncidentSharePresentation(owner: self, snapshot: snapshot, exporter: exporter) { [weak self] in self?.showExportStatus($0) }
+        }
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
@@ -20,8 +25,32 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
         search.searchResultsUpdater = self; search.obscuresBackgroundDuringPresentation = false
         search.searchBar.placeholder = RuntimePresentation.text("crumb_search")
         navigationItem.searchController = search; navigationItem.hidesSearchBarWhenScrolling = false; definesPresentationContext = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
+        let copy = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
             target: self, action: #selector(copySummary))
+        navigationItem.rightBarButtonItems = sharing.map { [$0.button, copy] } ?? [copy]
+        exportStatus.font = .preferredFont(forTextStyle: .footnote); exportStatus.adjustsFontForContentSizeCategory = true
+        exportStatus.numberOfLines = 0; exportStatus.textColor = .secondaryLabel
+    }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); sharing?.cancel() }
+    override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); layoutExportStatus() }
+    private func showExportStatus(_ message: String?) {
+        exportStatus.text = message
+        if message == nil { tableView.tableHeaderView = nil }
+        else {
+            if tableView.tableHeaderView == nil {
+                let header = UIView(); header.addSubview(exportStatus); tableView.tableHeaderView = header
+            }
+            layoutExportStatus(); UIAccessibility.post(notification: .announcement, argument: message)
+        }
+    }
+    private func layoutExportStatus() {
+        guard let header = tableView.tableHeaderView else { return }
+        let width = tableView.bounds.width, inset: CGFloat = 20
+        let height = exportStatus.sizeThatFits(CGSize(width: max(0, width - inset * 2), height: .greatestFiniteMagnitude)).height + 24
+        exportStatus.frame = CGRect(x: inset, y: 12, width: max(0, width - inset * 2), height: height - 24)
+        if header.frame.width != width || header.frame.height != height {
+            header.frame = CGRect(x: 0, y: 0, width: width, height: height); tableView.tableHeaderView = header
+        }
     }
     @objc private func copySummary() { UIPasteboard.general.string = IncidentPresentation.summary(snapshot) }
     func updateSearchResults(for searchController: UISearchController) {

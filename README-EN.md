@@ -55,11 +55,13 @@ and storage limits. See [manual problem snapshots](doc/incidents.md). Optional
 Export modules encode a frozen snapshot into separate metadata and payload JSON
 documents and asynchronously package them into temporary ZIP files, preserving
 observation times, exact integers, and missing-content states. Preparation supports
-cancellation and independent cache limits; see [file export](doc/incident-export.md).
-Native inspector sharing is not connected yet.
+cancellation and independent cache limits. Supplying an exporter to the native
+inspector enables an explicit system share action on a saved snapshot. Cancelling
+or dismissing it preserves the snapshot and capture state; see
+[file export](doc/incident-export.md).
 
-Automatic system-log and crash capture, global network interception, incident
-file sharing, and framework adapters are not implemented.
+Automatic system-log and crash capture, global network interception, and
+framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see
 [network coverage](doc/network-integration.md). Core behavior and
 native interaction will be refined on Android and iOS before expanding to React

@@ -4,7 +4,8 @@
 The optional Export module implements it with `IncidentFileExporter`, producing
 one temporary ZIP from a frozen sanitized `IncidentSnapshot`. It does not query
 live histories, start capture, modify a saved report, upload anything, or open a
-share sheet. Native inspector sharing is not connected yet.
+share sheet. Native problem views can receive this port to offer an explicit
+system share action for a saved snapshot.
 
 The ZIP contains exactly `incident.json` and `payloads.json`, using the
 [portable document format](../protocol/README.md). It contains only evidence
@@ -20,6 +21,7 @@ Android:
 IncidentFileExporter exporter = new IncidentFileExporter(applicationContext);
 IncidentExporter.Task task = exporter.prepare(snapshot, (file, error) -> {
     // On success: file.file and file.byteCount describe a complete temporary ZIP.
+    // file.contentURI is its content:// address; preparation grants no access.
     // Dispatch to the UI thread before presenting anything. No file has been sent.
 });
 // task is null for a rejected request; otherwise task.cancel() requests cancellation.
@@ -57,6 +59,53 @@ lease asynchronously. Repeated close after completion succeeds; a concurrent
 close in progress reports `busy`. No caller waits for disk I/O. Closing does
 not remove completed files, stop capture, or close the incident archive. Android
 owners must explicitly close the exporter when disposing of it.
+
+## Native sharing
+
+Pass the exporter as the last optional dependency of Android's full
+`InspectorView` constructor, or after the three optional histories in
+`IncidentInspectorView`. On iOS, use `incidentExporter:` in the full
+`InspectorViewController` initializer, or `exporter:` in
+`IncidentInspectorViewController`. The UI still depends only on Core contracts;
+it neither creates nor closes an exporter. Without this dependency, the saved
+snapshot page does not offer sharing.
+
+Share prepares exactly the snapshot being viewed, including only its already
+saved description and attachments. There is no refresh, new body lookup,
+automatic upload, or archive mutation. Android shows a cancellable preparation
+dialog. iOS shows preparation status within the snapshot page and temporarily
+turns Share into Cancel. Leaving the page or deactivating its application or
+scene cancels pending presentation and requests task cancellation. Late callbacks
+cannot open a chooser on a different page. Errors remain explicit, and retry
+uses the same frozen evidence.
+
+On success, Android opens the system chooser with `ACTION_SEND`, MIME type
+`application/zip`, and a read-only URI grant in both the stream extra and
+`ClipData`. iOS presents `UIActivityViewController` with the prepared file URL,
+anchored to the Share button when a popover is appropriate. The user chooses
+whether and where to send it. Opening or dismissing either system UI is not
+reported as delivery success. Neither action deletes the saved snapshot or
+changes capture.
+
+Android Export adds a non-exported `ExportFileProvider` under authority
+`${applicationId}.osservio.exports`. Its AndroidX implementation resolves only
+`cache/osservio/exports/`; the Osservio subclass permits completed ZIP names and
+read-only access, rejecting writes, deletion, ownership files, and partials.
+The content URI is prepared on the export worker. No `file://` URI, broad storage
+path, persistent grant, or write grant is used. Keep the provider metadata and
+narrow path configuration intact; a missing provider makes preparation fail.
+Hosts implementing their own Core exporter must supply a similarly scoped,
+read-only `contentURI` that resolves to the completed file.
+
+The optional Android dependency is AndroidX Core 1.17.0, reviewed for compileSdk
+36; Core 1.18 raises its requirement to compileSdk 36.1. Its transitive runtime includes
+AndroidX Lifecycle, the Kotlin standard library, and ProfileInstaller. The latter
+adds its standard startup component and receiver through manifest merging;
+these are dependency behavior, not Osservio collectors. Kotlin consumers must
+use a compiler compatible with Kotlin 2.0 metadata. See the module lockfile and
+[third-party notices](../THIRD_PARTY_NOTICES.md) when assessing host dependencies.
+The base Core, Store, UI, and collector modules do not acquire this dependency
+unless the host also selects Export.
 
 ## Admission, cancellation, and failure
 
