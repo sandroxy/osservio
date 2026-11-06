@@ -6,11 +6,11 @@ Osservio aims to provide in-app debugging and diagnostics for applications acros
 platforms, from development and acceptance testing to investigating problems in
 released apps and reviewing evidence after a failure.
 
-Native Android and iOS logging and HTTP observation modules are available for
-local source integration. No SDK artifacts have been published. The current
-implementation covers explicit host logging, bounded in-memory history, native
-log and HTTP inspection, and opt-in OkHttp and URLSession request observation. Parts of
-the broader product described below remain unimplemented.
+Native Android and iOS source integrations include logs, HTTP, WebSocket,
+runtime context, problem snapshots, failure-evidence recovery and native
+inspection. No SDK artifacts have been published. OS coverage and prerequisites
+differ between platforms; see [native capability coverage](doc/native-capabilities.md).
+React Native, Uni and Flutter adapters are not implemented.
 
 ## Available now
 

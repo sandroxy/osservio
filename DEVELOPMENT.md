@@ -28,6 +28,8 @@ native behavior and interaction validation. No artifacts have been published.
 
 ## Sources of truth
 
+- [Native capability coverage](doc/native-capabilities.md) summarizes implemented
+  behavior, OS prerequisites and explicit gaps across both platforms.
 - [Architecture](doc/architecture.md) defines the intended runtime boundaries.
 - [Logging](doc/logging.md) describes the implemented native subset and limits.
 - [HTTP observation](doc/http.md) describes admission, privacy, body ownership,

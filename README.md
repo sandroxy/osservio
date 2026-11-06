@@ -4,7 +4,7 @@
 
 Osservio 致力于为多平台宿主 App 提供应用内调试与诊断能力，覆盖开发联调、测试验收、正式运行中的现场排障，以及故障发生后的信息回溯。
 
-目前可以从源码接入 Android 与 iOS 原生日志和 HTTP 观察模块，尚未发布 SDK 制品。当前实现包括宿主主动写入日志、有界内存历史、原生日志与网络查看界面，以及显式接入的 OkHttp 和 URLSession 请求观察；下面的整体目标仍有未实现部分。
+目前可从源码接入 Android 与 iOS，包含日志、HTTP、WebSocket、运行环境、问题快照、故障证据恢复与原生查看界面，尚未发布 SDK 制品。两端的系统采集范围与前提条件不同，详见[原生能力覆盖](doc/native-capabilities.md)；React Native、Uni 和 Flutter 适配尚未实现。
 
 ## 当前可用
 
