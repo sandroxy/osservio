@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import resource
+import shutil
 import signal
 import subprocess
 import sys
@@ -128,13 +129,13 @@ def main():
 
     # Decode an actual prior-process fatal file through the same Swift mapper
     # used by the internal recorder, not just the upstream protobuf decoder.
-    for target in ["OsservioCore", "OsservioCrash"]:
+    for target in ["OsservioCore", "OsservioCrash", "OsservioStore"]:
         run(["swift", "build", "--target", target, "-Xswiftc", "-warnings-as-errors"], timeout=180)
     # Incremental directories may retain objects for renamed/removed sources.
     # Link only the current build plan, without deleting unrelated build state.
     description = json.loads((binary_path / "description.json").read_text())
     swift_objects = []
-    for name in ["OsservioCore", "OsservioCrash"]:
+    for name in ["OsservioCore", "OsservioCrash", "OsservioStore"]:
         commands = [item for item in description["swiftCommands"].values() if item["moduleName"] == name]
         if len(commands) != 1 or not commands[0]["objects"]:
             raise RuntimeError(f"Missing or ambiguous Swift build command for {name}")
@@ -146,13 +147,60 @@ def main():
          "-I", str(vendor / "include"), "-I", str(support / "include"),
          "-Xcc", "-fmodule-map-file=" + str(binary_path / "OsservioCrashSupport.build/module.modulemap"),
          str(Path(__file__).with_name("DecoderProbe.swift")), *map(str, swift_objects), *map(str, objects),
-         "-lc++", "-o", str(decoder)], timeout=60)
+         "-lc++", "-lsqlite3", "-o", str(decoder)], timeout=60)
     decoded = json.loads(run([str(decoder), str(paths["on"])], timeout=20).stdout)
     prior = json.loads(invoke("read", paths["on"]))
     for key in ["frames", "images", "signal"]:
         if decoded[key] != prior[key]:
             raise AssertionError(f"Swift recovery changed the fatal {key}")
     receipt["checks"].append({"mode": "swift-recovery", "report": decoded, "decoderSHA256": digest(decoder)})
+
+    failure = fixture / "librecorder-failure.dylib"
+    run(["xcrun", "clang", "-Wall", "-Wextra", "-Werror", "-dynamiclib",
+         str(Path(__file__).with_name("RecorderFailure.c")), "-o", str(failure)], timeout=60)
+    recorder = fixture / "osservio-crash-recorder"
+    run(["xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors", "-I", str(binary_path / "Modules"),
+         "-I", str(vendor / "include"), "-I", str(support / "include"),
+         "-Xcc", "-fmodule-map-file=" + str(binary_path / "OsservioCrashSupport.build/module.modulemap"),
+         str(Path(__file__).with_name("RecorderProbe.swift")), *map(str, swift_objects), *map(str, objects),
+         str(failure), "-lc++", "-lsqlite3", "-o", str(recorder)], timeout=60)
+    receipt["recorderSHA256"] = digest(recorder)
+
+    def invoke_recorder(mode, directory, expected=0):
+        result = subprocess.run([str(recorder), mode, str(directory)], text=True, capture_output=True,
+                                timeout=20, preexec_fn=no_core_dump)
+        if result.returncode != expected or result.stderr:
+            raise AssertionError(f"recorder {mode}: expected {expected}, got {result.returncode}: {result.stderr}")
+        return json.loads(result.stdout)
+
+    for mode in ["baseline", "detail", "default-off", "off", "expired", "expired-before-install",
+                 "baseline-after-expiry", "partial-failure"]:
+        directory = fixture / ("recorder-" + mode)
+        directory.mkdir(mode=0o700)
+        result = invoke_recorder(mode, directory, -signal.SIGABRT)
+        reports = list((directory / "pending").glob("slot-*/live_report.plcrash"))
+        expected_file = mode in {"baseline", "detail", "baseline-after-expiry"}
+        if len(reports) != int(expected_file) or result["armed"] != expected_file:
+            raise AssertionError(f"recorder {mode}: wrong recording disposition")
+        if expected_file:
+            result["report"] = json.loads(invoke("read", reports[0]))
+        receipt["checks"].append({"mode": "recorder-" + mode, "result": result})
+    prior_directory = fixture / "recorder-baseline"
+    fatal_path = next((prior_directory / "pending").glob("slot-*/live_report.plcrash"))
+    fatal_digest = digest(fatal_path)
+    for mode in ["recover", "recover-again"]:
+        receipt["checks"].append({"mode": "recorder-" + mode, "result": invoke_recorder(mode, prior_directory)})
+        if digest(fatal_path) != fatal_digest:
+            raise AssertionError("Recovery mutated the original pending evidence")
+    conflict = fixture / "recorder-conflict"
+    shutil.copytree(prior_directory / "pending", conflict / "pending")
+    for index in range(4):
+        report = conflict / "pending" / f"slot-{index}" / "live_report.plcrash"
+        if not report.exists():
+            shutil.copy2(fatal_path, report)
+    receipt["checks"].append({"mode": "recorder-conflict-read", "result": invoke_recorder("conflict-read", conflict)})
+    if any(digest(path) != fatal_digest for path in (conflict / "pending").glob("slot-*/live_report.plcrash")):
+        raise AssertionError("Rejected installation changed pending files")
 
     receipt_path = fixture / "receipt.json"
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")

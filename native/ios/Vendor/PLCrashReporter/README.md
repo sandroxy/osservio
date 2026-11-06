@@ -3,8 +3,8 @@
 This directory vendors the recording and decoding implementation from
 [PLCrashReporter 1.12.2](https://github.com/microsoft/plcrashreporter/tree/0254f941c646b1ed17b243654723d0f071e990d0),
 commit `0254f941c646b1ed17b243654723d0f071e990d0`. It is an internal target,
-not an exported SDK product. Existing Osservio products do not install or link
-this backend. The capture permission and handler preflight are Osservio-owned
+not an exported SDK product. Only the optional `OsservioCrash` product links it;
+linking does not install handlers. The capture permission and handler preflight are Osservio-owned
 code in `Sources/OsservioCrashSupport`.
 
 The bundled protobuf-c runtime is upgraded separately to
@@ -64,8 +64,10 @@ under Core's admission lock. It uses the absolute `SystemLogClock` deadline, so
 delayed delivery cannot extend a session. Injected Swift clocks are rejected
 because the signal handler cannot call them. There is one permission owner per
 process; failed secondary bindings cannot change an existing owner's permission.
-Releasing that owner revokes permission. This internal connection does not yet
-provide a public recorder or install a backend in consumer applications.
+The public installer pins that owner before entering the backend, including on
+partial failure. An independent atomic arm gate opens only after successful
+installation; partial failure permanently closes it. See the public
+[ownership and pending-file contract](../../../../doc/crash-evidence.md).
 
 Core's clock and the backend use the same Mach uptime domain, which excludes
 system sleep; see [DispatchTime](https://developer.apple.com/documentation/dispatch/dispatchtime).
@@ -91,9 +93,13 @@ The replaced protobuf-c runtime has its own
 
 Other changes implement the recording profile, pre-write permission, handler
 preflight, loader admission, private/exclusive file creation, and fatal byte
-limit. The process-wide installation mutex is made static, and the bounded file
-writer rejects overflowing lengths before addition. Unwinding and protobuf
+limit. The process-wide installation mutex is made static; signal registration
+releases its mutex on failure and marks one-time setup complete after it succeeds.
+The bounded file writer rejects overflowing lengths before addition. Unwinding and protobuf
 encoding remain upstream implementations.
+The private designated initializer accepts prepared app metadata. Recording uses
+the caller's exact reserved slot directory, without bundle-derived subdirectories,
+queued-report directories or a cache fallback. Missing paths are rejected.
 Unknown signal numbers/codes use an Osservio-owned fixed-capacity integer encoder
 instead of libc formatting; the buffer accommodates the full signed 32-bit range.
 The decoder exposes original report-info presence and the user-requested flag so

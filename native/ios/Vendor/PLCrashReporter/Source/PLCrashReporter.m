@@ -50,10 +50,6 @@
 #import <stdatomic.h>
 
 /** @internal
- * CrashReporter cache directory name. */
-static NSString *PLCRASH_CACHE_DIR = @"com.plausiblelabs.crashreporter.data";
-
-/** @internal
  * Crash Report file name. */
 static NSString *PLCRASH_LIVE_CRASHREPORT = @"live_report.plcrash";
 
@@ -366,7 +362,6 @@ static void uncaught_exception_handler (NSException *exception) {
 @interface PLCrashReporter (PrivateMethods)
 
 - (id) initWithBundle: (NSBundle *) bundle configuration: (PLCrashReporterConfig *) configuration;
-- (id) initWithApplicationIdentifier: (NSString *) applicationIdentifier appVersion: (NSString *) applicationVersion appMarketingVersion: (NSString *) applicationMarketingVersion configuration: (PLCrashReporterConfig *) configuration;
 
 #if PLCRASH_FEATURE_MACH_EXCEPTIONS
 - (PLCrashMachExceptionServer *) enableMachExceptionServerWithPreviousPortSet: (__strong PLCrashMachExceptionPortSet **) previousPortSet
@@ -578,7 +573,7 @@ static PLCrashReporter *sharedReporter = nil;
     if (_config.signalHandlerType != PLCrashReporterSignalHandlerTypeBSD ||
         _config.shouldRegisterUncaughtExceptionHandler ||
         _config.symbolicationStrategy != PLCrashReporterSymbolicationStrategyNone ||
-        _config.maxReportBytes == 0 || _config.maxReportBytes > 65536) {
+        _config.maxReportBytes == 0 || _config.maxReportBytes > 65536 || _config.basePath == nil) {
         plcrash_populate_error(outError, PLCrashReporterErrorUnknown, @"Unsupported crash recording configuration", nil);
         return NO;
     }
@@ -905,15 +900,6 @@ cleanup:
     return [[self crashReportDirectory] stringByAppendingPathComponent: PLCRASH_LIVE_CRASHREPORT];
 }
 
-@end
-
-/**
- * @internal
- *
- * Private Methods
- */
-@implementation PLCrashReporter (PrivateMethods)
-
 /**
  * @internal
  *
@@ -939,17 +925,22 @@ cleanup:
     _applicationVersion = applicationVersion;
     _applicationMarketingVersion = applicationMarketingVersion;
     
-    /* No occurances of '/' should ever be in a bundle ID, but just to be safe, we escape them */
-    NSString *appIdPath = [applicationIdentifier stringByReplacingOccurrencesOfString: @"/" withString: @"_"];
-    
-    NSString *basePath = _config.basePath;
-    if (basePath == nil) {
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-        basePath = [paths objectAtIndex: 0];
-    }
-    _crashReportDirectory = [[basePath stringByAppendingPathComponent: PLCRASH_CACHE_DIR] stringByAppendingPathComponent: appIdPath];
+    // Osservio owns a fixed, validated slot directory. Never derive filesystem
+    // locations from bundle metadata or use the host's general cache as a fallback.
+    _crashReportDirectory = _config.basePath;
     return self;
 }
+
+@end
+
+/**
+ * @internal
+ *
+ * Private Methods
+ */
+@implementation PLCrashReporter (PrivateMethods)
+
+
 
 
 /**
@@ -1093,13 +1084,6 @@ cleanup:
     /* Create the top-level path */
     if (![fm fileExistsAtPath: [self crashReportDirectory]] &&
         ![fm createDirectoryAtPath: [self crashReportDirectory] withIntermediateDirectories: YES attributes: attributes error: outError])
-    {
-        return NO;
-    }
-
-    /* Create the queued crash report directory */
-    if (![fm fileExistsAtPath: [self queuedCrashReportDirectory]] &&
-        ![fm createDirectoryAtPath: [self queuedCrashReportDirectory] withIntermediateDirectories: YES attributes: attributes error: outError])
     {
         return NO;
     }

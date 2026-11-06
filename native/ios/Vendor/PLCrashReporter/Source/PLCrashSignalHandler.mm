@@ -341,6 +341,7 @@ static PLCrashSignalHandler *sharedHandler;
             if (sigaltstack(&_sigstk, 0) < 0) {
                 /* This should only fail if we supply invalid arguments to sigaltstack() */
                 plcrash_populate_posix_error(outError, errno, @"Could not initialize alternative signal stack");
+                pthread_mutex_unlock(&registerHandlers);
                 return NO;
             }
 #endif
@@ -352,6 +353,7 @@ static PLCrashSignalHandler *sharedHandler;
                 .context = NULL
             };
             shared_handler_context().callbacks.nasync_append(sa);
+            singleShotInitialization = YES;
         }
         
         /* Check whether the signal already has a registered handler. */
@@ -382,6 +384,7 @@ static PLCrashSignalHandler *sharedHandler;
             if (sigaction(signo, &sa, &sa_prev) != 0) {
                 int err = errno;
                 plcrash_populate_posix_error(outError, err, @"Failed to register signal handler");
+                pthread_mutex_unlock(&registerHandlers);
                 return NO;
             }
             

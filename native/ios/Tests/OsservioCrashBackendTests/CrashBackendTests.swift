@@ -4,7 +4,8 @@ import OsservioCrashSupport
 import XCTest
 
 final class CrashBackendTests: XCTestCase {
-    override func tearDown() { OsservioCrashCaptureUpdate(false, 0); super.tearDown() }
+    override func setUp() { super.setUp(); OsservioCrashCaptureSetArmed(true) }
+    override func tearDown() { OsservioCrashCaptureSetArmed(false); OsservioCrashCaptureUpdate(false, 0); super.tearDown() }
 
     func testPermissionStopsAndExpiresWithoutCallingSwiftFromTheHandler() {
         OsservioCrashCaptureUpdate(false, 0)

@@ -7,10 +7,77 @@ decoder maps the private backend's byte format into this model during normal
 execution on a later launch. It never runs inside a fatal handler.
 
 `SystemDiagnostic.appleSignal` wraps these facts for the incident archive,
-capture-gated recovery, native browsing and portable export. Public recorder
-installation and pending-file recovery are not connected yet. OS-owned
+capture-gated recovery, native browsing and portable export. The optional iOS
+`OsservioCrash` product provides explicit installation and pending-file recovery. OS-owned
 [system diagnostics](system-diagnostics.md) remain separate evidence; the same
 failure can appear through more than one source without proving a shared identity.
+
+## Installation and ownership
+
+`CrashReports.open(directory:completion:)` opens a dedicated app-private directory
+asynchronously. Retain the returned source to read previous-process reports through
+`SystemDiagnosticProvider`, or pass it to `SystemDiagnosticRecovery` for capture-gated
+incident persistence. Opening and reading do not install handlers or enable capture.
+Read and recover pending evidence before installing a recorder, so all four old
+slots can be processed before one is reserved for the new process.
+
+`CrashRecorder.install(reports:captureController:completion:)` explicitly installs
+the BSD signal backend on the source's worker. It requires `SystemLogClock` and
+exclusive crash-handler ownership. Baseline or unexpired detailed capture permits
+new fatal files; off prevents new writes. The absolute detailed deadline remains
+effective without polling Core. A write admitted before stop may finish.
+
+The installer reports conflicts with existing BSD handlers, an Objective-C
+exception handler, relevant task/installation-thread Mach exception ports, or an
+attached debugger. Failed inspection also rejects installation. It does not inspect
+every thread or detect reporters installed later. A conflict does not prevent
+reading old reports and does not reserve a new slot. There is no automatic handler
+replacement, coexistence claim or fallback recorder.
+
+Installation is process-long, including while capture is off or the inspector is
+hidden. There is no uninstall operation. Once the backend is entered, its source,
+directory lease, Core permission binding and handler context are retained until
+process exit. A partially failed installation stays permanently disarmed; later
+Core changes cannot activate it, and retry reports `restartRequired`. A successful
+second install reports `alreadyInstalled`. The loader cache remains installed
+while capture is off; off is not a zero-overhead guarantee.
+
+Opening has one pending operation process-wide. Each source accepts one pending
+read, and the installer admits one process-wide installation attempt at a time.
+Rejections may complete immediately; accepted file work and installation complete
+on utility workers. Callbacks run without SDK locks, and UI updates must dispatch
+to the main actor. Releasing an uninstalled source releases its directory lease;
+releasing an installed source does not uninstall or disable the pinned recorder.
+
+## Pending-file retention
+
+The private directory uses an exact format marker, an exclusive file lease and
+four fixed report slots. Reports are at most 65,536 bytes each, so report content
+is bounded to 262,144 bytes, excluding filesystem metadata. A recorder reserves
+one slot; at most three prior reports then remain. Reservation selects an empty
+slot or evicts the oldest file, with explicit excluded-count and capacity flags.
+Opening alone does not reserve or evict a fourth report for capacity.
+
+At open, validated files older than seven days by modification time are removed.
+This is a startup cleanup rule, not a running timer; wall-clock changes can affect
+the age window. Reads do not delete files or acknowledge archive delivery. Repeated
+reads preserve original evidence and use the archive's bounded acknowledgements.
+Malformed bounded reports contribute a rejected count. Unknown directory contents,
+unsupported markers, insecure files, symlinks, hard links and oversized files fail
+explicitly instead of resetting the directory. All slots are validated before
+retention deletes any report. Do not share this directory with host data or other SDKs.
+
+New directories and reports use `0700` and `0600`; the directory is excluded from
+backup. On iOS, newly created pending files inherit complete-until-first-user-
+authentication protection. Access may fail before the first unlock after reboot.
+The bundled privacy declaration covers app-container file metadata used for these
+limits and uptime used for capture expiry; hosts retain responsibility for their
+own privacy disclosures and data policy.
+
+Incomplete writes, disk failure or a termination mechanism outside BSD coverage
+can leave no usable report. This API does not capture SIGKILL, watchdog or OOM
+termination, and does not recover the original Objective-C exception throw stack.
+There is no automatic attachment of current-launch logs, bodies or breadcrumbs.
 
 ## Retained facts
 

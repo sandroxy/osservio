@@ -97,7 +97,7 @@ public struct SystemDiagnostic: Sendable {
     }
 }
 
-/// One bounded inspection of OS-owned history. Empty success is not proof that no failure occurred.
+/// One bounded inspection of sanitized diagnostic history. Empty success is not proof that no failure occurred.
 public struct SystemDiagnosticBatch: Sendable {
     public let source: SystemDiagnosticSource
     public let observedAtMillis: Int64

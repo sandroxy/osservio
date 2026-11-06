@@ -14,6 +14,22 @@ UIKit or starts capture automatically.
 WebSocket operations submitted through a host-owned URLSession. It depends only
 on Core and Foundation.
 
+`OsservioCrash` is an optional product for BSD fatal-signal recording. In a
+host-owned composition root, call `CrashReports.open(directory:completion:)`
+with a dedicated app-private directory and retain the returned source. First
+recover its old reports through `SystemDiagnosticRecovery`. Then explicitly call
+`CrashRecorder.install(reports:captureController:completion:)` with the shared
+capture controller, and handle its installation result. Reading old reports
+remains possible when a debugger or other handler prevents installation.
+
+Installation lasts for the process lifetime. Capture off disables new file
+writes, while the handlers and loader cache remain installed. The directory holds
+at most four bounded pending reports, including the slot reserved for this
+process; the incident archive has separate retention. Review the
+[installation, conflicts, privacy and recovery contract](../../doc/crash-evidence.md)
+before integrating. This product does not provide in-app symbolication or
+SIGKILL, watchdog, OOM or original Objective-C throw-stack coverage.
+
 Create these objects in a host-owned composition root and retain them across
 the screens that should share history:
 

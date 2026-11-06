@@ -90,6 +90,13 @@ typedef struct PLCrashReporterCallbacks {
 
 - (instancetype) initWithConfiguration: (PLCrashReporterConfig *) config;
 
+// Osservio: normal-execution construction with already bounded host metadata.
+// The explicit base path is the private report directory, without a bundle-derived suffix.
+- (instancetype) initWithApplicationIdentifier: (NSString *) applicationIdentifier
+                                   appVersion: (NSString *) applicationVersion
+                          appMarketingVersion: (NSString *) applicationMarketingVersion
+                                configuration: (PLCrashReporterConfig *) configuration;
+
 - (BOOL) hasPendingCrashReport;
 
 - (NSData *) loadPendingCrashReportData;

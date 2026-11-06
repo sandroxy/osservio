@@ -8,7 +8,8 @@ Plausible Labs Cooperative, Inc., and the additional authors identified in
 [the retained upstream license](native/ios/Vendor/PLCrashReporter/LICENSE).
 Its recording profile, namespace isolation, exact upstream hashes and local
 changes are maintained in [the vendor directory](native/ios/Vendor/PLCrashReporter/README.md).
-It is not an exported SDK product and is not linked by existing Osservio products.
+It is private to the optional `OsservioCrash` product. Linking the product does
+not install a handler; the host explicitly requests installation.
 
 Most upstream code uses the MIT-style terms in that license.
 `PLCrashLogWriterEncoding.c` uses [Apache 2.0](native/ios/Vendor/PLCrashReporter/Apache-2.0.txt).
@@ -20,7 +21,9 @@ It carries
 including their own copyright statements. Original source and test notices
 remain in place. The source directory also retains the upstream privacy manifest;
 Osservio's support target separately declares uptime access used for capture
-expiry. These declarations do not replace a host application's disclosures.
+expiry and app-container file metadata used for pending-file retention. The
+declared reasons follow [Apple's required-reason API definitions](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitypereasons).
+These declarations do not replace a host application's disclosures.
 
 ## Gradle Wrapper
 

@@ -41,8 +41,8 @@ native behavior and interaction validation. No artifacts have been published.
   reads, MetricKit subscription, and explicit incident persistence, without fatal
   handlers or automatic recovery.
 - [Native signal evidence](doc/crash-evidence.md) defines the reviewed address-stack
-  model, internal safe-launch decoder, archive, native browsing and portable export,
-  independently of public recorder installation and pending-file recovery.
+  model, safe-launch decoder, archive, native browsing and portable export, plus
+  optional iOS recorder installation and independent pending-file recovery.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment
@@ -107,8 +107,9 @@ Run the iOS package test scheme below with
 `-only-testing:OsservioCrashBackendTests` when changing its C/Objective-C support,
 vendored recording profile, or decoding behavior. Use
 `GCC_TREAT_WARNINGS_AS_ERRORS=YES` alongside the Swift warning settings. These
-internal targets are not exported SDK products and do not install a handler in
-the package test runner or existing consumer applications.
+backend targets remain private to the optional `OsservioCrash` product. Package
+tests do not install a handler in their shared test runner; fatal installation
+and recovery use separate child-process fixtures and explicit consumer scenarios.
 Include `-only-testing:OsservioCrashTests` and
 `-only-testing:OsservioCoreTests/CapturePermissionTests` when changing its
 Core-to-native permission lifecycle.

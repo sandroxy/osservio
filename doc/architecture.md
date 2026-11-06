@@ -172,16 +172,16 @@ implement the document protocol using platform JSON encoders. Core declares
 Store implements them, UI consumes them, and the host wires the concrete store
 and recorder. The optional Runtime module supplies explicitly started lifecycle
 observers and one-shot environment queries. SQLite persistence accepts only
-sanitized restart-relevant breadcrumbs. The internal fatal-recording backend has
-separate [verification](../testing/crash-backend/README.md). Its internal
-permission bridge follows Core control and absolute detailed-session expiry;
-storage recovery and public recorder installation are not connected yet.
-Existing SDK products do not link the optional backend.
+sanitized restart-relevant breadcrumbs. The optional iOS `OsservioCrash` product
+provides explicit process-lifetime recording and bounded pending-file recovery,
+with separate [verification](../testing/crash-backend/README.md). Its permission
+bridge follows Core control and absolute detailed-session expiry. Reading old
+files is independent of installing handlers; other products do not link this backend.
 Core also validates [address-only signal evidence](crash-evidence.md). The
 internal iOS decoder enforces the backend's privacy profile before producing
 these values. The incident archive, recovery port, native UI and portable export
-preserve these facts; public recorder installation and pending-file recovery are
-not connected yet.
+preserve these facts. The host wires the source to capture-gated recovery and
+chooses whether to install the recorder after processing pending evidence.
 
 Publish a capability description for each supported runtime, network stack, and
 integration mode. It must identify prerequisites, available observations,

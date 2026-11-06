@@ -2,8 +2,8 @@
 
 The private backend is documented in
 [its source directory](../../native/ios/Vendor/PLCrashReporter/README.md).
-No public fatal-recording API or consumer integration is established by these
-checks.
+The optional `OsservioCrash` product exposes the reviewed installation and file
+recovery boundary. These checks keep fatal cases outside normal test runners.
 
 From the repository root, run the non-fatal package tests:
 
@@ -23,7 +23,12 @@ The internal permission bridge checks Core lifecycle updates, absolute expiry
 without polling, exclusive ownership, failed binding, object lifetime, and
 revocation on release. Core's `CapturePermissionTests` separately checks initial
 delivery, fallback changes during detail, binding contention, and callback reentry.
-These checks do not install a crash handler or exercise report persistence.
+These permission checks do not install a crash handler. `CrashReportDirectoryTests`
+and `CrashReportsTests` separately exercise bounded retention, ownership, unsafe
+files, incomplete input, source admission and callback reentry. iOS additionally
+checks protection inherited by files created through POSIX `open`.
+When Simulator does not expose that attribute, this one check is explicitly
+skipped and remains required on a physical iOS device; it is not reported as passed.
 
 On macOS with Xcode command-line tools, run:
 
@@ -49,6 +54,20 @@ non-zero allocator memory and safe cleanup when no unknown fields are present.
 The script then links a Swift decoder probe and reads an actual prior-process
 fatal report into Core's typed evidence, checking that signal and stack/image
 counts agree with the underlying report. No new report identity is generated.
+
+A separate Swift process probe uses the public `CrashReports` and `CrashRecorder`
+APIs with Core capture control. It checks process-long ownership, already-installed
+rejection, all capture dispositions, and a deadline elapsed before installation.
+Later processes recover a real fatal file into SQLite, reopen the archive and
+verify the original report identity, addresses and duplicate acknowledgement.
+Four pending reports remain readable after a conflicting handler rejects install.
+
+The probe's test-only dynamic library interposes `sigaction` to fail the second
+handler registration. It verifies a real partial backend failure, permanent
+disarming after later Core changes, pinned directory ownership and restart-required
+retry. Raising SIGABRT through the first installed handler must still terminate
+the process without writing a report. This library is linked only into the ignored
+process fixture, never into an SDK or consumer application.
 
 `CrashReportDecoderTests` uses live encodings with an explicitly changed
 classification bit for deterministic mapping checks; those synthetic fixtures

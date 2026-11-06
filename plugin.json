@@ -12,7 +12,7 @@
       "compileSdk": 36
     },
     "ios": {
-      "modules": ["OsservioCore", "OsservioStore", "OsservioUI", "OsservioURLSession", "OsservioRuntime", "OsservioExport"],
+      "modules": ["OsservioCore", "OsservioStore", "OsservioUI", "OsservioURLSession", "OsservioRuntime", "OsservioExport", "OsservioCrash"],
       "minimumVersion": "13.0"
     }
   }

@@ -11,7 +11,8 @@ let package = Package(
         .library(name: "OsservioUI", targets: ["OsservioUI"]),
         .library(name: "OsservioURLSession", targets: ["OsservioURLSession"]),
         .library(name: "OsservioRuntime", targets: ["OsservioRuntime"]),
-        .library(name: "OsservioExport", targets: ["OsservioExport"])
+        .library(name: "OsservioExport", targets: ["OsservioExport"]),
+        .library(name: "OsservioCrash", targets: ["OsservioCrash"])
     ],
     dependencies: [
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")

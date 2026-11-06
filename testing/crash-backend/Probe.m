@@ -82,6 +82,7 @@ static int inspectReport(NSData *data) {
 
 int main(int argc, char **argv) {
     @autoreleasepool {
+        OsservioCrashCaptureSetArmed(true);
         REQUIRE(argc == 3, "expected mode and fixture path");
         NSString *mode = @(argv[1]), *path = @(argv[2]);
         if ([mode isEqualToString:@"decoder-initialization"]) {

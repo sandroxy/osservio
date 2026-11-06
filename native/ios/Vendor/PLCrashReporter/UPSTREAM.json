@@ -655,13 +655,13 @@
       "path": "Source/PLCrashReporter.h",
       "upstreamPath": "Source/PLCrashReporter.h",
       "upstreamSHA256": "aac94b0e9d0037ca83b488937dde95df3bd60918f85dfa6e030f78e0027a0436",
-      "vendoredSHA256": "ffaecc78142565efa9b80af3e6618854f18d36d42ea37a6ee220fb6b3772002a"
+      "vendoredSHA256": "b9b8c679c5bfb5be3ff4668d5f05ac2d0732f13af1613bb20600328ac398f6a1"
     },
     {
       "path": "Source/PLCrashReporter.m",
       "upstreamPath": "Source/PLCrashReporter.m",
       "upstreamSHA256": "9b2b15619c6c64f0b5b8faa6729854046b9158bac246db651f696ca9d91ae1bf",
-      "vendoredSHA256": "a67e8934bb1b17e3e6827391580db732f0a11bf51d6ea728533899a1737e9fd9"
+      "vendoredSHA256": "5c88309fb7c6e82da9c535048133ef4aec904004598a24fc17e52c9dd7ffdcbb"
     },
     {
       "path": "Source/PLCrashReporterConfig.h",
@@ -697,7 +697,7 @@
       "path": "Source/PLCrashSignalHandler.mm",
       "upstreamPath": "Source/PLCrashSignalHandler.mm",
       "upstreamSHA256": "b2b1c6a79f69c0eb398bb59c18648b121cc6aa152bbd10f13d01f7f1102d0a90",
-      "vendoredSHA256": "b103601fe93720d30a21bb81cdd24f37fe5b35daf4a529126d89ee3b55191871"
+      "vendoredSHA256": "1138da1c09f9129df1364debdd71adad8a21cfd7007ec8ff7af2c002147ef0ba"
     },
     {
       "path": "Source/PLCrashSysctl.c",

@@ -75,15 +75,20 @@ The viewer distinguishes failure time from report read time and does not relabel
 signal termination or a hang as a crash. Immediate next-launch delivery is not
 guaranteed. See [system diagnostics](doc/system-diagnostics.md).
 
-Core also defines validated [Apple fatal-signal evidence](doc/crash-evidence.md):
-original time, signal, instruction addresses and binary identities can use the
-existing incident archive, recovery deduplication, native viewer and export.
-Addresses are not symbolicated. Public recorder installation and pending-file
-recovery are not connected yet. The Java model supports the same evidence
-contract; it does not provide the corresponding native crash recorder on Android.
+The optional iOS `OsservioCrash` product supports explicit fatal-signal recorder
+installation and bounded pending-file reads on a later launch. Recording follows
+baseline and detailed capture independently of inspector visibility. A debugger
+or conflicting handler rejects installation without preventing old reports from
+being read. Original time, signal, instruction addresses and binary identities
+use the incident archive, recovery deduplication, native viewer and export.
+Addresses are not symbolicated. SIGKILL, watchdog and OOM termination are outside
+its coverage, as is the original Objective-C exception throw stack. See
+[Apple fatal-signal evidence](doc/crash-evidence.md). The Java model supports the
+same evidence contract; it does not provide the corresponding native crash
+recorder on Android.
 
-Automatic system-log capture, fatal crash handlers, global network interception,
-and framework adapters are not implemented.
+The SDK does not automatically capture system logs or install crash handlers.
+Global network interception and framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see
 [network coverage](doc/network-integration.md). Core behavior and
 native interaction will be refined on Android and iOS before expanding to React

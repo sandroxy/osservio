@@ -84,4 +84,23 @@ final class CrashCapturePermissionTests: XCTestCase {
         XCTAssertNil(reference.value)
         XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
     }
+
+    func testPreparationAndPermanentFailureCannotBeOverriddenByCoreUpdates() throws {
+        let capture = CaptureController(baselineEnabled: true)
+        let permission = try CrashCapturePermission(captureController: capture, initiallyArmed: false)
+        defer { withExtendedLifetime(permission) {} }
+        XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
+        try capture.startDetailed(durationMillis: 1)
+        XCTAssertTrue(capture.setBaselineEnabled(false))
+        Thread.sleep(forTimeInterval: 0.01)
+        permission.arm()
+        XCTAssertFalse(OsservioCrashCaptureAllowsRecording(), "Arming must not renew an expired detailed deadline")
+        XCTAssertTrue(capture.setBaselineEnabled(true)); XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
+        permission.disablePermanently()
+        XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
+        XCTAssertTrue(capture.stopAll()); XCTAssertTrue(capture.setBaselineEnabled(true))
+        try capture.startDetailed(durationMillis: 10_000)
+        permission.arm()
+        XCTAssertFalse(OsservioCrashCaptureAllowsRecording(), "A failed installation stays disarmed despite later policy changes")
+    }
 }

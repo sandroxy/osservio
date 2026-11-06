@@ -1099,6 +1099,20 @@
  
  @class PLCrashMachExceptionServer;
  @class PLCrashMachExceptionPortSet;
+@@ -95,6 +90,13 @@
+ 
+ - (instancetype) initWithConfiguration: (PLCrashReporterConfig *) config;
+ 
++// Osservio: normal-execution construction with already bounded host metadata.
++// The explicit base path is the private report directory, without a bundle-derived suffix.
++- (instancetype) initWithApplicationIdentifier: (NSString *) applicationIdentifier
++                                   appVersion: (NSString *) applicationVersion
++                          appMarketingVersion: (NSString *) applicationMarketingVersion
++                                configuration: (PLCrashReporterConfig *) configuration;
++
+ - (BOOL) hasPendingCrashReport;
+ 
+ - (NSData *) loadPendingCrashReportData;
 --- a/Source/PLCrashReporter.m
 +++ b/Source/PLCrashReporter.m
 @@ -1,3 +1,5 @@
@@ -1121,7 +1135,18 @@
  
  #import "PLCrashCompatConstants.h"
  #import "PLCrashFeatureConfig.h"
-@@ -139,12 +136,16 @@
+@@ -53,10 +50,6 @@
+ #import <stdatomic.h>
+ 
+ /** @internal
+- * CrashReporter cache directory name. */
+-static NSString *PLCRASH_CACHE_DIR = @"com.plausiblelabs.crashreporter.data";
+-
+-/** @internal
+  * Crash Report file name. */
+ static NSString *PLCRASH_LIVE_CRASHREPORT = @"live_report.plcrash";
+ 
+@@ -139,12 +132,16 @@
   *
   * @return Returns PLCRASH_ESUCCESS on success, or an appropriate error value if the report could not be written.
   */
@@ -1140,7 +1165,7 @@
      if (fd < 0) {
          PLCF_DEBUG("Could not open the crashlog output file: %s", strerror(errno));
          return PLCRASH_EINTERNAL;
-@@ -315,16 +316,16 @@
+@@ -315,16 +312,16 @@
   * dyld image add notification callback.
   */
  static void image_add_callback (const struct mach_header *mh, intptr_t vmaddr_slide) {
@@ -1165,7 +1190,15 @@
  }
  
  /**
-@@ -568,6 +569,19 @@
+@@ -365,7 +362,6 @@
+ @interface PLCrashReporter (PrivateMethods)
+ 
+ - (id) initWithBundle: (NSBundle *) bundle configuration: (PLCrashReporterConfig *) configuration;
+-- (id) initWithApplicationIdentifier: (NSString *) applicationIdentifier appVersion: (NSString *) applicationVersion appMarketingVersion: (NSString *) applicationMarketingVersion configuration: (PLCrashReporterConfig *) configuration;
+ 
+ #if PLCRASH_FEATURE_MACH_EXCEPTIONS
+ - (PLCrashMachExceptionServer *) enableMachExceptionServerWithPreviousPortSet: (__strong PLCrashMachExceptionPortSet **) previousPortSet
+@@ -568,6 +564,19 @@
   * This restriction may be removed in a future release.
   */
  - (BOOL) enableCrashReporterAndReturnError: (NSError **) outError {
@@ -1178,14 +1211,14 @@
 +    if (_config.signalHandlerType != PLCrashReporterSignalHandlerTypeBSD ||
 +        _config.shouldRegisterUncaughtExceptionHandler ||
 +        _config.symbolicationStrategy != PLCrashReporterSymbolicationStrategyNone ||
-+        _config.maxReportBytes == 0 || _config.maxReportBytes > 65536) {
++        _config.maxReportBytes == 0 || _config.maxReportBytes > 65536 || _config.basePath == nil) {
 +        plcrash_populate_error(outError, PLCrashReporterErrorUnknown, @"Unsupported crash recording configuration", nil);
 +        return NO;
 +    }
      /* Prevent enabling more than one crash reporter, process wide. We can not support multiple chained reporters
       * due to the use of NSUncaughtExceptionHandler (it doesn't support chaining or assocation of context with the callbacks), as
       * well as our legacy approach of deregistering any signal handlers upon the first signal. Once PLCrashUncaughtExceptionHandler is
-@@ -575,7 +589,7 @@
+@@ -575,7 +584,7 @@
       * crash reporters. */
      {
          static BOOL enforceOne = NO;
@@ -1194,7 +1227,7 @@
          pthread_mutex_lock(&enforceOneLock); {
              if (enforceOne) {
                  pthread_mutex_unlock(&enforceOneLock);
-@@ -595,6 +609,8 @@
+@@ -595,6 +604,8 @@
          return NO;
  
      /* Set up the signal handler context */
@@ -1203,7 +1236,55 @@
      signal_handler_context.path = strdup([[self crashReportPath] UTF8String]); // NOTE: would leak if this were not a singleton struct
      assert(_applicationIdentifier != nil);
      assert(_applicationVersion != nil);
-@@ -1072,7 +1088,7 @@
+@@ -889,15 +900,6 @@
+     return [[self crashReportDirectory] stringByAppendingPathComponent: PLCRASH_LIVE_CRASHREPORT];
+ }
+ 
+-@end
+-
+-/**
+- * @internal
+- *
+- * Private Methods
+- */
+-@implementation PLCrashReporter (PrivateMethods)
+-
+ /**
+  * @internal
+  *
+@@ -923,17 +925,22 @@
+     _applicationVersion = applicationVersion;
+     _applicationMarketingVersion = applicationMarketingVersion;
+     
+-    /* No occurances of '/' should ever be in a bundle ID, but just to be safe, we escape them */
+-    NSString *appIdPath = [applicationIdentifier stringByReplacingOccurrencesOfString: @"/" withString: @"_"];
+-    
+-    NSString *basePath = _config.basePath;
+-    if (basePath == nil) {
+-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+-        basePath = [paths objectAtIndex: 0];
+-    }
+-    _crashReportDirectory = [[basePath stringByAppendingPathComponent: PLCRASH_CACHE_DIR] stringByAppendingPathComponent: appIdPath];
++    // Osservio owns a fixed, validated slot directory. Never derive filesystem
++    // locations from bundle metadata or use the host's general cache as a fallback.
++    _crashReportDirectory = _config.basePath;
+     return self;
+ }
++
++@end
++
++/**
++ * @internal
++ *
++ * Private Methods
++ */
++@implementation PLCrashReporter (PrivateMethods)
++
++
+ 
+ 
+ /**
+@@ -1072,7 +1079,7 @@
      NSFileManager *fm = [NSFileManager defaultManager];
      
      /* Set up reasonable directory attributes */
@@ -1212,6 +1293,20 @@
      
      /* Create the top-level path */
      if (![fm fileExistsAtPath: [self crashReportDirectory]] &&
+@@ -1081,13 +1088,6 @@
+         return NO;
+     }
+ 
+-    /* Create the queued crash report directory */
+-    if (![fm fileExistsAtPath: [self queuedCrashReportDirectory]] &&
+-        ![fm createDirectoryAtPath: [self queuedCrashReportDirectory] withIntermediateDirectories: YES attributes: attributes error: outError])
+-    {
+-        return NO;
+-    }
+-
+     return YES;
+ }
+ 
 --- a/Source/PLCrashReporterConfig.h
 +++ b/Source/PLCrashReporterConfig.h
 @@ -28,11 +28,7 @@
@@ -1278,6 +1373,30 @@
  /*
   * Author: Landon Fuller <landonf@plausiblelabs.com>
   *
+@@ -339,6 +341,7 @@
+             if (sigaltstack(&_sigstk, 0) < 0) {
+                 /* This should only fail if we supply invalid arguments to sigaltstack() */
+                 plcrash_populate_posix_error(outError, errno, @"Could not initialize alternative signal stack");
++                pthread_mutex_unlock(&registerHandlers);
+                 return NO;
+             }
+ #endif
+@@ -350,6 +353,7 @@
+                 .context = NULL
+             };
+             shared_handler_context().callbacks.nasync_append(sa);
++            singleShotInitialization = YES;
+         }
+         
+         /* Check whether the signal already has a registered handler. */
+@@ -380,6 +384,7 @@
+             if (sigaction(signo, &sa, &sa_prev) != 0) {
+                 int err = errno;
+                 plcrash_populate_posix_error(outError, err, @"Failed to register signal handler");
++                pthread_mutex_unlock(&registerHandlers);
+                 return NO;
+             }
+             
 --- a/Source/PLCrashSysctl.c
 +++ b/Source/PLCrashSysctl.c
 @@ -1,3 +1,5 @@

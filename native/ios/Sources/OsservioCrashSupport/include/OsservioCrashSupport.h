@@ -8,7 +8,10 @@ extern "C" {
 // Normal execution only. Absolute uptime milliseconds in the mach_absolute_time
 // domain (the same as DispatchTime uptimeNanoseconds). Zero leaves baseline only.
 void OsservioCrashCaptureUpdate(bool baseline, uint64_t detailedDeadlineUptimeMillis);
-// Async-signal-safe: one lock-free load and the platform uptime clock.
+// Normal execution only. Installation keeps the writer disarmed until every
+// handler is ready. Policy updates cannot override this separate gate.
+void OsservioCrashCaptureSetArmed(bool armed);
+// Async-signal-safe: lock-free loads and the platform uptime clock.
 bool OsservioCrashCaptureAllowsRecording(void);
 
 // Async-signal-safe fixed-width fallback for unknown signal codes. The caller
