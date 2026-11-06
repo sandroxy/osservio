@@ -8,9 +8,8 @@ implicitly when a snapshot is made or saved.
 
 This API records a manual observation. It is not a crash detector, and the
 snapshot's existence does not establish a failure or its cause. All attachments
-can be saved through native APIs and inspected in the native browser. The
-composer currently selects notes, environment information, and breadcrumbs;
-log and network selection controls are not yet available. Export is not implemented.
+can be selected in the native composer or supplied through native APIs, then
+inspected in the native browser. Export is not implemented.
 
 ## Evidence and privacy
 
@@ -85,22 +84,49 @@ Use `IncidentInspectorView(context, archive, environment, breadcrumbs)` on Andro
 or embed `IncidentInspectorViewController(archive:environment:breadcrumbs:)` in
 a navigation controller on iOS. Supply the same long-lived archive, a Core
 `EnvironmentProvider`, and a Core `BreadcrumbHistory`. The full combined
-inspector also accepts an optional incident archive and adds a Problems section.
+inspector also accepts an optional incident archive and adds a Problems section,
+using its existing log, HTTP, and WebSocket histories. For the standalone view,
+supply these as the optional `logs`, `http`, and `webSockets` arguments after
+`breadcrumbs`. Omitted histories remain unavailable for new marks; browsing
+already saved attachments does not require live histories.
 
-Marking a problem freezes its identity, time, and current bounded breadcrumb
-window immediately. A separate one-shot environment query keeps its own time.
+Marking a problem freezes its identity, time, and current bounded breadcrumb,
+log, HTTP, and WebSocket metadata windows immediately. A separate one-shot environment query keeps its own time.
 The composer waits up to five seconds for that query; an unavailable attachment
 is disclosed rather than replaced with empty or zero-valued data. Unchecking
 environment information permits saving without waiting. Late results cannot
 alter an already saved snapshot. Neither opening the browser nor marking a
 problem enables capture or flushes pending breadcrumb persistence.
 
-The user chooses whether to attach the environment and breadcrumbs. Description
-text is excluded by default and requires an explicit choice. Included text is
+The user chooses which groups to attach. Available history groups are initially
+selected; unavailable groups are disclosed and disabled. Network bodies are
+excluded by default. The first explicit content selection looks up only the
+frozen metadata references and keeps that copy, including unavailable/busy/budget
+states. Deselecting a group excludes it from the saved report; reselecting or
+retrying a failed save does not query metadata or bodies again. Content may have
+been evicted before that first selection. New activity is never added to a draft.
+Description text is also excluded by default and requires an explicit choice. Included text is
 treated as public diagnostic content, with a visible reminder that secrets are
 not automatically removed. The editor rejects input beyond 4,096 UTF-8 bytes.
 Cancellation writes nothing. A failed save keeps the draft for retry, and a
 successful save is reported only after the archive completes its commit.
+
+The native composer uses smaller combined budgets than the independent Core
+window defaults:
+
+| Attachment | Event limit | Sanitized text limit |
+| --- | --- | --- |
+| Breadcrumbs | 200 | 32 KiB |
+| Logs | 200 | 16 KiB |
+| HTTP metadata | 50 | 16 KiB |
+| WebSocket metadata | 100 | 16 KiB |
+| Selected HTTP bodies | Referenced bodies only | 12 KiB |
+| Selected WebSocket text | Referenced payloads only | 12 KiB |
+
+Together with the bounded description and environment, these fit the default
+128 KiB per-snapshot text limit. They are allocation limits, not performance
+guarantees. A host archive with stricter limits can still reject a save; the UI
+reports the error and preserves the draft. Use the Core API for custom budgets.
 
 The browser reads summaries on entry or explicit refresh, with a read time and
 per-instance storage status. It does not continuously poll the database. Details
@@ -136,7 +162,12 @@ not having a window. Counters describe that source, not every possible capture
 loss or all activity in the application.
 
 Network content selection is independent and defaults off. Unselected content
-is never queried. When enabled, each referenced body is looked up once without
+is never queried. `IncidentHTTP.includingBodies` and
+`IncidentWebSockets.includingPayloads` can create a new content-selected copy of
+an existing metadata window. They preserve its events, observation time, and
+source counters, and never call the history's `snapshot` method. Each explicit
+API call performs a new bounded lookup; callers that need a frozen editing draft
+must retain the returned copy, as the native composer does. When enabled, each referenced body is looked up once without
 retry, within a default 65,536-byte payload budget (accepted range 0–262,144).
 Allocation prefers newer observations; HTTP responses precede their requests.
 A captured body is either included whole or excluded for budget, preserving its

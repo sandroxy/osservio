@@ -241,7 +241,7 @@
 "incident_note_limit" = "说明最多可输入 4,096 个 UTF-8 字节。";
 "incident_include_environment" = "附带环境信息";
 "incident_include_breadcrumbs" = "附带最近的运行线索";
-"incident_mark_hint" = "已固定标记时点和最近的运行线索，环境信息会单独采样。点击保存后才会留存。";
+"incident_mark_hint" = "标记时间和近期记录窗口已固定，环境信息会单独读取。点击保存之前不会写入快照。";
 "incident_environment_loading" = "正在读取环境信息…";
 "incident_environment_failed" = "未能读取环境信息，保存时将不附带这部分内容。";
 "incident_breadcrumbs_failed" = "未能取得最近的运行线索，保存时将不附带这部分内容。";
@@ -266,3 +266,13 @@
 "incident_payload_unavailable" = "准备快照时，这段正文已不可用。";
 "incident_payload_busy" = "准备快照时正文存储正忙，未能复制这段正文。";
 "incident_payload_budget" = "这段正文超出了快照的正文容量限制，未被复制。";
+"incident_include_logs" = "附带近期日志";
+"incident_include_http" = "附带近期 HTTP 请求";
+"incident_include_http_bodies" = "附带已采集的 HTTP 正文";
+"incident_include_websockets" = "附带近期 WebSocket 活动";
+"incident_include_ws_payloads" = "附带已采集的 WebSocket 文本";
+"incident_window_unavailable" = "标记时未取得这类历史记录，本次不会附带。";
+"incident_body_choice_hint" = "首次勾选时读取对应的已采集内容，最多 12 KiB。再次勾选或保存重试沿用这次结果，不补入后续活动。";
+"incident_body_none" = "这份窗口中没有可读取的已采集内容。";
+"incident_body_failed" = "未能准备这份内容，本次不附带。如需重新读取，请重新标记问题。";
+"incident_body_selected" = "已复制：%ld / %ld 份引用内容 · %ld 字节";

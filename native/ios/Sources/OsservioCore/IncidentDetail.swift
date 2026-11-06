@@ -59,13 +59,27 @@ public struct IncidentHTTP: Sendable {
                                payloadByteLimit: Int = 65_536) throws -> IncidentHTTP {
         guard (0...262_144).contains(payloadByteLimit) else { throw CaptureConfigurationError.invalidLimit }
         let events = try IncidentWindow.select(source.events, count: eventLimit, bytes: textByteLimit, size: { $0.textByteCount })
-        var payloads: [String: IncidentPayload] = [:], remaining = payloadByteLimit
+        let payloads = try selectPayloads(events, history: history, include: includeBodies, byteLimit: payloadByteLimit)
+        return try restore(events: events, payloads: payloads, observedAtMillis: observedAtMillis,
+            sourceEventCount: source.events.count, sourceEvictedEvents: source.evictedEvents, sourceEvictedBodies: source.evictedBodies)
+    }
+    /// Returns a new copy with one bounded lookup per frozen body reference. Event metadata,
+    /// observation time, and source counters remain unchanged; missing content is not retried.
+    public func includingBodies(from history: any HTTPHistory, payloadByteLimit: Int = 65_536) throws -> IncidentHTTP {
+        let payloads = try Self.selectPayloads(events, history: history, include: true, byteLimit: payloadByteLimit)
+        return try Self.restore(events: events, payloads: payloads, observedAtMillis: observedAtMillis,
+            sourceEventCount: sourceEventCount, sourceEvictedEvents: sourceEvictedEvents, sourceEvictedBodies: sourceEvictedBodies)
+    }
+    private static func selectPayloads(_ events: [HTTPEvent], history: any HTTPHistory,
+                                       include: Bool, byteLimit: Int) throws -> [String: IncidentPayload] {
+        guard (0...262_144).contains(byteLimit) else { throw CaptureConfigurationError.invalidLimit }
+        var payloads: [String: IncidentPayload] = [:], remaining = byteLimit
         // Prefer newer responses, then their requests; never shorten an already captured body a second time.
         for event in events.reversed() {
             for reference in [event.responseBody, event.requestBody] {
                 guard let id = reference.blobID else { continue }
                 let value: IncidentPayload
-                if !includeBodies { value = try .restore(id: id, state: .notSelected, text: nil) }
+                if !include { value = try .restore(id: id, state: .notSelected, text: nil) }
                 else {
                     switch history.body(id: id) {
                     case .available(let body):
@@ -80,8 +94,7 @@ public struct IncidentHTTP: Sendable {
                 remaining -= value.textByteCount
             }
         }
-        return try restore(events: events, payloads: payloads, observedAtMillis: observedAtMillis,
-            sourceEventCount: source.events.count, sourceEvictedEvents: source.evictedEvents, sourceEvictedBodies: source.evictedBodies)
+        return payloads
     }
     public static func restore(events: [HTTPEvent], payloads: [String: IncidentPayload], observedAtMillis: Int64,
                                sourceEventCount: Int, sourceEvictedEvents: Int64, sourceEvictedBodies: Int64) throws -> IncidentHTTP {
@@ -122,11 +135,25 @@ public struct IncidentWebSockets: Sendable {
                                payloadByteLimit: Int = 65_536) throws -> IncidentWebSockets {
         guard (0...262_144).contains(payloadByteLimit) else { throw CaptureConfigurationError.invalidLimit }
         let events = try IncidentWindow.select(source.events, count: eventLimit, bytes: textByteLimit, size: { $0.textByteCount })
-        var payloads: [String: IncidentPayload] = [:], remaining = payloadByteLimit
+        let payloads = try selectPayloads(events, history: history, include: includePayloads, byteLimit: payloadByteLimit)
+        return try restore(events: events, payloads: payloads, observedAtMillis: observedAtMillis,
+            sourceEventCount: source.events.count, sourceEvictedEvents: source.evictedEvents, sourceEvictedPayloads: source.evictedPayloads)
+    }
+    /// Returns a new copy with one bounded lookup per frozen body reference. Event metadata,
+    /// observation time, and source counters remain unchanged; missing content is not retried.
+    public func includingPayloads(from history: any WebSocketHistory, payloadByteLimit: Int = 65_536) throws -> IncidentWebSockets {
+        let payloads = try Self.selectPayloads(events, history: history, include: true, byteLimit: payloadByteLimit)
+        return try Self.restore(events: events, payloads: payloads, observedAtMillis: observedAtMillis,
+            sourceEventCount: sourceEventCount, sourceEvictedEvents: sourceEvictedEvents, sourceEvictedPayloads: sourceEvictedPayloads)
+    }
+    private static func selectPayloads(_ events: [WebSocketEvent], history: any WebSocketHistory,
+                                       include: Bool, byteLimit: Int) throws -> [String: IncidentPayload] {
+        guard (0...262_144).contains(byteLimit) else { throw CaptureConfigurationError.invalidLimit }
+        var payloads: [String: IncidentPayload] = [:], remaining = byteLimit
         for event in events.reversed() {
             guard let id = event.payload?.blobID else { continue }
             let value: IncidentPayload
-            if !includePayloads { value = try .restore(id: id, state: .notSelected, text: nil) }
+            if !include { value = try .restore(id: id, state: .notSelected, text: nil) }
             else {
                 switch history.payload(id: id) {
                 case .available(let payload):
@@ -140,8 +167,7 @@ public struct IncidentWebSockets: Sendable {
             guard payloads.updateValue(value, forKey: id) == nil else { throw PersistenceError.invalidRecord }
             remaining -= value.textByteCount
         }
-        return try restore(events: events, payloads: payloads, observedAtMillis: observedAtMillis,
-            sourceEventCount: source.events.count, sourceEvictedEvents: source.evictedEvents, sourceEvictedPayloads: source.evictedPayloads)
+        return payloads
     }
     public static func restore(events: [WebSocketEvent], payloads: [String: IncidentPayload], observedAtMillis: Int64,
                                sourceEventCount: Int, sourceEvictedEvents: Int64, sourceEvictedPayloads: Int64) throws -> IncidentWebSockets {

@@ -17,7 +17,8 @@ Core also provides bounded frozen log/HTTP/WebSocket windows with separate body
 inclusion states. Store persists these as optional incident attachments and
 upgrades existing incident databases without replacing reports. The immutable problem browser exposes
 these groups, metadata search, and saved body states without querying live history.
-The composer does not yet offer log/network attachment controls.
+The composer freezes metadata at the mark and optionally copies captured network
+content once, preserving that copy through editing and failed-save retry.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 

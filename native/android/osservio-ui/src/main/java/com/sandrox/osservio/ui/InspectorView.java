@@ -90,7 +90,8 @@ public final class InspectorView extends LinearLayout {
                          BreadcrumbArchive breadcrumbArchive, IncidentArchive incidentArchive) {
         this(context, logRecorder, logHistory, httpRecorder, httpHistory, webSocketRecorder, webSocketHistory);
         addSection(R.string.osservio_runtime_title, new RuntimeInspectorView(context, environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive));
-        if (incidentArchive != null) addSection(R.string.osservio_incident_title, new IncidentInspectorView(context, incidentArchive, environment, breadcrumbHistory));
+        if (incidentArchive != null) addSection(R.string.osservio_incident_title,
+            new IncidentInspectorView(context, incidentArchive, environment, breadcrumbHistory, logHistory, httpHistory, webSocketHistory));
     }
     private static RadioButton tab(Context context, int label) {
         RadioButton button = new RadioButton(context);

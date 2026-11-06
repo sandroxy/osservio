@@ -57,6 +57,13 @@ public final class IncidentDetailTest {
         assertEquals("xy", limited.payloads.get(second.id + ".response").text);
         assertEquals(IncidentPayload.State.BUDGET_EXCEEDED, limited.payloads.get(first.id + ".response").state);
         assertEquals(2, limited.retainedPayloadBytes);
+        response(recorder, "later");
+        IncidentHTTP deferred = metadata.includingBodies(history, 3);
+        assertEquals(metadata.events, deferred.events); assertEquals(5, deferred.observedAtMillis); assertEquals(2, deferred.sourceEventCount);
+        assertEquals(metadata.sourceEvictedEvents, deferred.sourceEvictedEvents); assertEquals(metadata.sourceEvictedBodies, deferred.sourceEvictedBodies);
+        assertEquals("xy", deferred.payloads.get(second.id + ".response").text);
+        assertEquals(IncidentPayload.State.BUDGET_EXCEEDED, deferred.payloads.get(first.id + ".response").state);
+        assertThrows(IllegalArgumentException.class, () -> metadata.includingBodies(new LookupHTTP(true), -1));
         history.clear();
         assertEquals(2, limited.events.size()); assertEquals("xy", limited.payloads.get(second.id + ".response").text);
         IncidentHTTP missing = IncidentHTTP.capture(source, 7, history, true);
@@ -86,6 +93,12 @@ public final class IncidentDetailTest {
         IncidentWebSockets resultOnly = IncidentWebSockets.capture(history.snapshot(), 3, history, false, 1, 65536, 65536);
         assertEquals(first.toString(), resultOnly.events.get(0).relatedMessageId); assertTrue(resultOnly.payloads.isEmpty());
         assertEquals(3, resultOnly.omittedEventCount);
+        IncidentWebSockets deferred = metadata.includingPayloads(history, 0);
+        assertEquals(metadata.events, deferred.events); assertEquals(1, deferred.observedAtMillis); assertEquals(3, deferred.sourceEventCount);
+        assertEquals(metadata.sourceEvictedEvents, deferred.sourceEvictedEvents); assertEquals(metadata.sourceEvictedPayloads, deferred.sourceEvictedPayloads);
+        assertEquals("", deferred.payloads.get(empty.toString()).text);
+        assertEquals(IncidentPayload.State.BUDGET_EXCEEDED, deferred.payloads.get(first.toString()).state);
+        assertThrows(IllegalArgumentException.class, () -> metadata.includingPayloads(new LookupWebSocket(true), 262145));
         history.clear();
         assertEquals(WebSocketEvent.Outcome.SUBMITTED, bounded.events.get(1).outcome);
         IncidentWebSockets unavailable = IncidentWebSockets.capture(source, 4, history, true);

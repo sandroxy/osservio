@@ -44,15 +44,15 @@ filters and on-demand content lookup; see the
 [WebSocket observation contract](doc/websocket.md).
 
 Native APIs and the Problems view support explicit manual snapshots with optional
-descriptions, environment information, and bounded breadcrumbs. Saved snapshots
-remain browsable after restart, with breadcrumb search, copying, and confirmed
-deletion. Marking freezes the time and breadcrumb window; failed saves preserve
-the draft for retry. The editor excludes description text by default. Opted-in
-text is public diagnostic content and is not automatically scrubbed for secrets.
-Native APIs also save bounded log, HTTP, and WebSocket attachments, with network
-content included only by explicit choice. Saved attachments can be browsed, searched, and inspected in the Problems view;
-the composer does not yet offer their selection controls. Snapshots have independent count, age, and storage limits;
-export is not implemented yet. See [manual problem snapshots](doc/incidents.md).
+descriptions, environment information, bounded breadcrumbs, logs, HTTP requests,
+and WebSocket activity. Saved snapshots remain browsable after restart, with
+search, copying, and confirmed deletion. Marking freezes the time and recent
+history windows. Network content is excluded by default; the first explicit
+selection reads a bounded copy, which is reused on reselection or save retry.
+Description text also requires opt-in. It is public diagnostic content and is
+not automatically scrubbed for secrets. Snapshots have independent count, age,
+and storage limits; export is not implemented yet. See
+[manual problem snapshots](doc/incidents.md).
 
 Automatic system-log and crash capture, global network interception, incident
 export, and framework adapters are not implemented.

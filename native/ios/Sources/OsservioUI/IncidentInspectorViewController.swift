@@ -8,14 +8,19 @@ public final class IncidentInspectorViewController: UITableViewController {
     private let archive: any IncidentArchive
     private let environment: any EnvironmentProvider
     private let breadcrumbs: any BreadcrumbHistory
+    private let logs: (any LogHistory)?
+    private let http: (any HTTPHistory)?
+    private let webSockets: (any WebSocketHistory)?
     private var snapshots: [IncidentSummary] = []
     private var reading = false
     private var generation = 0
     private var updatedAt: Int64?
     private var notice = RuntimePresentation.text("incident_snapshot_hint")
     private var justSaved = false
-    public init(archive: any IncidentArchive, environment: any EnvironmentProvider, breadcrumbs: any BreadcrumbHistory) {
+    public init(archive: any IncidentArchive, environment: any EnvironmentProvider, breadcrumbs: any BreadcrumbHistory,
+                logs: (any LogHistory)? = nil, http: (any HTTPHistory)? = nil, webSockets: (any WebSocketHistory)? = nil) {
         self.archive = archive; self.environment = environment; self.breadcrumbs = breadcrumbs
+        self.logs = logs; self.http = http; self.webSockets = webSockets
         super.init(style: .insetGrouped)
     }
     @available(*, unavailable)
@@ -85,8 +90,19 @@ public final class IncidentInspectorViewController: UITableViewController {
     }
     private func mark() {
         do {
-            let mark = try IncidentSnapshot.capture(breadcrumbs: breadcrumbs.snapshot())
-            let editor = IncidentComposerViewController(mark: mark, archive: archive, provider: environment) { [weak self] in
+            let mark = try IncidentSnapshot.capture(breadcrumbs: breadcrumbs.snapshot(), breadcrumbTextByteLimit: 32_768)
+            let clock = SystemLogClock()
+            let logWindow = try logs?.snapshot().map { try IncidentLogs.capture($0, observedAtMillis: clock.wallTimeMillis(), textByteLimit: 16_384) }
+            let httpWindow = try http.flatMap { history in
+                try history.snapshot().map { try IncidentHTTP.capture($0, observedAtMillis: clock.wallTimeMillis(), history: history, textByteLimit: 16_384) }
+            }
+            let socketWindow = try webSockets.flatMap { history in
+                try history.snapshot().map { try IncidentWebSockets.capture($0, observedAtMillis: clock.wallTimeMillis(), history: history, eventLimit: 100, textByteLimit: 16_384) }
+            }
+            let snapshot = try IncidentSnapshot.restore(id: mark.id, timestampMillis: mark.timestampMillis, note: nil, environment: nil,
+                breadcrumbs: mark.breadcrumbs, logs: logWindow, http: httpWindow, webSockets: socketWindow)
+            let editor = IncidentComposerViewController(mark: snapshot, archive: archive, provider: environment,
+                httpHistory: http, webSocketHistory: webSockets) { [weak self] in
                 self?.justSaved = true; self?.read()
             }
             present(UINavigationController(rootViewController: editor), animated: true)

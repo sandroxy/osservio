@@ -241,7 +241,7 @@
 "incident_note_limit" = "The description is limited to 4,096 UTF-8 bytes.";
 "incident_include_environment" = "Attach environment information";
 "incident_include_breadcrumbs" = "Attach recent breadcrumbs";
-"incident_mark_hint" = "The mark time and recent breadcrumbs are frozen now. Environment is sampled separately. Nothing is saved until you choose Save.";
+"incident_mark_hint" = "The mark time and recent histories are frozen now. Environment is sampled separately. Nothing is saved until you choose Save.";
 "incident_environment_loading" = "Reading environment information…";
 "incident_environment_failed" = "Environment information is unavailable. This snapshot will be saved without it.";
 "incident_breadcrumbs_failed" = "Recent breadcrumbs are unavailable. This snapshot will be saved without them.";
@@ -266,3 +266,13 @@
 "incident_payload_unavailable" = "This content was unavailable when the snapshot was prepared.";
 "incident_payload_busy" = "The content store was busy when the snapshot was prepared; this content was not copied.";
 "incident_payload_budget" = "This content exceeded the snapshot content budget and was not copied.";
+"incident_include_logs" = "Attach recent logs";
+"incident_include_http" = "Attach recent HTTP requests";
+"incident_include_http_bodies" = "Include captured HTTP bodies";
+"incident_include_websockets" = "Attach recent WebSocket activity";
+"incident_include_ws_payloads" = "Include captured WebSocket text";
+"incident_window_unavailable" = "This history was unavailable at the mark and will not be attached.";
+"incident_body_choice_hint" = "Reads captured content once when first selected, up to 12 KiB. Reselecting or retrying uses that copy; later activity is not added.";
+"incident_body_none" = "No captured content is available for this window.";
+"incident_body_failed" = "Content could not be prepared and remains excluded. Mark the problem again to make a new attempt.";
+"incident_body_selected" = "Content copied: %ld / %ld · Bytes: %ld";

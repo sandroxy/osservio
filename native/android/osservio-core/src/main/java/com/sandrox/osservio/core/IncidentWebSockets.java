@@ -34,12 +34,22 @@ public final class IncidentWebSockets {
                                              int eventLimit, int textByteLimit, int payloadByteLimit) {
         if (payloadByteLimit < 0 || payloadByteLimit > 262144) throw new IllegalArgumentException("Invalid incident payload limit");
         List<WebSocketEvent> events = IncidentWindow.select(source.events, eventLimit, textByteLimit, event -> event.textByteCount);
-        Map<String, IncidentPayload> payloads = new LinkedHashMap<>(); int remaining = payloadByteLimit;
+        Map<String, IncidentPayload> payloads = selectPayloads(events, history, includePayloads, payloadByteLimit);
+        return restore(events, payloads, observedAtMillis, source.events.size(), source.evictedEvents, source.evictedPayloads);
+    }
+    /** Returns a new copy with bounded body lookups, preserving all frozen metadata and source counters. */
+    public IncidentWebSockets includingPayloads(WebSocketHistory history, int payloadByteLimit) {
+        Map<String, IncidentPayload> payloads = selectPayloads(events, history, true, payloadByteLimit);
+        return restore(events, payloads, observedAtMillis, sourceEventCount, sourceEvictedEvents, sourceEvictedPayloads);
+    }
+    private static Map<String, IncidentPayload> selectPayloads(List<WebSocketEvent> events, WebSocketHistory history, boolean include, int byteLimit) {
+        if (byteLimit < 0 || byteLimit > 262144) throw new IllegalArgumentException("Invalid incident payload limit");
+        Map<String, IncidentPayload> payloads = new LinkedHashMap<>(); int remaining = byteLimit;
         for (int index = events.size() - 1; index >= 0; index--) {
             WebSocketEvent event = events.get(index);
             if (event.payload == null || event.payload.blobId == null) continue;
             String id = event.payload.blobId; IncidentPayload payload;
-            if (!includePayloads) payload = IncidentPayload.restore(id, IncidentPayload.State.NOT_SELECTED, null);
+            if (!include) payload = IncidentPayload.restore(id, IncidentPayload.State.NOT_SELECTED, null);
             else {
                 WebSocketHistory.PayloadLookup result = history.payload(id);
                 if (result == null || result.state == null) throw EvidenceValidation.invalid();
@@ -56,7 +66,7 @@ public final class IncidentWebSockets {
             if (payloads.put(id, payload) != null) throw EvidenceValidation.invalid();
             remaining -= payload.textByteCount;
         }
-        return restore(events, payloads, observedAtMillis, source.events.size(), source.evictedEvents, source.evictedPayloads);
+        return payloads;
     }
     public static IncidentWebSockets restore(List<WebSocketEvent> events, Map<String, IncidentPayload> payloads, long observedAtMillis,
                                              int sourceEventCount, long sourceEvictedEvents, long sourceEvictedPayloads) {

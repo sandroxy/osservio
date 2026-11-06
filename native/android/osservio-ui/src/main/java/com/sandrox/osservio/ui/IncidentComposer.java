@@ -18,30 +18,51 @@ import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.IncidentArchive;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.LogMessage;
+import com.sandrox.osservio.core.HTTPHistory;
+import com.sandrox.osservio.core.WebSocketHistory;
+import com.sandrox.osservio.core.IncidentHTTP;
+import com.sandrox.osservio.core.IncidentWebSockets;
+import com.sandrox.osservio.core.IncidentPayload;
 import java.lang.ref.WeakReference;
+import java.util.Map;
 
-/** One explicit manual draft. Its original time and breadcrumb window never move while editing. */
+/** Metadata stays frozen while editing. Opted-in bodies are copied once from those references. */
 final class IncidentComposer {
     private final Context context;
     private final IncidentSnapshot mark;
     private final IncidentArchive archive;
     private final EnvironmentProvider provider;
+    private final HTTPHistory httpHistory;
+    private final WebSocketHistory webSocketHistory;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final AlertDialog dialog;
     private final CheckBox includeEnvironment;
     private final CheckBox includeBreadcrumbs;
     private final CheckBox includeNote;
+    private final CheckBox includeLogs;
+    private final CheckBox includeHTTP;
+    private final CheckBox includeHTTPBodies;
+    private final CheckBox includeWebSockets;
+    private final CheckBox includeWebSocketPayloads;
     private final EditText editor;
     private final TextView environmentStatus;
     private final TextView notice;
+    private final TextView httpBodiesStatus;
+    private final TextView socketPayloadsStatus;
     private final Runnable saved;
     private EnvironmentSnapshot environment;
     private boolean environmentPending = true;
     private boolean saving;
     private int generation;
+    private IncidentHTTP httpWithBodies;
+    private IncidentWebSockets socketsWithPayloads;
+    private boolean httpContentFailed;
+    private boolean socketContentFailed;
 
-    IncidentComposer(Context context, IncidentSnapshot mark, IncidentArchive archive, EnvironmentProvider provider, Runnable saved, Runnable dismissed) {
+    IncidentComposer(Context context, IncidentSnapshot mark, IncidentArchive archive, EnvironmentProvider provider,
+                     HTTPHistory httpHistory, WebSocketHistory webSocketHistory, Runnable saved, Runnable dismissed) {
         this.context = context; this.mark = mark; this.archive = archive; this.provider = provider; this.saved = saved;
+        this.httpHistory = httpHistory; this.webSocketHistory = webSocketHistory;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(16));
         content.addView(label(context.getString(R.string.osservio_incident_frozen_time) + " · " + RuntimePresentation.date(mark.timestampMillis)), params());
         content.addView(label(context.getString(R.string.osservio_incident_mark_hint)), params());
@@ -49,6 +70,21 @@ final class IncidentComposer {
         environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); content.addView(environmentStatus, params());
         includeBreadcrumbs = option(R.string.osservio_incident_include_breadcrumbs, true); content.addView(includeBreadcrumbs, params());
         content.addView(label(mark.breadcrumbs == null ? context.getString(R.string.osservio_incident_breadcrumbs_failed) : IncidentPresentation.counts(context, mark.breadcrumbs)), params());
+        includeLogs = option(R.string.osservio_incident_include_logs, mark.logs != null); content.addView(includeLogs, params());
+        content.addView(label(mark.logs == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.window(context, mark.logs.observedAtMillis, mark.logs.events.size(), mark.logs.omittedEventCount, mark.logs.sourceEvictedCount, null)), params());
+        includeHTTP = option(R.string.osservio_incident_include_http, mark.http != null); content.addView(includeHTTP, params());
+        content.addView(label(mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.window(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount, mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies)), params());
+        includeHTTPBodies = option(R.string.osservio_incident_include_http_bodies, false); content.addView(includeHTTPBodies, params());
+        httpBodiesStatus = label(context.getString(mark.http != null && !mark.http.payloads.isEmpty() && httpHistory != null
+            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); content.addView(httpBodiesStatus, params());
+        includeWebSockets = option(R.string.osservio_incident_include_websockets, mark.webSockets != null); content.addView(includeWebSockets, params());
+        content.addView(label(mark.webSockets == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.window(context, mark.webSockets.observedAtMillis, mark.webSockets.events.size(), mark.webSockets.omittedEventCount, mark.webSockets.sourceEvictedEvents, mark.webSockets.sourceEvictedPayloads)), params());
+        includeWebSocketPayloads = option(R.string.osservio_incident_include_ws_payloads, false); content.addView(includeWebSocketPayloads, params());
+        socketPayloadsStatus = label(context.getString(mark.webSockets != null && !mark.webSockets.payloads.isEmpty() && webSocketHistory != null
+            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); content.addView(socketPayloadsStatus, params());
         includeNote = option(R.string.osservio_incident_include_note, false); content.addView(includeNote, params());
         editor = new EditText(context); editor.setHint(R.string.osservio_incident_note); editor.setMinLines(3); editor.setMaxLines(6);
         editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -75,6 +111,30 @@ final class IncidentComposer {
         dialog = new AlertDialog.Builder(context).setTitle(R.string.osservio_incident_mark).setView(scroll)
             .setNegativeButton(R.string.osservio_archive_cancel, null).setPositiveButton(R.string.osservio_incident_save, null).create();
         includeEnvironment.setOnCheckedChangeListener((button, checked) -> updateControls());
+        includeHTTP.setOnCheckedChangeListener((button, checked) -> updateControls());
+        includeWebSockets.setOnCheckedChangeListener((button, checked) -> updateControls());
+        includeHTTPBodies.setOnCheckedChangeListener((button, checked) -> {
+            if (checked && httpWithBodies == null && mark.http != null && httpHistory != null) {
+                try {
+                    httpWithBodies = mark.http.includingBodies(httpHistory, 12288);
+                    httpBodiesStatus.setText(contentStatus(httpWithBodies.payloads, httpWithBodies.retainedPayloadBytes));
+                } catch (IllegalArgumentException failure) {
+                    httpContentFailed = true; includeHTTPBodies.setChecked(false); httpBodiesStatus.setText(R.string.osservio_incident_body_failed);
+                }
+            }
+            updateControls();
+        });
+        includeWebSocketPayloads.setOnCheckedChangeListener((button, checked) -> {
+            if (checked && socketsWithPayloads == null && mark.webSockets != null && webSocketHistory != null) {
+                try {
+                    socketsWithPayloads = mark.webSockets.includingPayloads(webSocketHistory, 12288);
+                    socketPayloadsStatus.setText(contentStatus(socketsWithPayloads.payloads, socketsWithPayloads.retainedPayloadBytes));
+                } catch (IllegalArgumentException failure) {
+                    socketContentFailed = true; includeWebSocketPayloads.setChecked(false); socketPayloadsStatus.setText(R.string.osservio_incident_body_failed);
+                }
+            }
+            updateControls();
+        });
         includeNote.setOnCheckedChangeListener((button, checked) -> {
             if (!checked) editor.clearFocus(); editor.setVisibility(checked ? View.VISIBLE : View.GONE);
         });
@@ -111,6 +171,15 @@ final class IncidentComposer {
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(!saving);
         dialog.setCancelable(!saving); dialog.setCanceledOnTouchOutside(!saving);
         includeEnvironment.setEnabled(!saving); includeBreadcrumbs.setEnabled(!saving); includeNote.setEnabled(!saving); editor.setEnabled(!saving);
+        includeLogs.setEnabled(!saving && mark.logs != null);
+        includeHTTP.setEnabled(!saving && mark.http != null); includeWebSockets.setEnabled(!saving && mark.webSockets != null);
+        includeHTTPBodies.setEnabled(!saving && includeHTTP.isChecked() && httpHistory != null && mark.http != null && !mark.http.payloads.isEmpty() && !httpContentFailed);
+        includeWebSocketPayloads.setEnabled(!saving && includeWebSockets.isChecked() && webSocketHistory != null && mark.webSockets != null && !mark.webSockets.payloads.isEmpty() && !socketContentFailed);
+    }
+    private String contentStatus(Map<String, IncidentPayload> payloads, int bytes) {
+        int available = 0; for (IncidentPayload value : payloads.values()) if (value.state == IncidentPayload.State.AVAILABLE) available++;
+        return context.getString(R.string.osservio_incident_body_selected, available, payloads.size(), bytes)
+            + "\n" + context.getString(R.string.osservio_incident_body_choice_hint);
     }
     private void save() {
         if (saving || (includeEnvironment.isChecked() && environmentPending)) return;
@@ -119,7 +188,9 @@ final class IncidentComposer {
             IncidentSnapshot.Note note = includeNote.isChecked() && editor.length() != 0
                 ? IncidentSnapshot.Note.capture(LogMessage.publicText(editor.getText().toString())) : null;
             snapshot = IncidentSnapshot.restore(mark.id, mark.timestampMillis, note, includeEnvironment.isChecked() ? environment : null,
-                includeBreadcrumbs.isChecked() ? mark.breadcrumbs : null);
+                includeBreadcrumbs.isChecked() ? mark.breadcrumbs : null, includeLogs.isChecked() ? mark.logs : null,
+                includeHTTP.isChecked() ? (includeHTTPBodies.isChecked() ? httpWithBodies : mark.http) : null,
+                includeWebSockets.isChecked() ? (includeWebSocketPayloads.isChecked() ? socketsWithPayloads : mark.webSockets) : null);
         } catch (IllegalArgumentException failure) { notice.setText(R.string.osservio_incident_mark_failed); return; }
         saving = true; notice.setText(R.string.osservio_incident_saving); updateControls();
         WeakReference<IncidentComposer> reference = new WeakReference<>(this); Handler handler = main;

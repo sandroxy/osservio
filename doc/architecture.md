@@ -18,8 +18,9 @@ Native tabs expose logs, HTTP history, WebSocket connections, runtime context,
 and explicit [manual problem snapshots](incidents.md) without changing capture
 on presentation. Snapshot persistence and inspection are independent of live
 histories. Native APIs can persist bounded log/network attachments with separate
-payload selection. The immutable browser exposes these attachments, while their
-composer controls and export remain unimplemented.
+payload selection. Native composers freeze metadata and optionally copy referenced
+content once. The immutable browser exposes these attachments; export remains
+unimplemented.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

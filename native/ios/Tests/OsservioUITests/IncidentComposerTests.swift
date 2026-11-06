@@ -16,7 +16,7 @@ final class IncidentComposerTests: XCTestCase {
         let window = show(composer)
         defer { window.isHidden = true; window.rootViewController = nil }
         XCTAssertFalse(try XCTUnwrap(composer.navigationItem.rightBarButtonItem).isEnabled)
-        let noteSwitch = try control(composer, row: 2)
+        let noteSwitch = try control(composer, row: 7)
         noteSwitch.isOn = true; try sendChange(noteSwitch)
         composer.tableView.layoutIfNeeded()
         let editorCell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: 0, section: 2)))
@@ -56,6 +56,51 @@ final class IncidentComposerTests: XCTestCase {
         let snapshot = try XCTUnwrap(archive.snapshot)
         XCTAssertNil(snapshot.environment); XCTAssertNil(snapshot.note); XCTAssertNil(snapshot.breadcrumbs)
         XCTAssertEqual(snapshot.timestampMillis, mark.timestampMillis)
+    }
+
+    @MainActor
+    func testBodySelectionAndFailedSaveReuseFrozenEvidence() async throws {
+        let id = UUID().uuidString, socketID = UUID().uuidString, bodyID = id + ".response"
+        let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 7, revision: 2, timestampMillis: 123, method: "GET", source: .host,
+            url: "https://example.com/frozen", responseURL: nil, requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 200,
+            state: .completed, failure: nil, durationMillis: 4, requestBody: .restore(state: .omitted, blobID: nil, observedBytes: 0),
+            responseBody: .restore(state: .available, blobID: bodyID, observedBytes: 3))
+        let socket = try WebSocketEvent.restore(id: socketID, connectionID: id, sessionID: id, sequence: 8, timestampMillis: 124,
+            url: "wss://example.com", source: .host, kind: .message, headers: [], headersLimited: false, statusCode: nil, closeCode: nil,
+            failure: nil, direction: .incoming, outcome: .received, relatedMessageID: nil, payload: .restore(state: .available, blobID: socketID, byteCount: 3))
+        let log = try LogEvent.restore(sessionID: id, sequence: 9, timestampMillis: 125, level: .error, category: "fixture", message: "[private]", isPrivate: true, isTruncated: false)
+        let mark = try IncidentSnapshot.capture(logs: .restore(events: [log], observedAtMillis: 450, sourceEventCount: 1, sourceEvictedCount: 2),
+            http: .restore(events: [event], payloads: [bodyID: .restore(id: bodyID, state: .notSelected, text: nil)],
+                observedAtMillis: 456, sourceEventCount: 3, sourceEvictedEvents: 5, sourceEvictedBodies: 7),
+            webSockets: .restore(events: [socket], payloads: [socketID: .restore(id: socketID, state: .notSelected, text: nil)],
+                observedAtMillis: 457, sourceEventCount: 4, sourceEvictedEvents: 6, sourceEvictedPayloads: 8))
+        let http = ComposerHTTP(body: try .restore(id: bodyID, text: "abc")), sockets = ComposerWebSockets()
+        let archive = RecordingArchive(failFirstSave: true), saved = expectation(description: "retry saved frozen content")
+        let composer = IncidentComposerViewController(mark: mark, archive: archive, provider: ControlledEnvironment(), httpHistory: http, webSocketHistory: sockets) { saved.fulfill() }
+        let window = show(composer)
+        defer { window.isHidden = true; window.rootViewController = nil }
+        XCTAssertEqual(http.reads, 0); XCTAssertEqual(sockets.reads, 0)
+        let environment = try control(composer, row: 0); environment.isOn = false; try sendChange(environment)
+        let logs = try control(composer, row: 2); XCTAssertTrue(logs.isOn); logs.isOn = false; try sendChange(logs)
+        let httpBodies = try control(composer, row: 4), socketBodies = try control(composer, row: 6)
+        XCTAssertFalse(httpBodies.isOn); XCTAssertFalse(socketBodies.isOn)
+        httpBodies.isOn = true; try sendChange(httpBodies); socketBodies.isOn = true; try sendChange(socketBodies)
+        XCTAssertEqual(http.reads, 1); XCTAssertEqual(sockets.reads, 1)
+        http.missing = true
+        httpBodies.isOn = false; try sendChange(httpBodies); httpBodies.isOn = true; try sendChange(httpBodies)
+        let httpGroup = try control(composer, row: 3); httpGroup.isOn = false; try sendChange(httpGroup)
+        XCTAssertFalse(httpBodies.isEnabled)
+        httpGroup.isOn = true; try sendChange(httpGroup); XCTAssertTrue(httpBodies.isEnabled)
+        let save = try XCTUnwrap(composer.navigationItem.rightBarButtonItem); try send(save)
+        try await waitUntil { archive.attempts.count == 1 && save.isEnabled }
+        try send(save); await fulfillment(of: [saved], timeout: 3)
+        let result = try XCTUnwrap(archive.snapshot)
+        XCTAssertEqual(result.id, mark.id); XCTAssertEqual(result.timestampMillis, mark.timestampMillis); XCTAssertNil(result.logs)
+        XCTAssertEqual(result.http?.events.map(\.id), [event.id]); XCTAssertEqual(result.http?.observedAtMillis, 456)
+        XCTAssertEqual(result.http?.sourceEventCount, 3); XCTAssertEqual(result.http?.sourceEvictedBodies, 7)
+        XCTAssertEqual(result.http?.payloads[bodyID]?.text, "abc"); XCTAssertEqual(result.webSockets?.payloads[socketID]?.state, .busy)
+        XCTAssertEqual(result.webSockets?.observedAtMillis, 457); XCTAssertEqual(archive.attempts.first?.http?.payloads[bodyID]?.text, "abc")
+        XCTAssertEqual(http.reads, 1); XCTAssertEqual(sockets.reads, 1)
     }
 
     @MainActor
@@ -111,14 +156,36 @@ private final class ControlledEnvironment: EnvironmentProvider, @unchecked Senda
 private final class RecordingArchive: IncidentArchive, @unchecked Sendable {
     private let lock = NSLock()
     private var saved: IncidentSnapshot?
+    private var attempted: [IncidentSnapshot] = []
+    private let failFirstSave: Bool
+    init(failFirstSave: Bool = false) { self.failFirstSave = failFirstSave }
+    var attempts: [IncidentSnapshot] { lock.lock(); defer { lock.unlock() }; return attempted }
     var snapshot: IncidentSnapshot? { lock.lock(); defer { lock.unlock() }; return saved }
     func persistenceStatus() -> PersistenceStatus? { nil }
     func save(_ snapshot: IncidentSnapshot, completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) {
-        lock.lock(); saved = snapshot; lock.unlock(); completion(.success(()))
+        lock.lock(); attempted.append(snapshot)
+        let fail = failFirstSave && attempted.count == 1
+        if !fail { saved = snapshot }; lock.unlock()
+        completion(fail ? .failure(.busy) : .success(()))
     }
     func readIncidents(completion: @escaping @Sendable (Result<[IncidentSummary], PersistenceError>) -> Void) { completion(.success([])) }
     func readIncident(id: String, completion: @escaping @Sendable (Result<IncidentSnapshot?, PersistenceError>) -> Void) { completion(.success(snapshot)) }
     func deleteIncident(id: String, completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) { completion(.failure(.unavailable)) }
     func deleteAllIncidents(completion: @escaping @Sendable (Result<Void, PersistenceError>) -> Void) { completion(.failure(.unavailable)) }
+}
+private final class ComposerHTTP: HTTPHistory, @unchecked Sendable {
+    let body: HTTPBody
+    var reads = 0
+    var missing = false
+    init(body: HTTPBody) { self.body = body }
+    func snapshot() -> HTTPSnapshot? { XCTFail("Composer must not refresh metadata"); return nil }
+    func body(id: String) -> HTTPBodyLookup { reads += 1; XCTAssertEqual(id, body.id); return missing ? .unavailable : .available(body) }
+    func clear() { XCTFail("Composer must not clear live history") }
+}
+private final class ComposerWebSockets: WebSocketHistory, @unchecked Sendable {
+    var reads = 0
+    func snapshot() -> WebSocketSnapshot? { XCTFail("Composer must not refresh metadata"); return nil }
+    func payload(id: String) -> WebSocketPayloadLookup { reads += 1; return .busy }
+    func clear() { XCTFail("Composer must not clear live history") }
 }
 #endif

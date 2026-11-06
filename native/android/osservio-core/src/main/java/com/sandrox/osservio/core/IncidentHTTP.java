@@ -35,14 +35,24 @@ public final class IncidentHTTP {
                                        int eventLimit, int textByteLimit, int payloadByteLimit) {
         if (payloadByteLimit < 0 || payloadByteLimit > 262144) throw new IllegalArgumentException("Invalid incident payload limit");
         List<HTTPEvent> events = IncidentWindow.select(source.events, eventLimit, textByteLimit, event -> event.textByteCount);
-        Map<String, IncidentPayload> payloads = new LinkedHashMap<>(); int remaining = payloadByteLimit;
+        Map<String, IncidentPayload> payloads = selectPayloads(events, history, includeBodies, payloadByteLimit);
+        return restore(events, payloads, observedAtMillis, source.events.size(), source.evictedEvents, source.evictedBodies);
+    }
+    /** Returns a new copy with bounded body lookups, preserving all frozen metadata and source counters. */
+    public IncidentHTTP includingBodies(HTTPHistory history, int payloadByteLimit) {
+        Map<String, IncidentPayload> payloads = selectPayloads(events, history, true, payloadByteLimit);
+        return restore(events, payloads, observedAtMillis, sourceEventCount, sourceEvictedEvents, sourceEvictedBodies);
+    }
+    private static Map<String, IncidentPayload> selectPayloads(List<HTTPEvent> events, HTTPHistory history, boolean include, int byteLimit) {
+        if (byteLimit < 0 || byteLimit > 262144) throw new IllegalArgumentException("Invalid incident payload limit");
+        Map<String, IncidentPayload> payloads = new LinkedHashMap<>(); int remaining = byteLimit;
         // Prefer newer responses, then their requests; do not truncate captured content again.
         for (int index = events.size() - 1; index >= 0; index--) {
             HTTPEvent event = events.get(index);
             for (HTTPEvent.BodyReference reference : new HTTPEvent.BodyReference[] {event.responseBody, event.requestBody}) {
                 if (reference.blobId == null) continue;
                 String id = reference.blobId; IncidentPayload payload;
-                if (!includeBodies) payload = IncidentPayload.restore(id, IncidentPayload.State.NOT_SELECTED, null);
+                if (!include) payload = IncidentPayload.restore(id, IncidentPayload.State.NOT_SELECTED, null);
                 else {
                     HTTPHistory.BodyLookup result = history.body(id);
                     if (result == null || result.state == null) throw EvidenceValidation.invalid();
@@ -60,7 +70,7 @@ public final class IncidentHTTP {
                 remaining -= payload.textByteCount;
             }
         }
-        return restore(events, payloads, observedAtMillis, source.events.size(), source.evictedEvents, source.evictedBodies);
+        return payloads;
     }
     public static IncidentHTTP restore(List<HTTPEvent> events, Map<String, IncidentPayload> payloads, long observedAtMillis,
                                        int sourceEventCount, long sourceEvictedEvents, long sourceEvictedBodies) {

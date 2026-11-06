@@ -20,6 +20,16 @@ import com.sandrox.osservio.core.IncidentArchive;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentSummary;
 import com.sandrox.osservio.core.PersistenceStatus;
+import com.sandrox.osservio.core.LogClock;
+import com.sandrox.osservio.core.LogHistory;
+import com.sandrox.osservio.core.LogSnapshot;
+import com.sandrox.osservio.core.HTTPHistory;
+import com.sandrox.osservio.core.HTTPSnapshot;
+import com.sandrox.osservio.core.WebSocketHistory;
+import com.sandrox.osservio.core.WebSocketSnapshot;
+import com.sandrox.osservio.core.IncidentLogs;
+import com.sandrox.osservio.core.IncidentHTTP;
+import com.sandrox.osservio.core.IncidentWebSockets;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +41,9 @@ public final class IncidentInspectorView extends FrameLayout {
     private final IncidentArchive archive;
     private final EnvironmentProvider environment;
     private final BreadcrumbHistory breadcrumbs;
+    private final LogHistory logs;
+    private final HTTPHistory http;
+    private final WebSocketHistory webSockets;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final LinearLayout listing;
     private final TextView notice;
@@ -52,8 +65,13 @@ public final class IncidentInspectorView extends FrameLayout {
     private Long updatedAt;
 
     public IncidentInspectorView(Context context, IncidentArchive archive, EnvironmentProvider environment, BreadcrumbHistory breadcrumbs) {
+        this(context, archive, environment, breadcrumbs, null, null, null);
+    }
+    public IncidentInspectorView(Context context, IncidentArchive archive, EnvironmentProvider environment, BreadcrumbHistory breadcrumbs,
+                                 LogHistory logs, HTTPHistory http, WebSocketHistory webSockets) {
         super(context); this.archive = Objects.requireNonNull(archive, "archive");
         this.environment = Objects.requireNonNull(environment, "environment"); this.breadcrumbs = Objects.requireNonNull(breadcrumbs, "breadcrumbs");
+        this.logs = logs; this.http = http; this.webSockets = webSockets;
         setPadding(dp(16), dp(8), dp(16), 0);
         listing = new LinearLayout(context); listing.setOrientation(LinearLayout.VERTICAL); addView(listing, new LayoutParams(-1, -1));
         LinearLayout controls = new LinearLayout(context);
@@ -134,9 +152,18 @@ public final class IncidentInspectorView extends FrameLayout {
     private void mark() {
         if (reading || composer != null) return;
         final IncidentSnapshot snapshot;
-        try { snapshot = IncidentSnapshot.capture(null, null, breadcrumbs.snapshot()); }
+        try {
+            IncidentSnapshot mark = IncidentSnapshot.capture(null, null, breadcrumbs.snapshot(), 200, 32768, LogClock.SYSTEM);
+            LogSnapshot logSource = logs == null ? null : logs.snapshot();
+            IncidentLogs logWindow = logSource == null ? null : IncidentLogs.capture(logSource, System.currentTimeMillis(), 200, 16384);
+            HTTPSnapshot httpSource = http == null ? null : http.snapshot();
+            IncidentHTTP httpWindow = httpSource == null ? null : IncidentHTTP.capture(httpSource, System.currentTimeMillis(), http, false, 50, 16384, 12288);
+            WebSocketSnapshot socketSource = webSockets == null ? null : webSockets.snapshot();
+            IncidentWebSockets socketWindow = socketSource == null ? null : IncidentWebSockets.capture(socketSource, System.currentTimeMillis(), webSockets, false, 100, 16384, 12288);
+            snapshot = IncidentSnapshot.restore(mark.id, mark.timestampMillis, null, null, mark.breadcrumbs, logWindow, httpWindow, socketWindow);
+        }
         catch (IllegalArgumentException failure) { notice.setText(R.string.osservio_incident_mark_failed); return; }
-        composer = new IncidentComposer(getContext(), snapshot, archive, environment, () -> {
+        composer = new IncidentComposer(getContext(), snapshot, archive, environment, http, webSockets, () -> {
             justSaved = true;
             if (isAttachedToWindow() && isShown() && getWindowVisibility() == VISIBLE) read();
             else attempted = false;

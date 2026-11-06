@@ -38,7 +38,8 @@ public final class InspectorViewController: UITabBarController {
         let runtime = RuntimeInspectorViewController(provider: environment, recorder: breadcrumbRecorder, history: breadcrumbHistory, archive: breadcrumbArchive)
         viewControllers?.append(section(runtime, key: "runtime_title", icon: "info.circle"))
         if let incidentArchive {
-            let incidents = IncidentInspectorViewController(archive: incidentArchive, environment: environment, breadcrumbs: breadcrumbHistory)
+            let incidents = IncidentInspectorViewController(archive: incidentArchive, environment: environment, breadcrumbs: breadcrumbHistory,
+                logs: logHistory, http: httpHistory, webSockets: webSocketHistory)
             viewControllers?.append(section(incidents, key: "incident_title", icon: "flag"))
         }
     }
