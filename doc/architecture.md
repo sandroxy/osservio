@@ -17,7 +17,8 @@ retention. The local database is not a cross-platform interchange protocol.
 Native tabs expose logs, HTTP history, WebSocket connections, runtime context,
 and explicit [manual problem snapshots](incidents.md) without changing capture
 on presentation. Snapshot persistence and inspection are independent of live
-histories; log/network attachments and export remain unimplemented.
+histories. Native APIs can persist bounded log/network attachments with separate
+payload selection; their problem-view integration and export remain unimplemented.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

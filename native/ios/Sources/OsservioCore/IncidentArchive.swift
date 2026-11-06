@@ -7,9 +7,14 @@ public struct IncidentSummary: Sendable {
     public let note: IncidentNote?
     public let hasEnvironment: Bool
     public let breadcrumbCount: Int?
-    public init(id: String, timestampMillis: Int64, note: IncidentNote?, hasEnvironment: Bool, breadcrumbCount: Int?) {
+    public let logCount: Int?
+    public let httpCount: Int?
+    public let webSocketCount: Int?
+    public init(id: String, timestampMillis: Int64, note: IncidentNote?, hasEnvironment: Bool, breadcrumbCount: Int?,
+                logCount: Int? = nil, httpCount: Int? = nil, webSocketCount: Int? = nil) {
         self.id = id; self.timestampMillis = timestampMillis; self.note = note
         self.hasEnvironment = hasEnvironment; self.breadcrumbCount = breadcrumbCount
+        self.logCount = logCount; self.httpCount = httpCount; self.webSocketCount = webSocketCount
     }
 }
 

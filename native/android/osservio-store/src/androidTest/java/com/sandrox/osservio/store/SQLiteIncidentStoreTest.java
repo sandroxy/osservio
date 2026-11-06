@@ -30,14 +30,17 @@ public final class SQLiteIncidentStoreTest {
     }
     @Test public void saveCloseReopenAndDeletionPreserveIdentityAndPrivacy() throws Exception {
         try (PersistenceFixture fixture = new PersistenceFixture()) {
-            IncidentSnapshot snapshot = IncidentSnapshot.capture(LogMessage.privateText("never persisted"), null, null);
+            IncidentSnapshot snapshot = IncidentDetailFixture.snapshot();
             SQLiteIncidentStore store = store(fixture); save(store, snapshot).success();
             assertEquals(snapshot.id, summaries(store).success().get(0).id); assertEquals(1, store.persistenceStatus().committedEvents);
             close(store).success();
             SQLiteIncidentStore reopened = store(fixture);
             try {
                 Result<IncidentSnapshot> restored = new Result<>(); reopened.readIncident(snapshot.id, restored::complete);
-                assertEquals("[private]", restored.success().note.text);
+                IncidentSnapshot value = restored.success();
+                assertEquals("[private]", value.note.text);
+                assertEquals(IncidentDetailFixture.BODY, value.http.payloads.get(IncidentDetailFixture.id(10) + ".response").text);
+                assertEquals(2, value.logs.events.size()); assertEquals(5, value.webSockets.events.size());
                 Result<Void> deleted = new Result<>(); reopened.deleteIncident(snapshot.id, error -> deleted.complete(null, error)); deleted.success();
                 Result<IncidentSnapshot> missing = new Result<>(); reopened.readIncident(snapshot.id, missing::complete); assertNull(missing.success());
                 save(reopened, snapshot).success();

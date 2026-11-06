@@ -146,7 +146,8 @@ coverage, privacy, limits, and collector ownership.
 ## Manual problem snapshots
 
 Core's `IncidentSnapshot` accepts an optional privacy-classified note, an existing
-environment observation, and a bounded breadcrumb snapshot. Store's
+environment observation, and bounded breadcrumb, log, HTTP, and WebSocket
+attachments. Network bodies require a separate explicit choice. Store's
 `SQLiteIncidentStore(directory:)` saves these explicitly and exposes asynchronous
 list, read, delete, and close operations. Supply a dedicated private directory
 and retain the store at application scope. It does not change live histories or
@@ -160,7 +161,9 @@ controller, or pass `incidentArchive: incidents` to the full combined inspector
 initializer. Problems provides an explicit composer and immutable archive browser.
 Marking freezes the current context; saving is explicit, and failure retains the
 draft. Description text requires an explicit opt-in and must be safe to store.
-The UI uses Core contracts and does not own or close the supplied archive.
+The UI uses Core contracts and does not own or close the supplied archive. The
+composer and browser currently expose notes, environment information, and
+breadcrumbs; saved log/network attachments are available through the archive API.
 Export is not implemented yet.
 
 The package also declares a macOS target version so Core and Store tests can run

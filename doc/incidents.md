@@ -1,20 +1,20 @@
 # Manual problem snapshots
 
-`IncidentSnapshot` captures a deliberate problem marker with an optional note,
-environment snapshot, and bounded breadcrumb context. `IncidentArchive` is the
+`IncidentSnapshot` captures a deliberate problem marker with optional note,
+environment, breadcrumb, log, HTTP, and WebSocket attachments. `IncidentArchive` is the
 Core persistence contract; Store implements it with `SQLiteIncidentStore`.
 No collector, capture session, network request, or environment query starts
 implicitly when a snapshot is made or saved.
 
 This API records a manual observation. It is not a crash detector, and the
-snapshot's existence does not establish a failure or its cause. Log, HTTP, and
-WebSocket attachment persistence and export are not implemented yet. Standalone
-in-memory detail windows are described below. The optional native UI provides a
-composer and saved-snapshot browser through Core contracts only.
+snapshot's existence does not establish a failure or its cause. All attachments
+can be saved through native APIs. The optional native composer and browser
+currently expose notes, environment information, and breadcrumbs; log and network
+attachments are not yet exposed by those views. Export is not implemented.
 
 ## Evidence and privacy
 
-The caller supplies already sanitized environment and breadcrumb values. A note
+The caller supplies already sanitized attachment values. A note
 uses the same explicit `LogMessage` privacy classification as logging. Private
 text becomes `[private]` before entering a snapshot. Public text is not
 automatically scrubbed for secrets. Notes retain at most 4,096 UTF-8 bytes,
@@ -23,7 +23,7 @@ ending at a Unicode scalar boundary and exposing truncation.
 Capture preserves attachment identities, timestamps, sequence numbers, privacy,
 and truncation flags. The environment retains its own observation time; it must
 not be presented as an atomic measurement at the problem's timestamp. An absent
-environment or breadcrumb attachment is distinct from an attached empty history.
+attachment is distinct from an attached empty history.
 
 By default, the breadcrumb attachment is the newest contiguous suffix within
 200 events and 65,536 text bytes. Configurable limits are 1–2,000 events and
@@ -114,9 +114,11 @@ Android also offers it from the snapshot detail.
 
 Core's `IncidentLogs`, `IncidentHTTP`, and `IncidentWebSockets` capture explicit,
 immutable windows from their corresponding live snapshots. These types do not
-start recording, query a host transport, clear history, or persist anything.
-They are not yet fields of `IncidentSnapshot`; the SQLite archive and native
-composer currently store only the note, environment, and breadcrumb attachments.
+start recording, query a host transport, clear history, or persist anything by
+themselves. Pass them as the optional `logs`, `http`, and `webSockets` fields of
+`IncidentSnapshot` to save a deliberate copy through `IncidentArchive`. Clearing
+or evicting live history after capture does not alter this copy. Saving does not
+perform another body lookup or enable automatic persistence of live traffic.
 
 Each window records its supplied observation time, source event count, retained
 events, omitted count, and source eviction counters. Select the newest contiguous
@@ -145,6 +147,30 @@ and lookup; an unavailable result does not rewrite the event or invent text.
 The selection is bounded but not an atomic read across sources or body lookups.
 Missing WebSocket handshakes and send submissions are not reconstructed.
 
+For example, attach HTTP metadata while leaving bodies unselected on Android:
+
+```java
+HTTPSnapshot liveHTTP = httpHistory.snapshot();
+IncidentHTTP copiedHTTP = liveHTTP == null ? null : IncidentHTTP.capture(
+    liveHTTP, LogClock.SYSTEM.wallTimeMillis(), httpHistory, false);
+IncidentSnapshot snapshot = IncidentSnapshot.capture(null, null, null, null, copiedHTTP, null);
+```
+
+The equivalent on iOS is:
+
+```swift
+let copiedHTTP = try httpHistory.snapshot().map {
+    try IncidentHTTP.capture($0, observedAtMillis: SystemLogClock().wallTimeMillis(), history: httpHistory)
+}
+let snapshot = try IncidentSnapshot.capture(http: copiedHTTP)
+```
+
+Both examples use an existing Core `HTTPHistory`; call `save` explicitly as
+shown above. Choose attachment budgets together: the sum must fit the archive's
+per-snapshot and pending-text limits. The independent default window budgets can
+exceed the default 131,072-byte snapshot limit when combined. The store rejects
+an oversized save; it does not silently discard selected attachments.
+
 `restore` methods on log, HTTP, and WebSocket evidence validate existing
 identities, sequence/revision constraints, state relationships, field bounds,
 privacy markers, and body references. They preserve timestamps and counters,
@@ -158,7 +184,9 @@ they do not establish that arbitrary public text or custom headers are safe.
   identity that is already retained fails with `invalidRecord`; it does not
   overwrite the original. The same identity can be saved after explicit deletion
   or retention eviction.
-- `readIncidents` returns newest-saved summaries without loading attachments.
+- `readIncidents` returns newest-saved summaries without loading event or body
+  content. Optional log, HTTP, and WebSocket counts distinguish absent groups
+  from attached empty windows.
   `readIncident` loads a validated immutable snapshot on demand. A successful
   absent result means the requested identity is no longer retained.
 - `deleteIncident` and `deleteAllIncidents` delete only this archive, including
@@ -193,8 +221,10 @@ delete jobs consume admission permits but are not counted as queued snapshots.
 | Admitted snapshot text, including in-flight work | 524,288 bytes | 64–4,194,304 bytes |
 | Admitted save/read/delete operations | 4 | Fixed |
 
-Text budgets count note text, textual environment values, and breadcrumb labels
-and messages. They exclude object overhead, IDs, indices, and structural data.
+Text budgets count note text, textual environment values, breadcrumb labels and
+messages, log categories and messages, HTTP methods/URLs/headers, WebSocket
+URLs/headers, and included body text. They exclude object overhead, IDs, indices,
+and structural data.
 Evidence types also impose independent count and field bounds. A per-snapshot
 text limit applies to new saves; reducing it does not rewrite existing reports.
 These defaults are implementation limits, not measured performance guarantees.
@@ -224,14 +254,20 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `1`. Product versions
+application ID `0x4f535649`, and private schema revision `2`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
-typed environment facts, and copied breadcrumbs. This database is an internal
-format, not a portable export or interchange protocol.
+typed environment facts, copied breadcrumbs, and frozen event windows. Network
+headers and payload text use separate tables; list queries do not load them.
+This database is an internal format, not a portable export or interchange protocol.
 
 The SDK uses the platform SQLite engine with rollback journals, full synchronous
 commits, foreign keys, bounded cache, and zero busy wait. Only a new empty
 unowned database is initialized. Unrelated databases and unsupported revisions
 are refused without reset. Readers ignore additional optional columns within
 the supported revision while validating every known field, type, count, and
-privacy invariant. There is no migration from another incident revision yet.
+privacy invariant. Revision `1` upgrades by adding attachment tables in one
+transaction with the revision change. Existing report identities, save times,
+and evidence remain unchanged, with new attachment groups absent. A failed
+upgrade rolls back its schema changes; it never resets the database. A previous
+SDK supporting only revision `1` refuses a revision `2` database rather than
+attempting a destructive downgrade.

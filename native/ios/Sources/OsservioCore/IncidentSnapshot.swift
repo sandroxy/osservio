@@ -9,6 +9,9 @@ public struct IncidentSnapshot: Sendable {
     public let environment: EnvironmentSnapshot?
     /// Nil means no breadcrumb snapshot was supplied, not that the application had no activity.
     public let breadcrumbs: IncidentBreadcrumbs?
+    public let logs: IncidentLogs?
+    public let http: IncidentHTTP?
+    public let webSockets: IncidentWebSockets?
     /// Sanitized text bytes only; excludes structural, indexing, and object overhead.
     public var textByteCount: Int {
         let environmentBytes = environment?.values.values.reduce(0) { total, value in
@@ -16,10 +19,13 @@ public struct IncidentSnapshot: Sendable {
             return total
         } ?? 0
         return (note?.text.utf8.count ?? 0) + environmentBytes + (breadcrumbs?.retainedTextBytes ?? 0)
+            + (logs?.retainedTextBytes ?? 0) + (http?.retainedTextBytes ?? 0) + (http?.retainedPayloadBytes ?? 0)
+            + (webSockets?.retainedTextBytes ?? 0) + (webSockets?.retainedPayloadBytes ?? 0)
     }
 
     public static func capture(note: LogMessage? = nil, environment: EnvironmentSnapshot? = nil,
                                breadcrumbs: BreadcrumbSnapshot? = nil,
+                               logs: IncidentLogs? = nil, http: IncidentHTTP? = nil, webSockets: IncidentWebSockets? = nil,
                                breadcrumbLimit: Int = 200, breadcrumbTextByteLimit: Int = 65_536,
                                clock: any LogClock = SystemLogClock()) throws -> IncidentSnapshot {
         guard (1...2_000).contains(breadcrumbLimit), (64...1_048_576).contains(breadcrumbTextByteLimit) else {
@@ -28,13 +34,15 @@ public struct IncidentSnapshot: Sendable {
         let safeNote = try note.map { try IncidentNote.capture($0) }
         let context = try breadcrumbs.map { try IncidentBreadcrumbs.capture($0, count: breadcrumbLimit, bytes: breadcrumbTextByteLimit) }
         return IncidentSnapshot(id: UUID().uuidString, timestampMillis: clock.wallTimeMillis(), note: safeNote,
-                                environment: environment, breadcrumbs: context)
+                                environment: environment, breadcrumbs: context, logs: logs, http: http, webSockets: webSockets)
     }
     /// Reconstructs validated sanitized evidence without generating a new identity or observation time.
     public static func restore(id: String, timestampMillis: Int64, note: IncidentNote?,
-                               environment: EnvironmentSnapshot?, breadcrumbs: IncidentBreadcrumbs?) throws -> IncidentSnapshot {
+                               environment: EnvironmentSnapshot?, breadcrumbs: IncidentBreadcrumbs?,
+                               logs: IncidentLogs? = nil, http: IncidentHTTP? = nil, webSockets: IncidentWebSockets? = nil) throws -> IncidentSnapshot {
         guard Array(id.utf8.prefix(37)).count == 36, UUID(uuidString: id) != nil else { throw PersistenceError.invalidRecord }
-        return IncidentSnapshot(id: id, timestampMillis: timestampMillis, note: note, environment: environment, breadcrumbs: breadcrumbs)
+        return IncidentSnapshot(id: id, timestampMillis: timestampMillis, note: note, environment: environment, breadcrumbs: breadcrumbs,
+            logs: logs, http: http, webSockets: webSockets)
     }
 }
 

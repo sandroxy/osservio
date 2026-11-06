@@ -22,7 +22,7 @@ final class SQLiteIncidentStoreTests: XCTestCase {
     func testSaveCloseReopenAndDeletionKeepIdentityAndPrivacy() async throws {
         try await fixture { directory in
             let store = try SQLiteIncidentStore(directory: directory)
-            let snapshot = try IncidentSnapshot.capture(note: .privateText("never persisted"))
+            let snapshot = try IncidentDetailFixture.snapshot()
             try await save(snapshot, to: store)
             let ready = try await summaries(store)
             XCTAssertEqual(ready.map(\.id), [snapshot.id])
@@ -31,6 +31,9 @@ final class SQLiteIncidentStoreTests: XCTestCase {
             let reopened = try SQLiteIncidentStore(directory: directory)
             let restored = await withCheckedContinuation { continuation in reopened.readIncident(id: snapshot.id) { continuation.resume(returning: $0) } }
             XCTAssertEqual(try restored.get()?.note?.text, "[private]")
+            XCTAssertEqual(try restored.get()?.http?.payloads[IncidentDetailFixture.id(10) + ".response"]?.text, IncidentDetailFixture.body)
+            XCTAssertEqual(try restored.get()?.logs?.events.count, 2)
+            XCTAssertEqual(try restored.get()?.webSockets?.events.count, 5)
             let deleted = await withCheckedContinuation { continuation in reopened.deleteIncident(id: snapshot.id) { continuation.resume(returning: $0) } }
             try deleted.get()
             let missing = await withCheckedContinuation { continuation in reopened.readIncident(id: snapshot.id) { continuation.resume(returning: $0) } }

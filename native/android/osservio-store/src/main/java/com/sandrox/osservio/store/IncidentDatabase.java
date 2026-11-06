@@ -5,6 +5,8 @@ import static com.sandrox.osservio.store.EvidenceSQLite.integer;
 import static com.sandrox.osservio.store.EvidenceSQLite.text;
 import static com.sandrox.osservio.store.EvidenceSQLite.textColumn;
 import static com.sandrox.osservio.store.EvidenceSQLite.validId;
+import static com.sandrox.osservio.store.IncidentNames.name;
+import static com.sandrox.osservio.store.IncidentNames.parse;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -14,21 +16,25 @@ import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentSummary;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /** Worker-confined normalized storage. Live histories have no ownership or retention dependency on it. */
 final class IncidentDatabase implements AutoCloseable {
     private final SQLiteDatabase database;
+    private final IncidentDetailDatabase details;
     private final IncidentPersistenceOptions options;
     IncidentDatabase(File file, IncidentPersistenceOptions options, long now) {
         this.options = options;
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 1, SCHEMA);
+        String[] schema = Arrays.copyOf(SCHEMA, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length);
+        System.arraycopy(IncidentDetailDatabase.SCHEMA, 0, schema, SCHEMA.length, IncidentDetailDatabase.SCHEMA.length);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 2, schema, Collections.singletonMap(1L, IncidentDetailDatabase.SCHEMA));
+        details = new IncidentDetailDatabase(database);
         try {
             transaction(() -> {
                 if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents") > 16) throw EvidenceStorageException.invalid();
@@ -79,6 +85,7 @@ final class IncidentDatabase implements AutoCloseable {
                         event.sessionElapsedMillis == null ? null : event.sessionElapsedMillis.toString(), name(event.kind), event.label,
                         event.message, event.isPrivate ? 1 : 0, event.isTruncated ? 1 : 0, event.value, name(event.retention)});
             }
+            details.save(snapshot);
         });
     }
     private void prune(long now, int reserve) {
@@ -105,7 +112,9 @@ final class IncidentDatabase implements AutoCloseable {
         }
         EnvironmentSnapshot environment = readEnvironment(info);
         IncidentSnapshot.Breadcrumbs breadcrumbs = readBreadcrumbs(info);
-        IncidentSnapshot snapshot = IncidentSnapshot.restore(info.summary.id, info.summary.timestampMillis, info.summary.note, environment, breadcrumbs);
+        IncidentDetailDatabase.Detail attachments = details.read(info.summary.id, info.windows);
+        IncidentSnapshot snapshot = IncidentSnapshot.restore(info.summary.id, info.summary.timestampMillis, info.summary.note, environment, breadcrumbs,
+            attachments.logs, attachments.http, attachments.webSockets);
         if (snapshot.textByteCount != info.bytes) throw EvidenceStorageException.invalid();
         return snapshot;
     }
@@ -125,9 +134,11 @@ final class IncidentDatabase implements AutoCloseable {
         final Integer sourceCount;
         final Long sourceEvicted;
         final int bytes;
-        Header(IncidentSummary summary, EnvironmentSnapshot.Platform platform, Long environmentTime, Integer sourceCount, Long sourceEvicted, int bytes) {
+        final Map<IncidentDetailDatabase.Kind, IncidentDetailDatabase.Window> windows;
+        Header(IncidentSummary summary, EnvironmentSnapshot.Platform platform, Long environmentTime, Integer sourceCount, Long sourceEvicted, int bytes,
+               Map<IncidentDetailDatabase.Kind, IncidentDetailDatabase.Window> windows) {
             this.summary = summary; this.platform = platform; this.environmentTime = environmentTime;
-            this.sourceCount = sourceCount; this.sourceEvicted = sourceEvicted; this.bytes = bytes;
+            this.sourceCount = sourceCount; this.sourceEvicted = sourceEvicted; this.bytes = bytes; this.windows = windows;
         }
     }
     private Header header(Cursor row) {
@@ -148,8 +159,16 @@ final class IncidentDatabase implements AutoCloseable {
         else if (count < 0 || count > 2000 || source == null || source < count || source > Integer.MAX_VALUE || evicted == null || evicted < 0) throw EvidenceStorageException.invalid();
         long bytes = integer(row, 10);
         if (bytes < 0 || bytes > 2097152) throw EvidenceStorageException.invalid();
-        return new Header(new IncidentSummary(id, integer(row, 1), note, platform != null, count == null ? null : count.intValue()),
-            platform, platform == null ? null : integer(row, 6), source == null ? null : source.intValue(), evicted, (int) bytes);
+        Map<IncidentDetailDatabase.Kind, IncidentDetailDatabase.Window> windows = details.windows(id);
+        int attachmentBytes = 0;
+        for (IncidentDetailDatabase.Window window : windows.values()) attachmentBytes += window.bytes + window.payloadBytes;
+        if (attachmentBytes > bytes) throw EvidenceStorageException.invalid();
+        return new Header(new IncidentSummary(id, integer(row, 1), note, platform != null, count == null ? null : count.intValue(),
+            count(windows, IncidentDetailDatabase.Kind.LOGS), count(windows, IncidentDetailDatabase.Kind.HTTP), count(windows, IncidentDetailDatabase.Kind.WEBSOCKET)),
+            platform, platform == null ? null : integer(row, 6), source == null ? null : source.intValue(), evicted, (int) bytes, windows);
+    }
+    private static Integer count(Map<IncidentDetailDatabase.Kind, IncidentDetailDatabase.Window> windows, IncidentDetailDatabase.Kind kind) {
+        IncidentDetailDatabase.Window window = windows.get(kind); return window == null ? null : window.count;
     }
     private EnvironmentSnapshot readEnvironment(Header info) {
         Map<EnvironmentSnapshot.Key, EnvironmentSnapshot.Fact> facts = new EnumMap<>(EnvironmentSnapshot.Key.class);
@@ -215,17 +234,6 @@ final class IncidentDatabase implements AutoCloseable {
         if (events.size() != info.summary.breadcrumbCount) throw EvidenceStorageException.invalid();
         try { return IncidentSnapshot.Breadcrumbs.restore(events, info.sourceCount, info.sourceEvicted); }
         catch (IllegalArgumentException failure) { throw EvidenceStorageException.invalid(); }
-    }
-    private static String name(Enum<?> value) {
-        if (value == EnvironmentSnapshot.Key.PROCESS_ID) return "processID";
-        String[] words = value.name().toLowerCase(Locale.ROOT).split("_");
-        StringBuilder result = new StringBuilder(words[0]);
-        for (int i = 1; i < words.length; i++) result.append(Character.toUpperCase(words[i].charAt(0))).append(words[i].substring(1));
-        return result.toString();
-    }
-    private static <T extends Enum<T>> T parse(T[] values, String name) {
-        for (T value : values) if (name(value).equals(name)) return value;
-        throw EvidenceStorageException.invalid();
     }
     private Cursor query(String sql, String... args) { return database.rawQuery(sql, args); }
     private void transaction(Runnable operation) { EvidenceSQLite.transaction(database, operation); }

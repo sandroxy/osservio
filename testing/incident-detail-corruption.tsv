@@ -1,0 +1,33 @@
+missing-payload	DELETE FROM incident_payloads WHERE family='http'
+payload-text-size	UPDATE incident_payloads SET text='longer' WHERE family='http' AND text=''
+missing-payload-text	UPDATE incident_payloads SET text=NULL WHERE state='available'
+unexpected-payload-text	UPDATE incident_payloads SET text='' WHERE state='notSelected'
+unknown-payload-state	UPDATE incident_payloads SET state='future'
+payload-identity	UPDATE incident_payloads SET id='bad' WHERE family='http' AND text=''
+invalid-payload-utf8	UPDATE incident_payloads SET text=CAST(x'ff' AS TEXT) WHERE family='websocket'
+oversized-payload	UPDATE incident_payloads SET text=replace(hex(zeroblob(40000)), '0', 'x') WHERE family='websocket'
+unknown-window	UPDATE incident_windows SET kind='future' WHERE kind='logs'
+missing-window	DELETE FROM incident_windows WHERE kind='http'
+wrong-window-count	UPDATE incident_windows SET event_count=event_count+1 WHERE kind='logs'
+wrong-source-count	UPDATE incident_windows SET source_count=0 WHERE kind='logs'
+negative-evictions	UPDATE incident_windows SET payload_evicted=-1 WHERE kind='http'
+wrong-window-bytes	UPDATE incident_windows SET text_bytes=text_bytes+1 WHERE kind='logs'
+wrong-payload-bytes	UPDATE incident_windows SET payload_bytes=payload_bytes+1 WHERE kind='http'
+private-log-text	UPDATE incident_logs SET message='raw' WHERE private=1
+invalid-log-type	UPDATE incident_logs SET message=x'00'
+invalid-log-utf8	UPDATE incident_logs SET message=CAST(x'ff' AS TEXT)
+oversized-log	UPDATE incident_logs SET message=replace(hex(zeroblob(40000)), '0', 'x')
+wrong-log-position	UPDATE incident_logs SET position=9 WHERE position=0
+invalid-sequence-type	UPDATE incident_logs SET sequence=1.5 WHERE position=0
+raw-url	UPDATE incident_http SET url='https://example.com?token=raw'
+unknown-source	UPDATE incident_http SET source='okhttp'
+invalid-duration	UPDATE incident_http SET duration='01'
+wrong-request-blob	UPDATE incident_http SET request_blob=response_blob WHERE position=0
+wrong-http-state	UPDATE incident_http SET state='pending' WHERE position=0
+raw-header	UPDATE incident_headers SET value='secret' WHERE name='authorization'
+orphan-header	UPDATE incident_headers SET event_position=999
+unknown-header-family	UPDATE incident_headers SET family='future' WHERE family='http'
+invalid-header-type	UPDATE incident_headers SET value=x'00'
+wrong-socket-relation	UPDATE incident_websocket SET related_message='invalid' WHERE kind='messageResult'
+wrong-socket-bytes	UPDATE incident_websocket SET payload_count=1 WHERE payload_state='available'
+unexpected-socket-payload	UPDATE incident_websocket SET payload_blob=id WHERE kind='messageResult'

@@ -82,3 +82,19 @@ retained events), and validity. Each event has a one-byte category. Independent
 network tests cover content opt-out without lookup, unavailable and busy bodies,
 payload budgets, available empty text, live-history clearing, immutable snapshots,
 duplicate identities, and references that do not match their supplied content.
+
+`incident-v1.sql` is an independent synthetic revision-1 incident database fixture,
+including a note, typed environment facts, and a private breadcrumb. Both native
+SQLite suites execute it in fresh test-owned directories and verify additive
+revision-2 migration, unchanged identity and observation/save times, new writes,
+and rollback when a schema addition fails. It is not an import format.
+
+`incident-detail-corruption.tsv` contains a case name and a SQL mutation applied
+to a valid synthetic attachment snapshot. Both SQLite suites require rejection
+without changing the damaged file. Cases cover detached payloads, mismatched
+counts, missing/unknown groups, privacy violations, invalid types/UTF-8, oversized
+text, orphan headers, and inconsistent transport metadata. Independent positive
+tests preserve empty versus absent groups/content, all payload inclusion states,
+exact integers, source loss counters, optional columns, and whole-report retention.
+Capacity failures also verify that pruning and partial attachment writes roll back
+together. Asynchronous store tests verify committed attachments after close/reopen.

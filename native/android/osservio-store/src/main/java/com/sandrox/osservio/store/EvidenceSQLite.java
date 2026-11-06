@@ -14,11 +14,16 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Collections;
 
 /** Shared platform SQLite policy and strict bounded column decoding. Used only on storage workers. */
 final class EvidenceSQLite {
     private EvidenceSQLite() { }
     static SQLiteDatabase open(File file, int byteLimit, long applicationId, long revision, String[] schema) {
+        return open(file, byteLimit, applicationId, revision, schema, Collections.emptyMap());
+    }
+    static SQLiteDatabase open(File file, int byteLimit, long applicationId, long revision, String[] schema, Map<Long, String[]> migrations) {
         checkFile(file, byteLimit);
         checkFile(new File(file.getPath() + "-journal"), 2L * byteLimit + 65536L);
         int flags = SQLiteDatabase.CREATE_IF_NECESSARY | SQLiteDatabase.NO_LOCALIZED_COLLATORS;
@@ -28,7 +33,9 @@ final class EvidenceSQLite {
             long owner = scalar(database, "PRAGMA application_id"), version = scalar(database, "PRAGMA user_version");
             boolean empty = scalar(database, "SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'") == 0;
             boolean create = owner == 0 && version == 0 && empty;
-            if (!create && (owner != applicationId || version != revision)) throw new EvidenceStorageException(PersistenceStatus.Error.UNSUPPORTED_SCHEMA);
+            boolean canMigrate = owner == applicationId && version > 0 && version < revision;
+            if (canMigrate) for (long previous = version; previous < revision; previous++) if (!migrations.containsKey(previous)) { canMigrate = false; break; }
+            if (!create && (owner != applicationId || (version != revision && !canMigrate))) throw new EvidenceStorageException(PersistenceStatus.Error.UNSUPPORTED_SCHEMA);
             database.disableWriteAheadLogging();
             try (Cursor row = database.rawQuery("PRAGMA journal_mode=DELETE", null)) {
                 if (!row.moveToFirst() || !"delete".equals(row.getString(0))) throw new EvidenceStorageException(PersistenceStatus.Error.UNAVAILABLE);
@@ -45,6 +52,15 @@ final class EvidenceSQLite {
             if (create) transaction(database, () -> {
                 for (String sql : schema) database.execSQL(sql);
                 database.execSQL("PRAGMA application_id=" + applicationId);
+                database.execSQL("PRAGMA user_version=" + revision);
+            });
+            else if (canMigrate) transaction(database, () -> {
+                // A failure rolls back both the schema additions and revision advancement.
+                for (long previous = version; previous < revision; previous++) {
+                    String[] statements = migrations.get(previous);
+                    if (statements == null) throw new EvidenceStorageException(PersistenceStatus.Error.UNSUPPORTED_SCHEMA);
+                    for (String sql : statements) database.execSQL(sql);
+                }
                 database.execSQL("PRAGMA user_version=" + revision);
             });
             return database;
@@ -81,7 +97,8 @@ final class EvidenceSQLite {
     }
     // Retrieve bounded original UTF-8 bytes, not a cursor's replacement-decoded string. Invalid types become an invalid UTF-8 sentinel.
     static String textColumn(String name, int limit) {
-        return "CASE WHEN " + name + " IS NULL THEN NULL WHEN typeof(" + name + ")='text' THEN substr(CAST(" + name + " AS BLOB),1," + (limit + 1) + ") ELSE x'ff' END";
+        // Some platform SQLite versions return NULL for substr of an empty blob. Preserve empty text as a blob, distinct from SQL NULL.
+        return "CASE WHEN " + name + " IS NULL THEN NULL WHEN typeof(" + name + ")='text' THEN coalesce(substr(CAST(" + name + " AS BLOB),1," + (limit + 1) + "),x'') ELSE x'ff' END";
     }
     static String text(Cursor row, int column, int limit) {
         if (row.getType(column) != Cursor.FIELD_TYPE_BLOB) throw EvidenceStorageException.invalid();

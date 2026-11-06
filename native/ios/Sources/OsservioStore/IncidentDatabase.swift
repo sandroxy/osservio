@@ -5,13 +5,16 @@ import OsservioCore
 final class IncidentDatabase {
     private let connection: SQLiteConnection
     private let options: IncidentPersistenceOptions
+    private let details: IncidentDetailDatabase
     private static let applicationID: Int64 = 0x4f535649
-    private static let revision: Int64 = 1
+    private static let revision: Int64 = 2
 
     init(url: URL, options: IncidentPersistenceOptions, now: Int64) throws {
         self.options = options
         connection = try EvidenceSQLite.open(url: url, byteLimit: options.databaseByteLimit,
-            applicationID: Self.applicationID, revision: Self.revision, schema: Self.schema)
+            applicationID: Self.applicationID, revision: Self.revision, schema: Self.schema + IncidentDetailDatabase.schema,
+            migrations: [1: IncidentDetailDatabase.schema])
+        details = IncidentDetailDatabase(connection: connection)
         do {
             try connection.transaction {
                 guard try scalar("SELECT count(*) FROM incidents") <= 16 else { throw PersistenceError.invalidRecord }
@@ -90,6 +93,7 @@ final class IncidentDatabase {
                              .integer(event.isPrivate ? 1 : 0), .integer(event.isTruncated ? 1 : 0),
                              event.value.map(SQLiteValue.integer) ?? .null, .text(event.retention.rawValue)])
             }
+            try details.save(snapshot)
         }
     }
     private func prune(now: Int64, reserve: Int) throws {
@@ -117,8 +121,9 @@ final class IncidentDatabase {
         guard let info else { return nil }
         let environment = try readEnvironment(id: info.summary.id, info: info)
         let breadcrumbs = try readBreadcrumbs(id: info.summary.id, info: info)
+        let detail = try details.read(id: info.summary.id, windows: info.windows)
         let restored = try IncidentSnapshot.restore(id: info.summary.id, timestampMillis: info.summary.timestampMillis,
-            note: info.summary.note, environment: environment, breadcrumbs: breadcrumbs)
+            note: info.summary.note, environment: environment, breadcrumbs: breadcrumbs, logs: detail.logs, http: detail.http, webSockets: detail.webSockets)
         guard restored.textByteCount == info.bytes else { throw PersistenceError.invalidRecord }
         return restored
     }
@@ -140,6 +145,7 @@ final class IncidentDatabase {
         let sourceCount: Int?
         let sourceEvicted: Int64?
         let bytes: Int
+        let windows: [IncidentDetailDatabase.Kind: IncidentDetailDatabase.Window]
     }
     private func header(_ row: SQLiteStatement) throws -> Header {
         let id = try row.text(0, byteLimit: 36), isPrivate = try row.flag(3), truncated = try row.flag(4)
@@ -160,9 +166,12 @@ final class IncidentDatabase {
         } else { guard source == nil, evicted == nil else { throw PersistenceError.invalidRecord } }
         let bytes = try row.integer(10)
         guard (0...2_097_152).contains(bytes) else { throw PersistenceError.invalidRecord }
+        let windows = try details.windows(id: id)
+        guard windows.values.reduce(0, { $0 + $1.bytes + $1.payloadBytes }) <= bytes else { throw PersistenceError.invalidRecord }
         return try Header(summary: IncidentSummary(id: id, timestampMillis: row.integer(1), note: note,
-            hasEnvironment: platform != nil, breadcrumbCount: count.map(Int.init)), platform: platform,
-            environmentTime: platform == nil ? nil : row.integer(6), sourceCount: source.map(Int.init), sourceEvicted: evicted, bytes: Int(bytes))
+            hasEnvironment: platform != nil, breadcrumbCount: count.map(Int.init), logCount: windows[.logs]?.count,
+            httpCount: windows[.http]?.count, webSocketCount: windows[.websocket]?.count), platform: platform,
+            environmentTime: platform == nil ? nil : row.integer(6), sourceCount: source.map(Int.init), sourceEvicted: evicted, bytes: Int(bytes), windows: windows)
     }
     private func readEnvironment(id: String, info: Header) throws -> EnvironmentSnapshot? {
         var facts: [EnvironmentKey: EnvironmentFact] = [:], truncated = Set<EnvironmentKey>()

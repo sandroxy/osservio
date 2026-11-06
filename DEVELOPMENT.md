@@ -14,7 +14,9 @@ SQLite retention, strict restoration, asynchronous queries, and deletion.
 Native problem views provide explicit attachment selection, a bounded description
 editor, and an immutable snapshot browser through Core archive contracts.
 Core also provides bounded frozen log/HTTP/WebSocket windows with separate body
-inclusion states. Their persistence and UI integration are not implemented yet.
+inclusion states. Store persists these as optional incident attachments and
+upgrades existing incident databases without replacing reports. Their problem-view
+integration is not implemented yet.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -104,7 +106,8 @@ Run the SQLite store tests on the simulator with the same package test scheme,
 using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
 `-only-testing:OsservioCoreTests/BreadcrumbDatabaseTests`, and
 `-only-testing:OsservioCoreTests/SQLiteBreadcrumbStoreTests`. Include
-`-only-testing:OsservioCoreTests/IncidentDatabaseTests` and
+`-only-testing:OsservioCoreTests/IncidentDatabaseTests`,
+`-only-testing:OsservioCoreTests/IncidentDetailDatabaseTests`, and
 `-only-testing:OsservioCoreTests/SQLiteIncidentStoreTests` for manual snapshot
 storage and shared SQLite policy changes. These tests use
 fresh, test-owned temporary directories and remove only their own fixtures.
@@ -133,7 +136,7 @@ and test lifecycle, rate limits, capacity, immutable snapshots, rejection, sink
 failure, and contention. The Android unit tests are JVM tests, not device UI tests.
 Store instrumentation tests use actual Android SQLite on the selected device or
 emulator, with isolated test-owned directories. They verify reopen, transactional
-rollback, budgets, corruption, unsupported revisions, exclusive ownership,
+rollback, budgets, corruption, additive incident migration, unsupported revisions, exclusive ownership,
 asynchronous admission, and close ordering. They do not establish physical-device
 performance or fatal crash capture.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.

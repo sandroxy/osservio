@@ -19,30 +19,50 @@ public final class IncidentSnapshot {
     public final EnvironmentSnapshot environment;
     /** Null means no snapshot was attached, not that the app had no activity. */
     public final Breadcrumbs breadcrumbs;
+    public final IncidentLogs logs;
+    public final IncidentHTTP http;
+    public final IncidentWebSockets webSockets;
     /** Sanitized text bytes only; excludes structural, indexing, and object overhead. */
     public final int textByteCount;
-    private IncidentSnapshot(String id, long timestampMillis, Note note, EnvironmentSnapshot environment, Breadcrumbs breadcrumbs) {
+    private IncidentSnapshot(String id, long timestampMillis, Note note, EnvironmentSnapshot environment, Breadcrumbs breadcrumbs,
+                             IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets) {
         this.id = id; this.timestampMillis = timestampMillis; this.note = note; this.environment = environment; this.breadcrumbs = breadcrumbs;
+        this.logs = logs; this.http = http; this.webSockets = webSockets;
         int bytes = note == null ? 0 : note.text.getBytes(StandardCharsets.UTF_8).length;
         if (environment != null) for (EnvironmentSnapshot.Value value : environment.values.values()) {
             if (value.fact.type == EnvironmentSnapshot.Fact.Type.TEXT) bytes += value.fact.text.getBytes(StandardCharsets.UTF_8).length;
         }
-        textByteCount = bytes + (breadcrumbs == null ? 0 : breadcrumbs.retainedTextBytes);
+        textByteCount = bytes + (breadcrumbs == null ? 0 : breadcrumbs.retainedTextBytes) + (logs == null ? 0 : logs.retainedTextBytes)
+            + (http == null ? 0 : http.retainedTextBytes + http.retainedPayloadBytes)
+            + (webSockets == null ? 0 : webSockets.retainedTextBytes + webSockets.retainedPayloadBytes);
     }
     public static IncidentSnapshot capture(LogMessage note, EnvironmentSnapshot environment, BreadcrumbSnapshot breadcrumbs) {
         return capture(note, environment, breadcrumbs, 200, 65536, LogClock.SYSTEM);
     }
     public static IncidentSnapshot capture(LogMessage note, EnvironmentSnapshot environment, BreadcrumbSnapshot breadcrumbs,
                                            int breadcrumbLimit, int breadcrumbTextByteLimit, LogClock clock) {
+        return capture(note, environment, breadcrumbs, null, null, null, breadcrumbLimit, breadcrumbTextByteLimit, clock);
+    }
+    public static IncidentSnapshot capture(LogMessage note, EnvironmentSnapshot environment, BreadcrumbSnapshot breadcrumbs,
+                                           IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets) {
+        return capture(note, environment, breadcrumbs, logs, http, webSockets, 200, 65536, LogClock.SYSTEM);
+    }
+    public static IncidentSnapshot capture(LogMessage note, EnvironmentSnapshot environment, BreadcrumbSnapshot breadcrumbs,
+                                           IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets,
+                                           int breadcrumbLimit, int breadcrumbTextByteLimit, LogClock clock) {
         if (breadcrumbLimit < 1 || breadcrumbLimit > 2000 || breadcrumbTextByteLimit < 64 || breadcrumbTextByteLimit > 1048576) throw invalid();
         Note safeNote = note == null ? null : Note.capture(note);
         Breadcrumbs context = breadcrumbs == null ? null : Breadcrumbs.capture(breadcrumbs, breadcrumbLimit, breadcrumbTextByteLimit);
-        return new IncidentSnapshot(UUID.randomUUID().toString(), Objects.requireNonNull(clock, "clock").wallTimeMillis(), safeNote, environment, context);
+        return new IncidentSnapshot(UUID.randomUUID().toString(), Objects.requireNonNull(clock, "clock").wallTimeMillis(), safeNote, environment, context, logs, http, webSockets);
     }
     /** Restores previously sanitized evidence without inventing identity or time. */
     public static IncidentSnapshot restore(String id, long timestampMillis, Note note, EnvironmentSnapshot environment, Breadcrumbs breadcrumbs) {
+        return restore(id, timestampMillis, note, environment, breadcrumbs, null, null, null);
+    }
+    public static IncidentSnapshot restore(String id, long timestampMillis, Note note, EnvironmentSnapshot environment, Breadcrumbs breadcrumbs,
+                                           IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets) {
         if (!validId(id)) throw invalid();
-        return new IncidentSnapshot(id, timestampMillis, note, environment, breadcrumbs);
+        return new IncidentSnapshot(id, timestampMillis, note, environment, breadcrumbs, logs, http, webSockets);
     }
     public static final class Note {
         public final String text;

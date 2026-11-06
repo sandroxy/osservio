@@ -3,7 +3,8 @@ import OsservioCore
 
 /// Shared recovery limits, ownership checks, and transaction policy for private evidence databases.
 enum EvidenceSQLite {
-    static func open(url: URL, byteLimit: Int, applicationID: Int64, revision: Int64, schema: [String]) throws -> SQLiteConnection {
+    static func open(url: URL, byteLimit: Int, applicationID: Int64, revision: Int64, schema: [String],
+                     migrations: [Int64: [String]] = [:]) throws -> SQLiteConnection {
         for (file, limit) in [(url, Int64(byteLimit)),
                               (URL(fileURLWithPath: url.path + "-journal"), 2 * Int64(byteLimit) + 65_536)]
             where FileManager.default.fileExists(atPath: file.path) {
@@ -22,7 +23,9 @@ enum EvidenceSQLite {
             let owner = try scalar("PRAGMA application_id"), version = try scalar("PRAGMA user_version")
             let empty = try scalar("SELECT count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'") == 0
             let create = owner == 0 && version == 0 && empty
-            guard create || (owner == applicationID && version == revision) else { throw PersistenceError.unsupportedSchema }
+            let canMigrate = owner == applicationID && version > 0 && version < revision
+                && (version..<revision).allSatisfy { migrations[$0] != nil }
+            guard create || (owner == applicationID && (version == revision || canMigrate)) else { throw PersistenceError.unsupportedSchema }
             try connection.statement("PRAGMA journal_mode=DELETE") { row in
                 guard try row.step(), try row.text(0, byteLimit: 16) == "delete" else { throw PersistenceError.unavailable }
             }
@@ -38,6 +41,15 @@ enum EvidenceSQLite {
                 try connection.transaction {
                     for sql in schema { try connection.execute(sql) }
                     try connection.execute("PRAGMA application_id=\(applicationID)")
+                    try connection.execute("PRAGMA user_version=\(revision)")
+                }
+            } else if canMigrate {
+                // Schema changes and revision advancement commit together; any failure preserves the old revision.
+                try connection.transaction {
+                    for previous in version..<revision {
+                        guard let statements = migrations[previous] else { throw PersistenceError.unsupportedSchema }
+                        for sql in statements { try connection.execute(sql) }
+                    }
                     try connection.execute("PRAGMA user_version=\(revision)")
                 }
             }
