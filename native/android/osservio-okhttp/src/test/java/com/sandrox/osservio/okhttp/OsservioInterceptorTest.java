@@ -3,6 +3,7 @@ package com.sandrox.osservio.okhttp;
 import com.sandrox.osservio.core.*;
 import com.sandrox.osservio.store.MemoryHTTPStore;
 import java.io.IOException;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -139,6 +140,55 @@ public final class OsservioInterceptorTest {
             assertEquals("untouched", response.body().string());
         }
         assertEquals(1, calls.get());
+    }
+
+    @Test public void cancellationQueryFailureCannotReplaceProceedReadOrCloseErrors() throws Exception {
+        for (String phase : new String[] {"proceed", "read", "close"}) {
+            store.clear();
+            IOException expected = new IOException("synthetic private host failure: " + phase);
+            AtomicInteger calls = new AtomicInteger();
+            Request request = new Request.Builder().url("https://example.com/failure").build();
+            Source source = new ForwardingSource(new Buffer().writeUtf8("body")) {
+                @Override public long read(Buffer sink, long count) throws IOException {
+                    if (phase.equals("read")) throw expected;
+                    return super.read(sink, count);
+                }
+                @Override public void close() throws IOException {
+                    if (phase.equals("close")) throw expected;
+                    super.close();
+                }
+            };
+            Call call = (Call) Proxy.newProxyInstance(Call.class.getClassLoader(), new Class<?>[] {Call.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("isCanceled")) throw new IllegalStateException("Cancellation status unavailable");
+                    throw new AssertionError("Unexpected call query: " + method.getName());
+                });
+            Interceptor.Chain chain = (Interceptor.Chain) Proxy.newProxyInstance(Interceptor.Chain.class.getClassLoader(),
+                new Class<?>[] {Interceptor.Chain.class}, (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "request": return request;
+                        case "call": return call;
+                        case "proceed":
+                            calls.incrementAndGet();
+                            if (phase.equals("proceed")) throw expected;
+                            return reply((Request) args[0], body(source, -1));
+                        default: throw new AssertionError("Unexpected chain operation: " + method.getName());
+                    }
+                });
+            OsservioInterceptor interceptor = new OsservioInterceptor(recorder);
+            if (phase.equals("proceed")) {
+                assertSame(expected, assertThrows(IOException.class, () -> interceptor.intercept(chain)));
+            } else {
+                Response response = interceptor.intercept(chain);
+                if (phase.equals("read")) {
+                    assertSame(expected, assertThrows(IOException.class, () -> response.body().source().readByte()));
+                    response.close();
+                } else assertSame(expected, assertThrows(IOException.class, () -> response.body().source().close()));
+            }
+            assertEquals(phase, 1, calls.get());
+            assertEquals(phase, HTTPEvent.State.FAILED, onlyEvent().state);
+            assertEquals(phase, HTTPEvent.Failure.TRANSPORT, onlyEvent().failure);
+        }
     }
 
     @Test public void redirectsRemainOneLogicalObservationWithSanitizedFinalURL() throws Exception {

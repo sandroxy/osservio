@@ -183,7 +183,11 @@ public final class OsservioInterceptor implements Interceptor {
         void failed(Exception failure) {
             if (failure instanceof SocketTimeoutException) { finish(HTTPEvent.State.FAILED, HTTPEvent.Failure.TIMEOUT, false); return; }
             // isCanceled also covers OkHttp's call-wide timeout. It does not establish who cancelled the call.
-            if (call.isCanceled()) { finish(HTTPEvent.State.CANCELLED, null, false); return; }
+            try {
+                if (call.isCanceled()) { finish(HTTPEvent.State.CANCELLED, null, false); return; }
+            } catch (RuntimeException diagnosticFailure) {
+                // An unavailable cancellation hint must not replace the original host failure.
+            }
             HTTPEvent.Failure category = failure instanceof SSLException ? HTTPEvent.Failure.TLS
                 : failure instanceof ConnectException || failure instanceof UnknownHostException ? HTTPEvent.Failure.CONNECTION
                 : failure instanceof IOException ? HTTPEvent.Failure.TRANSPORT : HTTPEvent.Failure.UNKNOWN;
