@@ -94,6 +94,10 @@ preflight, loader admission, private/exclusive file creation, and fatal byte
 limit. The process-wide installation mutex is made static, and the bounded file
 writer rejects overflowing lengths before addition. Unwinding and protobuf
 encoding remain upstream implementations.
+Unknown signal numbers/codes use an Osservio-owned fixed-capacity integer encoder
+instead of libc formatting; the buffer accommodates the full signed 32-bit range.
+The decoder exposes original report-info presence and the user-requested flag so
+safe-launch recovery can reject live test reports as fatal evidence.
 
 The Objective-C decoder rejects input outside 8–65,536 bytes before invoking
 protobuf-c. This target does not use protobuf-c's generic packing APIs: the crash

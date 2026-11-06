@@ -293,6 +293,14 @@ error:
 @synthesize exceptionInfo = _exceptionInfo;
 @synthesize uuidRef = _uuid;
 
+- (BOOL) hasReportInfo {
+    return _decoder != NULL && _decoder->crashReport != NULL && _decoder->crashReport->report_info != NULL;
+}
+
+- (BOOL) userRequested {
+    return self.hasReportInfo && _decoder->crashReport->report_info->user_requested;
+}
+
 @end
 
 

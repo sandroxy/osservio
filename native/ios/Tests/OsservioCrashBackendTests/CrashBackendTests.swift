@@ -34,6 +34,19 @@ final class CrashBackendTests: XCTestCase {
         DispatchTime.now().uptimeNanoseconds / 1_000_000 + milliseconds
     }
 
+    func testSignalNumberFallbackPreservesSignedBoundariesWithinItsFixedBuffer() throws {
+        for value: Int32 in [Int32.min, -42, -1, 0, 1, 42, Int32.max] {
+            var bytes = [CChar](repeating: 0x7f, count: 15)
+            bytes.withUnsafeMutableBufferPointer { buffer in
+                OsservioCrashFormatSignalNumber(value, buffer.baseAddress!.advanced(by: 1))
+            }
+            XCTAssertEqual(bytes.first, 0x7f)
+            XCTAssertEqual(bytes.last, 0x7f)
+            let end = try XCTUnwrap(bytes[1..<14].firstIndex(of: 0))
+            XCTAssertEqual(String(decoding: bytes[1..<end].map { UInt8(bitPattern: $0) }, as: UTF8.self), "#\(value)")
+        }
+    }
+
     func testLiveReportExcludesRawContentAndPreservesAnAddressStack() throws {
         let (data, report) = try liveReport()
         XCTAssertLessThanOrEqual(data.count, 65_536)
@@ -43,6 +56,8 @@ final class CrashBackendTests: XCTestCase {
         XCTAssertFalse(report.hasProcessInfo)
         XCTAssertFalse(report.hasExceptionInfo)
         XCTAssertNotNil(report.uuidRef)
+        XCTAssertTrue(report.hasReportInfo)
+        XCTAssertTrue(report.userRequested)
         XCTAssertEqual(report.threads.count, 1)
         let thread = try XCTUnwrap(report.threads.first as? Osservio_PLCrashReportThreadInfo)
         XCTAssertTrue(thread.crashed)

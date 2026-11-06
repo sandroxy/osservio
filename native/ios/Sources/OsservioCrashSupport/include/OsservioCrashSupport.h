@@ -11,6 +11,10 @@ void OsservioCrashCaptureUpdate(bool baseline, uint64_t detailedDeadlineUptimeMi
 // Async-signal-safe: one lock-free load and the platform uptime clock.
 bool OsservioCrashCaptureAllowsRecording(void);
 
+// Async-signal-safe fixed-width fallback for unknown signal codes. The caller
+// provides 13 bytes, enough for '#' + signed Int32 decimal + NUL. No libc formatter.
+void OsservioCrashFormatSignalNumber(int32_t value, char output[13]);
+
 // A process-lifetime admission budget; unloading an image does not renew it.
 bool OsservioCrashAdmitImage(uint32_t loadCommandBytes, uint32_t loadCommandCount);
 // Async-signal-safe. Bit 0 means image admission excluded at least one image.

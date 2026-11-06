@@ -523,6 +523,31 @@
  
  /**
   * @internal
+@@ -1147,20 +999,20 @@
+     PLCF_ASSERT(siginfo->bsd_info != NULL);
+     
+     /* Fetch the signal name */
+-    char name_buf[10];
++    char name_buf[13];
+     const char *name;
+     if ((name = plcrash_async_signal_signame(siginfo->bsd_info->signo)) == NULL) {
+         PLCF_DEBUG("Warning -- unhandled signal number (signo=%d). This is a bug.", siginfo->bsd_info->signo);
+-        snprintf(name_buf, sizeof(name_buf), "#%d", siginfo->bsd_info->signo);
++        OsservioCrashFormatSignalNumber(siginfo->bsd_info->signo, name_buf);
+         name = name_buf;
+     }
+ 
+     /* Fetch the signal code string */
+-    char code_buf[10];
++    char code_buf[13];
+     const char *code;
+     if ((code = plcrash_async_signal_sigcode(siginfo->bsd_info->signo, siginfo->bsd_info->code)) == NULL) {
+         PLCF_DEBUG("Warning -- unhandled signal sicode (signo=%d, code=%d). This is a bug.", siginfo->bsd_info->signo, siginfo->bsd_info->code);
+-        snprintf(code_buf, sizeof(code_buf), "#%d", siginfo->bsd_info->code);
++        OsservioCrashFormatSignalNumber(siginfo->bsd_info->code, code_buf);
+         code = code_buf;
+     }
+     
 @@ -1323,28 +1175,11 @@
          plcrash_writer_write_app_info(file, &writer->application_info.app_identifier, &writer->application_info.app_version, &writer->application_info.app_marketing_version);
      }
@@ -683,6 +708,17 @@
  
  /** 
   * @ingroup constants
+@@ -104,6 +88,10 @@
+ - (id) initWithData: (NSData *) encodedData error: (NSError **) outError;
+ 
+ - (PLCrashReportBinaryImageInfo *) imageForAddress: (uint64_t) address;
++
++/** Osservio: distinguish a requested live report from a recorded fatal report. */
++@property(nonatomic, readonly) BOOL hasReportInfo;
++@property(nonatomic, readonly) BOOL userRequested;
+ 
+ /**
+  * System information.
 --- a/Source/PLCrashReport.m
 +++ b/Source/PLCrashReport.m
 @@ -1,3 +1,5 @@
@@ -724,6 +760,21 @@
      _decoder->crashReport = [self decodeCrashData: encodedData error: outError];
  
      /* Check if decoding failed. If so, outError has already been populated. */
+@@ -285,6 +292,14 @@
+ @synthesize images = _images;
+ @synthesize exceptionInfo = _exceptionInfo;
+ @synthesize uuidRef = _uuid;
++
++- (BOOL) hasReportInfo {
++    return _decoder != NULL && _decoder->crashReport != NULL && _decoder->crashReport->report_info != NULL;
++}
++
++- (BOOL) userRequested {
++    return self.hasReportInfo && _decoder->crashReport->report_info->user_requested;
++}
+ 
+ @end
+ 
 --- a/Source/PLCrashReport.pb-c.c
 +++ b/Source/PLCrashReport.pb-c.c
 @@ -1,3 +1,5 @@

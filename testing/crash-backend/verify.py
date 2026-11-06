@@ -41,10 +41,16 @@ def main():
     probe = fixture / "osservio-crash-probe"
     vendor = ROOT / "native/ios/Vendor/PLCrashReporter"
     support = ROOT / "native/ios/Sources/OsservioCrashSupport"
-    objects = sorted((binary_path / "OsservioCrashBackend.build").rglob("*.o"))
-    objects += sorted((binary_path / "OsservioCrashSupport.build").rglob("*.o"))
-    if not objects:
-        raise RuntimeError("The backend build produced no object files")
+    package = json.loads(run(["swift", "package", "describe", "--type", "json"], timeout=60).stdout)
+    objects = []
+    for name in ["OsservioCrashBackend", "OsservioCrashSupport"]:
+        target = next(item for item in package["targets"] if item["name"] == name)
+        target_path = binary_path / (name + ".build")
+        objects += [target_path / (source + ".o") for source in target["sources"]]
+        if target.get("resources"):
+            objects.append(target_path / "resource_bundle_accessor.m.o")
+    if not objects or not all(path.is_file() for path in objects):
+        raise RuntimeError("The current backend build is missing declared object files")
     symbols = run(["xcrun", "nm", "-gU", *map(str, objects)], timeout=60).stdout
     for line in symbols.splitlines():
         if not line or line.endswith(":"):
@@ -119,6 +125,34 @@ def main():
     invoke("invalid", limited_report)
     receipt["checks"].append({"mode": "small-budget", "bytes": limited_report.stat().st_size,
                               "incompleteReportRejected": True})
+
+    # Decode an actual prior-process fatal file through the same Swift mapper
+    # used by the internal recorder, not just the upstream protobuf decoder.
+    for target in ["OsservioCore", "OsservioCrash"]:
+        run(["swift", "build", "--target", target, "-Xswiftc", "-warnings-as-errors"], timeout=180)
+    # Incremental directories may retain objects for renamed/removed sources.
+    # Link only the current build plan, without deleting unrelated build state.
+    description = json.loads((binary_path / "description.json").read_text())
+    swift_objects = []
+    for name in ["OsservioCore", "OsservioCrash"]:
+        commands = [item for item in description["swiftCommands"].values() if item["moduleName"] == name]
+        if len(commands) != 1 or not commands[0]["objects"]:
+            raise RuntimeError(f"Missing or ambiguous Swift build command for {name}")
+        swift_objects += [Path(value) for value in commands[0]["objects"]]
+    if not all(path.is_file() for path in swift_objects):
+        raise RuntimeError("The current Swift build is missing declared object files")
+    decoder = fixture / "osservio-crash-decoder"
+    run(["xcrun", "swiftc", "-warnings-as-errors", "-I", str(binary_path / "Modules"),
+         "-I", str(vendor / "include"), "-I", str(support / "include"),
+         "-Xcc", "-fmodule-map-file=" + str(binary_path / "OsservioCrashSupport.build/module.modulemap"),
+         str(Path(__file__).with_name("DecoderProbe.swift")), *map(str, swift_objects), *map(str, objects),
+         "-lc++", "-o", str(decoder)], timeout=60)
+    decoded = json.loads(run([str(decoder), str(paths["on"])], timeout=20).stdout)
+    prior = json.loads(invoke("read", paths["on"]))
+    for key in ["frames", "images", "signal"]:
+        if decoded[key] != prior[key]:
+            raise AssertionError(f"Swift recovery changed the fatal {key}")
+    receipt["checks"].append({"mode": "swift-recovery", "report": decoded, "decoderSHA256": digest(decoder)})
 
     receipt_path = fixture / "receipt.json"
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")

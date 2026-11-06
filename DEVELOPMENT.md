@@ -40,6 +40,8 @@ native behavior and interaction validation. No artifacts have been published.
 - [System diagnostics](doc/system-diagnostics.md) describes bounded OS history
   reads, MetricKit subscription, and explicit incident persistence, without fatal
   handlers or automatic recovery.
+- [Native signal evidence](doc/crash-evidence.md) defines the reviewed address-stack
+  model and internal safe-launch decoder, independently of public recorder installation.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment

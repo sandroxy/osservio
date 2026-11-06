@@ -89,6 +89,10 @@ typedef struct _PLCrashReportDecoder _PLCrashReportDecoder;
 
 - (PLCrashReportBinaryImageInfo *) imageForAddress: (uint64_t) address;
 
+/** Osservio: distinguish a requested live report from a recorded fatal report. */
+@property(nonatomic, readonly) BOOL hasReportInfo;
+@property(nonatomic, readonly) BOOL userRequested;
+
 /**
  * System information.
  */

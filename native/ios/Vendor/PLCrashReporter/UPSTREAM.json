@@ -373,7 +373,7 @@
       "path": "Source/PLCrashLogWriter.m",
       "upstreamPath": "Source/PLCrashLogWriter.m",
       "upstreamSHA256": "f646a102a73fe36d6e4893ce882673bb875a9e018772b307af1db621f7ad9735",
-      "vendoredSHA256": "bffe4ef2c55ab5d00906ce85786a6f76ae9b8eae26a4ef26c2aacd65be766385"
+      "vendoredSHA256": "8bd95c8400e1cddd399632ccce0331cc7e266a02c64549f41911415dcef57b18"
     },
     {
       "path": "Source/PLCrashLogWriterEncoding.c",
@@ -451,13 +451,13 @@
       "path": "Source/PLCrashReport.h",
       "upstreamPath": "Source/PLCrashReport.h",
       "upstreamSHA256": "a2280ce261880602231c5ca1c5096045cf69d7979209be84326862766b6e1922",
-      "vendoredSHA256": "1a89dd08cdfe0b814e3ccde1d2cb8c9eb5e19525b5fee01ef57bd58106e4b5e9"
+      "vendoredSHA256": "d5ebbde7fe7afe7676f7683daf4acdb116ca9e6ab527720b4f5d1a5925b2c030"
     },
     {
       "path": "Source/PLCrashReport.m",
       "upstreamPath": "Source/PLCrashReport.m",
       "upstreamSHA256": "aa6e12c9c80cd4cbba7593498f54468293742e6c92ba5874ce77b2f81e85d1d1",
-      "vendoredSHA256": "be3bca59acedf72fdaf70514433e0a1305305b6cdf8f1e8877f77493e9ced00c"
+      "vendoredSHA256": "2c072c36f13edec18cba746f523c167780e1be54497de4c8815d79787a6c3eab"
     },
     {
       "path": "Source/PLCrashReport.pb-c.c",

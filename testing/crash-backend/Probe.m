@@ -114,7 +114,13 @@ int main(int argc, char **argv) {
             return 0;
         }
         if ([mode isEqualToString:@"budget"]) return writeBudget(path);
-        if ([mode isEqualToString:@"read"]) return inspectReport([NSData dataWithContentsOfFile:path]);
+        if ([mode isEqualToString:@"read"]) {
+            NSData *data = [NSData dataWithContentsOfFile:path];
+            NSError *error = nil;
+            PLCrashReport *report = [[PLCrashReport alloc] initWithData:data error:&error];
+            REQUIRE(report.hasReportInfo && !report.userRequested, "fatal report mislabeled as requested");
+            return inspectReport(data);
+        }
         if ([mode isEqualToString:@"invalid"]) {
             NSError *error = nil;
             NSData *data = [NSData dataWithContentsOfFile:path];

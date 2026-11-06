@@ -999,20 +999,20 @@ static size_t plcrash_writer_write_signal (plcrash_async_file_t *file, plcrash_l
     PLCF_ASSERT(siginfo->bsd_info != NULL);
     
     /* Fetch the signal name */
-    char name_buf[10];
+    char name_buf[13];
     const char *name;
     if ((name = plcrash_async_signal_signame(siginfo->bsd_info->signo)) == NULL) {
         PLCF_DEBUG("Warning -- unhandled signal number (signo=%d). This is a bug.", siginfo->bsd_info->signo);
-        snprintf(name_buf, sizeof(name_buf), "#%d", siginfo->bsd_info->signo);
+        OsservioCrashFormatSignalNumber(siginfo->bsd_info->signo, name_buf);
         name = name_buf;
     }
 
     /* Fetch the signal code string */
-    char code_buf[10];
+    char code_buf[13];
     const char *code;
     if ((code = plcrash_async_signal_sigcode(siginfo->bsd_info->signo, siginfo->bsd_info->code)) == NULL) {
         PLCF_DEBUG("Warning -- unhandled signal sicode (signo=%d, code=%d). This is a bug.", siginfo->bsd_info->signo, siginfo->bsd_info->code);
-        snprintf(code_buf, sizeof(code_buf), "#%d", siginfo->bsd_info->code);
+        OsservioCrashFormatSignalNumber(siginfo->bsd_info->code, code_buf);
         code = code_buf;
     }
     

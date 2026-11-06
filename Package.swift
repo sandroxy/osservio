@@ -57,7 +57,7 @@ let package = Package(
                     path: "native/ios/Tests/OsservioExportTests"),
         .testTarget(name: "OsservioCrashBackendTests", dependencies: ["OsservioCrashBackend", "OsservioCrashSupport"],
                     path: "native/ios/Tests/OsservioCrashBackendTests"),
-        .testTarget(name: "OsservioCrashTests", dependencies: ["OsservioCore", "OsservioCrash", "OsservioCrashSupport"],
+        .testTarget(name: "OsservioCrashTests", dependencies: ["OsservioCore", "OsservioCrash", "OsservioCrashSupport", "OsservioCrashBackend"],
                     path: "native/ios/Tests/OsservioCrashTests")
     ],
     swiftLanguageVersions: [.v5]

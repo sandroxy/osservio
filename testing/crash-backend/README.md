@@ -46,6 +46,15 @@ an incomplete file whose rejection is verified separately. The adapted upstream
 file-writer regression checks both exact capacity and integer overflow.
 The decoder regression also exercises generic message initialization with
 non-zero allocator memory and safe cleanup when no unknown fields are present.
+The script then links a Swift decoder probe and reads an actual prior-process
+fatal report into Core's typed evidence, checking that signal and stack/image
+counts agree with the underlying report. No new report identity is generated.
+
+`CrashReportDecoderTests` uses live encodings with an explicitly changed
+classification bit for deterministic mapping checks; those synthetic fixtures
+do not prove fatal delivery. It separately rejects live reports, unknown profile
+revisions/flags, malformed input, and valid protobuf messages that introduce
+forbidden fields. The isolated-process check supplies the real fatal-file path.
 
 These checks do not prove iOS fatal delivery, physical-device behavior, performance
 budgets, complete stack recovery, or coexistence with another installed reporter.

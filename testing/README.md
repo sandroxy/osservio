@@ -18,6 +18,14 @@ Native tests also verify bounded public metadata, strict restoration, immutable
 batches, and source/budget consistency. Protocol checks consume the same source
 invariants independently and also validate document-specific combinations.
 
+`apple-signal-cases.tsv` defines address-only native crash evidence. Columns are
+name, changed field, input, and `valid` or `invalid`. Both native models check
+signal/code combinations, exact integer bounds, canonical identities, original
+timestamp precision, stack/image budgets, missing thread/CPU fields, image ranges
+and metadata exclusions. Additional tests verify immutable collections, byte
+accounting and completeness flags. This is a native value contract, not a claim
+of Android crash capture or an extension of the portable document protocol.
+
 `capture-lifecycle.tsv` is a sequential scenario consumed by both native test
 suites. Rows contain a case name, monotonic milliseconds, control operation,
 argument, expected mode, remaining detailed-session milliseconds, and whether
