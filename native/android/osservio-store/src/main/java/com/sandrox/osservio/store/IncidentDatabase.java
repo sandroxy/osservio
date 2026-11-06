@@ -11,10 +11,12 @@ import static com.sandrox.osservio.store.IncidentNames.parse;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import com.sandrox.osservio.core.BreadcrumbEvent;
+import com.sandrox.osservio.core.DiagnosticRecoveryReceipt;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentSummary;
 import com.sandrox.osservio.core.SystemDiagnostic;
+import com.sandrox.osservio.core.SystemDiagnosticBatch;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,22 +33,27 @@ final class IncidentDatabase implements AutoCloseable {
     private final SQLiteDatabase database;
     private final IncidentDetailDatabase details;
     private final IncidentDiagnosticDatabase diagnostics;
+    private final DiagnosticRecoveryDatabase recovery;
     private final IncidentPersistenceOptions options;
     IncidentDatabase(File file, IncidentPersistenceOptions options, long now) {
         this.options = options;
-        String[] schema = Arrays.copyOf(SCHEMA, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length + IncidentDiagnosticDatabase.SCHEMA.length);
+        String[] schema = Arrays.copyOf(SCHEMA, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length + IncidentDiagnosticDatabase.SCHEMA.length + DiagnosticRecoveryDatabase.SCHEMA.length);
         System.arraycopy(IncidentDetailDatabase.SCHEMA, 0, schema, SCHEMA.length, IncidentDetailDatabase.SCHEMA.length);
         System.arraycopy(IncidentDiagnosticDatabase.SCHEMA, 0, schema, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length, IncidentDiagnosticDatabase.SCHEMA.length);
+        System.arraycopy(DiagnosticRecoveryDatabase.SCHEMA, 0, schema, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length + IncidentDiagnosticDatabase.SCHEMA.length, DiagnosticRecoveryDatabase.SCHEMA.length);
         Map<Long, String[]> migrations = new HashMap<>();
         migrations.put(1L, IncidentDetailDatabase.SCHEMA); migrations.put(2L, IncidentDiagnosticDatabase.SCHEMA);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 3, schema, migrations);
+        migrations.put(3L, DiagnosticRecoveryDatabase.SCHEMA);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 4, schema, migrations);
         details = new IncidentDetailDatabase(database);
         diagnostics = new IncidentDiagnosticDatabase(database);
+        recovery = new DiagnosticRecoveryDatabase(database, options);
         try {
             transaction(() -> {
                 if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE diagnostic_kind IS NULL") > 16 ||
                     EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE diagnostic_kind IS NOT NULL") > 16) throw EvidenceStorageException.invalid();
                 prune(now, 0, false);
+                recovery.prepare(now);
             });
         } catch (RuntimeException failure) { database.close(); throw failure; }
     }
@@ -62,41 +69,45 @@ final class IncidentDatabase implements AutoCloseable {
             + "timestamp INTEGER NOT NULL, elapsed TEXT, kind TEXT NOT NULL, label TEXT NOT NULL, message TEXT, private INTEGER NOT NULL, "
             + "truncated INTEGER NOT NULL, value INTEGER, retention TEXT NOT NULL, PRIMARY KEY(incident_id, position), UNIQUE(incident_id, id))"
     };
-    void save(IncidentSnapshot snapshot, long now) {
+    void save(IncidentSnapshot snapshot, long now) { transaction(() -> insert(snapshot, now)); }
+    DiagnosticRecoveryReceipt recover(SystemDiagnosticBatch batch, long now) {
+        final DiagnosticRecoveryReceipt[] result = new DiagnosticRecoveryReceipt[1];
+        transaction(() -> result[0] = recovery.recover(batch, now, snapshot -> insert(snapshot, now)));
+        return result[0];
+    }
+    private void insert(IncidentSnapshot snapshot, long now) {
         if (snapshot.textByteCount > options.textBytesPerIncident) throw EvidenceStorageException.invalid();
-        transaction(() -> {
-            // Check before retention cleanup; a duplicate identity must never replace its original evidence.
-            if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE id=?", snapshot.id) != 0) throw EvidenceStorageException.invalid();
-            prune(now, 1, snapshot.systemDiagnostic != null);
-            IncidentSnapshot.Note note = snapshot.note;
-            EnvironmentSnapshot environment = snapshot.environment;
-            IncidentSnapshot.Breadcrumbs breadcrumbs = snapshot.breadcrumbs;
-            database.execSQL("INSERT INTO incidents(id, timestamp, saved_at, note, private, truncated, environment_platform, environment_time, "
-                + "breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
-                    snapshot.id, snapshot.timestampMillis, now, note == null ? null : note.text, note != null && note.isPrivate ? 1 : 0,
-                    note != null && note.isTruncated ? 1 : 0, environment == null ? null : name(environment.platform), environment == null ? null : environment.timestampMillis,
-                    breadcrumbs == null ? null : breadcrumbs.events.size(), breadcrumbs == null ? null : breadcrumbs.sourceEventCount,
-                    breadcrumbs == null ? null : breadcrumbs.sourceEvictedCount, snapshot.textByteCount,
-                    snapshot.systemDiagnostic == null ? null : name(snapshot.systemDiagnostic.kind)});
-            if (environment != null) for (Map.Entry<EnvironmentSnapshot.Key, EnvironmentSnapshot.Value> entry : environment.values.entrySet()) {
-                EnvironmentSnapshot.Value value = entry.getValue();
-                EnvironmentSnapshot.Fact fact = value.fact;
-                Long number = fact.number;
-                if (fact.type == EnvironmentSnapshot.Fact.Type.FLAG) number = fact.flag ? 1L : 0L;
-                database.execSQL("INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) VALUES (?, ?, ?, ?, ?, ?)",
-                    new Object[] {snapshot.id, name(entry.getKey()), name(fact.type), fact.text, number, value.isTruncated ? 1 : 0});
-            }
-            if (breadcrumbs != null) for (int position = 0; position < breadcrumbs.events.size(); position++) {
-                BreadcrumbEvent event = breadcrumbs.events.get(position);
-                database.execSQL("INSERT INTO incident_breadcrumbs(incident_id, position, id, session_id, sequence, timestamp, elapsed, kind, label, "
-                    + "message, private, truncated, value, retention) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
-                        snapshot.id, position, event.id, event.sessionId, event.sequence, event.timestampMillis,
-                        event.sessionElapsedMillis == null ? null : event.sessionElapsedMillis.toString(), name(event.kind), event.label,
-                        event.message, event.isPrivate ? 1 : 0, event.isTruncated ? 1 : 0, event.value, name(event.retention)});
-            }
-            details.save(snapshot);
-            diagnostics.save(snapshot);
-        });
+        // Check before retention cleanup; a duplicate identity must never replace its original evidence.
+        if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE id=?", snapshot.id) != 0) throw EvidenceStorageException.invalid();
+        prune(now, 1, snapshot.systemDiagnostic != null);
+        IncidentSnapshot.Note note = snapshot.note;
+        EnvironmentSnapshot environment = snapshot.environment;
+        IncidentSnapshot.Breadcrumbs breadcrumbs = snapshot.breadcrumbs;
+        database.execSQL("INSERT INTO incidents(id, timestamp, saved_at, note, private, truncated, environment_platform, environment_time, "
+            + "breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
+                snapshot.id, snapshot.timestampMillis, now, note == null ? null : note.text, note != null && note.isPrivate ? 1 : 0,
+                note != null && note.isTruncated ? 1 : 0, environment == null ? null : name(environment.platform), environment == null ? null : environment.timestampMillis,
+                breadcrumbs == null ? null : breadcrumbs.events.size(), breadcrumbs == null ? null : breadcrumbs.sourceEventCount,
+                breadcrumbs == null ? null : breadcrumbs.sourceEvictedCount, snapshot.textByteCount,
+                snapshot.systemDiagnostic == null ? null : name(snapshot.systemDiagnostic.kind)});
+        if (environment != null) for (Map.Entry<EnvironmentSnapshot.Key, EnvironmentSnapshot.Value> entry : environment.values.entrySet()) {
+            EnvironmentSnapshot.Value value = entry.getValue();
+            EnvironmentSnapshot.Fact fact = value.fact;
+            Long number = fact.number;
+            if (fact.type == EnvironmentSnapshot.Fact.Type.FLAG) number = fact.flag ? 1L : 0L;
+            database.execSQL("INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) VALUES (?, ?, ?, ?, ?, ?)",
+                new Object[] {snapshot.id, name(entry.getKey()), name(fact.type), fact.text, number, value.isTruncated ? 1 : 0});
+        }
+        if (breadcrumbs != null) for (int position = 0; position < breadcrumbs.events.size(); position++) {
+            BreadcrumbEvent event = breadcrumbs.events.get(position);
+            database.execSQL("INSERT INTO incident_breadcrumbs(incident_id, position, id, session_id, sequence, timestamp, elapsed, kind, label, "
+                + "message, private, truncated, value, retention) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
+                    snapshot.id, position, event.id, event.sessionId, event.sequence, event.timestampMillis,
+                    event.sessionElapsedMillis == null ? null : event.sessionElapsedMillis.toString(), name(event.kind), event.label,
+                    event.message, event.isPrivate ? 1 : 0, event.isTruncated ? 1 : 0, event.value, name(event.retention)});
+        }
+        details.save(snapshot);
+        diagnostics.save(snapshot);
     }
     private void prune(long now, int reserve, boolean diagnostic) {
         if (now >= options.maximumAgeMillis) database.execSQL("DELETE FROM incidents WHERE saved_at<?", new Object[] {now - options.maximumAgeMillis});

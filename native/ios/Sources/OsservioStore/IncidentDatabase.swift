@@ -7,22 +7,25 @@ final class IncidentDatabase {
     private let options: IncidentPersistenceOptions
     private let details: IncidentDetailDatabase
     private let diagnostics: IncidentDiagnosticDatabase
+    private let recovery: DiagnosticRecoveryDatabase
     private static let applicationID: Int64 = 0x4f535649
-    private static let revision: Int64 = 3
+    private static let revision: Int64 = 4
 
     init(url: URL, options: IncidentPersistenceOptions, now: Int64) throws {
         self.options = options
         connection = try EvidenceSQLite.open(url: url, byteLimit: options.databaseByteLimit,
             applicationID: Self.applicationID, revision: Self.revision,
-            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema,
-            migrations: [1: IncidentDetailDatabase.schema, 2: IncidentDiagnosticDatabase.schema])
+            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema + DiagnosticRecoveryDatabase.schema,
+            migrations: [1: IncidentDetailDatabase.schema, 2: IncidentDiagnosticDatabase.schema, 3: DiagnosticRecoveryDatabase.schema])
         details = IncidentDetailDatabase(connection: connection)
         diagnostics = IncidentDiagnosticDatabase(connection: connection)
+        recovery = DiagnosticRecoveryDatabase(connection: connection, options: options)
         do {
             try connection.transaction {
                 guard try scalar("SELECT count(*) FROM incidents WHERE diagnostic_kind IS NULL") <= 16,
                       try scalar("SELECT count(*) FROM incidents WHERE diagnostic_kind IS NOT NULL") <= 16 else { throw PersistenceError.invalidRecord }
                 try prune(now: now, reserve: 0)
+                try recovery.prepare(now: now)
             }
         } catch { connection.close(); throw error }
     }
@@ -54,53 +57,57 @@ final class IncidentDatabase {
         """
     ]
     func save(_ snapshot: IncidentSnapshot, now: Int64) throws {
+        try connection.transaction { try insert(snapshot, now: now) }
+    }
+    func recover(_ batch: SystemDiagnosticBatch, now: Int64) throws -> DiagnosticRecoveryReceipt {
+        try connection.transaction { try recovery.recover(batch, now: now) { try insert($0, now: now) } }
+    }
+    private func insert(_ snapshot: IncidentSnapshot, now: Int64) throws {
         guard snapshot.textByteCount <= options.textBytesPerIncident else { throw PersistenceError.invalidRecord }
-        try connection.transaction {
-            // Check identity before eviction, so saving the same snapshot cannot replace its original evidence.
-            let duplicate = try connection.statement("SELECT 1 FROM incidents WHERE id=?", [.text(snapshot.id)]) { try $0.step() }
-            guard !duplicate else { throw PersistenceError.invalidRecord }
-            try prune(now: now, reserve: 1, diagnostic: snapshot.systemDiagnostic != nil)
-            try connection.execute("""
-                INSERT INTO incidents(id, timestamp, saved_at, note, private, truncated, environment_platform,
-                    environment_time, breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, [.text(snapshot.id), .integer(snapshot.timestampMillis), .integer(now), snapshot.note.map { .text($0.text) } ?? .null,
-                         .integer(snapshot.note?.isPrivate == true ? 1 : 0), .integer(snapshot.note?.isTruncated == true ? 1 : 0),
-                         snapshot.environment.map { .text($0.platform.rawValue) } ?? .null,
-                         snapshot.environment.map { .integer($0.timestampMillis) } ?? .null,
-                         snapshot.breadcrumbs.map { .integer(Int64($0.events.count)) } ?? .null,
-                         snapshot.breadcrumbs.map { .integer(Int64($0.sourceEventCount)) } ?? .null,
-                         snapshot.breadcrumbs.map { .integer($0.sourceEvictedCount) } ?? .null, .integer(Int64(snapshot.textByteCount)),
-                         snapshot.systemDiagnostic.map { .text($0.kind.rawValue) } ?? .null])
-            if let environment = snapshot.environment {
-                for key in EnvironmentKey.allCases {
-                    guard let value = environment.values[key] else { throw PersistenceError.invalidRecord }
-                    let type: String, text: SQLiteValue, number: SQLiteValue
-                    switch value.fact {
-                    case .text(let value): type = "text"; text = .text(value); number = .null
-                    case .number(let value): type = "number"; text = .null; number = .integer(value)
-                    case .flag(let value): type = "flag"; text = .null; number = .integer(value ? 1 : 0)
-                    case .unavailable: type = "unavailable"; text = .null; number = .null
-                    case .unsupported: type = "unsupported"; text = .null; number = .null
-                    }
-                    try connection.execute("INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) VALUES (?, ?, ?, ?, ?, ?)",
-                        [.text(snapshot.id), .text(key.rawValue), .text(type), text, number, .integer(value.isTruncated ? 1 : 0)])
+        // Check identity before eviction, so saving the same snapshot cannot replace its original evidence.
+        let duplicate = try connection.statement("SELECT 1 FROM incidents WHERE id=?", [.text(snapshot.id)]) { try $0.step() }
+        guard !duplicate else { throw PersistenceError.invalidRecord }
+        try prune(now: now, reserve: 1, diagnostic: snapshot.systemDiagnostic != nil)
+        try connection.execute("""
+            INSERT INTO incidents(id, timestamp, saved_at, note, private, truncated, environment_platform,
+                environment_time, breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [.text(snapshot.id), .integer(snapshot.timestampMillis), .integer(now), snapshot.note.map { .text($0.text) } ?? .null,
+                     .integer(snapshot.note?.isPrivate == true ? 1 : 0), .integer(snapshot.note?.isTruncated == true ? 1 : 0),
+                     snapshot.environment.map { .text($0.platform.rawValue) } ?? .null,
+                     snapshot.environment.map { .integer($0.timestampMillis) } ?? .null,
+                     snapshot.breadcrumbs.map { .integer(Int64($0.events.count)) } ?? .null,
+                     snapshot.breadcrumbs.map { .integer(Int64($0.sourceEventCount)) } ?? .null,
+                     snapshot.breadcrumbs.map { .integer($0.sourceEvictedCount) } ?? .null, .integer(Int64(snapshot.textByteCount)),
+                     snapshot.systemDiagnostic.map { .text($0.kind.rawValue) } ?? .null])
+        if let environment = snapshot.environment {
+            for key in EnvironmentKey.allCases {
+                guard let value = environment.values[key] else { throw PersistenceError.invalidRecord }
+                let type: String, text: SQLiteValue, number: SQLiteValue
+                switch value.fact {
+                case .text(let value): type = "text"; text = .text(value); number = .null
+                case .number(let value): type = "number"; text = .null; number = .integer(value)
+                case .flag(let value): type = "flag"; text = .null; number = .integer(value ? 1 : 0)
+                case .unavailable: type = "unavailable"; text = .null; number = .null
+                case .unsupported: type = "unsupported"; text = .null; number = .null
                 }
+                try connection.execute("INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) VALUES (?, ?, ?, ?, ?, ?)",
+                    [.text(snapshot.id), .text(key.rawValue), .text(type), text, number, .integer(value.isTruncated ? 1 : 0)])
             }
-            for (position, event) in (snapshot.breadcrumbs?.events ?? []).enumerated() {
-                try connection.execute("""
-                    INSERT INTO incident_breadcrumbs(incident_id, position, id, session_id, sequence, timestamp,
-                        elapsed, kind, label, message, private, truncated, value, retention)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, [.text(snapshot.id), .integer(Int64(position)), .text(event.id), .text(event.sessionID), .integer(event.sequence),
-                             .integer(event.timestampMillis), event.sessionElapsedMillis.map { .text(String($0)) } ?? .null,
-                             .text(event.kind.rawValue), .text(event.label), event.message.map(SQLiteValue.text) ?? .null,
-                             .integer(event.isPrivate ? 1 : 0), .integer(event.isTruncated ? 1 : 0),
-                             event.value.map(SQLiteValue.integer) ?? .null, .text(event.retention.rawValue)])
-            }
-            try details.save(snapshot)
-            try diagnostics.save(snapshot)
         }
+        for (position, event) in (snapshot.breadcrumbs?.events ?? []).enumerated() {
+            try connection.execute("""
+                INSERT INTO incident_breadcrumbs(incident_id, position, id, session_id, sequence, timestamp,
+                    elapsed, kind, label, message, private, truncated, value, retention)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, [.text(snapshot.id), .integer(Int64(position)), .text(event.id), .text(event.sessionID), .integer(event.sequence),
+                         .integer(event.timestampMillis), event.sessionElapsedMillis.map { .text(String($0)) } ?? .null,
+                         .text(event.kind.rawValue), .text(event.label), event.message.map(SQLiteValue.text) ?? .null,
+                         .integer(event.isPrivate ? 1 : 0), .integer(event.isTruncated ? 1 : 0),
+                         event.value.map(SQLiteValue.integer) ?? .null, .text(event.retention.rawValue)])
+        }
+        try details.save(snapshot)
+        try diagnostics.save(snapshot)
     }
     private func prune(now: Int64, reserve: Int, diagnostic: Bool = false) throws {
         if now >= options.maximumAgeMillis {

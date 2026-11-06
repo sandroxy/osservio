@@ -87,9 +87,8 @@ callback may finish during stop; subsequently received payloads are ignored.
 
 The provider does not subscribe automatically. These APIs are independent of
 `CaptureController`; a host must bind subscription lifetime to its capture/access
-policy. Automatic recovery is not connected yet. Reports
-are not deduplicated, and identical symptoms do not receive
-invented stable identities.
+policy. Automatic recovery is not connected yet. Provider batches preserve
+repeated entries; identical symptoms do not receive invented stable identities.
 
 ## Explicit persistence
 
@@ -100,13 +99,67 @@ recovery observation time. The diagnostic retains its separate original time or
 reporting interval. This factory attaches no current environment, breadcrumbs,
 logs, or traffic and does not infer a matching historical run.
 
-Each call creates a new snapshot identity. The host must not blindly resave an OS
-history window on every launch: repeated import/deduplication is not implemented.
+Each call creates a new snapshot identity. Do not repeatedly save an entire OS
+history this way; use the batch recovery port below for repeated reads.
 Save completion confirms commitment; honor the archive's admission and text
 limits when sequencing operations. `IncidentSummary.diagnosticKind` identifies
 system records without loading their detailed fields. Separate manual/system
 count limits prevent count-based cross-eviction, while disk and age limits remain
 shared. See [persistence and migration](incidents.md).
+
+## Bounded batch recovery
+
+`SQLiteIncidentStore` also implements Core's `DiagnosticRecoveryArchive`.
+Pass a sanitized `SystemDiagnosticBatch` to `recoverDiagnostics` to process one
+history read or delivered batch. This explicit asynchronous operation installs
+no source and does not change capture policy. Its completion returns a
+`DiagnosticRecoveryReceipt` or the archive's explicit persistence error.
+
+The store applies these rules in one transaction:
+
+- Ignore `otherExit`, which includes normal and unclassified Android exits.
+  Signal termination remains eligible without being classified as a crash.
+- Consider only reports whose original time or interval end is within the
+  archive's `maximumAgeMillis` window, ending at the storage worker's current
+  wall time. Older or future-dated evidence is counted separately.
+- Reject new records exceeding `textBytesPerIncident`. From the remaining new
+  candidates, select up to `retainedDiagnostics`, newest interval end first.
+  Insert older selected candidates first. This orders one batch; archive-wide
+  retention still follows save order, including delayed system reports.
+- Save selected records and acknowledge processed report material atomically.
+  A failed transaction rolls back records, retention cleanup, and acknowledgements.
+
+Acknowledgements store a SHA-256 fingerprint of all reviewed diagnostic facts,
+with the highest observed multiplicity of identical material in one batch.
+Two identical entries in the first batch can produce two records; reading that
+batch again produces none. A later batch with three matching entries can add
+one. This is best-effort deduplication of report material, not proof of unique
+real-world occurrences: separate failures can have identical available facts.
+The fingerprint is private storage metadata, not a public incident identity.
+
+At most 256 acknowledgements are retained. They expire using the archive's age
+window from first processing and are evicted by insertion order. Deleting an
+incident or all incidents leaves acknowledgements intact, so an immediately
+repeated history read does not restore deleted evidence. Eligible candidates
+excluded by the batch count limit are also acknowledged; per-record text
+exclusions, ignored exits, and out-of-window entries are not. Bounded history,
+acknowledgement eviction, and clock changes prevent an exactly-once guarantee.
+
+The receipt accounts separately for saved, already processed, ignored-exit,
+outside-window, and capacity-excluded entries. These sum to the input diagnostic
+count. It also preserves source rejection/exclusion counts and the unknown-loss
+`sourceLimitReached` flag. Saved counts confirm commitment, not completeness of
+OS evidence. A successful repeated or empty batch may save zero records.
+
+Recovery shares the archive's four-operation queue and pending text budget;
+the entire sanitized batch must fit admission. A smaller configured budget can
+reject a batch with `busy` even when the queue is empty. No automatic retry or
+unbounded queue is created. Close finishes admitted recovery before releasing
+storage. As with other archive operations, completions may run immediately on
+rejection and must not block the worker. Invalid stored acknowledgement data
+disables that store instance and preserves its files.
+
+## Portable export
 
 Portable document revision 2 includes the reviewed system evidence, original
 time/range, historical metadata, exact numeric codes, and missing-value states.

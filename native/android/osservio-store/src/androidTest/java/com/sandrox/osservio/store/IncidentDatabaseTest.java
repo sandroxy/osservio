@@ -126,7 +126,7 @@ public final class IncidentDatabaseTest {
                 IncidentPersistenceOptions options = new IncidentPersistenceOptions();
                 if (revision == 4) { try (IncidentDatabase ignored = new IncidentDatabase(file(fixture), options, 0)) { assertTrue(ignored.summaries().isEmpty()); } }
                 try (SQLiteDatabase raw = SQLiteDatabase.openOrCreateDatabase(file(fixture), null)) {
-                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=4");
+                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=5");
                 }
                 byte[] before = read(file(fixture));
                 expect(PersistenceStatus.Error.UNSUPPORTED_SCHEMA, () -> new IncidentDatabase(file(fixture), options, 1));

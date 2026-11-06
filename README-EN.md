@@ -66,8 +66,11 @@ for new iOS reports. They extract only allowlisted numeric/build/system facts,
 preserving reporting intervals and missing values. Hosts can explicitly persist
 them as local incidents, inspect and copy them in Problems, and share them with
 the optional Export module. Manual and system records have separate count limits.
+An explicit batch recovery API atomically saves eligible reports with bounded
+acknowledgements to reduce duplicates from repeated reads. Matching summaries
+do not prove that two reports describe the same failure.
 The viewer distinguishes failure time from report read time and does not relabel
-signal termination or a hang as a crash. Automatic recovery is not connected yet;
+signal termination or a hang as a crash. Automatic recovery triggers are not connected yet;
 immediate next-launch delivery is not guaranteed. See [system diagnostics](doc/system-diagnostics.md).
 
 Automatic system-log capture, fatal crash handlers, global network interception,

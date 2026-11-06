@@ -15,8 +15,9 @@ inspected in the native browser. Optional Export modules encode a frozen snapsho
 into [portable JSON documents](../protocol/README.md) and prepare
 [temporary ZIP files](incident-export.md). Supplying an exporter to a native
 problem view enables explicit system sharing of the saved snapshot.
-System diagnostics are saved explicitly through the API; automatic recovery is
-not connected yet. The native browser distinguishes their classification and read
+System diagnostics are saved explicitly through the API, including a bounded
+batch recovery operation for repeated history reads. Automatic recovery triggers
+are not connected yet. The native browser distinguishes their classification and read
 time from manual marks and opens immutable source-specific details. Copy and
 revision-2 export include the evidence, preserving its original time/range
 separately from recovery. See [system diagnostic inspection](system-diagnostics.md#native-inspection).
@@ -238,7 +239,9 @@ they do not establish that arbitrary public text or custom headers are safe.
   absent result means the requested identity is no longer retained.
 - `deleteIncident` and `deleteAllIncidents` delete only this archive, including
   its copied attachments. They leave live histories, breadcrumb-run persistence,
-  and capture policy unchanged. Deleting an absent identity succeeds.
+  capture policy, and bounded system-report acknowledgements unchanged. Retained
+  acknowledgements prevent immediate reimport of deleted system reports.
+  Deleting an absent identity succeeds.
 - Concrete stores expose asynchronous `close`. It stops admission, finishes
   accepted operations in order, and releases the database lease. Close before
   replacing a store; a competing owner fails with `busy`. A second close after
@@ -251,9 +254,12 @@ it returns. Host callbacks are invoked once and never retried by the SDK.
 Closing or hiding an inspector is unrelated to storage lifetime.
 
 `persistenceStatus` is a nonblocking best-effort snapshot and may be unavailable
-during lock contention. Its queued, committed, discarded, and failed-batch
-counters refer to snapshots, not attached events. They describe this
-store instance. Pre-admission invalid input and lock-contention rejection are
+during lock contention. Its queued, committed, and discarded counters refer to
+snapshots or recovery candidates, not attached events. Recovery queues the input
+candidate count, commits only saved records, and counts already processed or
+excluded candidates as discarded. `failedBatches` counts failed write operations;
+a recovery batch is one operation. Counters describe this store instance.
+Pre-admission invalid input and lock-contention rejection are
 reported through completion and are not included in these counters. Read and
 delete jobs consume admission permits but are not counted as queued snapshots.
 
@@ -267,7 +273,7 @@ delete jobs consume admission permits but are not counted as queued snapshots.
 | Sanitized text per new snapshot | 131,072 bytes | 64–2,097,152 bytes |
 | Database page allocation | 16 MiB | 1–64 MiB |
 | Admitted snapshot text, including in-flight work | 524,288 bytes | 64–4,194,304 bytes |
-| Admitted save/read/delete operations | 4 | Fixed |
+| Admitted save/recover/read/delete operations | 4 | Fixed |
 
 Text budgets count note text, textual environment values, breadcrumb labels and
 messages, log categories and messages, HTTP methods/URLs/headers, WebSocket
@@ -305,13 +311,15 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `3`. Product versions
+application ID `0x4f535649`, and private schema revision `4`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. Network
 headers and payload text use separate tables; list queries do not load them.
 System numeric facts and bounded historical metadata have separate normalized
 tables. Reads validate source-specific fields, classification, nullability,
 exact numbers, text budgets, and the presence of expected diagnostic rows.
+A separate bounded acknowledgement table supports repeated system-history
+processing; see [batch recovery](system-diagnostics.md#bounded-batch-recovery).
 This database is an internal format, not a portable export or interchange protocol.
 
 The SDK uses the platform SQLite engine with rollback journals, full synchronous
@@ -320,7 +328,8 @@ unowned database is initialized. Unrelated databases and unsupported revisions
 are refused without reset. Readers ignore additional optional columns within
 the supported revision while validating every known field, type, count, and
 privacy invariant. Revision `1` first adds attachment tables; revision `2` adds
-the nullable diagnostic-kind column and diagnostic tables. The complete upgrade
+the nullable diagnostic-kind column and diagnostic tables. Revision `3` adds
+the report acknowledgement table. The complete upgrade
 and revision change share one transaction. Existing identities, save times,
 and evidence remain unchanged; old records have no system diagnostic. A failed
 upgrade rolls back its added columns and tables without resetting the database.

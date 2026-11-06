@@ -2,6 +2,9 @@ package com.sandrox.osservio.store;
 
 import android.content.Context;
 import com.sandrox.osservio.core.IncidentArchive;
+import com.sandrox.osservio.core.DiagnosticRecoveryArchive;
+import com.sandrox.osservio.core.SystemDiagnostic;
+import com.sandrox.osservio.core.SystemDiagnosticBatch;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.LogClock;
 import com.sandrox.osservio.core.PersistenceStatus;
@@ -13,7 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** Explicit asynchronous snapshot storage. It does not own live histories or capture policy. */
-public final class SQLiteIncidentStore implements IncidentArchive {
+public final class SQLiteIncidentStore implements IncidentArchive, DiagnosticRecoveryArchive {
     private final IncidentPersistenceOptions options;
     private final LogClock clock;
     private final ReentrantLock lock = new ReentrantLock();
@@ -56,7 +59,7 @@ public final class SQLiteIncidentStore implements IncidentArchive {
         try { return new PersistenceStatus(state, writes, pendingBytes, committed, discarded, failures, lastError); }
         finally { lock.unlock(); }
     }
-    @Override public void save(IncidentSnapshot snapshot, Completion completion) {
+    @Override public void save(IncidentSnapshot snapshot, IncidentArchive.Completion completion) {
         Objects.requireNonNull(snapshot, "snapshot"); Objects.requireNonNull(completion, "completion");
         if (snapshot.textByteCount > options.textBytesPerIncident) { completion.complete(PersistenceStatus.Error.INVALID_RECORD); return; }
         perform((ignored, error) -> completion.complete(error), snapshot.textByteCount, false, db -> { db.save(snapshot, clock.wallTimeMillis()); return null; });
@@ -65,22 +68,29 @@ public final class SQLiteIncidentStore implements IncidentArchive {
         Objects.requireNonNull(completion, "completion");
         perform(completion::complete, null, true, IncidentDatabase::summaries);
     }
+    @Override public void recoverDiagnostics(SystemDiagnosticBatch batch, DiagnosticRecoveryArchive.RecoveryCompletion completion) {
+        Objects.requireNonNull(batch, "batch"); Objects.requireNonNull(completion, "completion");
+        int bytes = 0;
+        for (SystemDiagnostic diagnostic : batch.diagnostics) bytes += diagnostic.textByteCount();
+        perform(completion::complete, bytes, batch.diagnostics.size(), true,
+            receipt -> receipt.savedCount, db -> db.recover(batch, clock.wallTimeMillis()));
+    }
     @Override public void readIncident(String id, SnapshotCompletion completion) {
         Objects.requireNonNull(completion, "completion");
         if (!EvidenceSQLite.validId(id)) { completion.complete(null, PersistenceStatus.Error.INVALID_RECORD); return; }
         perform(completion::complete, null, true, db -> db.read(id));
     }
-    @Override public void deleteIncident(String id, Completion completion) {
+    @Override public void deleteIncident(String id, IncidentArchive.Completion completion) {
         Objects.requireNonNull(completion, "completion");
         if (!EvidenceSQLite.validId(id)) { completion.complete(PersistenceStatus.Error.INVALID_RECORD); return; }
         perform((ignored, error) -> completion.complete(error), null, false, db -> { db.delete(id); return null; });
     }
-    @Override public void deleteAllIncidents(Completion completion) {
+    @Override public void deleteAllIncidents(IncidentArchive.Completion completion) {
         Objects.requireNonNull(completion, "completion");
         perform((ignored, error) -> completion.complete(error), null, false, db -> { db.deleteAll(); return null; });
     }
     /** Finishes admitted work before releasing ownership. No caller-thread disk operations. */
-    public void close(Completion completion) {
+    public void close(IncidentArchive.Completion completion) {
         Objects.requireNonNull(completion, "completion");
         if (!lock.tryLock()) { completion.complete(PersistenceStatus.Error.BUSY); return; }
         if (state == PersistenceStatus.State.CLOSED) { lock.unlock(); completion.complete(null); return; }
@@ -99,15 +109,20 @@ public final class SQLiteIncidentStore implements IncidentArchive {
     }
     private interface Operation<T> { T run(IncidentDatabase db); }
     private interface Delivery<T> { void complete(T result, PersistenceStatus.Error error); }
+    private interface CommittedCount<T> { int count(T result); }
     private <T> void perform(Delivery<T> completion, Integer writeBytes, boolean reading, Operation<T> operation) {
+        perform(completion, writeBytes, 1, reading, ignored -> 1, operation);
+    }
+    private <T> void perform(Delivery<T> completion, Integer writeBytes, int writeCount, boolean reading,
+                            CommittedCount<T> committedCount, Operation<T> operation) {
         if (!lock.tryLock()) { completion.complete(null, PersistenceStatus.Error.BUSY); return; }
         if (!accepting || operations >= 4 || (writeBytes == null ? 0 : writeBytes) > options.pendingTextByteLimit - pendingBytes) {
             PersistenceStatus.Error error = accepting ? PersistenceStatus.Error.BUSY : PersistenceStatus.Error.CLOSED;
-            if (writeBytes != null) discarded = increment(discarded);
+            if (writeBytes != null) discarded = increment(discarded, writeCount);
             lock.unlock(); completion.complete(null, error); return;
         }
         operations++;
-        if (writeBytes != null) { writes++; pendingBytes += writeBytes; }
+        if (writeBytes != null) { writes += writeCount; pendingBytes += writeBytes; }
         // Admission and enqueue share a lock so close cannot overtake an accepted operation.
         worker.execute(() -> {
             T result = null;
@@ -126,9 +141,11 @@ public final class SQLiteIncidentStore implements IncidentArchive {
             try {
                 operations--;
                 if (writeBytes != null) {
-                    writes--; pendingBytes -= writeBytes;
-                    if (error == null) { committed = increment(committed); lastError = null; }
-                    else { discarded = increment(discarded); failures = increment(failures); }
+                    writes -= writeCount; pendingBytes -= writeBytes;
+                    if (error == null) {
+                        int count = committedCount.count(result);
+                        committed = increment(committed, count); discarded = increment(discarded, writeCount - count); lastError = null;
+                    } else { discarded = increment(discarded, writeCount); failures = increment(failures); }
                 }
                 if (error != null) lastError = error;
             } finally { lock.unlock(); }
@@ -152,4 +169,5 @@ public final class SQLiteIncidentStore implements IncidentArchive {
         return error;
     }
     private static long increment(long value) { return value == Long.MAX_VALUE ? value : value + 1; }
+    private static long increment(long value, int amount) { return value > Long.MAX_VALUE - amount ? Long.MAX_VALUE : value + amount; }
 }

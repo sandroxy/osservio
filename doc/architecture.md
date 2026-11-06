@@ -14,8 +14,9 @@ signals are described in [runtime context](runtime-context.md).
 Runtime also reads bounded [system diagnostic facts](system-diagnostics.md),
 with explicit OS coverage and no fatal handlers. Hosts can explicitly save a
 diagnostic through the incident archive, with independent manual/system count
-limits. The native Problems browser and Export include these reviewed facts;
-automatic recovery is not connected yet.
+limits. An explicit batch recovery port processes repeated history atomically
+with bounded acknowledgements. The native Problems browser and Export include
+these reviewed facts; automatic recovery triggers are not connected yet.
 Store also supplies opt-in [SQLite breadcrumb persistence](breadcrumb-storage.md)
 through Core's archive and status contracts, with independent live and durable
 retention. The local database is not a cross-platform interchange protocol.

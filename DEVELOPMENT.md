@@ -128,9 +128,11 @@ using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
 `-only-testing:OsservioCoreTests/SQLiteBreadcrumbStoreTests`. Include
 `-only-testing:OsservioCoreTests/IncidentDatabaseTests`,
 `-only-testing:OsservioCoreTests/IncidentDetailDatabaseTests`,
-`-only-testing:OsservioCoreTests/IncidentDiagnosticDatabaseTests`, and
-`-only-testing:OsservioCoreTests/SQLiteIncidentStoreTests` for manual snapshot
-storage and shared SQLite policy changes. These tests use
+`-only-testing:OsservioCoreTests/IncidentDiagnosticDatabaseTests`,
+`-only-testing:OsservioCoreTests/SQLiteIncidentStoreTests`,
+`-only-testing:OsservioCoreTests/DiagnosticRecoveryDatabaseTests`, and
+`-only-testing:OsservioCoreTests/SQLiteDiagnosticRecoveryTests` for snapshot
+storage, repeated system-history recovery, and shared SQLite policy changes. These tests use
 fresh, test-owned temporary directories and remove only their own fixtures.
 
 For Android, install JDK 17 and Android SDK 36. Set `ANDROID_HOME` to your SDK or
@@ -160,7 +162,9 @@ failure, and contention. The Android unit tests are JVM tests, not device UI tes
 Store instrumentation tests use actual Android SQLite on the selected device or
 emulator, with isolated test-owned directories. They verify reopen, transactional
 rollback, budgets, corruption, additive incident migration, unsupported revisions, exclusive ownership,
-asynchronous admission, and close ordering. They do not establish physical-device
+asynchronous admission, and close ordering. Recovery tests also cover repeated
+material, multiplicity, deletion/reopen, atomic acknowledgements, source windows,
+capacity selection, and corrupt acknowledgements. They do not establish physical-device
 performance or fatal crash capture.
 Runtime instrumentation reads the actual exit-history API without installing a
 Java handler. iOS Runtime tests independently map synthetic MetricKit subclasses,

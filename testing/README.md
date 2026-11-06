@@ -99,8 +99,18 @@ and rollback when a schema addition fails. It is not an import format.
 
 `incident-v2.sql` extends that fixture with independently specified revision-2
 tables and a private log with an exact large sequence number. Both native engines
-verify direct revision-2 to revision-3 migration, preserved attachments/save time,
+verify direct revision-2 to the current schema migration, preserved attachments/save time,
 new diagnostic writes, and rollback of the added column and tables on failure.
+`incident-v3.sql` extends those fixtures with independently specified system
+evidence. Both SQLite suites verify migration to revision 4, preservation of
+manual and system records, and rollback on an acknowledgement-table conflict.
+`diagnostic-fingerprints.tsv` gives independent SHA-256 vectors for reviewed
+facts, including Unicode, framing delimiters, missing fields, and exact integers.
+`diagnostic-acknowledgement-corruption.tsv` defines invalid acknowledgement rows
+that both stores must reject without modifying the file, even after expiry.
+Recovery tests separately cover duplicate multiplicity, deletion/reopen,
+eligibility and capacity selection, atomic save/acknowledgement rollback,
+bounded acknowledgements, admission counters, callback reentry, and ordered close.
 `incident-diagnostic-corruption.tsv` supplies name, source family, and SQL mutation
 for strict diagnostic reads. Cases cover missing records, source/kind conflicts,
 invalid numbers/text, inconsistent metadata, and byte accounting. Additional tests

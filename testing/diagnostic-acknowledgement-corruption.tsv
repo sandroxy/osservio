@@ -1,0 +1,10 @@
+short-fingerprint	UPDATE diagnostic_acknowledgements SET fingerprint='abc'
+uppercase-fingerprint	UPDATE diagnostic_acknowledgements SET fingerprint=upper(fingerprint)
+oversized-fingerprint	UPDATE diagnostic_acknowledgements SET fingerprint=fingerprint||'0'
+binary-fingerprint	UPDATE diagnostic_acknowledgements SET fingerprint=CAST(fingerprint AS BLOB)
+zero-occurrences	UPDATE diagnostic_acknowledgements SET occurrences=0
+excess-occurrences	UPDATE diagnostic_acknowledgements SET occurrences=33
+fractional-occurrences	UPDATE diagnostic_acknowledgements SET occurrences=1.5
+text-timestamp	UPDATE diagnostic_acknowledgements SET processed_at='invalid'
+binary-timestamp	UPDATE diagnostic_acknowledgements SET processed_at=x'01'
+nonpositive-ordinal	UPDATE diagnostic_acknowledgements SET ordinal=0
