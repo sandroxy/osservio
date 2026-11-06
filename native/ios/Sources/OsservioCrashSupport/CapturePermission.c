@@ -1,0 +1,29 @@
+#include "OsservioCrashSupport.h"
+#include <mach/mach_time.h>
+#include <stdatomic.h>
+#include <limits.h>
+
+_Static_assert(ATOMIC_LLONG_LOCK_FREE == 2, "Crash admission requires lock-free 64-bit atomics");
+static _Atomic unsigned long long permission = 0;
+static const uint64_t baselineBit = UINT64_C(1) << 63;
+
+void OsservioCrashCaptureUpdate(bool baseline, uint64_t detailedRemainingMillis) {
+    uint64_t deadline = 0;
+    if (detailedRemainingMillis > 0) {
+        mach_timebase_info_data_t timebase;
+        if (mach_timebase_info(&timebase) != KERN_SUCCESS || timebase.numer == 0) {
+            atomic_store_explicit(&permission, 0, memory_order_release);
+            return;
+        }
+        __uint128_t ticks = (__uint128_t)detailedRemainingMillis * 1000000 * timebase.denom / timebase.numer;
+        __uint128_t end = (__uint128_t)mach_absolute_time() + ticks;
+        deadline = end < baselineBit ? (uint64_t)end : baselineBit - 1;
+    }
+    atomic_store_explicit(&permission, deadline | (baseline ? baselineBit : 0), memory_order_release);
+}
+
+bool OsservioCrashCaptureAllowsRecording(void) {
+    uint64_t value = atomic_load_explicit(&permission, memory_order_acquire);
+    if (value & baselineBit) return true;
+    return value != 0 && mach_absolute_time() < value;
+}

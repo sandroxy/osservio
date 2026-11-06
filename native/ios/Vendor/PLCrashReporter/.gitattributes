@@ -1,0 +1,6 @@
+# Preserve upstream formatting; Osservio-owned code keeps normal checks.
+Source/** -whitespace
+Dependencies/** -whitespace
+UpstreamTests/** -whitespace
+changes.patch -whitespace
+protobuf-c-changes.patch -whitespace

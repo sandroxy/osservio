@@ -1,5 +1,27 @@
 # Third-party notices
 
+## PLCrashReporter
+
+The private iOS crash backend vendors PLCrashReporter 1.12.2 at commit
+`0254f941c646b1ed17b243654723d0f071e990d0`, copyright Microsoft Corporation,
+Plausible Labs Cooperative, Inc., and the additional authors identified in
+[the retained upstream license](native/ios/Vendor/PLCrashReporter/LICENSE).
+Its recording profile, namespace isolation, exact upstream hashes and local
+changes are maintained in [the vendor directory](native/ios/Vendor/PLCrashReporter/README.md).
+It is not an exported SDK product and is not linked by existing Osservio products.
+
+Most upstream code uses the MIT-style terms in that license.
+`PLCrashLogWriterEncoding.c` uses [Apache 2.0](native/ios/Vendor/PLCrashReporter/Apache-2.0.txt).
+Its embedded protobuf-c runtime is updated to version 1.5.2, commit
+`4719fdd7760624388c2c5b9d6759eb6a47490626`; see
+[the pinned source](https://github.com/protobuf-c/protobuf-c/tree/4719fdd7760624388c2c5b9d6759eb6a47490626).
+It carries
+[BSD 2-Clause notices](native/ios/Vendor/PLCrashReporter/protobuf-c-LICENSE.txt),
+including their own copyright statements. Original source and test notices
+remain in place. The source directory also retains the upstream privacy manifest;
+Osservio's support target separately declares uptime access used for capture
+expiry. These declarations do not replace a host application's disclosures.
+
 ## Gradle Wrapper
 
 The wrapper scripts and `gradle-wrapper.jar` under `native/android/` are generated

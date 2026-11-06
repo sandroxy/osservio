@@ -98,6 +98,15 @@ as well as local targets. It also avoids Xcode combining suppression with
 The simulator build compiles UI and resources without launching an application.
 Device behavior and supported-OS coverage require separate acceptance.
 
+The internal crash backend has separate
+[non-fatal package and isolated-process checks](testing/crash-backend/README.md).
+Run the iOS package test scheme below with
+`-only-testing:OsservioCrashBackendTests` when changing its C/Objective-C support,
+vendored recording profile, or decoding behavior. Use
+`GCC_TREAT_WARNINGS_AS_ERRORS=YES` alongside the Swift warning settings. These
+internal targets are not exported SDK products and do not install a handler in
+the package test runner or existing consumer applications.
+
 Run Runtime's UIKit notification ownership and system-query tests on an available
 iOS simulator using the package's test scheme (replace the simulator ID):
 

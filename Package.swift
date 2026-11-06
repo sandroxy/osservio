@@ -17,6 +17,24 @@ let package = Package(
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")
     ],
     targets: [
+        .target(name: "OsservioCrashSupport", path: "native/ios/Sources/OsservioCrashSupport",
+                resources: [.copy("Resources/PrivacyInfo.xcprivacy")]),
+        .target(name: "OsservioCrashBackend", dependencies: ["OsservioCrashSupport"],
+                path: "native/ios/Vendor/PLCrashReporter",
+                exclude: ["Source/PLCrashReport.proto", "Source/dwarf_opstream.hpp", "Source/dwarf_stack.hpp",
+                          "Source/PLCrashAsyncDwarfCFAState.hpp", "Source/PLCrashAsyncDwarfCIE.hpp",
+                          "Source/PLCrashAsyncDwarfEncoding.hpp", "Source/PLCrashAsyncDwarfExpression.hpp",
+                          "Source/PLCrashAsyncDwarfFDE.hpp", "Source/PLCrashAsyncDwarfPrimitives.hpp",
+                          "Source/PLCrashAsyncLinkedList.hpp"],
+                sources: ["Source", "Dependencies/protobuf-c"],
+                resources: [.copy("Resources/PrivacyInfo.xcprivacy")],
+                publicHeadersPath: "include",
+                cSettings: [.define("PLCR_PRIVATE"), .define("PLCF_RELEASE_BUILD"),
+                            .define("PLCRASHREPORTER_PREFIX", to: "Osservio_"),
+                            .define("PLCRASH_FEATURE_MACH_EXCEPTIONS", to: "0"),
+                            .define("SWIFT_PACKAGE"), .headerSearchPath("Source"),
+                            .headerSearchPath("Dependencies/protobuf-c")],
+                linkerSettings: [.linkedFramework("Foundation"), .linkedLibrary("c++")]),
         .target(name: "OsservioCore", path: "native/ios/Sources/OsservioCore"),
         .target(name: "OsservioStore", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioStore",
                 linkerSettings: [.linkedLibrary("sqlite3")]),
@@ -34,7 +52,9 @@ let package = Package(
         .testTarget(name: "OsservioUITests", dependencies: ["OsservioCore", "OsservioUI"],
                     path: "native/ios/Tests/OsservioUITests"),
         .testTarget(name: "OsservioExportTests", dependencies: ["OsservioCore", "OsservioExport"],
-                    path: "native/ios/Tests/OsservioExportTests")
+                    path: "native/ios/Tests/OsservioExportTests"),
+        .testTarget(name: "OsservioCrashBackendTests", dependencies: ["OsservioCrashBackend", "OsservioCrashSupport"],
+                    path: "native/ios/Tests/OsservioCrashBackendTests")
     ],
     swiftLanguageVersions: [.v5]
 )

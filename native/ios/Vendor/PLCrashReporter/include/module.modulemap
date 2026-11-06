@@ -1,0 +1,4 @@
+module OsservioCrashBackend {
+    header "OsservioCrashBackend.h"
+    export *
+}

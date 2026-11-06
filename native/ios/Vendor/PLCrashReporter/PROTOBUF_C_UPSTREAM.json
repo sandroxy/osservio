@@ -1,0 +1,19 @@
+{
+  "repository": "https://github.com/protobuf-c/protobuf-c",
+  "version": "1.5.2",
+  "commit": "4719fdd7760624388c2c5b9d6759eb6a47490626",
+  "files": [
+    {
+      "path": "Dependencies/protobuf-c/protobuf-c/protobuf-c.c",
+      "upstreamPath": "protobuf-c/protobuf-c.c",
+      "upstreamSHA256": "e1b4481e4b2b1f139a3186a11601f1a6575bfd7e3468fe5a9b809d689f91096b",
+      "vendoredSHA256": "fd8e60e9950ba911713f80e8f84dfb957a59663b8ea2549133ec1f3652ead63a"
+    },
+    {
+      "path": "Dependencies/protobuf-c/protobuf-c/protobuf-c.h",
+      "upstreamPath": "protobuf-c/protobuf-c.h",
+      "upstreamSHA256": "e0e544af6430e16259a8c54ac7b4a0548eaa76d9fd66d8602f9619a5d3390aba",
+      "vendoredSHA256": "e0e544af6430e16259a8c54ac7b4a0548eaa76d9fd66d8602f9619a5d3390aba"
+    }
+  ]
+}

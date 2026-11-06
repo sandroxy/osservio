@@ -172,7 +172,9 @@ implement the document protocol using platform JSON encoders. Core declares
 Store implements them, UI consumes them, and the host wires the concrete store
 and recorder. The optional Runtime module supplies explicitly started lifecycle
 observers and one-shot environment queries. SQLite persistence accepts only
-sanitized restart-relevant breadcrumbs. No fatal crash backend is implemented yet.
+sanitized restart-relevant breadcrumbs. The internal fatal-recording backend has
+separate [verification](../testing/crash-backend/README.md); it is not connected
+to Core, storage recovery, or existing SDK products.
 
 Publish a capability description for each supported runtime, network stack, and
 integration mode. It must identify prerequisites, available observations,

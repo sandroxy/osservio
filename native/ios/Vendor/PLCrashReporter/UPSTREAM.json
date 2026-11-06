@@ -1,0 +1,793 @@
+{
+  "repository": "https://github.com/microsoft/plcrashreporter",
+  "version": "1.12.2",
+  "commit": "0254f941c646b1ed17b243654723d0f071e990d0",
+  "files": [
+    {
+      "path": "LICENSE",
+      "upstreamPath": "LICENSE",
+      "upstreamSHA256": "45f57308a5f95039a6478cf1e47449aa11e28427777d81497bd654c1f41ef5af",
+      "vendoredSHA256": "45f57308a5f95039a6478cf1e47449aa11e28427777d81497bd654c1f41ef5af"
+    },
+    {
+      "path": "Resources/PrivacyInfo.xcprivacy",
+      "upstreamPath": "Resources/PrivacyInfo.xcprivacy",
+      "upstreamSHA256": "59d5a7312365e76bd13f028da48f01415f4f5013f4ac2f326d02a84d024a7b02",
+      "vendoredSHA256": "59d5a7312365e76bd13f028da48f01415f4f5013f4ac2f326d02a84d024a7b02"
+    },
+    {
+      "path": "Source/CrashReporter.h",
+      "upstreamPath": "Source/CrashReporter.h",
+      "upstreamSHA256": "7c983e8218b65ad97ac2e2414da913f6f53e72c7480f8cec84de5f0e49b74574",
+      "vendoredSHA256": "71fc5d4a47677006931e839d1d1c7618bcb55255fe174b08dc27e85aeece4a30"
+    },
+    {
+      "path": "Source/CrashReporter.m",
+      "upstreamPath": "Source/CrashReporter.m",
+      "upstreamSHA256": "e689e29697eee7cacd3b007287d188408ffbcd55cd1be21afb5f8f61d67763ed",
+      "vendoredSHA256": "382b59ce3400235a1a4f0cf5aa2255834c36758dc9e3b37e894e4dbc9d54ca2d"
+    },
+    {
+      "path": "Source/CrashReporterFramework.m",
+      "upstreamPath": "Source/CrashReporterFramework.m",
+      "upstreamSHA256": "7f4ba7e8909358e93b1404afb552d67b88e8d26eceddb11f054ad32c232db443",
+      "vendoredSHA256": "18ec0f8575f848b851d340693a6fe502eff4b2b686dffb5cd2a98d00b8cef495"
+    },
+    {
+      "path": "Source/PLCrashAsync.c",
+      "upstreamPath": "Source/PLCrashAsync.c",
+      "upstreamSHA256": "a2df37611566beec4fee4ac160c47f51ffc4b06148bac0fa57e39b3580f1aad5",
+      "vendoredSHA256": "5e2ff8a0a3bbee1ddd8a4ee0c3e19af37014e8fe8358f124597a42ca7b60c77d"
+    },
+    {
+      "path": "Source/PLCrashAsync.h",
+      "upstreamPath": "Source/PLCrashAsync.h",
+      "upstreamSHA256": "fd1ad73f743b838da9786dd30a126928e22fe086706a43a27b38763b0ca2d768",
+      "vendoredSHA256": "fd1ad73f743b838da9786dd30a126928e22fe086706a43a27b38763b0ca2d768"
+    },
+    {
+      "path": "Source/PLCrashAsyncCompactUnwindEncoding.c",
+      "upstreamPath": "Source/PLCrashAsyncCompactUnwindEncoding.c",
+      "upstreamSHA256": "4e6ff22073d79341a991dc242d860fe1797d51fc2bfb1f624ac5732721eb07bd",
+      "vendoredSHA256": "7582044fbf4bd758a401ec5c226ede9dee82ebca20f2e9c914a0e5cdd3c7fd29"
+    },
+    {
+      "path": "Source/PLCrashAsyncCompactUnwindEncoding.h",
+      "upstreamPath": "Source/PLCrashAsyncCompactUnwindEncoding.h",
+      "upstreamSHA256": "5765fee47a70284803e76f1c895b49ce64c734c80a569b3206e243e046da5cfc",
+      "vendoredSHA256": "5765fee47a70284803e76f1c895b49ce64c734c80a569b3206e243e046da5cfc"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfCFAState.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfCFAState.cpp",
+      "upstreamSHA256": "f06f3c43d1fd32a2d89d67b601bee1badd24e8deddc03d4297396643c0e5fac2",
+      "vendoredSHA256": "430783e7dec8c5cf2f9f96964e4a44a45ec72a04aa48dbd5bbf52a99fa1bf4f6"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfCFAState.hpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfCFAState.hpp",
+      "upstreamSHA256": "c47bad4a8b09e15d9f3451206347c54887b67d07e5d7a8db75b55f26e68b7e14",
+      "vendoredSHA256": "c47bad4a8b09e15d9f3451206347c54887b67d07e5d7a8db75b55f26e68b7e14"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfCFAStateEvaluation.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfCFAStateEvaluation.cpp",
+      "upstreamSHA256": "6591061f6def8ef4d2f900dda890a70c71685144846fde3efa055f5b089f2742",
+      "vendoredSHA256": "e8c8dfd816644eab2cdf11fe89792907520c3f8f653eb6efe1b62f67d4a34813"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfCIE.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfCIE.cpp",
+      "upstreamSHA256": "508f989cc0267c944cf237ddb0666e0ae8a68f252e90777dadcc232a6eee13dd",
+      "vendoredSHA256": "805d5ca62aaa88b1b83f6f9517e6a0bcaf53651fa83f9c44ee9e55a372460c95"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfCIE.hpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfCIE.hpp",
+      "upstreamSHA256": "fb00323e03649c530a3e48259348157e3b553716cd3dc87af13809537036b6b7",
+      "vendoredSHA256": "fb00323e03649c530a3e48259348157e3b553716cd3dc87af13809537036b6b7"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfEncoding.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfEncoding.cpp",
+      "upstreamSHA256": "9b1ea14e4d12c67de17eeaf1836c1c220811ca1179b1006bb733d42628812d4b",
+      "vendoredSHA256": "65a90413e7b63869050ab4d6e5d1b1794e0ba88d7deeb9401c970f223976499b"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfEncoding.hpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfEncoding.hpp",
+      "upstreamSHA256": "270edb5aded18b528c9166051c4fe450f059ac6f6c15f776f7c41f6ad1e652b3",
+      "vendoredSHA256": "270edb5aded18b528c9166051c4fe450f059ac6f6c15f776f7c41f6ad1e652b3"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfExpression.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfExpression.cpp",
+      "upstreamSHA256": "89726d6aba8c033c9515612e22ecda852dc1e7bac1c2eb59582ec81c03f39d5a",
+      "vendoredSHA256": "af40f5ad8e223ed636211a1197201b6332a396064413082b9392f3de215181d0"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfExpression.hpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfExpression.hpp",
+      "upstreamSHA256": "43519ba3eeec955331d3bb210275b710ee4b5315495ea1029a72cdcfaf640705",
+      "vendoredSHA256": "43519ba3eeec955331d3bb210275b710ee4b5315495ea1029a72cdcfaf640705"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfFDE.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfFDE.cpp",
+      "upstreamSHA256": "eae0fd649668e1507cf3672680927dad0a674b2e3a86e7e8500c4f4ec895e722",
+      "vendoredSHA256": "2ed6cda1b84cb338e59dfbd2c6c11a582f90c910021d8364af43847b24d44418"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfFDE.hpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfFDE.hpp",
+      "upstreamSHA256": "90663bdcab341aeac0ac086b5ed4480813abf31dfb03b33d118df87ec99c09cf",
+      "vendoredSHA256": "90663bdcab341aeac0ac086b5ed4480813abf31dfb03b33d118df87ec99c09cf"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfPrimitives.cpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfPrimitives.cpp",
+      "upstreamSHA256": "f3a7f6edcbccfe295d0b12aa544009b98ec0791b2cd1d38de058e6f41bcf926b",
+      "vendoredSHA256": "e7530d8e9429b10d94472348db7dcc1ab31725ef347551c0e838ae395f4bbd84"
+    },
+    {
+      "path": "Source/PLCrashAsyncDwarfPrimitives.hpp",
+      "upstreamPath": "Source/PLCrashAsyncDwarfPrimitives.hpp",
+      "upstreamSHA256": "cbe75eb93e2edc9c0353356d03b4f52468e781d4483d71e6125feed50b7d2f82",
+      "vendoredSHA256": "cbe75eb93e2edc9c0353356d03b4f52468e781d4483d71e6125feed50b7d2f82"
+    },
+    {
+      "path": "Source/PLCrashAsyncImageList.cpp",
+      "upstreamPath": "Source/PLCrashAsyncImageList.cpp",
+      "upstreamSHA256": "4c35783f2294a51d83ca45a2650ee574f2bd44e29606a5592f03cf539b7c0f69",
+      "vendoredSHA256": "475f88223d54677eb4d23008bb95729adadc2a55d353cbe3a630c1f9812f703e"
+    },
+    {
+      "path": "Source/PLCrashAsyncImageList.h",
+      "upstreamPath": "Source/PLCrashAsyncImageList.h",
+      "upstreamSHA256": "bd16ce95a60c22096ff0eda3625101e690f136b33068b067a7b0045c825925a1",
+      "vendoredSHA256": "bd16ce95a60c22096ff0eda3625101e690f136b33068b067a7b0045c825925a1"
+    },
+    {
+      "path": "Source/PLCrashAsyncLinkedList.hpp",
+      "upstreamPath": "Source/PLCrashAsyncLinkedList.hpp",
+      "upstreamSHA256": "c8760bb4a44181034a869f849b3982c7b0973bd191fb4226b2919670aef63d9b",
+      "vendoredSHA256": "c8760bb4a44181034a869f849b3982c7b0973bd191fb4226b2919670aef63d9b"
+    },
+    {
+      "path": "Source/PLCrashAsyncMObject.c",
+      "upstreamPath": "Source/PLCrashAsyncMObject.c",
+      "upstreamSHA256": "2539c8cca331480c0081884ca2f8aa85fae4b81325672df2a6ddb94c7f153ad3",
+      "vendoredSHA256": "75a3868cce27eb044411a826294a5c68456a71449698b6452489d7ea59de54d3"
+    },
+    {
+      "path": "Source/PLCrashAsyncMObject.h",
+      "upstreamPath": "Source/PLCrashAsyncMObject.h",
+      "upstreamSHA256": "44fa69f5f04cc83840817756a34b041b9cb8727819e354765511fb8f97a8c4b6",
+      "vendoredSHA256": "44fa69f5f04cc83840817756a34b041b9cb8727819e354765511fb8f97a8c4b6"
+    },
+    {
+      "path": "Source/PLCrashAsyncMachExceptionInfo.c",
+      "upstreamPath": "Source/PLCrashAsyncMachExceptionInfo.c",
+      "upstreamSHA256": "8ce4d3e097a021ab36e48abffb1a8dd3a25ce59303370774eb9925d29bba3810",
+      "vendoredSHA256": "77693a4ffc2f1c5c9bc6e7fcdc1ee9ce184e8fe8cdd2ca12dabca39168157057"
+    },
+    {
+      "path": "Source/PLCrashAsyncMachExceptionInfo.h",
+      "upstreamPath": "Source/PLCrashAsyncMachExceptionInfo.h",
+      "upstreamSHA256": "79aa79991ce20c0dcd628287631985fe22c2fd5ce3cf1f803e273e7e5e5c9b63",
+      "vendoredSHA256": "79aa79991ce20c0dcd628287631985fe22c2fd5ce3cf1f803e273e7e5e5c9b63"
+    },
+    {
+      "path": "Source/PLCrashAsyncMachOImage.c",
+      "upstreamPath": "Source/PLCrashAsyncMachOImage.c",
+      "upstreamSHA256": "0fcd689938883f3909192fca770186d8f0262a181b89467a181b0bdb401ab5f1",
+      "vendoredSHA256": "d8ea5a83b4e18cc89fb3fda5c29ce9f2e7b167088332b413f523a42693112d90"
+    },
+    {
+      "path": "Source/PLCrashAsyncMachOImage.h",
+      "upstreamPath": "Source/PLCrashAsyncMachOImage.h",
+      "upstreamSHA256": "3927e372950173ce5056a4008fac4c474d3705f234c71d0bb82f06a5a8d92123",
+      "vendoredSHA256": "3927e372950173ce5056a4008fac4c474d3705f234c71d0bb82f06a5a8d92123"
+    },
+    {
+      "path": "Source/PLCrashAsyncMachOString.c",
+      "upstreamPath": "Source/PLCrashAsyncMachOString.c",
+      "upstreamSHA256": "95accd76b2f54a86f641e245af0209ffc9fc19ade5c980cd0561416ace425c7d",
+      "vendoredSHA256": "c9df80385226573973e395cc25da0510809e4b25a0f75496baf9f43c7b61c8f4"
+    },
+    {
+      "path": "Source/PLCrashAsyncMachOString.h",
+      "upstreamPath": "Source/PLCrashAsyncMachOString.h",
+      "upstreamSHA256": "4dc957b99625746714b33ca9b3bcd52539287e5230a038242548ed4b80fbcb75",
+      "vendoredSHA256": "4dc957b99625746714b33ca9b3bcd52539287e5230a038242548ed4b80fbcb75"
+    },
+    {
+      "path": "Source/PLCrashAsyncObjCSection.h",
+      "upstreamPath": "Source/PLCrashAsyncObjCSection.h",
+      "upstreamSHA256": "d6c5f1b339c14f80753411c12415bc56f107ac743ce6d05789acc219daa33ade",
+      "vendoredSHA256": "d6c5f1b339c14f80753411c12415bc56f107ac743ce6d05789acc219daa33ade"
+    },
+    {
+      "path": "Source/PLCrashAsyncObjCSection.mm",
+      "upstreamPath": "Source/PLCrashAsyncObjCSection.mm",
+      "upstreamSHA256": "d0a7c5dd90fcb028a5ec1fbdc6f5e4ca80b31fd1bbbffe8338d0e1996d88d747",
+      "vendoredSHA256": "57a2fc33c26c8e5be80e8f1de87a8f4cf738ee6ba50fae4c14a4496cf4cd0b13"
+    },
+    {
+      "path": "Source/PLCrashAsyncSignalInfo.c",
+      "upstreamPath": "Source/PLCrashAsyncSignalInfo.c",
+      "upstreamSHA256": "e7c9fc739dafc2847a7e7dc0597e1e551cec37397ff7f7669a99c5e04133cf99",
+      "vendoredSHA256": "f1bd369edc8643ffc7fdf807090fa780e1ec4f38959816b6550fece0ac05cb69"
+    },
+    {
+      "path": "Source/PLCrashAsyncSignalInfo.h",
+      "upstreamPath": "Source/PLCrashAsyncSignalInfo.h",
+      "upstreamSHA256": "b49d0891d568655dce10fb7fe95d28b46f5c1b9fa2469fa7ec5b9cd0f7796bba",
+      "vendoredSHA256": "b49d0891d568655dce10fb7fe95d28b46f5c1b9fa2469fa7ec5b9cd0f7796bba"
+    },
+    {
+      "path": "Source/PLCrashAsyncSymbolication.c",
+      "upstreamPath": "Source/PLCrashAsyncSymbolication.c",
+      "upstreamSHA256": "3488babc758fbdda48b17904af09319e354b6de21f11326fac9bcbb272df5d8d",
+      "vendoredSHA256": "7647ea7e8d9551248139e88694af6a10e29288524cca8bf08b9330cce9dbe9ba"
+    },
+    {
+      "path": "Source/PLCrashAsyncSymbolication.h",
+      "upstreamPath": "Source/PLCrashAsyncSymbolication.h",
+      "upstreamSHA256": "4375b77b6d1e70c01f3424e973161e7f18d38a9857411a5c45445ddd881397de",
+      "vendoredSHA256": "4375b77b6d1e70c01f3424e973161e7f18d38a9857411a5c45445ddd881397de"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread.c",
+      "upstreamPath": "Source/PLCrashAsyncThread.c",
+      "upstreamSHA256": "2e31242427431f0474073acf8d3fe2fdd94fc5db238c229fa33b526e489fd5e7",
+      "vendoredSHA256": "ceebf00be8e066976e4f60f85cc4eb936293cd50b8a3882bc8823a56bfcef572"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread.h",
+      "upstreamPath": "Source/PLCrashAsyncThread.h",
+      "upstreamSHA256": "3e3d6eb29eedefa8fa80439d409fab688a124b2d6064fc0c0c62741d8ce6773a",
+      "vendoredSHA256": "3e3d6eb29eedefa8fa80439d409fab688a124b2d6064fc0c0c62741d8ce6773a"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_arm.c",
+      "upstreamPath": "Source/PLCrashAsyncThread_arm.c",
+      "upstreamSHA256": "9531820a0814a6697af4b7c6213eaa771dfebfdf9f4d8c0f68f62f5edf2bed91",
+      "vendoredSHA256": "8041a66fe07b5d84f50d8f19e6d2786ca306d2a0ca6e0379fc0c647fb2ff8965"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_arm.h",
+      "upstreamPath": "Source/PLCrashAsyncThread_arm.h",
+      "upstreamSHA256": "387809d372fde54466f532da16cdca73c1dd517637b2c2ecd33b9642691869a3",
+      "vendoredSHA256": "387809d372fde54466f532da16cdca73c1dd517637b2c2ecd33b9642691869a3"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_current.S",
+      "upstreamPath": "Source/PLCrashAsyncThread_current.S",
+      "upstreamSHA256": "a7af679199102a55737ca8e3fc91afcb2e51b08f7daa26bb8deb8af7766c02ca",
+      "vendoredSHA256": "8dbd205645168067e3e2a3b12d1517abcbdb62e595a0ed3aa4a5e68d8d6c5c0e"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_current.c",
+      "upstreamPath": "Source/PLCrashAsyncThread_current.c",
+      "upstreamSHA256": "27e609f1cabcf96ebc8c86e314328694ca59875e75ac82bac8899664ab10aac0",
+      "vendoredSHA256": "53be976a22014c04c6ab80075aa34ff9ce89eef21debec07f9831dd1f8347fc9"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_current_defs.h",
+      "upstreamPath": "Source/PLCrashAsyncThread_current_defs.h",
+      "upstreamSHA256": "74c0523d3a0222a84ff08fb88f61a55f24ba105aea730bb861d27f37ae718579",
+      "vendoredSHA256": "74c0523d3a0222a84ff08fb88f61a55f24ba105aea730bb861d27f37ae718579"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_x86.c",
+      "upstreamPath": "Source/PLCrashAsyncThread_x86.c",
+      "upstreamSHA256": "325d2d794b2d1337064200b9bbdb9f4c3f7441961399e2d494c95c68a1e1e38d",
+      "vendoredSHA256": "5e1dd38d3c6f9ef9a01957302357605a0ddb9f0f6ffe13d66325153ad75db14d"
+    },
+    {
+      "path": "Source/PLCrashAsyncThread_x86.h",
+      "upstreamPath": "Source/PLCrashAsyncThread_x86.h",
+      "upstreamSHA256": "3ea7bf6a24a1229cda976952ef8bef4f2afa1501b22b0879f0051f22b3831322",
+      "vendoredSHA256": "3ea7bf6a24a1229cda976952ef8bef4f2afa1501b22b0879f0051f22b3831322"
+    },
+    {
+      "path": "Source/PLCrashCompatConstants.h",
+      "upstreamPath": "Source/PLCrashCompatConstants.h",
+      "upstreamSHA256": "78b8f4baf02fd15cd05886f2588fc9247d0a4d2d6a4b2393e89f6d95a0cc2f4e",
+      "vendoredSHA256": "78b8f4baf02fd15cd05886f2588fc9247d0a4d2d6a4b2393e89f6d95a0cc2f4e"
+    },
+    {
+      "path": "Source/PLCrashFeatureConfig.h",
+      "upstreamPath": "Source/PLCrashFeatureConfig.h",
+      "upstreamSHA256": "be6f5f2c42e98f82d791c4a43f699ca741e4476f650deccc08b6f2557fe9e76e",
+      "vendoredSHA256": "be6f5f2c42e98f82d791c4a43f699ca741e4476f650deccc08b6f2557fe9e76e"
+    },
+    {
+      "path": "Source/PLCrashFrameCompactUnwind.c",
+      "upstreamPath": "Source/PLCrashFrameCompactUnwind.c",
+      "upstreamSHA256": "0482f272f1403f4b6f7ebfeba3fa1a31500eeed69b82aed05e5a2a508b6bbfed",
+      "vendoredSHA256": "8936283c774c50816ad55421280a17d214e8519a31101c31099f748f141628ad"
+    },
+    {
+      "path": "Source/PLCrashFrameCompactUnwind.h",
+      "upstreamPath": "Source/PLCrashFrameCompactUnwind.h",
+      "upstreamSHA256": "6e3a37a2ec00375cf8ba6e5c2351d37d1968095990dbee399192a6d96970ab7d",
+      "vendoredSHA256": "6e3a37a2ec00375cf8ba6e5c2351d37d1968095990dbee399192a6d96970ab7d"
+    },
+    {
+      "path": "Source/PLCrashFrameDWARFUnwind.cpp",
+      "upstreamPath": "Source/PLCrashFrameDWARFUnwind.cpp",
+      "upstreamSHA256": "6a927db3320aeecb5a30f14e039941a39677ded4e99433c0a89a940fa2ffef9c",
+      "vendoredSHA256": "17e22b4b883a796934b1f1a52af4d123c82e629daddec9f3746bbedf5f2db378"
+    },
+    {
+      "path": "Source/PLCrashFrameDWARFUnwind.h",
+      "upstreamPath": "Source/PLCrashFrameDWARFUnwind.h",
+      "upstreamSHA256": "3167fcfff72da4dcc93e98c48a481298e39878eb44d59aaf0777a769f67843f0",
+      "vendoredSHA256": "3167fcfff72da4dcc93e98c48a481298e39878eb44d59aaf0777a769f67843f0"
+    },
+    {
+      "path": "Source/PLCrashFrameStackUnwind.c",
+      "upstreamPath": "Source/PLCrashFrameStackUnwind.c",
+      "upstreamSHA256": "71041b6eed52b99714aa30f8255844ce1319fce88084036aee6b64dccab75d52",
+      "vendoredSHA256": "a5d5dd67488a5f1399b77ccea623d878fce6ac50c44b28f0c353201c3911bd79"
+    },
+    {
+      "path": "Source/PLCrashFrameStackUnwind.h",
+      "upstreamPath": "Source/PLCrashFrameStackUnwind.h",
+      "upstreamSHA256": "92ea10f5d99fbad1f33c0b0b9bb798d6daa15e4388f881c400f8ab12586e2e6f",
+      "vendoredSHA256": "92ea10f5d99fbad1f33c0b0b9bb798d6daa15e4388f881c400f8ab12586e2e6f"
+    },
+    {
+      "path": "Source/PLCrashFrameWalker.c",
+      "upstreamPath": "Source/PLCrashFrameWalker.c",
+      "upstreamSHA256": "5c231e5ce047db4c90bb6de2b1699de5c0d3630c4872857cffc3e0e70e6b7096",
+      "vendoredSHA256": "813879ef330bbfcb40986c15a461de0a8b8a79b2e091fba8a0115e70fb4d221e"
+    },
+    {
+      "path": "Source/PLCrashFrameWalker.h",
+      "upstreamPath": "Source/PLCrashFrameWalker.h",
+      "upstreamSHA256": "6106e6cc2b046d66068412a543fa7f80e529f95daa8647be209f3d923a3d1e1e",
+      "vendoredSHA256": "6106e6cc2b046d66068412a543fa7f80e529f95daa8647be209f3d923a3d1e1e"
+    },
+    {
+      "path": "Source/PLCrashHostInfo.h",
+      "upstreamPath": "Source/PLCrashHostInfo.h",
+      "upstreamSHA256": "ad28d860e252653d6528fb7128f0dbaa003e49634286fa49724d49f780e8aec6",
+      "vendoredSHA256": "ad28d860e252653d6528fb7128f0dbaa003e49634286fa49724d49f780e8aec6"
+    },
+    {
+      "path": "Source/PLCrashHostInfo.m",
+      "upstreamPath": "Source/PLCrashHostInfo.m",
+      "upstreamSHA256": "948f198e49c7869d77c41fa65d2a8ed9bbb0f71f55609088e498dee1d1409762",
+      "vendoredSHA256": "259833f19d99db0b4f778a48a905a463fc95dd5dc69c419a47d265dde3a4fab2"
+    },
+    {
+      "path": "Source/PLCrashLogWriter.h",
+      "upstreamPath": "Source/PLCrashLogWriter.h",
+      "upstreamSHA256": "39e4c7557e768319cbc96c6f2be5038bfd8b4d1be2abec21f1f04c7a29f91386",
+      "vendoredSHA256": "39e4c7557e768319cbc96c6f2be5038bfd8b4d1be2abec21f1f04c7a29f91386"
+    },
+    {
+      "path": "Source/PLCrashLogWriter.m",
+      "upstreamPath": "Source/PLCrashLogWriter.m",
+      "upstreamSHA256": "f646a102a73fe36d6e4893ce882673bb875a9e018772b307af1db621f7ad9735",
+      "vendoredSHA256": "bffe4ef2c55ab5d00906ce85786a6f76ae9b8eae26a4ef26c2aacd65be766385"
+    },
+    {
+      "path": "Source/PLCrashLogWriterEncoding.c",
+      "upstreamPath": "Source/PLCrashLogWriterEncoding.c",
+      "upstreamSHA256": "f931f8fec87acd1bfa7fa0d5bc932c51aaa8410f6df7a7e57232bbcd104117dd",
+      "vendoredSHA256": "6cb8b1b4a169272771aa9d75dcd2deff2342235ac2ee21dd4bebf0211db14f19"
+    },
+    {
+      "path": "Source/PLCrashLogWriterEncoding.h",
+      "upstreamPath": "Source/PLCrashLogWriterEncoding.h",
+      "upstreamSHA256": "5da9e24072f566fba80c2120d3661dd46d67730c53d83b8907e57d1aad88f529",
+      "vendoredSHA256": "5da9e24072f566fba80c2120d3661dd46d67730c53d83b8907e57d1aad88f529"
+    },
+    {
+      "path": "Source/PLCrashMachExceptionPort.h",
+      "upstreamPath": "Source/PLCrashMachExceptionPort.h",
+      "upstreamSHA256": "01f30a3f5f288ed873fdf9683b745f233579afb8220a5d32787240807832cd64",
+      "vendoredSHA256": "01f30a3f5f288ed873fdf9683b745f233579afb8220a5d32787240807832cd64"
+    },
+    {
+      "path": "Source/PLCrashMachExceptionPort.m",
+      "upstreamPath": "Source/PLCrashMachExceptionPort.m",
+      "upstreamSHA256": "6ca843908a5cf9114cc72eb8c859dcaa3d67ac86c10590e6e0c2eeb560939b5e",
+      "vendoredSHA256": "64b5e641edc4b30c03e0abb9a30b40abd09a84342f8d627f7ec8a66bdc2f4778"
+    },
+    {
+      "path": "Source/PLCrashMachExceptionPortSet.h",
+      "upstreamPath": "Source/PLCrashMachExceptionPortSet.h",
+      "upstreamSHA256": "1c1b1f48276d4824a12aebfcdb44cb6a9baf83f953f507334a037e685e0cef1b",
+      "vendoredSHA256": "1c1b1f48276d4824a12aebfcdb44cb6a9baf83f953f507334a037e685e0cef1b"
+    },
+    {
+      "path": "Source/PLCrashMachExceptionPortSet.m",
+      "upstreamPath": "Source/PLCrashMachExceptionPortSet.m",
+      "upstreamSHA256": "c1e3d0cec992442958431ec2b1137e1c476886cb026984da11e7dbed27546fb0",
+      "vendoredSHA256": "a3d56cb966f51b9dd43b92698332167b55e7e17e466b248cdbefc7240136400e"
+    },
+    {
+      "path": "Source/PLCrashMachExceptionServer.h",
+      "upstreamPath": "Source/PLCrashMachExceptionServer.h",
+      "upstreamSHA256": "66b7bd45613474a4b08de660ee4c21aa9c9e295bd4373b67aac0be27d2be5420",
+      "vendoredSHA256": "66b7bd45613474a4b08de660ee4c21aa9c9e295bd4373b67aac0be27d2be5420"
+    },
+    {
+      "path": "Source/PLCrashMachExceptionServer.m",
+      "upstreamPath": "Source/PLCrashMachExceptionServer.m",
+      "upstreamSHA256": "d2e3b73ca996fdf4f965cabd96ac2024d83865f3eba72cb1a6751f1c5491a40f",
+      "vendoredSHA256": "90963b01a3c9c3b6b2d434b9906dbc653476bf546b4b68e14210adde8a92e8c3"
+    },
+    {
+      "path": "Source/PLCrashMacros.h",
+      "upstreamPath": "Source/PLCrashMacros.h",
+      "upstreamSHA256": "a2738d434e4b8a292b155b72272787c6c44b82bcfcfd4d012e01a5417bdb7911",
+      "vendoredSHA256": "a2738d434e4b8a292b155b72272787c6c44b82bcfcfd4d012e01a5417bdb7911"
+    },
+    {
+      "path": "Source/PLCrashNamespace.h",
+      "upstreamPath": "Source/PLCrashNamespace.h",
+      "upstreamSHA256": "64446a2b84bbf9e5464efd91bd30e2bcac1aa522fa3a21f1ea79c6c9bf7e2a6c",
+      "vendoredSHA256": "8811f8fda360725966c52582d8534d06cbe5ec1e61e921f9f77000ee12a23ef0"
+    },
+    {
+      "path": "Source/PLCrashProcessInfo.h",
+      "upstreamPath": "Source/PLCrashProcessInfo.h",
+      "upstreamSHA256": "0341c9815088a15fe951244c136dbf007175e4f66981c835e01d2895dc9dd38e",
+      "vendoredSHA256": "0341c9815088a15fe951244c136dbf007175e4f66981c835e01d2895dc9dd38e"
+    },
+    {
+      "path": "Source/PLCrashProcessInfo.m",
+      "upstreamPath": "Source/PLCrashProcessInfo.m",
+      "upstreamSHA256": "ec92a9e6957d75559d5b40ff9191ae00c1f7fee4a90368f2a9ce1c3b0237383f",
+      "vendoredSHA256": "d005ea37095fe9afe1b1ad98000225fc4de12a8156930c000b8204fc4af09109"
+    },
+    {
+      "path": "Source/PLCrashReport.h",
+      "upstreamPath": "Source/PLCrashReport.h",
+      "upstreamSHA256": "a2280ce261880602231c5ca1c5096045cf69d7979209be84326862766b6e1922",
+      "vendoredSHA256": "1a89dd08cdfe0b814e3ccde1d2cb8c9eb5e19525b5fee01ef57bd58106e4b5e9"
+    },
+    {
+      "path": "Source/PLCrashReport.m",
+      "upstreamPath": "Source/PLCrashReport.m",
+      "upstreamSHA256": "aa6e12c9c80cd4cbba7593498f54468293742e6c92ba5874ce77b2f81e85d1d1",
+      "vendoredSHA256": "be3bca59acedf72fdaf70514433e0a1305305b6cdf8f1e8877f77493e9ced00c"
+    },
+    {
+      "path": "Source/PLCrashReport.pb-c.c",
+      "upstreamPath": "Source/PLCrashReport.pb-c.c",
+      "upstreamSHA256": "482e8e8b6501a62a988e96f6a044efdbbca24bf04e9790999ba4ae1c3d09c9ea",
+      "vendoredSHA256": "705366e44d28193eaefa534c1d61c59b9d9a57a8c73dedefacf05dead8c5025e"
+    },
+    {
+      "path": "Source/PLCrashReport.pb-c.h",
+      "upstreamPath": "Source/PLCrashReport.pb-c.h",
+      "upstreamSHA256": "d987a004f6d761f17827939bd343b1437b10d9612222e2c9bf131aa9e9e68096",
+      "vendoredSHA256": "d987a004f6d761f17827939bd343b1437b10d9612222e2c9bf131aa9e9e68096"
+    },
+    {
+      "path": "Source/PLCrashReport.proto",
+      "upstreamPath": "Source/PLCrashReport.proto",
+      "upstreamSHA256": "9d362c8c85da198f7f1f252bb6f1b821b62e5d438ae268b191229dc47e13313f",
+      "vendoredSHA256": "9d362c8c85da198f7f1f252bb6f1b821b62e5d438ae268b191229dc47e13313f"
+    },
+    {
+      "path": "Source/PLCrashReportApplicationInfo.h",
+      "upstreamPath": "Source/PLCrashReportApplicationInfo.h",
+      "upstreamSHA256": "5c890bc6682b57f39c28bef8cf2bf1d94e84dcc7491f959eaa0a5b194829e777",
+      "vendoredSHA256": "5c890bc6682b57f39c28bef8cf2bf1d94e84dcc7491f959eaa0a5b194829e777"
+    },
+    {
+      "path": "Source/PLCrashReportApplicationInfo.m",
+      "upstreamPath": "Source/PLCrashReportApplicationInfo.m",
+      "upstreamSHA256": "6bdef68505803bf7d785bd5c696dac04d8698304fe594b5c704c2a87cc8847e4",
+      "vendoredSHA256": "4c14842517f66bc1ca6020b07208c05f029ca22093a54022575cd7d828b3aaa7"
+    },
+    {
+      "path": "Source/PLCrashReportBinaryImageInfo.h",
+      "upstreamPath": "Source/PLCrashReportBinaryImageInfo.h",
+      "upstreamSHA256": "793eb24e47a241d9a511ea1e6e58a0c325adb4b3329c280de51b2b21e6bbba47",
+      "vendoredSHA256": "fac6d62dc9544fbbfb118ca550a959d0590f86d8aafd6e25040a60f6df3f5ceb"
+    },
+    {
+      "path": "Source/PLCrashReportBinaryImageInfo.m",
+      "upstreamPath": "Source/PLCrashReportBinaryImageInfo.m",
+      "upstreamSHA256": "c925ac3120ee538abf5c98b03a634d6c5b9e1a77282b8af5a7a87fadd575e5b3",
+      "vendoredSHA256": "f5d6ab9834686f72676cd57a28bd315bc79fbcc6aeceb44c9d4c44f12e623d3e"
+    },
+    {
+      "path": "Source/PLCrashReportExceptionInfo.h",
+      "upstreamPath": "Source/PLCrashReportExceptionInfo.h",
+      "upstreamSHA256": "83cdbcf420845f8aa5aa758aeb5d5db2ebe8d9ac0654d33ed3be79c9da1fd3f7",
+      "vendoredSHA256": "c774ed3a21bde94f67c60995a4f4878452ab4985f5a1019118a5b091f77e8a20"
+    },
+    {
+      "path": "Source/PLCrashReportExceptionInfo.m",
+      "upstreamPath": "Source/PLCrashReportExceptionInfo.m",
+      "upstreamSHA256": "153107e9227ad28baf356df2dbd704be472c8fc5c6b7eeee850e3d5c53255578",
+      "vendoredSHA256": "31a96587866865c69b6f2a3f93fea41197c30489320083d03d031540f4046ceb"
+    },
+    {
+      "path": "Source/PLCrashReportFormatter.h",
+      "upstreamPath": "Source/PLCrashReportFormatter.h",
+      "upstreamSHA256": "2494f6e89244a9030d1a1ad88d189df147d104535ce4b2553336471dc25a4980",
+      "vendoredSHA256": "38d10c63fd5606a4c3dbc479bd1dd8053141cc406c056b637c7bca5f796bee02"
+    },
+    {
+      "path": "Source/PLCrashReportMachExceptionInfo.h",
+      "upstreamPath": "Source/PLCrashReportMachExceptionInfo.h",
+      "upstreamSHA256": "32b4717e9f47ee83c4665d8ac53fa773fbe457990c37558114b924a4d88cfdea",
+      "vendoredSHA256": "32b4717e9f47ee83c4665d8ac53fa773fbe457990c37558114b924a4d88cfdea"
+    },
+    {
+      "path": "Source/PLCrashReportMachExceptionInfo.m",
+      "upstreamPath": "Source/PLCrashReportMachExceptionInfo.m",
+      "upstreamSHA256": "c9bc3d95e5b2f10c0767c405c1da28ea307dc885b1af385fb183e245a9f570c2",
+      "vendoredSHA256": "b9b22c73ef037bbbbbb2cf98ae4e8fee1368eace7a723888485db02d13235176"
+    },
+    {
+      "path": "Source/PLCrashReportMachineInfo.h",
+      "upstreamPath": "Source/PLCrashReportMachineInfo.h",
+      "upstreamSHA256": "1a39e96ed9607c459d518d44b4c974c8e5a922e0cfaa275935cd34852ce72a16",
+      "vendoredSHA256": "dba285d24ec2b7957b1d0ca1f65a008aef216d8db39c87a07927bb7d082d1459"
+    },
+    {
+      "path": "Source/PLCrashReportMachineInfo.m",
+      "upstreamPath": "Source/PLCrashReportMachineInfo.m",
+      "upstreamSHA256": "c8829fad9248dab9e453298adae21f8e36307d095ba1eeb696802bb5f8fae488",
+      "vendoredSHA256": "9fb05247a88d02bd32977bc94a4dc7097a79ec3f94ee41b031aab789852f5bfd"
+    },
+    {
+      "path": "Source/PLCrashReportProcessInfo.h",
+      "upstreamPath": "Source/PLCrashReportProcessInfo.h",
+      "upstreamSHA256": "306bb5b715117b5466f4056ac0d9ce4b481a8a994401b6211443f248e53d8e1d",
+      "vendoredSHA256": "306bb5b715117b5466f4056ac0d9ce4b481a8a994401b6211443f248e53d8e1d"
+    },
+    {
+      "path": "Source/PLCrashReportProcessInfo.m",
+      "upstreamPath": "Source/PLCrashReportProcessInfo.m",
+      "upstreamSHA256": "b0a0d665e45dccf51a26672ca98c616ffae4ef172c4e068e92d2e7774b32371b",
+      "vendoredSHA256": "9b37e3045459b79db57e46695cfaca4b3a7d0a113abafbb788bad150fac06b2a"
+    },
+    {
+      "path": "Source/PLCrashReportProcessorInfo.h",
+      "upstreamPath": "Source/PLCrashReportProcessorInfo.h",
+      "upstreamSHA256": "843c37d1b423bcfc918a1fb898270f438f7a783e3316cb3fce20712a83c6df10",
+      "vendoredSHA256": "843c37d1b423bcfc918a1fb898270f438f7a783e3316cb3fce20712a83c6df10"
+    },
+    {
+      "path": "Source/PLCrashReportProcessorInfo.m",
+      "upstreamPath": "Source/PLCrashReportProcessorInfo.m",
+      "upstreamSHA256": "665cd7ca64a8f04abc8563ac5fe96de18b601b49d3089edbf0873063abc4466a",
+      "vendoredSHA256": "96ca173a930d48c34f503831c8094b0302970a8d540e6e798b79809e29b564d2"
+    },
+    {
+      "path": "Source/PLCrashReportRegisterInfo.h",
+      "upstreamPath": "Source/PLCrashReportRegisterInfo.h",
+      "upstreamSHA256": "f044a63c4b543bb85e6029ff4393dcdf08b06404ae669e3840de57c65cf81da2",
+      "vendoredSHA256": "f044a63c4b543bb85e6029ff4393dcdf08b06404ae669e3840de57c65cf81da2"
+    },
+    {
+      "path": "Source/PLCrashReportRegisterInfo.m",
+      "upstreamPath": "Source/PLCrashReportRegisterInfo.m",
+      "upstreamSHA256": "fe87916c61a3d88e971bce4633a8e7464e79f53a808163be5defca0b227762b4",
+      "vendoredSHA256": "4f87d01dc9dc3e0060c5e6681951d3d1ad6c632d8c3dd42cc9bfc352992927a7"
+    },
+    {
+      "path": "Source/PLCrashReportSignalInfo.h",
+      "upstreamPath": "Source/PLCrashReportSignalInfo.h",
+      "upstreamSHA256": "32673a869356b750a6abd1e67401255f6725dcf18918fb499b7d00708831d870",
+      "vendoredSHA256": "32673a869356b750a6abd1e67401255f6725dcf18918fb499b7d00708831d870"
+    },
+    {
+      "path": "Source/PLCrashReportSignalInfo.m",
+      "upstreamPath": "Source/PLCrashReportSignalInfo.m",
+      "upstreamSHA256": "89ff73932a309532d71368b3b675f50d5ceb015c2a9aa3edda98978093eb40b5",
+      "vendoredSHA256": "98b4c7af6cb3239ff863cb3b66fe9fdedd4267ca39d3f4b4bdb8939defd189b8"
+    },
+    {
+      "path": "Source/PLCrashReportStackFrameInfo.h",
+      "upstreamPath": "Source/PLCrashReportStackFrameInfo.h",
+      "upstreamSHA256": "7df0518c679c22c3022f624cad19acb3b17938f4b3538e6a6030bc4d670830e6",
+      "vendoredSHA256": "c9d74a7dac4c3db6acc355626974caa140125b00a961584aca266374fa8f47db"
+    },
+    {
+      "path": "Source/PLCrashReportStackFrameInfo.m",
+      "upstreamPath": "Source/PLCrashReportStackFrameInfo.m",
+      "upstreamSHA256": "d8794c727ae226b4b8dc07b77eda6b6b8566f2520d7799ad5cd588f977b039e3",
+      "vendoredSHA256": "e89199f7faa9023fb095e81d1db9319e4d19d9840c1e7bb47423982dcf93a785"
+    },
+    {
+      "path": "Source/PLCrashReportSymbolInfo.h",
+      "upstreamPath": "Source/PLCrashReportSymbolInfo.h",
+      "upstreamSHA256": "9134eaa7950f1090a077bfd6f5cfb5229f0dc4a866ec4210187628562674a3b7",
+      "vendoredSHA256": "9134eaa7950f1090a077bfd6f5cfb5229f0dc4a866ec4210187628562674a3b7"
+    },
+    {
+      "path": "Source/PLCrashReportSymbolInfo.m",
+      "upstreamPath": "Source/PLCrashReportSymbolInfo.m",
+      "upstreamSHA256": "f1a0899e461db6438cc76f3bfb295c482ad969fe6353f8721e0ff835829673cc",
+      "vendoredSHA256": "29f45bb718eb61fcc57a547c8ea3802dd697cf6e7ee68b22b35a64f8e0343ebe"
+    },
+    {
+      "path": "Source/PLCrashReportSystemInfo.h",
+      "upstreamPath": "Source/PLCrashReportSystemInfo.h",
+      "upstreamSHA256": "23962e9bbafcedc712f8e374be387c81eedefe895135f247198705825763d1a3",
+      "vendoredSHA256": "09268c3ae9c66795f35816a88ee57f89a62b902196f07d00b55a01f19cdaaa36"
+    },
+    {
+      "path": "Source/PLCrashReportSystemInfo.m",
+      "upstreamPath": "Source/PLCrashReportSystemInfo.m",
+      "upstreamSHA256": "4d10a6cabc5f72a12a48d2582cfbdace0abbaa5f1f052b17682b895bc0bc2bc9",
+      "vendoredSHA256": "e1e47a732dc4d8d3df530306175b380292f06aeda09a6f157183ddbc86c16594"
+    },
+    {
+      "path": "Source/PLCrashReportTextFormatter.h",
+      "upstreamPath": "Source/PLCrashReportTextFormatter.h",
+      "upstreamSHA256": "1c791cc162d6a3bba010fb16a7e66339133ed85bb0afffbbf0fea07f5b627bd5",
+      "vendoredSHA256": "c49d232bf42b6b4cee31e828168dc45fcffc852c57ed8cf52d8a4b253ed540e3"
+    },
+    {
+      "path": "Source/PLCrashReportTextFormatter.m",
+      "upstreamPath": "Source/PLCrashReportTextFormatter.m",
+      "upstreamSHA256": "21cd556d19377ee5c34e2b645fc31acfaa200fc077585180d3c3f6ed06c8b7f1",
+      "vendoredSHA256": "cf2c66a5ae0920317de43392e136c69abd6239ba7080500fdbeefc7ac2021eeb"
+    },
+    {
+      "path": "Source/PLCrashReportThreadInfo.h",
+      "upstreamPath": "Source/PLCrashReportThreadInfo.h",
+      "upstreamSHA256": "e6b462b1275e37bde7bb96582d61fe43d2eca9b132bea37192c9e626b71131c9",
+      "vendoredSHA256": "1ac3c3ff11b3a6971b4211ee8e63a7c1a5bbaea97fe4903078d0c01197b2e060"
+    },
+    {
+      "path": "Source/PLCrashReportThreadInfo.m",
+      "upstreamPath": "Source/PLCrashReportThreadInfo.m",
+      "upstreamSHA256": "9dc190020d75b3e6ba292074b4f0e1c6d82bd682997f783e40a980ae428a0c39",
+      "vendoredSHA256": "1223cc68e076f0aa0581251ee3d1498566e312243638735f2a56aaa6d13aa1e4"
+    },
+    {
+      "path": "Source/PLCrashReporter.h",
+      "upstreamPath": "Source/PLCrashReporter.h",
+      "upstreamSHA256": "aac94b0e9d0037ca83b488937dde95df3bd60918f85dfa6e030f78e0027a0436",
+      "vendoredSHA256": "ffaecc78142565efa9b80af3e6618854f18d36d42ea37a6ee220fb6b3772002a"
+    },
+    {
+      "path": "Source/PLCrashReporter.m",
+      "upstreamPath": "Source/PLCrashReporter.m",
+      "upstreamSHA256": "9b2b15619c6c64f0b5b8faa6729854046b9158bac246db651f696ca9d91ae1bf",
+      "vendoredSHA256": "a67e8934bb1b17e3e6827391580db732f0a11bf51d6ea728533899a1737e9fd9"
+    },
+    {
+      "path": "Source/PLCrashReporterConfig.h",
+      "upstreamPath": "Source/PLCrashReporterConfig.h",
+      "upstreamSHA256": "683a216318dc67de6aaeebf3f59fd90d2bfee02ae143537c564c8063d2757563",
+      "vendoredSHA256": "da54d752e83033b03f5c86d2c49f11d6a4509ef79ec69962754587ed43a6133a"
+    },
+    {
+      "path": "Source/PLCrashReporterConfig.m",
+      "upstreamPath": "Source/PLCrashReporterConfig.m",
+      "upstreamSHA256": "bf026ce660c2496ffb235fbdea5bd09a0489f3aae1415f244bdb5af4ee316735",
+      "vendoredSHA256": "e9594668aeef4506533a772425024ef98e794a441daaff1451fbe73019117966"
+    },
+    {
+      "path": "Source/PLCrashReporterNSError.h",
+      "upstreamPath": "Source/PLCrashReporterNSError.h",
+      "upstreamSHA256": "ee81396bc3d3b6e06b64d9c075fa178026f2bc5be7004848c6434c5e050c7fd6",
+      "vendoredSHA256": "e95d08f21b4b1cb744ec6553c394cbc923077eb42ee91b59f70f6bafc8e37ca9"
+    },
+    {
+      "path": "Source/PLCrashReporterNSError.m",
+      "upstreamPath": "Source/PLCrashReporterNSError.m",
+      "upstreamSHA256": "85e62544c70127bad58ed246fb89536598a087fb500e42d81a350da94fb37d84",
+      "vendoredSHA256": "cddfa62020b3aa7612fa10fc74c8bac49f62e4a805a18e84208db19b5c3da86d"
+    },
+    {
+      "path": "Source/PLCrashSignalHandler.h",
+      "upstreamPath": "Source/PLCrashSignalHandler.h",
+      "upstreamSHA256": "e33494a4bb2aad092fea598d52d884d9987f3b7bb903ea5dde1bef36512ef6ff",
+      "vendoredSHA256": "e33494a4bb2aad092fea598d52d884d9987f3b7bb903ea5dde1bef36512ef6ff"
+    },
+    {
+      "path": "Source/PLCrashSignalHandler.mm",
+      "upstreamPath": "Source/PLCrashSignalHandler.mm",
+      "upstreamSHA256": "b2b1c6a79f69c0eb398bb59c18648b121cc6aa152bbd10f13d01f7f1102d0a90",
+      "vendoredSHA256": "b103601fe93720d30a21bb81cdd24f37fe5b35daf4a529126d89ee3b55191871"
+    },
+    {
+      "path": "Source/PLCrashSysctl.c",
+      "upstreamPath": "Source/PLCrashSysctl.c",
+      "upstreamSHA256": "bb4b1425f3df51ad16998d3ec548f6a3566eb6b781ea9bc3ad6d109fbfa73411",
+      "vendoredSHA256": "ed78095fb5459da8c532d0dca68180db5309f4809fc65a02aee263617d6f6dd9"
+    },
+    {
+      "path": "Source/PLCrashSysctl.h",
+      "upstreamPath": "Source/PLCrashSysctl.h",
+      "upstreamSHA256": "491e8da2efa27b11d1cdb789c0d7af9c3dbc6f0bccf1f4edd29003712293f716",
+      "vendoredSHA256": "491e8da2efa27b11d1cdb789c0d7af9c3dbc6f0bccf1f4edd29003712293f716"
+    },
+    {
+      "path": "Source/PLCrashUncaughtExceptionHandler.h",
+      "upstreamPath": "Source/PLCrashUncaughtExceptionHandler.h",
+      "upstreamSHA256": "779993af0ee2c2eb20e7a2c507dc59a2840729e1afbb32a13209167f8a04e075",
+      "vendoredSHA256": "779993af0ee2c2eb20e7a2c507dc59a2840729e1afbb32a13209167f8a04e075"
+    },
+    {
+      "path": "Source/PLCrashUncaughtExceptionHandler.m",
+      "upstreamPath": "Source/PLCrashUncaughtExceptionHandler.m",
+      "upstreamSHA256": "aa7971176f9b621689015e996402d4ba446fe86f19cca3505c43df6b6558a8ff",
+      "vendoredSHA256": "75ae2d681e512c108af23f92f1c9310f31e0455134edf21861f4d39a1941c721"
+    },
+    {
+      "path": "Source/dwarf_opstream.cpp",
+      "upstreamPath": "Source/dwarf_opstream.cpp",
+      "upstreamSHA256": "35ac657a959f53282be1c462ee12c88e5f5f11c64b8c156e584c3876e6591e4a",
+      "vendoredSHA256": "6864ad20ab557c2c137382dffab69b455c920dcad2c6b1dcef94f5dd51c7390e"
+    },
+    {
+      "path": "Source/dwarf_opstream.hpp",
+      "upstreamPath": "Source/dwarf_opstream.hpp",
+      "upstreamSHA256": "40cb16f51cedf8355a5f78d51a2f5b7f60222a26797bd112fe60ad5e794c5e31",
+      "vendoredSHA256": "40cb16f51cedf8355a5f78d51a2f5b7f60222a26797bd112fe60ad5e794c5e31"
+    },
+    {
+      "path": "Source/dwarf_private.h",
+      "upstreamPath": "Source/dwarf_private.h",
+      "upstreamSHA256": "3e752f8f40cc19a4d15fce2ffd86d5916106da34007c67dcd8d79ceaf50e7a1c",
+      "vendoredSHA256": "3e752f8f40cc19a4d15fce2ffd86d5916106da34007c67dcd8d79ceaf50e7a1c"
+    },
+    {
+      "path": "Source/dwarf_stack.hpp",
+      "upstreamPath": "Source/dwarf_stack.hpp",
+      "upstreamSHA256": "9dbc1ed6dddf5d2307bb11017a7001aab61c4149beba05ac748441c1403c46ef",
+      "vendoredSHA256": "9dbc1ed6dddf5d2307bb11017a7001aab61c4149beba05ac748441c1403c46ef"
+    },
+    {
+      "path": "UpstreamTests/PLCrashAsyncTests.m",
+      "upstreamPath": "Tests/PLCrashAsyncTests.m",
+      "upstreamSHA256": "0a441b27de597f2c2c5b7dc086b1b6ca90051b40cee30709d5731ccb3b8c008a",
+      "vendoredSHA256": "0a441b27de597f2c2c5b7dc086b1b6ca90051b40cee30709d5731ccb3b8c008a"
+    },
+    {
+      "path": "UpstreamTests/PLCrashLogWriterEncodingTests.m",
+      "upstreamPath": "Tests/PLCrashLogWriterEncodingTests.m",
+      "upstreamSHA256": "943def880e844040745c45dcf7cec38b8a5cad67c5b08f5615b15e2994c6b3fd",
+      "vendoredSHA256": "943def880e844040745c45dcf7cec38b8a5cad67c5b08f5615b15e2994c6b3fd"
+    },
+    {
+      "path": "UpstreamTests/PLCrashLogWriterEncodingTests.pb-c.c",
+      "upstreamPath": "Tests/PLCrashLogWriterEncodingTests.pb-c.c",
+      "upstreamSHA256": "af2a78cb2c6290562a6cf24fdb32ca2ca4da9b8d6d1c17fd157222b89fc5e553",
+      "vendoredSHA256": "af2a78cb2c6290562a6cf24fdb32ca2ca4da9b8d6d1c17fd157222b89fc5e553"
+    },
+    {
+      "path": "UpstreamTests/PLCrashLogWriterEncodingTests.pb-c.h",
+      "upstreamPath": "Tests/PLCrashLogWriterEncodingTests.pb-c.h",
+      "upstreamSHA256": "465e95a0906077e802b54db546c7166a9dd185df2840361362c960da7b68062c",
+      "vendoredSHA256": "465e95a0906077e802b54db546c7166a9dd185df2840361362c960da7b68062c"
+    },
+    {
+      "path": "UpstreamTests/PLCrashLogWriterEncodingTests.proto",
+      "upstreamPath": "Tests/PLCrashLogWriterEncodingTests.proto",
+      "upstreamSHA256": "d598cf8ccf0c6d072f9ef45aac2407f83025047c7754de6bf4cb16e5255b2e77",
+      "vendoredSHA256": "d598cf8ccf0c6d072f9ef45aac2407f83025047c7754de6bf4cb16e5255b2e77"
+    },
+    {
+      "path": "UpstreamTests/PLCrashTestCase.h",
+      "upstreamPath": "Tests/PLCrashTestCase.h",
+      "upstreamSHA256": "00756cb0a3dcc348f6a59bacbc202ad328a6976e62bdfcd8942ed1723f1a01b7",
+      "vendoredSHA256": "00756cb0a3dcc348f6a59bacbc202ad328a6976e62bdfcd8942ed1723f1a01b7"
+    },
+    {
+      "path": "UpstreamTests/SenTestCompat.h",
+      "upstreamPath": "Tests/SenTestCompat.h",
+      "upstreamSHA256": "3da7c04f746f192f2cf99b9ead3249ba25b6a74df38a3558ec5af1dc3ecbe853",
+      "vendoredSHA256": "3da7c04f746f192f2cf99b9ead3249ba25b6a74df38a3558ec5af1dc3ecbe853"
+    }
+  ]
+}
