@@ -64,9 +64,10 @@ Optional Runtime APIs read historical main-process exits on Android 11+ and
 delivered MetricKit crash/hang summaries on iOS 14+, with an explicit subscriber
 for new iOS reports. They extract only allowlisted numeric/build/system facts,
 preserving reporting intervals and missing values. Hosts can explicitly persist
-them as local incidents, with separate manual/system count limits. Automatic
-recovery, export, and UI are not connected yet; immediate next-launch delivery is
-not guaranteed. See [system diagnostics](doc/system-diagnostics.md).
+them as local incidents and export that evidence with the optional Export module.
+Manual and system records have separate count limits. Automatic recovery and the
+diagnostic viewer are not connected yet; immediate next-launch delivery is not
+guaranteed. See [system diagnostics](doc/system-diagnostics.md).
 
 Automatic system-log capture, fatal crash handlers, global network interception,
 and framework adapters are not implemented.

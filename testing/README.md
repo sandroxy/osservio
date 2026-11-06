@@ -15,8 +15,8 @@ validation. Columns are name, source family, changed field, input, and expected
 kind or `invalid`. It covers exact integers, unknown Android exit reasons,
 missing memory, MetricKit reporting intervals and crash/hang field combinations.
 Native tests also verify bounded public metadata, strict restoration, immutable
-batches, and source/budget consistency. These are native facts, not a new portable
-document revision. No system-diagnostic export is implemented yet.
+batches, and source/budget consistency. Protocol checks consume the same source
+invariants independently and also validate document-specific combinations.
 
 `capture-lifecycle.tsv` is a sequential scenario consumed by both native test
 suites. Rows contain a case name, monotonic milliseconds, control operation,
@@ -117,11 +117,14 @@ exact integers, source loss counters, optional columns, and whole-report retenti
 Capacity failures also verify that pruning and partial attachment writes roll back
 together. Asynchronous store tests verify committed attachments after close/reopen.
 
-`incident-export/{absent,empty,complete}.json` contains independent golden pairs
+`incident-export/{absent,empty,complete,diagnostic-android,diagnostic-crash,diagnostic-hang}.json` contains independent golden pairs
 of metadata and content documents. Both native Export suites construct typed
 snapshots and compare their encoded JSON values with these files. Object key
 order is irrelevant. `cases.json` describes strict-writer and tolerant-reader
 expectations after explicit mutations; `http-lifecycle.json` covers valid
 observation states and invalid revisions. Protocol tests separately exercise
-UTF-8 limits, duplicate identities, and collection bounds. These are portable
-revision-1 documents, separate from the private SQLite migration fixture.
+UTF-8 limits, duplicate identities, collection bounds, source/kind/time conflicts,
+exact diagnostic codes, metadata bounds, and reader extensions. These are portable
+revision-2 documents, separate from the private SQLite migration fixture.
+The unchanged goldens in `incident-export/revisions/1` verify supported old reads;
+old schemas reject new documents and mixed/unsupported revisions fail explicitly.

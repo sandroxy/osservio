@@ -16,8 +16,8 @@ into [portable JSON documents](../protocol/README.md) and prepare
 [temporary ZIP files](incident-export.md). Supplying an exporter to a native
 problem view enables explicit system sharing of the saved snapshot.
 System diagnostic persistence is currently API-only: automatic recovery and
-native inspection are not connected yet. The revision-1 document encoder rejects
-diagnostic snapshots rather than silently omitting their primary evidence.
+native inspection are not connected yet. The revision-2 document encoder includes
+diagnostic evidence and preserves its original time/range separately from recovery.
 
 ## Evidence and privacy
 

@@ -18,6 +18,26 @@ final class IncidentDocumentFixture {
         if (name.equals("absent")) return IncidentSnapshot.restore(ID, Long.MIN_VALUE, null, null, null);
         if (name.equals("empty")) return IncidentSnapshot.restore(ID, Long.MIN_VALUE, null, null, null,
             IncidentLogs.restore(Collections.emptyList(), 0, 4, 2), null, null);
+        if (name.startsWith("diagnostic-")) {
+            SystemDiagnostic evidence;
+            switch (name) {
+                case "diagnostic-android":
+                    evidence = SystemDiagnostic.androidExit(9007199254740993L, 5, Integer.MIN_VALUE,
+                        Integer.MAX_VALUE, 100, Long.MAX_VALUE, null); break;
+                case "diagnostic-crash":
+                    Map<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> metadata = new EnumMap<>(SystemDiagnostic.MetadataKey.class);
+                    metadata.put(SystemDiagnostic.MetadataKey.APP_VERSION, SystemDiagnostic.Text.restore("测试1", true));
+                    metadata.put(SystemDiagnostic.MetadataKey.APP_BUILD, SystemDiagnostic.Text.capturePublic("42"));
+                    metadata.put(SystemDiagnostic.MetadataKey.OS_VERSION, SystemDiagnostic.Text.capturePublic("26.5"));
+                    metadata.put(SystemDiagnostic.MetadataKey.DEVICE_MODEL, SystemDiagnostic.Text.capturePublic("iPhone17,1"));
+                    evidence = SystemDiagnostic.metricKit(Long.MIN_VALUE, 9007199254740993L, SystemDiagnostic.Kind.CRASH,
+                        metadata, 11, Long.MAX_VALUE, "18446744073709551615", null); break;
+                case "diagnostic-hang":
+                    evidence = SystemDiagnostic.metricKit(-1, 0, SystemDiagnostic.Kind.HANG, Collections.emptyMap(), null, null, null, 0L); break;
+                default: throw new IllegalArgumentException("Unknown fixture");
+            }
+            return IncidentSnapshot.restore(ID, Long.MAX_VALUE, null, null, null, null, null, null, evidence);
+        }
         if (!name.equals("complete")) throw new IllegalArgumentException("Unknown fixture");
         Map<EnvironmentSnapshot.Key, EnvironmentSnapshot.Fact> facts = new EnumMap<>(EnvironmentSnapshot.Key.class);
         for (EnvironmentSnapshot.Key key : EnvironmentSnapshot.Key.values()) facts.put(key, EnvironmentSnapshot.Fact.UNAVAILABLE);

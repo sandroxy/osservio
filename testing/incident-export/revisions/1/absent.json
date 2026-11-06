@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 1,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "-9223372036854775808",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": null,
+      "http": null,
+      "webSockets": null
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 1,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {}
+  }
+}

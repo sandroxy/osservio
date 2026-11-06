@@ -12,19 +12,19 @@ public struct IncidentDocuments: Sendable {
     public static let maximumDocumentBytes = 16_777_216
 
     public static func encode(_ snapshot: IncidentSnapshot) throws -> IncidentDocuments {
-        // Revision 1 cannot represent system diagnostics; never silently omit their primary evidence.
-        guard snapshot.systemDiagnostic == nil else { throw IncidentDocumentError.invalidRecord }
         guard snapshot.textByteCount <= maximumTextBytes else { throw IncidentDocumentError.tooLarge }
         let incident: [String: Any] = [
             "id": snapshot.id, "timestampMillis": String(snapshot.timestampMillis),
+            "origin": snapshot.systemDiagnostic == nil ? "manual" : "systemDiagnostic",
+            "systemDiagnostic": optional(snapshot.systemDiagnostic.map(diagnostic)),
             "note": optional(snapshot.note.map { ["text": $0.text, "isPrivate": $0.isPrivate, "isTruncated": $0.isTruncated] }),
             "environment": optional(snapshot.environment.map(environment)),
             "breadcrumbs": optional(snapshot.breadcrumbs.map(breadcrumbs)),
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 1, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 1, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 2, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 2, "incidentID": snapshot.id,
             "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
@@ -43,6 +43,23 @@ public struct IncidentDocuments: Sendable {
         payloads.mapValues { ["state": $0.state.rawValue, "textByteCount": $0.textByteCount] as [String: Any] }
     }
     private static func headers(_ values: [HTTPHeader]) -> [[String: String]] { values.map { ["name": $0.name, "value": $0.value] } }
+    private static func diagnostic(_ value: SystemDiagnostic) -> [String: Any] {
+        let android = value.androidExit.map { exit -> [String: Any] in
+            ["reasonCode": exit.reasonCode, "status": exit.status, "processID": exit.processID,
+             "importance": exit.importance, "pssKiB": decimal(exit.pssKiB), "rssKiB": decimal(exit.rssKiB)]
+        }
+        let metric = value.metricKit.map { report -> [String: Any] in
+            var metadata: [String: Any] = [:]
+            for (key, text) in report.metadata {
+                metadata[key.rawValue] = ["text": text.value, "isTruncated": text.isTruncated]
+            }
+            return ["metadata": metadata, "signal": optional(report.signal), "exceptionType": decimal(report.exceptionType),
+                    "exceptionCode": optional(report.exceptionCode), "hangDurationMillis": decimal(report.hangDurationMillis)]
+        }
+        return ["source": value.source.rawValue, "kind": value.kind.rawValue,
+                "intervalStartMillis": String(value.intervalStartMillis), "intervalEndMillis": String(value.intervalEndMillis),
+                "androidExit": optional(android), "metricKit": optional(metric)]
+    }
     private static func environment(_ value: EnvironmentSnapshot) -> [String: Any] {
         var facts: [String: Any] = [:]
         for (key, value) in value.values {

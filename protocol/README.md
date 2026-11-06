@@ -5,11 +5,11 @@ sanitized `IncidentSnapshot` into two UTF-8 JSON documents:
 
 | Document | Content |
 | --- | --- |
-| `incident.json` | Identity, mark time, optional attachments, event metadata, loss counters, and body inclusion states |
+| `incident.json` | Identity, mark/recovery time, origin, optional system evidence and attachments, loss counters, and body inclusion states |
 | `payloads.json` | Available copied HTTP and WebSocket text, keyed by the referenced body identity |
 
 The format identifiers are `osservio.incident` and `osservio.incident.payloads`.
-Both declare compatibility revision `1`, independently of SDK and private
+Both declare compatibility revision `2`, independently of SDK and private
 SQLite schema versions. The metadata's `payloadFile` is the fixed literal
 `payloads.json`, not an arbitrary path. The schema URNs identify local definitions;
 validation does not fetch a remote schema.
@@ -67,6 +67,17 @@ restoration constructors enforce the input's typed evidence invariants.
 - `null` means an attachment or optional fact is absent. An attached group with
   zero events is present and empty. Environment `unavailable` and `unsupported`
   remain different states. Required keys are never omitted to represent absence.
+- `origin` is `manual` when `systemDiagnostic` is null, otherwise
+  `systemDiagnostic`. The snapshot's `timestampMillis` is the manual mark or
+  recovery observation time. It is never substituted for a system failure time.
+  Android evidence preserves its exact exit time in both interval endpoints;
+  MetricKit preserves a reporting interval, not an exact crash/hang timestamp.
+- System evidence retains the reviewed source-specific facts from
+  [system diagnostics](../doc/system-diagnostics.md). Android reason/status/PID/
+  importance and MetricKit signal are bounded 32-bit JSON integers. Memory samples,
+  exception types/codes, and hang durations use exact decimal strings. Missing
+  facts remain null; absent historical metadata keys remain absent. Text carries
+  its truncation flag. Raw descriptions and stack text are not accepted.
 - Body observation state and incident inclusion state describe different facts.
   A captured body can have been excluded from this incident, evicted before
   selection, busy during lookup, or rejected by its inclusion budget. Only
@@ -96,15 +107,21 @@ bound concurrent encodes and the lifetime of returned data.
 
 ## Compatibility and conformance
 
-The schemas describe strict revision-1 writers. A reader may ignore unknown
-optional object fields within revision 1, while still validating every known
+The root schemas describe strict revision-2 writers. Preserved
+[revision-1 metadata](revisions/1/incident.schema.json) and
+[payload schemas](revisions/1/payloads.schema.json) remain readable by the
+conformance checker; revision 2 references their unchanged event definitions.
+A reader may ignore unknown optional object fields within a supported revision,
+while still validating every known
 field, required field, enum, identifier, privacy constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
-Unsupported revisions are rejected; no export revision migration exists yet.
+Unsupported revisions and mixed document revisions are rejected. Native writers
+always emit revision 2, including for manual snapshots. A revision-1 reader must
+reject revision 2 rather than overlook its new system evidence. No automatic
+document rewriting, downgrade, or SDK runtime importer is provided.
 The private incident database's revision-1 to revision-2 migration is separate
 from its revision-2 to revision-3 diagnostic extension; both are tested in the
-native Store suites. Portable revision 1 cannot encode system diagnostics.
-The native encoder rejects such snapshots instead of dropping that evidence.
+native Store suites. Database revisions do not select the export revision.
 
 JSON Schema alone does not express cross-document identities, event accounting,
 UTF-8 byte totals, or transport state relationships. `validate.py` checks those
@@ -115,5 +132,6 @@ archive-import API. It does not extract ZIP files or accept remote data.
 
 The independent fixtures in `testing/incident-export` cover absent and empty
 groups, exact 64-bit values, redaction, Unicode and escaping, body states, HTTP
-lifecycles, corruption, and compatibility. Both native encoders compare their
+lifecycles, system source/time invariants, corruption, and compatibility.
+Unmodified revision-1 golden documents are retained separately. Both native encoders compare their
 output with the same golden documents. See [development checks](../DEVELOPMENT.md).

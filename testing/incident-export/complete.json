@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 1,
+    "revision": 2,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -405,12 +405,14 @@
             "textByteCount": 4
           }
         }
-      }
+      },
+      "origin": "manual",
+      "systemDiagnostic": null
     }
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 1,
+    "revision": 2,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {
       "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",

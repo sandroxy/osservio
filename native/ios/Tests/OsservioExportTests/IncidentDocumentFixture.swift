@@ -9,6 +9,26 @@ enum IncidentDocumentFixture {
         if name == "absent" { return try .restore(id: id, timestampMillis: .min, note: nil, environment: nil, breadcrumbs: nil) }
         if name == "empty" { return try .restore(id: id, timestampMillis: .min, note: nil, environment: nil, breadcrumbs: nil,
             logs: .restore(events: [], observedAtMillis: 0, sourceEventCount: 4, sourceEvictedCount: 2)) }
+        if name.hasPrefix("diagnostic-") {
+            let evidence: SystemDiagnostic
+            switch name {
+            case "diagnostic-android":
+                evidence = try .androidExit(timestampMillis: 9_007_199_254_740_993, reasonCode: 5, status: .min,
+                    processID: .max, importance: 100, pssKiB: .max, rssKiB: nil)
+            case "diagnostic-crash":
+                evidence = try .metricKit(intervalStartMillis: .min, intervalEndMillis: 9_007_199_254_740_993, kind: .crash,
+                    metadata: [.appVersion: .restore(value: "测试1", isTruncated: true),
+                               .appBuild: .capture(publicValue: "42"), .osVersion: .capture(publicValue: "26.5"),
+                               .deviceModel: .capture(publicValue: "iPhone17,1")],
+                    signal: 11, exceptionType: .max, exceptionCode: "18446744073709551615")
+            case "diagnostic-hang":
+                evidence = try .metricKit(intervalStartMillis: -1, intervalEndMillis: 0, kind: .hang,
+                    metadata: [:], hangDurationMillis: 0)
+            default: preconditionFailure("Unknown fixture")
+            }
+            return try .restore(id: id, timestampMillis: .max, note: nil, environment: nil, breadcrumbs: nil,
+                                systemDiagnostic: evidence)
+        }
         precondition(name == "complete")
         var facts = Dictionary(uniqueKeysWithValues: EnvironmentKey.allCases.map { ($0, EnvironmentFact.unavailable) })
         facts[.appIdentifier] = .text("com.example.fixture"); facts[.appVersion] = .text("测试1")

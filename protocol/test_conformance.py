@@ -3,7 +3,7 @@ import copy
 import json
 import unittest
 from jsonschema import Draft202012Validator, ValidationError
-from validate import ROOT, validate
+from validate import ROOT, validate, validators
 
 
 FIXTURES = ROOT.parent / "testing" / "incident-export"
@@ -22,15 +22,36 @@ class ConformanceTests(unittest.TestCase):
                 validate(document["metadata"], document["payloads"], reader=reader)
 
     def test_schemas_are_valid(self):
-        for path in sorted(ROOT.glob("*.schema.json")):
-            with self.subTest(schema=path.name):
+        for path in sorted(ROOT.rglob("*.schema.json")):
+            with self.subTest(schema=str(path.relative_to(ROOT))):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete"):
+        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)
+
+    def test_preserved_revision_one_and_explicit_revision_selection(self):
+        for name in ("absent", "empty", "complete"):
+            for reader in (False, True):
+                with self.subTest(fixture=name, reader=reader):
+                    self.check(fixture("revisions/1/" + name), True, reader)
+                    # Old readers reject the new revision instead of overlooking diagnostic evidence.
+                    for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
+                        with self.assertRaises(ValidationError):
+                            validator.validate(document)
+        for revision in (0, 3, "2", None, True):
+            document = fixture("absent")
+            document["metadata"]["revision"] = revision
+            document["payloads"]["revision"] = revision
+            for reader in (False, True):
+                with self.subTest(revision=revision, reader=reader):
+                    self.check(document, False, reader)
+        document = fixture("absent")
+        document["payloads"]["revision"] = 1
+        self.check(document, False)
+        self.check(document, False, reader=True)
 
     def test_corruption_and_compatibility(self):
         cases = fixture("cases")

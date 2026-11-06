@@ -4,7 +4,8 @@ The optional Runtime modules read OS-owned diagnostic history through Core's
 `SystemDiagnosticProvider`. iOS also supplies an explicit MetricKit subscriber.
 These APIs install no fatal signal, Mach exception, or Java exception handler.
 They do not persist records automatically. Hosts can explicitly save a reviewed
-record through the incident archive; diagnostic export and UI are not connected yet.
+record through the incident archive and export it through the optional Export
+module. The native diagnostic viewer is not connected yet.
 
 ## Sources and coverage
 
@@ -107,8 +108,11 @@ system records without loading their detailed fields. Separate manual/system
 count limits prevent count-based cross-eviction, while disk and age limits remain
 shared. See [persistence and migration](incidents.md).
 
-The current portable revision cannot represent this evidence. Export rejects a
-diagnostic snapshot instead of producing an apparently successful empty report.
+Portable document revision 2 includes the reviewed system evidence, original
+time/range, historical metadata, exact numeric codes, and missing-value states.
+It preserves recovery observation time separately and adds no current context.
+See the [document contract](../protocol/README.md) and
+[file export](incident-export.md) for explicit encoding and sharing.
 
 ## Privacy and bounds
 

@@ -18,6 +18,7 @@ FORMATS = FormatChecker()
 for name, lower, upper in [
     ("int64", -(2**63), 2**63 - 1), ("uint63", 0, 2**63 - 1),
     ("positive64", 1, 2**63 - 1), ("uint64", 0, 2**64 - 1),
+    ("diagnosticCode", -(2**63), 2**64 - 1),
 ]:
     def integer(value, lower=lower, upper=upper):
         return isinstance(value, str) and re.fullmatch(r"0|-?[1-9][0-9]*", value) is not None and lower <= int(value) <= upper
@@ -133,6 +134,11 @@ def semantics(metadata, payloads):
     incident = metadata["incident"]
     require(incident["id"].lower() == payloads["incidentID"].lower(), "Documents belong to different incidents")
     total = utf8(incident["note"]["text"]) if incident["note"] is not None else 0
+    if metadata["revision"] == 2:
+        diagnostic = incident["systemDiagnostic"]
+        require((incident["origin"] == "systemDiagnostic") == (diagnostic is not None), "Incident origin conflicts with its evidence")
+        if diagnostic is not None:
+            total += diagnostic_semantics(diagnostic)
     if incident["environment"] is not None:
         for key in ENVIRONMENT_KEYS:
             value = incident["environment"]["values"][key]
@@ -174,6 +180,28 @@ def semantics(metadata, payloads):
     require(total <= 2097152, "Export exceeds text admission limit")
 
 
+def diagnostic_semantics(diagnostic):
+    start, end = int(diagnostic["intervalStartMillis"]), int(diagnostic["intervalEndMillis"])
+    require(start <= end, "Reversed diagnostic interval")
+    if diagnostic["source"] == "androidExitInfo":
+        exit_info = diagnostic["androidExit"]
+        require(exit_info is not None and diagnostic["metricKit"] is None, "Invalid Android diagnostic fields")
+        require(start == end and start >= 0, "Android exit must preserve its exact time")
+        kind = {2: "signalTermination", 3: "lowMemoryTermination", 4: "managedCrash", 5: "nativeCrash", 6: "anr"}.get(exit_info["reasonCode"], "otherExit")
+        require(diagnostic["kind"] == kind, "Android reason classification mismatch")
+        return 0
+    metric = diagnostic["metricKit"]
+    require(metric is not None and diagnostic["androidExit"] is None, "Invalid MetricKit fields")
+    if diagnostic["kind"] == "crash":
+        require(metric["hangDurationMillis"] is None, "Crash has a hang duration")
+    else:
+        require(diagnostic["kind"] == "hang" and metric["hangDurationMillis"] is not None
+                and all(metric[field] is None for field in ("signal", "exceptionType", "exceptionCode")), "Invalid hang evidence")
+    # Readers ignore unknown optional metadata without changing known-field semantics.
+    return utf8(metric["exceptionCode"]) + sum(utf8(metric["metadata"][key]["text"])
+        for key in ("appVersion", "appBuild", "osVersion", "deviceModel") if key in metric["metadata"])
+
+
 def tolerant(schema):
     if isinstance(schema, dict):
         return {key: tolerant(value) for key, value in schema.items() if not (key == "additionalProperties" and value is False)}
@@ -182,15 +210,18 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False):
-    schemas = [json.loads((ROOT / f"{name}.schema.json").read_text()) for name in ("incident", "payloads")]
+def validators(reader=False, revision=2):
+    require(type(revision) is int and revision in (1, 2), "Unsupported incident revision")
+    schemas = [json.loads((directory / f"{name}.schema.json").read_text())
+               for directory in (ROOT / "revisions" / "1", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)
-    return [Draft202012Validator(schema, registry=registry, format_checker=FORMATS) for schema in schemas]
+    selected = schemas[:2] if revision == 1 else schemas[2:]
+    return [Draft202012Validator(schema, registry=registry, format_checker=FORMATS) for schema in selected]
 
 
 def validate(metadata, payloads, reader=False):
-    for validator, document in zip(validators(reader), (metadata, payloads)):
+    for validator, document in zip(validators(reader, metadata.get("revision")), (metadata, payloads)):
         validator.validate(document)
     semantics(metadata, payloads)

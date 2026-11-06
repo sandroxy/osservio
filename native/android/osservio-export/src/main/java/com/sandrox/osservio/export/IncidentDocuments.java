@@ -10,6 +10,7 @@ import com.sandrox.osservio.core.IncidentPayload;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentWebSockets;
 import com.sandrox.osservio.core.LogEvent;
+import com.sandrox.osservio.core.SystemDiagnostic;
 import com.sandrox.osservio.core.WebSocketEvent;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -38,17 +39,17 @@ public final class IncidentDocuments {
     }
     public static IncidentDocuments encode(IncidentSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
-        // Revision 1 cannot represent system diagnostics; never silently omit their primary evidence.
-        if (snapshot.systemDiagnostic != null) throw new IllegalArgumentException("System diagnostics require a supported export revision");
         if (snapshot.textByteCount > MAXIMUM_TEXT_BYTES) throw new LimitExceeded();
         Map<String, Object> incident = object("id", snapshot.id, "timestampMillis", Long.toString(snapshot.timestampMillis),
+            "origin", snapshot.systemDiagnostic == null ? "manual" : "systemDiagnostic",
+            "systemDiagnostic", snapshot.systemDiagnostic == null ? null : diagnostic(snapshot.systemDiagnostic),
             "note", snapshot.note == null ? null : object("text", snapshot.note.text, "isPrivate", snapshot.note.isPrivate, "isTruncated", snapshot.note.isTruncated),
             "environment", snapshot.environment == null ? null : environment(snapshot.environment),
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 1, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 1, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 2, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 2, "incidentID", snapshot.id,
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
         if (metadata == null || payloads == null) throw new IllegalArgumentException("Snapshot cannot be represented as JSON");
@@ -83,6 +84,21 @@ public final class IncidentDocuments {
     }
     private static List<Object> headers(List<HTTPHeader> values) {
         List<Object> result = new ArrayList<>(); for (HTTPHeader value : values) result.add(object("name", value.name, "value", value.value)); return result;
+    }
+    private static Map<String, Object> diagnostic(SystemDiagnostic value) {
+        SystemDiagnostic.AndroidExit exit = value.androidExit;
+        SystemDiagnostic.MetricKit report = value.metricKit;
+        Map<String, Object> metadata = new TreeMap<>();
+        if (report != null) for (Map.Entry<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> entry : report.metadata.entrySet()) {
+            metadata.put(code(entry.getKey()), object("text", entry.getValue().value, "isTruncated", entry.getValue().isTruncated));
+        }
+        return object("source", code(value.source), "kind", code(value.kind),
+            "intervalStartMillis", Long.toString(value.intervalStartMillis), "intervalEndMillis", Long.toString(value.intervalEndMillis),
+            "androidExit", exit == null ? null : object("reasonCode", exit.reasonCode, "status", exit.status, "processID", exit.processID,
+                "importance", exit.importance, "pssKiB", decimal(exit.pssKiB), "rssKiB", decimal(exit.rssKiB)),
+            "metricKit", report == null ? null : object("metadata", metadata, "signal", report.signal,
+                "exceptionType", decimal(report.exceptionType), "exceptionCode", report.exceptionCode,
+                "hangDurationMillis", decimal(report.hangDurationMillis)));
     }
     private static Map<String, Object> environment(EnvironmentSnapshot value) {
         Map<String, Object> facts = new TreeMap<>();

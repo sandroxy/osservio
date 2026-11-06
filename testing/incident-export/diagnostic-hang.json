@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 2,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "9223372036854775807",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": null,
+      "http": null,
+      "webSockets": null,
+      "origin": "systemDiagnostic",
+      "systemDiagnostic": {
+        "source": "metricKit",
+        "kind": "hang",
+        "intervalStartMillis": "-1",
+        "intervalEndMillis": "0",
+        "androidExit": null,
+        "metricKit": {
+          "metadata": {},
+          "signal": null,
+          "exceptionType": null,
+          "exceptionCode": null,
+          "hangDurationMillis": "0"
+        }
+      }
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 2,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {}
+  }
+}

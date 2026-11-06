@@ -4,16 +4,10 @@ import OsservioExport
 import XCTest
 
 final class IncidentDocumentsTests: XCTestCase {
-    func testUnsupportedSystemEvidenceIsRejectedInsteadOfSilentlyOmitted() throws {
-        let evidence = try SystemDiagnostic.androidExit(timestampMillis: 1, reasonCode: 4, status: 0,
-            processID: 123, importance: 100, pssKiB: nil, rssKiB: nil)
-        let snapshot = IncidentSnapshot.captureDiagnostic(evidence, observedAtMillis: 2)
-        XCTAssertThrowsError(try IncidentDocuments.encode(snapshot)) { XCTAssertEqual($0 as? IncidentDocumentError, .invalidRecord) }
-    }
     func testDocumentsMatchIndependentSharedFixtures() throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }
-        for name in ["absent", "empty", "complete"] {
+        for name in ["absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"] {
             let expected = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("testing/incident-export/\(name).json"))) as? [String: Any])
             let documents = try IncidentDocuments.encode(IncidentDocumentFixture.make(name))
             let metadata = try XCTUnwrap(JSONSerialization.jsonObject(with: documents.metadataJSON) as? NSDictionary)

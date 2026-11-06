@@ -18,13 +18,8 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public final class IncidentDocumentsTest {
-    @Test public void unsupportedSystemEvidenceIsRejectedInsteadOfSilentlyOmitted() {
-        SystemDiagnostic evidence = SystemDiagnostic.androidExit(1, 4, 0, 123, 100, null, null);
-        IncidentSnapshot snapshot = IncidentSnapshot.captureDiagnostic(evidence, 2);
-        assertThrows(IllegalArgumentException.class, () -> IncidentDocuments.encode(snapshot));
-    }
     @Test public void documentsMatchIndependentSharedFixtures() throws Exception {
-        for (String name : new String[] {"absent", "empty", "complete"}) {
+        for (String name : new String[] {"absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"}) {
             JSONObject fixture;
             try (InputStream input = InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("incident-export/" + name + ".json");
                  ByteArrayOutputStream output = new ByteArrayOutputStream()) {
