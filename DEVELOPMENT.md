@@ -38,7 +38,8 @@ native behavior and interaction validation. No artifacts have been published.
 - [Runtime context](doc/runtime-context.md) describes baseline breadcrumbs,
   native signal ownership, environment privacy, and platform-specific metrics.
 - [System diagnostics](doc/system-diagnostics.md) describes bounded OS history
-  reads and MetricKit subscription, without fatal handlers or automatic persistence.
+  reads, MetricKit subscription, and explicit incident persistence, without fatal
+  handlers or automatic recovery.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment
@@ -123,7 +124,8 @@ using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
 `-only-testing:OsservioCoreTests/BreadcrumbDatabaseTests`, and
 `-only-testing:OsservioCoreTests/SQLiteBreadcrumbStoreTests`. Include
 `-only-testing:OsservioCoreTests/IncidentDatabaseTests`,
-`-only-testing:OsservioCoreTests/IncidentDetailDatabaseTests`, and
+`-only-testing:OsservioCoreTests/IncidentDetailDatabaseTests`,
+`-only-testing:OsservioCoreTests/IncidentDiagnosticDatabaseTests`, and
 `-only-testing:OsservioCoreTests/SQLiteIncidentStoreTests` for manual snapshot
 storage and shared SQLite policy changes. These tests use
 fresh, test-owned temporary directories and remove only their own fixtures.

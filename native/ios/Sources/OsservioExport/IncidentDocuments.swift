@@ -12,6 +12,8 @@ public struct IncidentDocuments: Sendable {
     public static let maximumDocumentBytes = 16_777_216
 
     public static func encode(_ snapshot: IncidentSnapshot) throws -> IncidentDocuments {
+        // Revision 1 cannot represent system diagnostics; never silently omit their primary evidence.
+        guard snapshot.systemDiagnostic == nil else { throw IncidentDocumentError.invalidRecord }
         guard snapshot.textByteCount <= maximumTextBytes else { throw IncidentDocumentError.tooLarge }
         let incident: [String: Any] = [
             "id": snapshot.id, "timestampMillis": String(snapshot.timestampMillis),

@@ -3,7 +3,8 @@
 The optional Runtime modules read OS-owned diagnostic history through Core's
 `SystemDiagnosticProvider`. iOS also supplies an explicit MetricKit subscriber.
 These APIs install no fatal signal, Mach exception, or Java exception handler.
-They do not persist, export, or display records yet.
+They do not persist records automatically. Hosts can explicitly save a reviewed
+record through the incident archive; diagnostic export and UI are not connected yet.
 
 ## Sources and coverage
 
@@ -85,9 +86,29 @@ callback may finish during stop; subsequently received payloads are ignored.
 
 The provider does not subscribe automatically. These APIs are independent of
 `CaptureController`; a host must bind subscription lifetime to its capture/access
-policy. Automatic recovery, incident persistence, and the Problems view are not
-connected yet. Reports are not deduplicated, and identical symptoms do not receive
+policy. Automatic recovery and the Problems view are not connected yet. Reports
+are not deduplicated, and identical symptoms do not receive
 invented stable identities.
+
+## Explicit persistence
+
+Use `IncidentSnapshot.captureDiagnostic(record, observedAtMillis:)` on Swift, or
+`IncidentSnapshot.captureDiagnostic(record, observedAtMillis)` on Java, then pass
+the result to `IncidentArchive.save`. Supply the batch's `observedAtMillis` as the
+recovery observation time. The diagnostic retains its separate original time or
+reporting interval. This factory attaches no current environment, breadcrumbs,
+logs, or traffic and does not infer a matching historical run.
+
+Each call creates a new snapshot identity. The host must not blindly resave an OS
+history window on every launch: repeated import/deduplication is not implemented.
+Save completion confirms commitment; honor the archive's admission and text
+limits when sequencing operations. `IncidentSummary.diagnosticKind` identifies
+system records without loading their detailed fields. Separate manual/system
+count limits prevent count-based cross-eviction, while disk and age limits remain
+shared. See [persistence and migration](incidents.md).
+
+The current portable revision cannot represent this evidence. Export rejects a
+diagnostic snapshot instead of producing an apparently successful empty report.
 
 ## Privacy and bounds
 

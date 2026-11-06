@@ -6,18 +6,22 @@ final class IncidentDatabase {
     private let connection: SQLiteConnection
     private let options: IncidentPersistenceOptions
     private let details: IncidentDetailDatabase
+    private let diagnostics: IncidentDiagnosticDatabase
     private static let applicationID: Int64 = 0x4f535649
-    private static let revision: Int64 = 2
+    private static let revision: Int64 = 3
 
     init(url: URL, options: IncidentPersistenceOptions, now: Int64) throws {
         self.options = options
         connection = try EvidenceSQLite.open(url: url, byteLimit: options.databaseByteLimit,
-            applicationID: Self.applicationID, revision: Self.revision, schema: Self.schema + IncidentDetailDatabase.schema,
-            migrations: [1: IncidentDetailDatabase.schema])
+            applicationID: Self.applicationID, revision: Self.revision,
+            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema,
+            migrations: [1: IncidentDetailDatabase.schema, 2: IncidentDiagnosticDatabase.schema])
         details = IncidentDetailDatabase(connection: connection)
+        diagnostics = IncidentDiagnosticDatabase(connection: connection)
         do {
             try connection.transaction {
-                guard try scalar("SELECT count(*) FROM incidents") <= 16 else { throw PersistenceError.invalidRecord }
+                guard try scalar("SELECT count(*) FROM incidents WHERE diagnostic_kind IS NULL") <= 16,
+                      try scalar("SELECT count(*) FROM incidents WHERE diagnostic_kind IS NOT NULL") <= 16 else { throw PersistenceError.invalidRecord }
                 try prune(now: now, reserve: 0)
             }
         } catch { connection.close(); throw error }
@@ -55,18 +59,19 @@ final class IncidentDatabase {
             // Check identity before eviction, so saving the same snapshot cannot replace its original evidence.
             let duplicate = try connection.statement("SELECT 1 FROM incidents WHERE id=?", [.text(snapshot.id)]) { try $0.step() }
             guard !duplicate else { throw PersistenceError.invalidRecord }
-            try prune(now: now, reserve: 1)
+            try prune(now: now, reserve: 1, diagnostic: snapshot.systemDiagnostic != nil)
             try connection.execute("""
                 INSERT INTO incidents(id, timestamp, saved_at, note, private, truncated, environment_platform,
-                    environment_time, breadcrumb_count, source_count, source_evicted, text_bytes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    environment_time, breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, [.text(snapshot.id), .integer(snapshot.timestampMillis), .integer(now), snapshot.note.map { .text($0.text) } ?? .null,
                          .integer(snapshot.note?.isPrivate == true ? 1 : 0), .integer(snapshot.note?.isTruncated == true ? 1 : 0),
                          snapshot.environment.map { .text($0.platform.rawValue) } ?? .null,
                          snapshot.environment.map { .integer($0.timestampMillis) } ?? .null,
                          snapshot.breadcrumbs.map { .integer(Int64($0.events.count)) } ?? .null,
                          snapshot.breadcrumbs.map { .integer(Int64($0.sourceEventCount)) } ?? .null,
-                         snapshot.breadcrumbs.map { .integer($0.sourceEvictedCount) } ?? .null, .integer(Int64(snapshot.textByteCount))])
+                         snapshot.breadcrumbs.map { .integer($0.sourceEvictedCount) } ?? .null, .integer(Int64(snapshot.textByteCount)),
+                         snapshot.systemDiagnostic.map { .text($0.kind.rawValue) } ?? .null])
             if let environment = snapshot.environment {
                 for key in EnvironmentKey.allCases {
                     guard let value = environment.values[key] else { throw PersistenceError.invalidRecord }
@@ -94,21 +99,28 @@ final class IncidentDatabase {
                              event.value.map(SQLiteValue.integer) ?? .null, .text(event.retention.rawValue)])
             }
             try details.save(snapshot)
+            try diagnostics.save(snapshot)
         }
     }
-    private func prune(now: Int64, reserve: Int) throws {
+    private func prune(now: Int64, reserve: Int, diagnostic: Bool = false) throws {
         if now >= options.maximumAgeMillis {
             try connection.execute("DELETE FROM incidents WHERE saved_at<?", [.integer(now - options.maximumAgeMillis)])
         }
-        try connection.execute("DELETE FROM incidents WHERE id IN (SELECT id FROM incidents ORDER BY ordinal DESC LIMIT -1 OFFSET ?)",
-                               [.integer(Int64(options.retainedIncidents - reserve))])
+        try connection.execute("DELETE FROM incidents WHERE id IN (SELECT id FROM incidents WHERE diagnostic_kind IS NULL ORDER BY ordinal DESC LIMIT -1 OFFSET ?)",
+                               [.integer(Int64(options.retainedIncidents - (diagnostic ? 0 : reserve)))])
+        try connection.execute("DELETE FROM incidents WHERE id IN (SELECT id FROM incidents WHERE diagnostic_kind IS NOT NULL ORDER BY ordinal DESC LIMIT -1 OFFSET ?)",
+                               [.integer(Int64(options.retainedDiagnostics - (diagnostic ? reserve : 0)))])
     }
     func summaries() throws -> [IncidentSummary] {
-        try connection.statement(Self.headerQuery + " ORDER BY ordinal DESC LIMIT 17") { row in
+        try connection.statement(Self.headerQuery + " ORDER BY ordinal DESC LIMIT 33") { row in
             var summaries: [IncidentSummary] = []
+            var manualCount = 0, diagnosticCount = 0
             while try row.step() {
-                guard summaries.count < options.retainedIncidents else { throw PersistenceError.invalidRecord }
-                summaries.append(try header(row).summary)
+                guard summaries.count < options.retainedIncidents + options.retainedDiagnostics else { throw PersistenceError.invalidRecord }
+                let summary = try header(row).summary
+                if summary.diagnosticKind == nil { manualCount += 1 } else { diagnosticCount += 1 }
+                guard manualCount <= options.retainedIncidents, diagnosticCount <= options.retainedDiagnostics else { throw PersistenceError.invalidRecord }
+                summaries.append(summary)
             }
             return summaries
         }
@@ -122,8 +134,10 @@ final class IncidentDatabase {
         let environment = try readEnvironment(id: info.summary.id, info: info)
         let breadcrumbs = try readBreadcrumbs(id: info.summary.id, info: info)
         let detail = try details.read(id: info.summary.id, windows: info.windows)
+        let diagnostic = try diagnostics.read(id: info.summary.id, expectedKind: info.summary.diagnosticKind)
         let restored = try IncidentSnapshot.restore(id: info.summary.id, timestampMillis: info.summary.timestampMillis,
-            note: info.summary.note, environment: environment, breadcrumbs: breadcrumbs, logs: detail.logs, http: detail.http, webSockets: detail.webSockets)
+            note: info.summary.note, environment: environment, breadcrumbs: breadcrumbs, logs: detail.logs, http: detail.http,
+            webSockets: detail.webSockets, systemDiagnostic: diagnostic)
         guard restored.textByteCount == info.bytes else { throw PersistenceError.invalidRecord }
         return restored
     }
@@ -136,7 +150,7 @@ final class IncidentDatabase {
 
     private static let headerQuery = """
         SELECT id, timestamp, note, private, truncated, environment_platform, environment_time,
-            breadcrumb_count, source_count, source_evicted, text_bytes FROM incidents
+            breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind FROM incidents
         """
     private struct Header {
         let summary: IncidentSummary
@@ -166,11 +180,17 @@ final class IncidentDatabase {
         } else { guard source == nil, evicted == nil else { throw PersistenceError.invalidRecord } }
         let bytes = try row.integer(10)
         guard (0...2_097_152).contains(bytes) else { throw PersistenceError.invalidRecord }
+        let diagnosticKind: SystemDiagnosticKind?
+        if row.isNull(11) { diagnosticKind = nil }
+        else {
+            guard let kind = SystemDiagnosticKind(rawValue: try row.text(11, byteLimit: 32)) else { throw PersistenceError.invalidRecord }
+            diagnosticKind = kind
+        }
         let windows = try details.windows(id: id)
         guard windows.values.reduce(0, { $0 + $1.bytes + $1.payloadBytes }) <= bytes else { throw PersistenceError.invalidRecord }
         return try Header(summary: IncidentSummary(id: id, timestampMillis: row.integer(1), note: note,
             hasEnvironment: platform != nil, breadcrumbCount: count.map(Int.init), logCount: windows[.logs]?.count,
-            httpCount: windows[.http]?.count, webSocketCount: windows[.websocket]?.count), platform: platform,
+            httpCount: windows[.http]?.count, webSocketCount: windows[.websocket]?.count, diagnosticKind: diagnosticKind), platform: platform,
             environmentTime: platform == nil ? nil : row.integer(6), sourceCount: source.map(Int.init), sourceEvicted: evicted, bytes: Int(bytes), windows: windows)
     }
     private func readEnvironment(id: String, info: Header) throws -> EnvironmentSnapshot? {

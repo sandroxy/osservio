@@ -14,6 +14,7 @@ import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentSummary;
+import com.sandrox.osservio.core.SystemDiagnostic;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,23 +23,30 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 /** Worker-confined normalized storage. Live histories have no ownership or retention dependency on it. */
 final class IncidentDatabase implements AutoCloseable {
     private final SQLiteDatabase database;
     private final IncidentDetailDatabase details;
+    private final IncidentDiagnosticDatabase diagnostics;
     private final IncidentPersistenceOptions options;
     IncidentDatabase(File file, IncidentPersistenceOptions options, long now) {
         this.options = options;
-        String[] schema = Arrays.copyOf(SCHEMA, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length);
+        String[] schema = Arrays.copyOf(SCHEMA, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length + IncidentDiagnosticDatabase.SCHEMA.length);
         System.arraycopy(IncidentDetailDatabase.SCHEMA, 0, schema, SCHEMA.length, IncidentDetailDatabase.SCHEMA.length);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 2, schema, Collections.singletonMap(1L, IncidentDetailDatabase.SCHEMA));
+        System.arraycopy(IncidentDiagnosticDatabase.SCHEMA, 0, schema, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length, IncidentDiagnosticDatabase.SCHEMA.length);
+        Map<Long, String[]> migrations = new HashMap<>();
+        migrations.put(1L, IncidentDetailDatabase.SCHEMA); migrations.put(2L, IncidentDiagnosticDatabase.SCHEMA);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 3, schema, migrations);
         details = new IncidentDetailDatabase(database);
+        diagnostics = new IncidentDiagnosticDatabase(database);
         try {
             transaction(() -> {
-                if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents") > 16) throw EvidenceStorageException.invalid();
-                prune(now, 0);
+                if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE diagnostic_kind IS NULL") > 16 ||
+                    EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE diagnostic_kind IS NOT NULL") > 16) throw EvidenceStorageException.invalid();
+                prune(now, 0, false);
             });
         } catch (RuntimeException failure) { database.close(); throw failure; }
     }
@@ -59,16 +67,17 @@ final class IncidentDatabase implements AutoCloseable {
         transaction(() -> {
             // Check before retention cleanup; a duplicate identity must never replace its original evidence.
             if (EvidenceSQLite.scalar(database, "SELECT count(*) FROM incidents WHERE id=?", snapshot.id) != 0) throw EvidenceStorageException.invalid();
-            prune(now, 1);
+            prune(now, 1, snapshot.systemDiagnostic != null);
             IncidentSnapshot.Note note = snapshot.note;
             EnvironmentSnapshot environment = snapshot.environment;
             IncidentSnapshot.Breadcrumbs breadcrumbs = snapshot.breadcrumbs;
             database.execSQL("INSERT INTO incidents(id, timestamp, saved_at, note, private, truncated, environment_platform, environment_time, "
-                + "breadcrumb_count, source_count, source_evicted, text_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
+                + "breadcrumb_count, source_count, source_evicted, text_bytes, diagnostic_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
                     snapshot.id, snapshot.timestampMillis, now, note == null ? null : note.text, note != null && note.isPrivate ? 1 : 0,
                     note != null && note.isTruncated ? 1 : 0, environment == null ? null : name(environment.platform), environment == null ? null : environment.timestampMillis,
                     breadcrumbs == null ? null : breadcrumbs.events.size(), breadcrumbs == null ? null : breadcrumbs.sourceEventCount,
-                    breadcrumbs == null ? null : breadcrumbs.sourceEvictedCount, snapshot.textByteCount});
+                    breadcrumbs == null ? null : breadcrumbs.sourceEvictedCount, snapshot.textByteCount,
+                    snapshot.systemDiagnostic == null ? null : name(snapshot.systemDiagnostic.kind)});
             if (environment != null) for (Map.Entry<EnvironmentSnapshot.Key, EnvironmentSnapshot.Value> entry : environment.values.entrySet()) {
                 EnvironmentSnapshot.Value value = entry.getValue();
                 EnvironmentSnapshot.Fact fact = value.fact;
@@ -86,19 +95,26 @@ final class IncidentDatabase implements AutoCloseable {
                         event.message, event.isPrivate ? 1 : 0, event.isTruncated ? 1 : 0, event.value, name(event.retention)});
             }
             details.save(snapshot);
+            diagnostics.save(snapshot);
         });
     }
-    private void prune(long now, int reserve) {
+    private void prune(long now, int reserve, boolean diagnostic) {
         if (now >= options.maximumAgeMillis) database.execSQL("DELETE FROM incidents WHERE saved_at<?", new Object[] {now - options.maximumAgeMillis});
-        database.execSQL("DELETE FROM incidents WHERE id IN (SELECT id FROM incidents ORDER BY ordinal DESC LIMIT -1 OFFSET ?)",
-            new Object[] {options.retainedIncidents - reserve});
+        database.execSQL("DELETE FROM incidents WHERE id IN (SELECT id FROM incidents WHERE diagnostic_kind IS NULL ORDER BY ordinal DESC LIMIT -1 OFFSET ?)",
+            new Object[] {options.retainedIncidents - (diagnostic ? 0 : reserve)});
+        database.execSQL("DELETE FROM incidents WHERE id IN (SELECT id FROM incidents WHERE diagnostic_kind IS NOT NULL ORDER BY ordinal DESC LIMIT -1 OFFSET ?)",
+            new Object[] {options.retainedDiagnostics - (diagnostic ? reserve : 0)});
     }
     List<IncidentSummary> summaries() {
         List<IncidentSummary> result = new ArrayList<>();
-        try (Cursor row = query(headerQuery() + " ORDER BY ordinal DESC LIMIT 17")) {
+        int manualCount = 0, diagnosticCount = 0;
+        try (Cursor row = query(headerQuery() + " ORDER BY ordinal DESC LIMIT 33")) {
             while (row.moveToNext()) {
-                if (result.size() >= options.retainedIncidents) throw EvidenceStorageException.invalid();
-                result.add(header(row).summary);
+                if (result.size() >= options.retainedIncidents + options.retainedDiagnostics) throw EvidenceStorageException.invalid();
+                IncidentSummary summary = header(row).summary;
+                if (summary.diagnosticKind == null) manualCount++; else diagnosticCount++;
+                if (manualCount > options.retainedIncidents || diagnosticCount > options.retainedDiagnostics) throw EvidenceStorageException.invalid();
+                result.add(summary);
             }
         }
         return Collections.unmodifiableList(result);
@@ -113,8 +129,9 @@ final class IncidentDatabase implements AutoCloseable {
         EnvironmentSnapshot environment = readEnvironment(info);
         IncidentSnapshot.Breadcrumbs breadcrumbs = readBreadcrumbs(info);
         IncidentDetailDatabase.Detail attachments = details.read(info.summary.id, info.windows);
+        SystemDiagnostic diagnostic = diagnostics.read(info.summary.id, info.summary.diagnosticKind);
         IncidentSnapshot snapshot = IncidentSnapshot.restore(info.summary.id, info.summary.timestampMillis, info.summary.note, environment, breadcrumbs,
-            attachments.logs, attachments.http, attachments.webSockets);
+            attachments.logs, attachments.http, attachments.webSockets, diagnostic);
         if (snapshot.textByteCount != info.bytes) throw EvidenceStorageException.invalid();
         return snapshot;
     }
@@ -125,7 +142,8 @@ final class IncidentDatabase implements AutoCloseable {
     void deleteAll() { transaction(() -> database.execSQL("DELETE FROM incidents")); }
     private static String headerQuery() {
         return "SELECT " + textColumn("id", 36) + ",timestamp," + textColumn("note", 4096) + ",private,truncated,"
-            + textColumn("environment_platform", 16) + ",environment_time,breadcrumb_count,source_count,source_evicted,text_bytes FROM incidents";
+            + textColumn("environment_platform", 16) + ",environment_time,breadcrumb_count,source_count,source_evicted,text_bytes,"
+            + textColumn("diagnostic_kind", 32) + " FROM incidents";
     }
     private static final class Header {
         final IncidentSummary summary;
@@ -164,7 +182,8 @@ final class IncidentDatabase implements AutoCloseable {
         for (IncidentDetailDatabase.Window window : windows.values()) attachmentBytes += window.bytes + window.payloadBytes;
         if (attachmentBytes > bytes) throw EvidenceStorageException.invalid();
         return new Header(new IncidentSummary(id, integer(row, 1), note, platform != null, count == null ? null : count.intValue(),
-            count(windows, IncidentDetailDatabase.Kind.LOGS), count(windows, IncidentDetailDatabase.Kind.HTTP), count(windows, IncidentDetailDatabase.Kind.WEBSOCKET)),
+            count(windows, IncidentDetailDatabase.Kind.LOGS), count(windows, IncidentDetailDatabase.Kind.HTTP), count(windows, IncidentDetailDatabase.Kind.WEBSOCKET),
+            row.isNull(11) ? null : parse(SystemDiagnostic.Kind.values(), text(row, 11, 32))),
             platform, platform == null ? null : integer(row, 6), source == null ? null : source.intValue(), evicted, (int) bytes, windows);
     }
     private static Integer count(Map<IncidentDetailDatabase.Kind, IncidentDetailDatabase.Window> windows, IncidentDetailDatabase.Kind kind) {

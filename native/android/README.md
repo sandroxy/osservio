@@ -188,8 +188,8 @@ coverage, privacy, and metric definitions.
 The optional Runtime module also provides `SystemDiagnostics`, a bounded
 asynchronous read of main-process exit history on API 30+. Older versions report
 `unsupported`. It installs no crash handler; read [system diagnostics](../../doc/system-diagnostics.md)
-for permitted fields, source limits, lifecycle, and the current absence of
-incident persistence and UI integration.
+for permitted fields, source limits, lifecycle, explicit incident persistence,
+and the remaining automatic-recovery, export, and UI limitations.
 
 ## Manual problem snapshots
 

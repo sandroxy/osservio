@@ -4,6 +4,12 @@ import OsservioExport
 import XCTest
 
 final class IncidentDocumentsTests: XCTestCase {
+    func testUnsupportedSystemEvidenceIsRejectedInsteadOfSilentlyOmitted() throws {
+        let evidence = try SystemDiagnostic.androidExit(timestampMillis: 1, reasonCode: 4, status: 0,
+            processID: 123, importance: 100, pssKiB: nil, rssKiB: nil)
+        let snapshot = IncidentSnapshot.captureDiagnostic(evidence, observedAtMillis: 2)
+        XCTAssertThrowsError(try IncidentDocuments.encode(snapshot)) { XCTAssertEqual($0 as? IncidentDocumentError, .invalidRecord) }
+    }
     func testDocumentsMatchIndependentSharedFixtures() throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }

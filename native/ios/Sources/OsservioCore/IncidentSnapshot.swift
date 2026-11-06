@@ -1,6 +1,6 @@
 import Foundation
 
-/// A deliberate local problem snapshot. Its existence does not establish a crash or its cause.
+/// A manual mark or a recovered system diagnostic. Only the attached evidence establishes its classification.
 public struct IncidentSnapshot: Sendable {
     public let id: String
     public let timestampMillis: Int64
@@ -12,6 +12,7 @@ public struct IncidentSnapshot: Sendable {
     public let logs: IncidentLogs?
     public let http: IncidentHTTP?
     public let webSockets: IncidentWebSockets?
+    public let systemDiagnostic: SystemDiagnostic?
     /// Sanitized text bytes only; excludes structural, indexing, and object overhead.
     public var textByteCount: Int {
         let environmentBytes = environment?.values.values.reduce(0) { total, value in
@@ -21,6 +22,7 @@ public struct IncidentSnapshot: Sendable {
         return (note?.text.utf8.count ?? 0) + environmentBytes + (breadcrumbs?.retainedTextBytes ?? 0)
             + (logs?.retainedTextBytes ?? 0) + (http?.retainedTextBytes ?? 0) + (http?.retainedPayloadBytes ?? 0)
             + (webSockets?.retainedTextBytes ?? 0) + (webSockets?.retainedPayloadBytes ?? 0)
+            + (systemDiagnostic?.textByteCount ?? 0)
     }
 
     public static func capture(note: LogMessage? = nil, environment: EnvironmentSnapshot? = nil,
@@ -34,15 +36,21 @@ public struct IncidentSnapshot: Sendable {
         let safeNote = try note.map { try IncidentNote.capture($0) }
         let context = try breadcrumbs.map { try IncidentBreadcrumbs.capture($0, count: breadcrumbLimit, bytes: breadcrumbTextByteLimit) }
         return IncidentSnapshot(id: UUID().uuidString, timestampMillis: clock.wallTimeMillis(), note: safeNote,
-                                environment: environment, breadcrumbs: context, logs: logs, http: http, webSockets: webSockets)
+                                environment: environment, breadcrumbs: context, logs: logs, http: http, webSockets: webSockets, systemDiagnostic: nil)
+    }
+    /// Records the recovery observation time separately from the diagnostic's own time/range. No current context is attached.
+    public static func captureDiagnostic(_ diagnostic: SystemDiagnostic, observedAtMillis: Int64) -> IncidentSnapshot {
+        IncidentSnapshot(id: UUID().uuidString, timestampMillis: observedAtMillis, note: nil, environment: nil,
+            breadcrumbs: nil, logs: nil, http: nil, webSockets: nil, systemDiagnostic: diagnostic)
     }
     /// Reconstructs validated sanitized evidence without generating a new identity or observation time.
     public static func restore(id: String, timestampMillis: Int64, note: IncidentNote?,
                                environment: EnvironmentSnapshot?, breadcrumbs: IncidentBreadcrumbs?,
-                               logs: IncidentLogs? = nil, http: IncidentHTTP? = nil, webSockets: IncidentWebSockets? = nil) throws -> IncidentSnapshot {
+                               logs: IncidentLogs? = nil, http: IncidentHTTP? = nil, webSockets: IncidentWebSockets? = nil,
+                               systemDiagnostic: SystemDiagnostic? = nil) throws -> IncidentSnapshot {
         guard Array(id.utf8.prefix(37)).count == 36, UUID(uuidString: id) != nil else { throw PersistenceError.invalidRecord }
         return IncidentSnapshot(id: id, timestampMillis: timestampMillis, note: note, environment: environment, breadcrumbs: breadcrumbs,
-            logs: logs, http: http, webSockets: webSockets)
+            logs: logs, http: http, webSockets: webSockets, systemDiagnostic: systemDiagnostic)
     }
 }
 

@@ -1,0 +1,29 @@
+missing-detail	metric	DELETE FROM incident_diagnostics
+missing-header-kind	metric	UPDATE incidents SET diagnostic_kind=NULL
+unknown-header-kind	metric	UPDATE incidents SET diagnostic_kind='invented'
+wrong-classification	android	UPDATE incidents SET diagnostic_kind='lowMemoryTermination'
+unknown-source	metric	UPDATE incident_diagnostics SET source='invented'
+source-field-conflict	metric	UPDATE incident_diagnostics SET source='androidExitInfo'
+reversed-range	metric	UPDATE incident_diagnostics SET interval_start=300
+android-range	android	UPDATE incident_diagnostics SET interval_end=200
+numeric-type	metric	UPDATE incident_diagnostics SET interval_start=1.5
+zero-pid	android	UPDATE incident_diagnostics SET process_id=0
+pid-overflow	android	UPDATE incident_diagnostics SET process_id=2147483648
+zero-sample	android	UPDATE incident_diagnostics SET pss=0
+negative-sample	android	UPDATE incident_diagnostics SET rss=-1
+foreign-fields	metric	UPDATE incident_diagnostics SET reason=4
+android-foreign-fields	android	UPDATE incident_diagnostics SET signal=11
+zero-signal	metric	UPDATE incident_diagnostics SET signal=0
+signal-overflow	metric	UPDATE incident_diagnostics SET signal=2147483648
+code-leading-zero	metric	UPDATE incident_diagnostics SET exception_code='01'
+code-overflow	metric	UPDATE incident_diagnostics SET exception_code='18446744073709551616'
+code-type	metric	UPDATE incident_diagnostics SET exception_code=x'31'
+unexpected-duration	metric	UPDATE incident_diagnostics SET hang_duration=10
+unknown-metadata	metric	UPDATE diagnostic_metadata SET key='userName' WHERE key='appVersion'
+empty-metadata	metric	UPDATE diagnostic_metadata SET value='' WHERE key='appVersion'
+oversized-metadata	metric	UPDATE diagnostic_metadata SET value=printf('%0300d',0) WHERE key='appVersion'
+invalid-utf8	metric	UPDATE diagnostic_metadata SET value=CAST(x'ff' AS TEXT) WHERE key='appVersion'
+metadata-type	metric	UPDATE diagnostic_metadata SET value=x'31' WHERE key='appVersion'
+invalid-flag	metric	UPDATE diagnostic_metadata SET truncated=2 WHERE key='appVersion'
+missing-metadata-accounting	metric	DELETE FROM diagnostic_metadata
+invalid-byte-count	metric	UPDATE incidents SET text_bytes=text_bytes+1

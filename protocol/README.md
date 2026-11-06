@@ -102,7 +102,9 @@ field, required field, enum, identifier, privacy constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
 Unsupported revisions are rejected; no export revision migration exists yet.
 The private incident database's revision-1 to revision-2 migration is separate
-and tested in the native Store suites.
+from its revision-2 to revision-3 diagnostic extension; both are tested in the
+native Store suites. Portable revision 1 cannot encode system diagnostics.
+The native encoder rejects such snapshots instead of dropping that evidence.
 
 JSON Schema alone does not express cross-document identities, event accounting,
 UTF-8 byte totals, or transport state relationships. `validate.py` checks those

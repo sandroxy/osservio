@@ -38,6 +38,8 @@ public final class IncidentDocuments {
     }
     public static IncidentDocuments encode(IncidentSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
+        // Revision 1 cannot represent system diagnostics; never silently omit their primary evidence.
+        if (snapshot.systemDiagnostic != null) throw new IllegalArgumentException("System diagnostics require a supported export revision");
         if (snapshot.textByteCount > MAXIMUM_TEXT_BYTES) throw new LimitExceeded();
         Map<String, Object> incident = object("id", snapshot.id, "timestampMillis", Long.toString(snapshot.timestampMillis),
             "note", snapshot.note == null ? null : object("text", snapshot.note.text, "isPrivate", snapshot.note.isPrivate, "isTruncated", snapshot.note.isTruncated),

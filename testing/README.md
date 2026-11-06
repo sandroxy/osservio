@@ -94,8 +94,18 @@ duplicate identities, and references that do not match their supplied content.
 `incident-v1.sql` is an independent synthetic revision-1 incident database fixture,
 including a note, typed environment facts, and a private breadcrumb. Both native
 SQLite suites execute it in fresh test-owned directories and verify additive
-revision-2 migration, unchanged identity and observation/save times, new writes,
+schema migration, unchanged identity and observation/save times, new writes,
 and rollback when a schema addition fails. It is not an import format.
+
+`incident-v2.sql` extends that fixture with independently specified revision-2
+tables and a private log with an exact large sequence number. Both native engines
+verify direct revision-2 to revision-3 migration, preserved attachments/save time,
+new diagnostic writes, and rollback of the added column and tables on failure.
+`incident-diagnostic-corruption.tsv` supplies name, source family, and SQL mutation
+for strict diagnostic reads. Cases cover missing records, source/kind conflicts,
+invalid numbers/text, inconsistent metadata, and byte accounting. Additional tests
+cover separate manual/system retention, complete deletion, asynchronous reopening,
+and rollback of retention and partial evidence when a metadata write fails.
 
 `incident-detail-corruption.tsv` contains a case name and a SQL mutation applied
 to a valid synthetic attachment snapshot. Both SQLite suites require rejection

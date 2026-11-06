@@ -1,18 +1,23 @@
-# Manual problem snapshots
+# Problem snapshots
 
 `IncidentSnapshot` captures a deliberate problem marker with optional note,
 environment, breadcrumb, log, HTTP, and WebSocket attachments. `IncidentArchive` is the
 Core persistence contract; Store implements it with `SQLiteIncidentStore`.
+It can also retain one reviewed [system diagnostic](system-diagnostics.md) per
+snapshot through `captureDiagnostic`, without querying or attaching current context.
 No collector, capture session, network request, or environment query starts
 implicitly when a snapshot is made or saved.
 
-This API records a manual observation. It is not a crash detector, and the
+Manual capture records an observation. It is not a crash detector, and the
 snapshot's existence does not establish a failure or its cause. All attachments
 can be selected in the native composer or supplied through native APIs, then
 inspected in the native browser. Optional Export modules encode a frozen snapshot
 into [portable JSON documents](../protocol/README.md) and prepare
 [temporary ZIP files](incident-export.md). Supplying an exporter to a native
 problem view enables explicit system sharing of the saved snapshot.
+System diagnostic persistence is currently API-only: automatic recovery and
+native inspection are not connected yet. The revision-1 document encoder rejects
+diagnostic snapshots rather than silently omitting their primary evidence.
 
 ## Evidence and privacy
 
@@ -225,7 +230,8 @@ they do not establish that arbitrary public text or custom headers are safe.
   or retention eviction.
 - `readIncidents` returns newest-saved summaries without loading event or body
   content. Optional log, HTTP, and WebSocket counts distinguish absent groups
-  from attached empty windows.
+  from attached empty windows. `diagnosticKind` distinguishes a system record
+  from a manual mark; detailed diagnostic fields load only with the snapshot.
   `readIncident` loads a validated immutable snapshot on demand. A successful
   absent result means the requested identity is no longer retained.
 - `deleteIncident` and `deleteAllIncidents` delete only this archive, including
@@ -244,7 +250,7 @@ Closing or hiding an inspector is unrelated to storage lifetime.
 
 `persistenceStatus` is a nonblocking best-effort snapshot and may be unavailable
 during lock contention. Its queued, committed, discarded, and failed-batch
-counters refer to manual snapshots, not attached events. They describe this
+counters refer to snapshots, not attached events. They describe this
 store instance. Pre-admission invalid input and lock-contention rejection are
 reported through completion and are not included in these counters. Read and
 delete jobs consume admission permits but are not counted as queued snapshots.
@@ -253,7 +259,8 @@ delete jobs consume admission permits but are not counted as queued snapshots.
 
 | Limit | Default | Accepted range |
 | --- | --- | --- |
-| Retained snapshots | 10 | 1–16 |
+| Retained manual snapshots (`retainedIncidents`) | 10 | 1–16 |
+| Retained system snapshots (`retainedDiagnostics`) | 10 | 1–16 |
 | Age since successful save | 7 days | 1 minute–30 days |
 | Sanitized text per new snapshot | 131,072 bytes | 64–2,097,152 bytes |
 | Database page allocation | 16 MiB | 1–64 MiB |
@@ -262,14 +269,17 @@ delete jobs consume admission permits but are not counted as queued snapshots.
 
 Text budgets count note text, textual environment values, breadcrumb labels and
 messages, log categories and messages, HTTP methods/URLs/headers, WebSocket
-URLs/headers, and included body text. They exclude object overhead, IDs, indices,
+URLs/headers, included body text, and diagnostic metadata/exception-code text. They exclude object overhead, IDs, indices,
 and structural data.
 Evidence types also impose independent count and field bounds. A per-snapshot
 text limit applies to new saves; reducing it does not rewrite existing reports.
 These defaults are implementation limits, not measured performance guarantees.
 
 Count and age cleanup runs at open and save, not continuously. Count eviction
-uses save order; age uses wall time at save. A backward wall-clock adjustment
+uses save order independently for manual and system snapshots, so a batch of
+system reports cannot evict manual marks by count. Both categories share the
+database byte budget; either can still encounter explicit storage exhaustion.
+Age uses wall time at save. A backward wall-clock adjustment
 can delay age eviction. Cleanup removes whole snapshots in a transaction. If
 that transaction fails, prior committed reports remain intact, including any
 reports selected for eviction. A crash before the save callback may leave either
@@ -293,10 +303,13 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `2`. Product versions
+application ID `0x4f535649`, and private schema revision `3`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. Network
 headers and payload text use separate tables; list queries do not load them.
+System numeric facts and bounded historical metadata have separate normalized
+tables. Reads validate source-specific fields, classification, nullability,
+exact numbers, text budgets, and the presence of expected diagnostic rows.
 This database is an internal format, not a portable export or interchange protocol.
 
 The SDK uses the platform SQLite engine with rollback journals, full synchronous
@@ -304,9 +317,10 @@ commits, foreign keys, bounded cache, and zero busy wait. Only a new empty
 unowned database is initialized. Unrelated databases and unsupported revisions
 are refused without reset. Readers ignore additional optional columns within
 the supported revision while validating every known field, type, count, and
-privacy invariant. Revision `1` upgrades by adding attachment tables in one
-transaction with the revision change. Existing report identities, save times,
-and evidence remain unchanged, with new attachment groups absent. A failed
-upgrade rolls back its schema changes; it never resets the database. A previous
-SDK supporting only revision `1` refuses a revision `2` database rather than
+privacy invariant. Revision `1` first adds attachment tables; revision `2` adds
+the nullable diagnostic-kind column and diagnostic tables. The complete upgrade
+and revision change share one transaction. Existing identities, save times,
+and evidence remain unchanged; old records have no system diagnostic. A failed
+upgrade rolls back its added columns and tables without resetting the database.
+An SDK that supports only an earlier revision refuses the newer database rather than
 attempting a destructive downgrade.

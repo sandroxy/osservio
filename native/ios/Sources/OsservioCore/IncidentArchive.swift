@@ -1,6 +1,6 @@
 import Foundation
 
-/// Lightweight metadata for a committed manual snapshot. Attachments are loaded only on request.
+/// Lightweight metadata for a committed snapshot. Attachments are loaded only on request.
 public struct IncidentSummary: Sendable {
     public let id: String
     public let timestampMillis: Int64
@@ -10,11 +10,13 @@ public struct IncidentSummary: Sendable {
     public let logCount: Int?
     public let httpCount: Int?
     public let webSocketCount: Int?
+    public let diagnosticKind: SystemDiagnosticKind?
     public init(id: String, timestampMillis: Int64, note: IncidentNote?, hasEnvironment: Bool, breadcrumbCount: Int?,
-                logCount: Int? = nil, httpCount: Int? = nil, webSocketCount: Int? = nil) {
+                logCount: Int? = nil, httpCount: Int? = nil, webSocketCount: Int? = nil, diagnosticKind: SystemDiagnosticKind? = nil) {
         self.id = id; self.timestampMillis = timestampMillis; self.note = note
         self.hasEnvironment = hasEnvironment; self.breadcrumbCount = breadcrumbCount
         self.logCount = logCount; self.httpCount = httpCount; self.webSocketCount = webSocketCount
+        self.diagnosticKind = diagnosticKind
     }
 }
 

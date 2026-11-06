@@ -119,13 +119,13 @@ final class IncidentDatabaseTests: XCTestCase {
         }
     }
     func testUnsupportedAndCorruptFilesRemainUntouched() throws {
-        for revision in [0, 3] {
+        for revision in [0, 4] {
             try fixture { url in
                 let options = try IncidentPersistenceOptions()
-                if revision == 3 { let store = try IncidentDatabase(url: url, options: options, now: 0); store.close() }
+                if revision == 4 { let store = try IncidentDatabase(url: url, options: options, now: 0); store.close() }
                 let raw = try SQLiteConnection(url: url)
                 if revision == 0 { try raw.execute("CREATE TABLE other_data(value TEXT)") }
-                else { try raw.execute("PRAGMA user_version=3") }
+                else { try raw.execute("PRAGMA user_version=4") }
                 raw.close()
                 let before = try Data(contentsOf: url)
                 XCTAssertThrowsError(try IncidentDatabase(url: url, options: options, now: 1)) { XCTAssertEqual($0 as? PersistenceError, .unsupportedSchema) }

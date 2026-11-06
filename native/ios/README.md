@@ -147,8 +147,8 @@ The optional `OsservioRuntime` product also provides `SystemDiagnostics` for
 previously delivered MetricKit crash/hang facts on iOS 14+, and an explicitly
 started `MetricDiagnosticObserver` for new deliveries. It installs no fatal
 handler. See [system diagnostics](../../doc/system-diagnostics.md) for permitted
-fields, source limits, lifecycle, and the current absence of incident persistence
-and UI integration.
+fields, source limits, lifecycle, explicit incident persistence, and the remaining
+automatic-recovery, export, and UI limitations.
 
 ## Manual problem snapshots
 
