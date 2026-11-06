@@ -121,6 +121,17 @@ final class SQLiteBreadcrumbStoreTests: XCTestCase {
         try await fixture { directory in
             let store = try SQLiteBreadcrumbStore(directory: directory)
             try await flush(store)
+            // Hold the worker in a callback, after its permit/lock was released. The following
+            // operations must actually be admitted before close, rather than race a drain's lock.
+            let entered = expectation(description: "worker held outside admission lock")
+            let gate = DispatchSemaphore(value: 0)
+            defer { gate.signal() }
+            store.readRuns { result in
+                if case .failure(let error) = result { XCTFail("Setup query failed: \(error)") }
+                entered.fulfill()
+                XCTAssertEqual(gate.wait(timeout: .now() + 5), .success)
+            }
+            await fulfillment(of: [entered], timeout: 5)
             XCTAssertEqual(try recorder(store).record(.hostMarker, label: "retained", retention: .restartRelevant), .recorded)
             let flushed = expectation(description: "admitted flush")
             store.flush { result in
@@ -135,7 +146,11 @@ final class SQLiteBreadcrumbStoreTests: XCTestCase {
                 }
                 queried.fulfill()
             }
-            try await close(store).get()
+            let closedResult: Result<Void, PersistenceError> = await withCheckedContinuation { continuation in
+                store.close { continuation.resume(returning: $0) }
+                gate.signal()
+            }
+            try closedResult.get()
             await fulfillment(of: [flushed, queried], timeout: 5)
             let closed = await withCheckedContinuation { continuation in store.readRuns { continuation.resume(returning: $0) } }
             XCTAssertThrowsError(try closed.get()) { XCTAssertEqual($0 as? PersistenceError, .closed) }

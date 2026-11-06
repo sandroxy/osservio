@@ -37,6 +37,8 @@ native behavior and interaction validation. No artifacts have been published.
   lifecycle validation, privacy, and independent payload retention.
 - [Runtime context](doc/runtime-context.md) describes baseline breadcrumbs,
   native signal ownership, environment privacy, and platform-specific metrics.
+- [System diagnostics](doc/system-diagnostics.md) describes bounded OS history
+  reads and MetricKit subscription, without fatal handlers or automatic persistence.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment
@@ -106,7 +108,8 @@ xcodebuild -scheme Osservio-Package \
 ```
 
 The product-specific `OsservioRuntime` scheme is a build scheme, not a test
-scheme. Runtime tests on macOS cover callback leases only; UIKit checks compile
+scheme. Runtime tests on macOS cover callback leases and diagnostic query
+admission/close/reentry; UIKit and MetricKit checks compile
 and execute exclusively in an iOS test run.
 
 Use the same package test scheme with `-only-testing:OsservioUITests` and
@@ -133,6 +136,7 @@ use the ignored `native/android/local.properties` with `sdk.dir`. From
 ./gradlew testDebugUnitTest assembleDebug lintDebug
 ./gradlew :osservio-store:connectedDebugAndroidTest
 ./gradlew :osservio-export:connectedDebugAndroidTest
+./gradlew :osservio-runtime:connectedDebugAndroidTest
 ```
 
 The wrapper pins Gradle 8.14.5 with a distribution checksum. Android Gradle Plugin
@@ -153,6 +157,10 @@ emulator, with isolated test-owned directories. They verify reopen, transactiona
 rollback, budgets, corruption, additive incident migration, unsupported revisions, exclusive ownership,
 asynchronous admission, and close ordering. They do not establish physical-device
 performance or fatal crash capture.
+Runtime instrumentation reads the actual exit-history API without installing a
+Java handler. iOS Runtime tests independently map synthetic MetricKit subclasses,
+check allowlisted fields and work limits, and exercise actual history reads and
+subscription lifecycle. These checks do not establish real-world crash delivery.
 Export instrumentation compares Android's platform JSON encoding with shared
 independent fixtures and exercises ZIP preparation, cancellation, exclusive
 ownership, cache recovery, retention, and rejection. Swift's Export tests cover

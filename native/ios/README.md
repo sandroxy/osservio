@@ -143,6 +143,13 @@ inspector) for saved-run browsing. See
 [runtime context](../../doc/runtime-context.md) for native
 coverage, privacy, limits, and collector ownership.
 
+The optional `OsservioRuntime` product also provides `SystemDiagnostics` for
+previously delivered MetricKit crash/hang facts on iOS 14+, and an explicitly
+started `MetricDiagnosticObserver` for new deliveries. It installs no fatal
+handler. See [system diagnostics](../../doc/system-diagnostics.md) for permitted
+fields, source limits, lifecycle, and the current absence of incident persistence
+and UI integration.
+
 ## Manual problem snapshots
 
 Core's `IncidentSnapshot` accepts an optional privacy-classified note, an existing

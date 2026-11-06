@@ -10,6 +10,14 @@ Unicode scalar boundaries. A scalar boundary can split a grapheme cluster.
 These fixtures define local native behavior; they are not a serialized event
 protocol or an archive format.
 
+`system-diagnostic-cases.tsv` defines source classification and evidence
+validation. Columns are name, source family, changed field, input, and expected
+kind or `invalid`. It covers exact integers, unknown Android exit reasons,
+missing memory, MetricKit reporting intervals and crash/hang field combinations.
+Native tests also verify bounded public metadata, strict restoration, immutable
+batches, and source/budget consistency. These are native facts, not a new portable
+document revision. No system-diagnostic export is implemented yet.
+
 `capture-lifecycle.tsv` is a sequential scenario consumed by both native test
 suites. Rows contain a case name, monotonic milliseconds, control operation,
 argument, expected mode, remaining detailed-session milliseconds, and whether

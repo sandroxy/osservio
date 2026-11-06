@@ -60,8 +60,15 @@ inspector enables an explicit system share action on a saved snapshot. Cancellin
 or dismissing it preserves the snapshot and capture state; see
 [file export](doc/incident-export.md).
 
-Automatic system-log and crash capture, global network interception, and
-framework adapters are not implemented.
+Optional Runtime APIs read historical main-process exits on Android 11+ and
+delivered MetricKit crash/hang summaries on iOS 14+, with an explicit subscriber
+for new iOS reports. They extract only allowlisted numeric/build/system facts,
+preserving reporting intervals and missing values. These APIs are not connected
+to incident persistence, export, or UI, and do not guarantee immediate next-launch
+delivery. See [system diagnostics](doc/system-diagnostics.md).
+
+Automatic system-log capture, fatal crash handlers, global network interception,
+and framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see
 [network coverage](doc/network-integration.md). Core behavior and
 native interaction will be refined on Android and iOS before expanding to React

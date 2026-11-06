@@ -1,0 +1,118 @@
+# System diagnostics
+
+The optional Runtime modules read OS-owned diagnostic history through Core's
+`SystemDiagnosticProvider`. iOS also supplies an explicit MetricKit subscriber.
+These APIs install no fatal signal, Mach exception, or Java exception handler.
+They do not persist, export, or display records yet.
+
+## Sources and coverage
+
+| Source | Evidence | Limits |
+| --- | --- | --- |
+| Android `ApplicationExitInfo`, API 30+ | Main process exit time, reason/status, PID, importance, last PSS/RSS samples | OS-owned bounded history; incomplete coverage is possible |
+| iOS MetricKit, iOS 14+ | Delivered crash/hang report intervals, historical metadata, numeric crash codes, hang duration | OS-controlled delivery may be delayed or absent; an interval is not an exact occurrence time |
+
+Older OS versions return `unsupported`, not an empty success. Empty supported
+history does not prove that no failure occurred. CPU exceptions, disk-write and
+launch diagnostics, stack trees, native tombstones, and raw ANR traces are not
+read. This is not complete fatal recording or a guarantee of next-launch recovery.
+
+Android queries its package with a maximum of 32 records and excludes records
+whose process name or package UID does not match the host's declared main process.
+This avoids attributing isolated/external service exits to the main process.
+Known reason codes distinguish Java crashes, native crashes, ANRs, low-memory
+termination, and signalled termination. Other and unknown future codes remain
+`otherExit`, preserving the original code. A signal alone does not establish an
+out-of-memory kill; normal exits and user stops are not relabeled as crashes.
+Zero PSS/RSS becomes unavailable. Nonzero values are the last system samples in
+KiB, not memory at termination. This API supplies no historical app build; the
+current build must not be substituted for it.
+
+MetricKit keeps each diagnostic's historical metadata and the payload's reporting
+interval. Numeric exception codes preserve exact signed or unsigned 64-bit
+decimal values; floating-point and boolean codes are rejected. A hang establishes
+unresponsiveness, not necessarily termination. No inference links these records
+to a saved breadcrumb run or the latest application launch.
+
+Platform contracts:
+[ApplicationExitInfo](https://developer.android.com/reference/android/app/ApplicationExitInfo),
+[exit-history queries](https://developer.android.com/reference/android/app/ActivityManager#getHistoricalProcessExitReasons(java.lang.String,%20int,%20int)),
+[MetricKit payloads](https://developer.apple.com/documentation/metrickit/mxdiagnosticpayload),
+and [MetricKit subscriptions](https://developer.apple.com/documentation/metrickit/mxmetricmanager).
+
+## Integration and ownership
+
+Android:
+
+```java
+import com.sandrox.osservio.runtime.SystemDiagnostics;
+
+SystemDiagnostics diagnostics = new SystemDiagnostics(applicationContext);
+diagnostics.read((batch, error) -> {
+    // Inspect sanitized batch.diagnostics or the explicit error on this callback thread.
+});
+// When the owning component is disposed:
+diagnostics.close();
+```
+
+iOS:
+
+```swift
+import OsservioRuntime
+
+let diagnostics = SystemDiagnostics()
+diagnostics.read { result in
+    // Inspect sanitized, previously delivered OS evidence.
+}
+// When the owning component is disposed:
+diagnostics.close()
+```
+
+Retain providers in the host composition root. Each admits one query on its
+utility worker; a second pending query returns `busy`. `close` rejects new queries
+with `closed`, while an admitted read finishes normally. Source failures return
+`unavailable` without retaining or exposing exception text. Completion may run on
+any thread, including the caller for immediate rejection. Dispatch to the native
+UI thread before updating views.
+
+On iOS 14+, retain `MetricDiagnosticObserver` and call `start(delivery:)` on the
+main actor to receive new diagnostics. Repeated starts keep the original callback;
+stop before replacing it. Stopping or releasing the observer invalidates and
+removes its subscriber, without affecting other subscribers or system history.
+Mapping runs on MetricKit's callback queue, with one mapping in flight per
+observer. Overlapping delivery reports `busy`. An already admitted sanitized
+callback may finish during stop; subsequently received payloads are ignored.
+
+The provider does not subscribe automatically. These APIs are independent of
+`CaptureController`; a host must bind subscription lifetime to its capture/access
+policy. Automatic recovery, incident persistence, and the Problems view are not
+connected yet. Reports are not deduplicated, and identical symptoms do not receive
+invented stable identities.
+
+## Privacy and bounds
+
+Only the declared numeric fields and four public metadata fields are accepted:
+app version, app build, OS version, and device model. Each text value is bounded
+to 256 UTF-8 bytes at scalar boundaries, with explicit truncation. Empty metadata
+is absent. Restoration rejects oversized values rather than repairing them.
+These fields accept public build/system metadata, not arbitrary host context.
+
+The adapters never request free-form termination descriptions, Objective-C
+exception reasons, process-state summaries, signposts, virtual-memory descriptions,
+or JSON representations of raw reports. They do not read or persist stack trees
+or trace streams. Only sanitized facts cross the Core port.
+
+A batch contains at most 32 inspected records, including rejected or excluded
+records. iOS visits at most four payloads, considering crashes before hangs within
+each payload. Source order is preserved without assuming undocumented chronology.
+`rejectedCount` counts malformed inspected records; `excludedCount` counts Android
+records outside the main-process scope. `sourceLimitReached` means a budget was
+reached, not that a known number of failures was lost. OS buffers can omit records
+independently. OS-owned array creation and retention are outside SDK control;
+the SDK does not serialize or enqueue raw payloads.
+
+These are admission bounds, not measured memory or latency guarantees. Shared
+fixtures cover classifications, invalid combinations, exact integers, and strict
+restoration. Runtime tests cover query admission/close/reentry, platform reads,
+allowlisted mapping, and invalidated subscribers. Synthetic mapping tests do not
+establish real-world MetricKit delivery or crash recovery.
