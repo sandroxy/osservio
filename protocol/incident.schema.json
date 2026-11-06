@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:incident:2",
-  "title": "Osservio incident metadata revision 2",
+  "$id": "urn:osservio:incident:3",
+  "title": "Osservio incident metadata revision 3",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident"
     },
     "revision": {
-      "const": 2
+      "const": 3
     },
     "payloadFile": {
       "const": "payloads.json"
@@ -131,7 +131,8 @@
         "source": {
           "enum": [
             "androidExitInfo",
-            "metricKit"
+            "metricKit",
+            "appleSignal"
           ]
         },
         "kind": {
@@ -359,6 +360,16 @@
               "type": "null"
             }
           ]
+        },
+        "appleSignal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/appleSignal"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -367,7 +378,209 @@
         "intervalStartMillis",
         "intervalEndMillis",
         "androidExit",
-        "metricKit"
+        "metricKit",
+        "appleSignal"
+      ],
+      "additionalProperties": false
+    },
+    "appleSignal": {
+      "type": "object",
+      "properties": {
+        "reportID": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\\s\\S])"
+        },
+        "signal": {
+          "enum": [
+            "SIGABRT",
+            "SIGBUS",
+            "SIGFPE",
+            "SIGILL",
+            "SIGSEGV",
+            "SIGTRAP"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16
+        },
+        "faultAddress": {
+          "$ref": "urn:osservio:incident:1#/$defs/uint64"
+        },
+        "threadNumber": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "urn:osservio:incident:1#/$defs/uint64"
+          }
+        },
+        "images": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "properties": {
+              "baseAddress": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "size": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "uuid": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cpuType": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:osservio:incident:1#/$defs/uint64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cpuSubtype": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:osservio:incident:1#/$defs/uint64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "baseAddress",
+              "size",
+              "uuid",
+              "cpuType",
+              "cpuSubtype"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "appVersion": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "appBuild": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "osVersion": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "deviceModel": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "imageCacheIncomplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reportID",
+        "signal",
+        "code",
+        "faultAddress",
+        "threadNumber",
+        "frames",
+        "images",
+        "metadata",
+        "imageCacheIncomplete"
       ],
       "additionalProperties": false
     }

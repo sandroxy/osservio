@@ -1,6 +1,6 @@
 import Foundation
 
-public enum SystemDiagnosticSource: String, Sendable { case androidExitInfo, metricKit }
+public enum SystemDiagnosticSource: String, Sendable { case androidExitInfo, metricKit, appleSignal }
 public enum SystemDiagnosticKind: String, Sendable {
     case managedCrash, nativeCrash, anr, lowMemoryTermination, signalTermination, otherExit, crash, hang
 }
@@ -49,9 +49,10 @@ public struct SystemDiagnostic: Sendable {
     public let intervalEndMillis: Int64
     public let androidExit: AndroidExit?
     public let metricKit: MetricKit?
+    public let appleSignal: AppleSignalCrash?
     public var textByteCount: Int {
         (metricKit?.metadata.values.reduce(0) { $0 + $1.value.utf8.count } ?? 0)
-            + (metricKit?.exceptionCode?.utf8.count ?? 0)
+            + (metricKit?.exceptionCode?.utf8.count ?? 0) + (appleSignal?.textByteCount ?? 0)
     }
 
     public static func androidExit(timestampMillis: Int64, reasonCode: Int32, status: Int32,
@@ -69,7 +70,7 @@ public struct SystemDiagnostic: Sendable {
         }
         return Self(source: .androidExitInfo, kind: kind, intervalStartMillis: timestampMillis, intervalEndMillis: timestampMillis,
                     androidExit: AndroidExit(reasonCode: reasonCode, status: status, processID: processID,
-                        importance: importance, pssKiB: pssKiB, rssKiB: rssKiB), metricKit: nil)
+                        importance: importance, pssKiB: pssKiB, rssKiB: rssKiB), metricKit: nil, appleSignal: nil)
     }
     public static func metricKit(intervalStartMillis: Int64, intervalEndMillis: Int64, kind: SystemDiagnosticKind,
                                  metadata: [MetadataKey: Text], signal: Int32? = nil, exceptionType: Int64? = nil,
@@ -82,7 +83,11 @@ public struct SystemDiagnostic: Sendable {
                     (hangDurationMillis.map({ $0 >= 0 }) ?? false)) else { throw PersistenceError.invalidRecord }
         return Self(source: .metricKit, kind: kind, intervalStartMillis: intervalStartMillis, intervalEndMillis: intervalEndMillis,
                     androidExit: nil, metricKit: MetricKit(metadata: metadata, signal: signal, exceptionType: exceptionType,
-                        exceptionCode: exceptionCode, hangDurationMillis: hangDurationMillis))
+                        exceptionCode: exceptionCode, hangDurationMillis: hangDurationMillis), appleSignal: nil)
+    }
+    public static func appleSignal(_ evidence: AppleSignalCrash) -> Self {
+        Self(source: .appleSignal, kind: .nativeCrash, intervalStartMillis: evidence.timestampMillis,
+             intervalEndMillis: evidence.timestampMillis, androidExit: nil, metricKit: nil, appleSignal: evidence)
     }
     private static func validCode(_ value: String) -> Bool {
         let bytes = Array(value.utf8.prefix(22))

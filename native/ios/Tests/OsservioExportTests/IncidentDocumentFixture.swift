@@ -12,6 +12,12 @@ enum IncidentDocumentFixture {
         if name.hasPrefix("diagnostic-") {
             let evidence: SystemDiagnostic
             switch name {
+            case "diagnostic-signal":
+                evidence = .appleSignal(try .restore(reportID: "12345678-1234-1234-1234-abcdef123456", timestampMillis: 1_700_000_000_000,
+                    signal: .abort, code: "#0", faultAddress: .max, threadNumber: .max, frames: [0, .max],
+                    images: [.restore(baseAddress: 4096, size: 4096, uuid: "12345678123412341234abcdef123456", cpuType: 16_777_228, cpuSubtype: .max),
+                             .restore(baseAddress: .max, size: 0, uuid: nil, cpuType: nil, cpuSubtype: nil)],
+                    metadata: [.appVersion: .capture(publicValue: "😀"), .appBuild: .capture(publicValue: "42")], imageCacheIncomplete: true))
             case "diagnostic-android":
                 evidence = try .androidExit(timestampMillis: 9_007_199_254_740_993, reasonCode: 5, status: .min,
                     processID: .max, importance: 100, pssKiB: .max, rssKiB: nil)

@@ -27,7 +27,7 @@ class ConformanceTests(unittest.TestCase):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"):
+        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)
@@ -41,7 +41,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 3, "2", None, True):
+        for revision in (0, 4, "3", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision
@@ -70,6 +70,22 @@ class ConformanceTests(unittest.TestCase):
             for reader in (False, True):
                 with self.subTest(case=case["name"], reader=reader):
                     self.check(document, case["readerAccepts" if reader else "writerAccepts"], reader)
+
+    def test_preserved_revision_two_and_mixed_documents(self):
+        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"):
+            for reader in (False, True):
+                with self.subTest(fixture=name, reader=reader):
+                    self.check(fixture("revisions/2/" + name), True, reader)
+                    for validator, document in zip(validators(reader, revision=2), fixture(name).values()):
+                        with self.assertRaises(ValidationError):
+                            validator.validate(document)
+                    mixed = fixture(name)
+                    mixed["payloads"]["revision"] = 2
+                    self.check(mixed, False, reader)
+        old = fixture("revisions/2/diagnostic-crash")
+        old["metadata"]["incident"]["systemDiagnostic"]["appleSignal"] = {"futureOptionalField": True}
+        self.check(old, False)
+        self.check(old, True, reader=True)
 
     def test_http_observation_lifecycle(self):
         for state in fixture("http-lifecycle"):

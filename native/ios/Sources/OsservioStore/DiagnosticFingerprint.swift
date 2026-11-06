@@ -14,6 +14,22 @@ enum DiagnosticFingerprint {
             fields.append(metric?.metadata[key]?.value)
             fields.append(metric?.metadata[key].map { $0.isTruncated ? "1" : "0" })
         }
+        // Existing source fingerprints remain byte-for-byte unchanged. The new
+        // source has an explicit ordered suffix, including every retained fact.
+        if let crash = value.appleSignal {
+            fields += [crash.reportID, crash.signal.rawValue, crash.code, String(crash.faultAddress),
+                       crash.threadNumber.map(String.init), crash.imageCacheIncomplete ? "1" : "0", String(crash.frames.count)]
+            fields += crash.frames.map(String.init)
+            fields.append(String(crash.images.count))
+            for image in crash.images {
+                fields += [String(image.baseAddress), String(image.size), image.uuid,
+                           image.cpuType.map(String.init), image.cpuSubtype.map(String.init)]
+            }
+            for key in SystemDiagnostic.MetadataKey.allCases {
+                fields.append(crash.metadata[key]?.value)
+                fields.append(crash.metadata[key].map { $0.isTruncated ? "1" : "0" })
+            }
+        }
         var digest = SHA256()
         digest.update(data: Data("osservio.system-diagnostic/1\n".utf8))
         for field in fields {

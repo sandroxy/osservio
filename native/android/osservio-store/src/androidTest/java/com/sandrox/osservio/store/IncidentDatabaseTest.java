@@ -121,12 +121,12 @@ public final class IncidentDatabaseTest {
         }
     }
     @Test public void unsupportedAndCorruptFilesAreNotReset() throws Exception {
-        for (int revision : new int[] {0, 4}) {
+        for (int revision : new int[] {0, 6}) {
             try (PersistenceFixture fixture = new PersistenceFixture()) {
                 IncidentPersistenceOptions options = new IncidentPersistenceOptions();
-                if (revision == 4) { try (IncidentDatabase ignored = new IncidentDatabase(file(fixture), options, 0)) { assertTrue(ignored.summaries().isEmpty()); } }
+                if (revision == 6) { try (IncidentDatabase ignored = new IncidentDatabase(file(fixture), options, 0)) { assertTrue(ignored.summaries().isEmpty()); } }
                 try (SQLiteDatabase raw = SQLiteDatabase.openOrCreateDatabase(file(fixture), null)) {
-                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=5");
+                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=6");
                 }
                 byte[] before = read(file(fixture));
                 expect(PersistenceStatus.Error.UNSUPPORTED_SCHEMA, () -> new IncidentDatabase(file(fixture), options, 1));

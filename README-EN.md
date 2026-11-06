@@ -75,6 +75,13 @@ The viewer distinguishes failure time from report read time and does not relabel
 signal termination or a hang as a crash. Immediate next-launch delivery is not
 guaranteed. See [system diagnostics](doc/system-diagnostics.md).
 
+Core also defines validated [Apple fatal-signal evidence](doc/crash-evidence.md):
+original time, signal, instruction addresses and binary identities can use the
+existing incident archive, recovery deduplication, native viewer and export.
+Addresses are not symbolicated. Public recorder installation and pending-file
+recovery are not connected yet. The Java model supports the same evidence
+contract; it does not provide the corresponding native crash recorder on Android.
+
 Automatic system-log capture, fatal crash handlers, global network interception,
 and framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see

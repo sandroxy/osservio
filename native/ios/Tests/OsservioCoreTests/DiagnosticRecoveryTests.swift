@@ -12,6 +12,7 @@ final class DiagnosticRecoveryTests: XCTestCase {
     }
     private func evidence(_ name: String) throws -> SystemDiagnostic {
         switch name {
+        case "diagnostic-signal": return try SignalCrashFixture.evidence()
         case "diagnostic-android":
             return try .androidExit(timestampMillis: 9_007_199_254_740_993, reasonCode: 5, status: .min,
                 processID: .max, importance: 100, pssKiB: .max, rssKiB: nil)

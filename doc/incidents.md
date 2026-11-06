@@ -20,7 +20,7 @@ batch recovery operation for repeated history reads. A capture-gated coordinator
 can bind host-owned startup and delivery triggers to that operation. The native
 browser distinguishes their classification and read
 time from manual marks and opens immutable source-specific details. Copy and
-revision-2 export include the evidence, preserving its original time/range
+portable export include the evidence, preserving its original time/range
 separately from recovery. See [system diagnostic inspection](system-diagnostics.md#native-inspection).
 
 ## Evidence and privacy
@@ -278,7 +278,9 @@ delete jobs consume admission permits but are not counted as queued snapshots.
 
 Text budgets count note text, textual environment values, breadcrumb labels and
 messages, log categories and messages, HTTP methods/URLs/headers, WebSocket
-URLs/headers, included body text, and diagnostic metadata/exception-code text. They exclude object overhead, IDs, indices,
+URLs/headers, included body text, and diagnostic metadata/exception-code text.
+Apple signal evidence additionally counts its report UUID, signal/code and image
+UUIDs. Budgets exclude numeric addresses, other IDs, indices, object overhead
 and structural data.
 Evidence types also impose independent count and field bounds. A per-snapshot
 text limit applies to new saves; reducing it does not rewrite existing reports.
@@ -312,13 +314,15 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `4`. Product versions
+application ID `0x4f535649`, and private schema revision `5`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. Network
 headers and payload text use separate tables; list queries do not load them.
 System numeric facts and bounded historical metadata have separate normalized
 tables. Reads validate source-specific fields, classification, nullability,
 exact numbers, text budgets, and the presence of expected diagnostic rows.
+Address-only Apple signal records use separate ordered frame and image tables;
+see [native signal evidence](crash-evidence.md) for precision and completeness rules.
 A separate bounded acknowledgement table supports repeated system-history
 processing; see [batch recovery](system-diagnostics.md#bounded-batch-recovery).
 This database is an internal format, not a portable export or interchange protocol.
@@ -330,9 +334,10 @@ are refused without reset. Readers ignore additional optional columns within
 the supported revision while validating every known field, type, count, and
 privacy invariant. Revision `1` first adds attachment tables; revision `2` adds
 the nullable diagnostic-kind column and diagnostic tables. Revision `3` adds
-the report acknowledgement table. The complete upgrade
+the report acknowledgement table. Revision `4` adds the signal header, frame and
+image tables. The complete upgrade
 and revision change share one transaction. Existing identities, save times,
-and evidence remain unchanged; old records have no system diagnostic. A failed
+and evidence remain unchanged; records from revisions 1 and 2 have no system diagnostic. A failed
 upgrade rolls back its added columns and tables without resetting the database.
 An SDK that supports only an earlier revision refuses the newer database rather than
 attempting a destructive downgrade.

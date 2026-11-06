@@ -1,5 +1,6 @@
 package com.sandrox.osservio.export;
 
+import com.sandrox.osservio.core.AppleSignalCrash;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.HTTPEvent;
@@ -48,8 +49,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 2, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 2, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 3, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 3, "incidentID", snapshot.id,
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
         if (metadata == null || payloads == null) throw new IllegalArgumentException("Snapshot cannot be represented as JSON");
@@ -98,7 +99,20 @@ public final class IncidentDocuments {
                 "importance", exit.importance, "pssKiB", decimal(exit.pssKiB), "rssKiB", decimal(exit.rssKiB)),
             "metricKit", report == null ? null : object("metadata", metadata, "signal", report.signal,
                 "exceptionType", decimal(report.exceptionType), "exceptionCode", report.exceptionCode,
-                "hangDurationMillis", decimal(report.hangDurationMillis)));
+                "hangDurationMillis", decimal(report.hangDurationMillis)),
+            "appleSignal", value.appleSignal == null ? null : signalCrash(value.appleSignal));
+    }
+    private static Map<String, Object> signalCrash(AppleSignalCrash crash) {
+        Map<String, Object> metadata = new TreeMap<>();
+        for (Map.Entry<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> entry : crash.metadata.entrySet()) {
+            metadata.put(code(entry.getKey()), object("text", entry.getValue().value, "isTruncated", entry.getValue().isTruncated));
+        }
+        List<Object> images = new ArrayList<>();
+        for (AppleSignalCrash.Image image : crash.images) images.add(object("baseAddress", image.baseAddress, "size", image.size,
+            "uuid", image.uuid, "cpuType", image.cpuType, "cpuSubtype", image.cpuSubtype));
+        return object("reportID", crash.reportID, "signal", crash.signal.wireName, "code", crash.code,
+            "faultAddress", crash.faultAddress, "threadNumber", crash.threadNumber, "frames", crash.frames,
+            "images", images, "imageCacheIncomplete", crash.imageCacheIncomplete, "metadata", metadata);
     }
     private static Map<String, Object> environment(EnvironmentSnapshot value) {
         Map<String, Object> facts = new TreeMap<>();

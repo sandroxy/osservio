@@ -36,7 +36,7 @@ final class IncidentSnapshotView extends LinearLayout {
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
     private AlertDialog detail;
-    private IncidentEvidenceView evidence;
+    private View evidence;
     private IncidentSharePresentation sharing;
     private Button share;
 
@@ -74,6 +74,15 @@ final class IncidentSnapshotView extends LinearLayout {
             Button diagnostic = button(R.string.osservio_diagnostic_title);
             diagnostic.setOnClickListener(view -> showText(R.string.osservio_diagnostic_title, SystemDiagnosticPresentation.summary(context, snapshot.systemDiagnostic)));
             header.addView(diagnostic, new LayoutParams(-1, -2));
+            if (snapshot.systemDiagnostic.appleSignal != null) {
+                com.sandrox.osservio.core.AppleSignalCrash crash = snapshot.systemDiagnostic.appleSignal;
+                for (boolean images : new boolean[] {false, true}) {
+                    Button addresses = button(images ? R.string.osservio_crash_images : R.string.osservio_crash_frames);
+                    addresses.setEnabled(!(images ? crash.images.isEmpty() : crash.frames.isEmpty()));
+                    addresses.setOnClickListener(view -> openEvidence(new SignalCrashView(context, crash, images, this::closeEvidence)));
+                    header.addView(addresses, new LayoutParams(-1, -2));
+                }
+            }
         }
         Button environment = button(R.string.osservio_runtime_environment);
         environment.setEnabled(snapshot.environment != null);
@@ -111,7 +120,7 @@ final class IncidentSnapshotView extends LinearLayout {
     void error(String message) { status.setText(message); }
     void dismissDialogs() {
         if (sharing != null) sharing.cancel();
-        if (detail != null) detail.dismiss(); if (evidence != null) evidence.dismissDialogs();
+        if (detail != null) detail.dismiss(); if (evidence instanceof IncidentEvidenceView) ((IncidentEvidenceView) evidence).dismissDialogs();
     }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
     @Override protected void onVisibilityChanged(View changed, int visibility) {
@@ -125,7 +134,7 @@ final class IncidentSnapshotView extends LinearLayout {
         button.setAllCaps(false); button.setMinHeight(dp(48)); button.setEnabled(count != null);
         button.setOnClickListener(view -> open.run()); header.addView(button, new LayoutParams(-1, -2));
     }
-    private void openEvidence(IncidentEvidenceView selected) {
+    private void openEvidence(View selected) {
         if (sharing != null) sharing.cancel();
         hideKeyboard();
         for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(GONE);

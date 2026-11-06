@@ -23,8 +23,8 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 2, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 2, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 3, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 3, "incidentID": snapshot.id,
             "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
@@ -58,7 +58,18 @@ public struct IncidentDocuments: Sendable {
         }
         return ["source": value.source.rawValue, "kind": value.kind.rawValue,
                 "intervalStartMillis": String(value.intervalStartMillis), "intervalEndMillis": String(value.intervalEndMillis),
-                "androidExit": optional(android), "metricKit": optional(metric)]
+                "androidExit": optional(android), "metricKit": optional(metric), "appleSignal": optional(value.appleSignal.map(signalCrash))]
+    }
+    private static func signalCrash(_ crash: AppleSignalCrash) -> [String: Any] {
+        var metadata: [String: Any] = [:]
+        for (key, text) in crash.metadata { metadata[key.rawValue] = ["text": text.value, "isTruncated": text.isTruncated] }
+        return ["reportID": crash.reportID, "signal": crash.signal.rawValue, "code": crash.code,
+                "faultAddress": String(crash.faultAddress), "threadNumber": optional(crash.threadNumber),
+                "frames": crash.frames.map(String.init), "imageCacheIncomplete": crash.imageCacheIncomplete, "metadata": metadata,
+                "images": crash.images.map { image -> [String: Any] in
+                    ["baseAddress": String(image.baseAddress), "size": String(image.size), "uuid": optional(image.uuid),
+                     "cpuType": decimal(image.cpuType), "cpuSubtype": decimal(image.cpuSubtype)]
+                }]
     }
     private static func environment(_ value: EnvironmentSnapshot) -> [String: Any] {
         var facts: [String: Any] = [:]

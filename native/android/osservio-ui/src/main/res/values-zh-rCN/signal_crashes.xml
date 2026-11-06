@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_diagnostic_source_apple_signal">Apple 致命信号记录器</string>
+    <string name="osservio_crash_time">记录的故障时间</string>
+    <string name="osservio_crash_report_id">原始报告 ID</string>
+    <string name="osservio_crash_code">信号代码</string>
+    <string name="osservio_crash_fault_address">故障地址</string>
+    <string name="osservio_crash_thread">故障线程序号</string>
+    <string name="osservio_crash_frames">调用栈地址</string>
+    <string name="osservio_crash_images">二进制映像</string>
+    <string name="osservio_crash_frame_count">已记录栈帧</string>
+    <string name="osservio_crash_image_count">已记录映像</string>
+    <string name="osservio_crash_limit_reached">已达记录上限</string>
+    <string name="osservio_crash_image_cache">映像缓存</string>
+    <string name="osservio_crash_image_cache_excluded">部分映像未能记录</string>
+    <string name="osservio_crash_image_cache_no_exclusion">未报告映像丢失</string>
+    <string name="osservio_crash_base_address">加载地址</string>
+    <string name="osservio_crash_image_size">映像大小</string>
+    <string name="osservio_crash_cpu_type">Mach CPU 类型</string>
+    <string name="osservio_crash_cpu_subtype">Mach CPU 子类型</string>
+    <string name="osservio_crash_copy_all">复制全部</string>
+    <string name="osservio_crash_copied">已复制</string>
+    <string name="osservio_crash_copy_hint">点按条目可复制对应证据。</string>
+    <string name="osservio_crash_hint">记录器捕获了致命 BSD 信号，时间精度为秒。调用栈仅保留尽力获取的地址，尚未解析成函数名；缺失的栈帧和映像无法补回，仅凭信号不能确定根因。</string>
+    <string name="osservio_crash_frames_hint">按最新栈帧在前排列。线程序号仅在这份报告中有效，并非系统线程 ID。达到记录上限时，后续栈帧可能缺失。</string>
+    <string name="osservio_crash_images_hint">UUID 用于匹配对应构建的符号文件。大小为 0 表示未取得有效范围；列表未达上限或缓存未报告丢失，都不代表映像记录完整。</string>
+    <string name="osservio_crash_browser_hint">%1$s\n%2$s</string>
+</resources>

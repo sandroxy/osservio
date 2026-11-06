@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 2,
+    "revision": 3,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -42,13 +42,14 @@
           "exceptionType": "9223372036854775807",
           "exceptionCode": "18446744073709551615",
           "hangDurationMillis": null
-        }
+        },
+        "appleSignal": null
       }
     }
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 2,
+    "revision": 3,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {},
     "webSockets": {}

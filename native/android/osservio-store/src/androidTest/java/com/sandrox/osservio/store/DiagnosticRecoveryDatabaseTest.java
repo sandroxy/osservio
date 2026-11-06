@@ -155,7 +155,7 @@ public final class DiagnosticRecoveryDatabaseTest {
                 assertEquals(1, store.recover(batch(exit(150)), 200).savedCount);
             }
             try (SQLiteDatabase raw = SQLiteDatabase.openDatabase(file(fixture).getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(4, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
+                assertEquals(5, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
                 assertEquals(100, EvidenceSQLite.scalar(raw, "SELECT saved_at FROM incidents WHERE id=?", id));
             }
         }

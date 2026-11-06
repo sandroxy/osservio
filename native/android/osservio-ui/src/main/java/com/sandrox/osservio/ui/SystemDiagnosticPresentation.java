@@ -1,6 +1,7 @@
 package com.sandrox.osservio.ui;
 
 import android.content.Context;
+import com.sandrox.osservio.core.AppleSignalCrash;
 import com.sandrox.osservio.core.SystemDiagnostic;
 
 /** Formats only the immutable saved source facts, without querying the current environment. */
@@ -23,8 +24,14 @@ final class SystemDiagnosticPresentation {
     }
     static String summary(Context context, SystemDiagnostic diagnostic) {
         StringBuilder text = new StringBuilder();
-        field(text, context, R.string.osservio_diagnostic_source, context.getString(diagnostic.source == SystemDiagnostic.Source.ANDROID_EXIT_INFO
-            ? R.string.osservio_diagnostic_source_android_exit_info : R.string.osservio_diagnostic_source_metric_kit));
+        int source, hint;
+        switch (diagnostic.source) {
+            case ANDROID_EXIT_INFO: source = R.string.osservio_diagnostic_source_android_exit_info; hint = R.string.osservio_diagnostic_android_hint; break;
+            case METRIC_KIT: source = R.string.osservio_diagnostic_source_metric_kit; hint = R.string.osservio_diagnostic_metric_hint; break;
+            case APPLE_SIGNAL: source = R.string.osservio_diagnostic_source_apple_signal; hint = R.string.osservio_crash_hint; break;
+            default: throw new IllegalStateException("Unknown diagnostic source");
+        }
+        field(text, context, R.string.osservio_diagnostic_source, context.getString(source));
         field(text, context, R.string.osservio_diagnostic_kind, kind(context, diagnostic.kind));
         SystemDiagnostic.AndroidExit exit = diagnostic.androidExit;
         if (exit != null) {
@@ -53,8 +60,23 @@ final class SystemDiagnosticPresentation {
                 field(text, context, R.string.osservio_diagnostic_hang_duration, metric.hangDurationMillis == null ? null : metric.hangDurationMillis + " ms");
             }
         }
-        return text.append("\n\n").append(context.getString(diagnostic.source == SystemDiagnostic.Source.ANDROID_EXIT_INFO
-            ? R.string.osservio_diagnostic_android_hint : R.string.osservio_diagnostic_metric_hint)).toString();
+        AppleSignalCrash signal = diagnostic.appleSignal;
+        if (signal != null) {
+            field(text, context, R.string.osservio_crash_time, RuntimePresentation.date(signal.timestampMillis));
+            field(text, context, R.string.osservio_crash_report_id, signal.reportID);
+            field(text, context, R.string.osservio_diagnostic_signal, signal.signal.wireName);
+            field(text, context, R.string.osservio_crash_code, signal.code);
+            field(text, context, R.string.osservio_crash_fault_address, SignalCrashPresentation.address(signal.faultAddress));
+            field(text, context, R.string.osservio_crash_thread, signal.threadNumber == null ? null : signal.threadNumber.toString());
+            field(text, context, R.string.osservio_crash_frame_count, SignalCrashPresentation.count(context, signal.frames.size(), signal.frameLimitReached()));
+            field(text, context, R.string.osservio_crash_image_count, SignalCrashPresentation.count(context, signal.images.size(), signal.imageLimitReached()));
+            field(text, context, R.string.osservio_crash_image_cache, context.getString(signal.imageCacheIncomplete
+                ? R.string.osservio_crash_image_cache_excluded : R.string.osservio_crash_image_cache_no_exclusion));
+            for (SystemDiagnostic.MetadataKey key : SystemDiagnostic.MetadataKey.values()) {
+                SystemDiagnostic.Text value = signal.metadata.get(key); field(text, context, metadataLabel(key), value == null ? null : value.value);
+            }
+        }
+        return text.append("\n\n").append(context.getString(hint)).toString();
     }
     private static void field(StringBuilder text, Context context, int label, String value) {
         if (text.length() != 0) text.append('\n');

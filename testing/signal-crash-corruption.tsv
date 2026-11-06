@@ -1,0 +1,34 @@
+missing-header	DELETE FROM signal_crashes
+missing-frame	DELETE FROM signal_crash_frames WHERE position=0
+missing-image	DELETE FROM signal_crash_images WHERE position=0
+frame-gap	UPDATE signal_crash_frames SET position=2 WHERE position=1
+image-gap	UPDATE signal_crash_images SET position=2 WHERE position=1
+frame-count	UPDATE signal_crashes SET frame_count=1
+image-count	UPDATE signal_crashes SET image_count=1
+oversize-frame-count	UPDATE signal_crashes SET frame_count=129
+oversize-image-count	UPDATE signal_crashes SET image_count=513
+negative-count	UPDATE signal_crashes SET frame_count=-1
+bad-report-id	UPDATE signal_crashes SET report_id='12345678-1234-1234-1234-ABCDEF123456'
+wrong-signal-code	UPDATE signal_crashes SET signal_code='SEGV_MAPERR'
+unknown-signal	UPDATE signal_crashes SET signal_name='SIGKILL'
+fault-overflow	UPDATE signal_crashes SET fault_address='18446744073709551616'
+frame-leading-zero	UPDATE signal_crash_frames SET address='01' WHERE position=0
+frame-blob	UPDATE signal_crash_frames SET address=x'31' WHERE position=0
+no-thread-with-stack	UPDATE signal_crashes SET thread_number=NULL
+thread-overflow	UPDATE signal_crashes SET thread_number=4294967296
+bad-cache-flag	UPDATE signal_crashes SET image_cache_incomplete=2
+fractional-time	UPDATE incident_diagnostics SET interval_start=1700000000001, interval_end=1700000000001
+interval-mismatch	UPDATE incident_diagnostics SET interval_end=1700000001000
+zero-time	UPDATE incident_diagnostics SET interval_start=0, interval_end=0
+wrong-kind	UPDATE incidents SET diagnostic_kind='crash'
+mixed-source	UPDATE incident_diagnostics SET source='metricKit'
+foreign-scalar	UPDATE incident_diagnostics SET signal=6
+image-overflow	UPDATE signal_crash_images SET size='1' WHERE position=1
+cpu-missing-half	UPDATE signal_crash_images SET cpu_type=NULL WHERE position=0
+cpu-overflow	UPDATE signal_crash_images SET cpu_type='18446744073709551616' WHERE position=0
+bad-image-uuid	UPDATE signal_crash_images SET uuid='12345678123412341234ABCDEF123456' WHERE position=0
+oversize-optional-uuid	UPDATE signal_crash_images SET uuid=hex(zeroblob(1000)) WHERE position=0
+metadata-truncated	UPDATE diagnostic_metadata SET truncated=1
+metadata-nul	UPDATE diagnostic_metadata SET value='a'||char(0)||'b'
+bad-text-accounting	UPDATE incidents SET text_bytes=82
+orphan-evidence	DELETE FROM incident_diagnostics

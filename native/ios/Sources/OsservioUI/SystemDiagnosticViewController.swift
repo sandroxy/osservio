@@ -20,13 +20,31 @@ final class SystemDiagnosticViewController: UITableViewController {
             target: self, action: #selector(copyDiagnostic))
     }
     @objc private func copyDiagnostic() { UIPasteboard.general.string = SystemDiagnosticPresentation.summary(diagnostic) }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { fields.count }
-    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { SystemDiagnosticPresentation.hint(diagnostic) }
+    override func numberOfSections(in tableView: UITableView) -> Int { diagnostic.appleSignal == nil ? 1 : 2 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? fields.count : 2 }
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        section == 0 ? SystemDiagnosticPresentation.hint(diagnostic) : nil
+    }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "diagnostic-fact") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "diagnostic-fact")
-        PersistencePresentation.style(cell); cell.selectionStyle = .none; cell.accessibilityTraits = .staticText
-        cell.textLabel?.text = fields[indexPath.row].title; cell.detailTextLabel?.text = fields[indexPath.row].value
+        PersistencePresentation.style(cell); cell.accessoryType = .none
+        if indexPath.section == 1, let crash = diagnostic.appleSignal {
+            let count = indexPath.row == 0 ? crash.frames.count : crash.images.count
+            cell.textLabel?.text = RuntimePresentation.text(indexPath.row == 0 ? "crash_frames" : "crash_images")
+            cell.detailTextLabel?.text = count == 0 ? RuntimePresentation.text("runtime_unavailable") : String(count)
+            cell.accessoryType = count == 0 ? .none : .disclosureIndicator
+            cell.selectionStyle = count == 0 ? .none : .default; cell.accessibilityTraits = count == 0 ? .staticText : .button
+        } else {
+            cell.selectionStyle = .none; cell.accessibilityTraits = .staticText
+            cell.textLabel?.text = fields[indexPath.row].title; cell.detailTextLabel?.text = fields[indexPath.row].value
+        }
         return cell
+    }
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard indexPath.section == 1, let crash = diagnostic.appleSignal,
+              !(indexPath.row == 0 ? crash.frames.isEmpty : crash.images.isEmpty) else { return }
+        navigationController?.pushViewController(SignalCrashViewController(crash, content: indexPath.row == 0 ? .frames : .images), animated: true)
     }
 }
 #endif

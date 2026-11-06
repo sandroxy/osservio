@@ -41,7 +41,8 @@ native behavior and interaction validation. No artifacts have been published.
   reads, MetricKit subscription, and explicit incident persistence, without fatal
   handlers or automatic recovery.
 - [Native signal evidence](doc/crash-evidence.md) defines the reviewed address-stack
-  model and internal safe-launch decoder, independently of public recorder installation.
+  model, internal safe-launch decoder, archive, native browsing and portable export,
+  independently of public recorder installation and pending-file recovery.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment
@@ -148,6 +149,7 @@ using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
 `-only-testing:OsservioCoreTests/IncidentDatabaseTests`,
 `-only-testing:OsservioCoreTests/IncidentDetailDatabaseTests`,
 `-only-testing:OsservioCoreTests/IncidentDiagnosticDatabaseTests`,
+`-only-testing:OsservioCoreTests/SignalCrashDatabaseTests`,
 `-only-testing:OsservioCoreTests/SQLiteIncidentStoreTests`,
 `-only-testing:OsservioCoreTests/DiagnosticRecoveryDatabaseTests`, and
 `-only-testing:OsservioCoreTests/SQLiteDiagnosticRecoveryTests` for snapshot
@@ -163,6 +165,7 @@ use the ignored `native/android/local.properties` with `sdk.dir`. From
 ./gradlew :osservio-store:connectedDebugAndroidTest
 ./gradlew :osservio-export:connectedDebugAndroidTest
 ./gradlew :osservio-runtime:connectedDebugAndroidTest
+./gradlew :osservio-ui:connectedDebugAndroidTest
 ```
 
 The wrapper pins Gradle 8.14.5 with a distribution checksum. Android Gradle Plugin
@@ -201,6 +204,14 @@ dispatcher. These checks do not establish system share-sheet behavior or deliver
 Set `ANDROID_SERIAL` to the intended device or emulator
 when multiple devices are connected; do not inadvertently install test APKs on
 another device.
+For a target with existing test data, append
+`-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` and
+`-Pandroid.experimental.testOptions.uninstallIncompatibleApks=false` to connected
+test commands. These settings preserve installed test packages and prevent an
+incompatible-install fallback from uninstalling them. They do not authorize a
+data reset. Store fixtures use their own fresh directories. UI instrumentation
+checks address precision, missing evidence and virtualized frame/image lists;
+it does not replace visual or physical-device acceptance.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.
 URLSession tests use Foundation with a host-configured synthetic URLProtocol.
 WebSocket tests use actual client connections to loopback MockWebServer and

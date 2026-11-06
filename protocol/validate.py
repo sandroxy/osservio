@@ -134,11 +134,11 @@ def semantics(metadata, payloads):
     incident = metadata["incident"]
     require(incident["id"].lower() == payloads["incidentID"].lower(), "Documents belong to different incidents")
     total = utf8(incident["note"]["text"]) if incident["note"] is not None else 0
-    if metadata["revision"] == 2:
+    if metadata["revision"] >= 2:
         diagnostic = incident["systemDiagnostic"]
         require((incident["origin"] == "systemDiagnostic") == (diagnostic is not None), "Incident origin conflicts with its evidence")
         if diagnostic is not None:
-            total += diagnostic_semantics(diagnostic)
+            total += diagnostic_semantics(diagnostic, metadata["revision"])
     if incident["environment"] is not None:
         for key in ENVIRONMENT_KEYS:
             value = incident["environment"]["values"][key]
@@ -180,9 +180,18 @@ def semantics(metadata, payloads):
     require(total <= 2097152, "Export exceeds text admission limit")
 
 
-def diagnostic_semantics(diagnostic):
+def diagnostic_semantics(diagnostic, revision):
     start, end = int(diagnostic["intervalStartMillis"]), int(diagnostic["intervalEndMillis"])
     require(start <= end, "Reversed diagnostic interval")
+    if diagnostic["source"] == "appleSignal":
+        signal = diagnostic["appleSignal"]
+        require(signal is not None and diagnostic["androidExit"] is None and diagnostic["metricKit"] is None,
+                "Invalid Apple signal fields")
+        require(diagnostic["kind"] == "nativeCrash" and start == end and start > 0 and start % 1000 == 0,
+                "Apple signal must preserve its whole-second recorder time")
+        return apple_signal_semantics(signal)
+    if revision >= 3:
+        require(diagnostic["appleSignal"] is None, "Foreign signal evidence")
     if diagnostic["source"] == "androidExitInfo":
         exit_info = diagnostic["androidExit"]
         require(exit_info is not None and diagnostic["metricKit"] is None, "Invalid Android diagnostic fields")
@@ -202,6 +211,28 @@ def diagnostic_semantics(diagnostic):
         for key in ("appVersion", "appBuild", "osVersion", "deviceModel") if key in metric["metadata"])
 
 
+def apple_signal_semantics(signal):
+    symbols = {
+        "SIGABRT": (),
+        "SIGBUS": ("BUS_NOOP", "BUS_ADRALN", "BUS_ADRERR", "BUS_OBJERR"),
+        "SIGFPE": ("FPE_NOOP", "FPE_FLTDIV", "FPE_FLTOVF", "FPE_FLTUND", "FPE_FLTRES", "FPE_FLTINV", "FPE_FLTSUB", "FPE_INTDIV", "FPE_INTOVF"),
+        "SIGILL": ("ILL_NOOP", "ILL_ILLOPC", "ILL_ILLTRP", "ILL_PRVOPC", "ILL_ILLOPN", "ILL_ILLADR", "ILL_PRVREG", "ILL_COPROC", "ILL_BADSTK"),
+        "SIGSEGV": ("SEGV_NOOP", "SEGV_MAPERR", "SEGV_ACCERR"), "SIGTRAP": ("TRAP_BRKPT", "TRAP_TRACE"),
+    }
+    code = signal["code"]
+    numeric = re.fullmatch(r"#(0|-?[1-9][0-9]*)", code)
+    require((numeric is not None and -(2**31) <= int(numeric[1]) < 2**31) or code in symbols[signal["signal"]],
+            "Invalid signal-specific code")
+    require(signal["threadNumber"] is not None or not signal["frames"], "Frames without a faulting thread")
+    total = utf8(signal["reportID"]) + utf8(signal["signal"]) + utf8(code)
+    for image in signal["images"]:
+        require(int(image["baseAddress"]) + int(image["size"]) < 2**64, "Overflowing image extent")
+        require((image["cpuType"] is None) == (image["cpuSubtype"] is None), "Incomplete CPU identity")
+        total += utf8(image["uuid"])
+    return total + sum(utf8(signal["metadata"][key]["text"])
+        for key in ("appVersion", "appBuild", "osVersion", "deviceModel") if key in signal["metadata"])
+
+
 def tolerant(schema):
     if isinstance(schema, dict):
         return {key: tolerant(value) for key, value in schema.items() if not (key == "additionalProperties" and value is False)}
@@ -210,14 +241,14 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=2):
-    require(type(revision) is int and revision in (1, 2), "Unsupported incident revision")
+def validators(reader=False, revision=3):
+    require(type(revision) is int and revision in (1, 2, 3), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)
-    selected = schemas[:2] if revision == 1 else schemas[2:]
+    selected = schemas[(revision - 1) * 2:revision * 2]
     return [Draft202012Validator(schema, registry=registry, format_checker=FORMATS) for schema in selected]
 
 

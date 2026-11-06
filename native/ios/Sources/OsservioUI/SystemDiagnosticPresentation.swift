@@ -5,7 +5,11 @@ import UIKit
 enum SystemDiagnosticPresentation {
     static func kind(_ kind: SystemDiagnosticKind) -> String { RuntimePresentation.text("diagnostic_kind_" + kind.rawValue) }
     static func hint(_ diagnostic: SystemDiagnostic) -> String {
-        RuntimePresentation.text(diagnostic.source == .androidExitInfo ? "diagnostic_android_hint" : "diagnostic_metric_hint")
+        switch diagnostic.source {
+        case .androidExitInfo: return RuntimePresentation.text("diagnostic_android_hint")
+        case .metricKit: return RuntimePresentation.text("diagnostic_metric_hint")
+        case .appleSignal: return RuntimePresentation.text("crash_hint")
+        }
     }
     static func fields(_ diagnostic: SystemDiagnostic) -> [(title: String, value: String)] {
         func field(_ key: String, _ value: String?) -> (String, String) {
@@ -33,6 +37,16 @@ enum SystemDiagnosticPresentation {
             } else {
                 result.append(field("diagnostic_hang_duration", metric.hangDurationMillis.map { "\($0) ms" }))
             }
+        }
+        if let signal = diagnostic.appleSignal {
+            result += [field("crash_time", RuntimePresentation.date(signal.timestampMillis)), field("crash_report_id", signal.reportID),
+                       field("diagnostic_signal", signal.signal.rawValue), field("crash_code", signal.code),
+                       field("crash_fault_address", SignalCrashPresentation.address(signal.faultAddress)),
+                       field("crash_thread", signal.threadNumber.map(String.init)),
+                       field("crash_frame_count", SignalCrashPresentation.count(signal.frames.count, limited: signal.frameLimitReached)),
+                       field("crash_image_count", SignalCrashPresentation.count(signal.images.count, limited: signal.imageLimitReached)),
+                       field("crash_image_cache", RuntimePresentation.text(signal.imageCacheIncomplete ? "crash_image_cache_excluded" : "crash_image_cache_no_exclusion"))]
+            for key in SystemDiagnostic.MetadataKey.allCases { result.append(field("env_" + key.rawValue, signal.metadata[key]?.value)) }
         }
         return result
     }

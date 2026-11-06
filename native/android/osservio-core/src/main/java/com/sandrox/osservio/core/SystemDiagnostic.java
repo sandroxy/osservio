@@ -9,7 +9,7 @@ import java.util.Objects;
 
 /** Reviewed system facts only. Never accepts exception messages, user context, or raw stack text. */
 public final class SystemDiagnostic {
-    public enum Source { ANDROID_EXIT_INFO, METRIC_KIT }
+    public enum Source { ANDROID_EXIT_INFO, METRIC_KIT, APPLE_SIGNAL }
     public enum Kind { MANAGED_CRASH, NATIVE_CRASH, ANR, LOW_MEMORY_TERMINATION, SIGNAL_TERMINATION, OTHER_EXIT, CRASH, HANG }
     public enum MetadataKey { APP_VERSION, APP_BUILD, OS_VERSION, DEVICE_MODEL }
     public static final class Text {
@@ -55,9 +55,10 @@ public final class SystemDiagnostic {
     public final long intervalStartMillis, intervalEndMillis;
     public final AndroidExit androidExit;
     public final MetricKit metricKit;
-    private SystemDiagnostic(Source source, Kind kind, long start, long end, AndroidExit exit, MetricKit metricKit) {
+    public final AppleSignalCrash appleSignal;
+    private SystemDiagnostic(Source source, Kind kind, long start, long end, AndroidExit exit, MetricKit metricKit, AppleSignalCrash appleSignal) {
         this.source = source; this.kind = kind; intervalStartMillis = start; intervalEndMillis = end;
-        androidExit = exit; this.metricKit = metricKit;
+        androidExit = exit; this.metricKit = metricKit; this.appleSignal = appleSignal;
     }
     public int textByteCount() {
         int total = 0;
@@ -65,7 +66,7 @@ public final class SystemDiagnostic {
             for (Text text : metricKit.metadata.values()) total += text.value.getBytes(StandardCharsets.UTF_8).length;
             if (metricKit.exceptionCode != null) total += metricKit.exceptionCode.length();
         }
-        return total;
+        return total + (appleSignal == null ? 0 : appleSignal.textByteCount());
     }
     public static SystemDiagnostic androidExit(long timestampMillis, int reasonCode, int status, int processID,
                                                int importance, Long pssKiB, Long rssKiB) {
@@ -83,7 +84,7 @@ public final class SystemDiagnostic {
             default: kind = Kind.OTHER_EXIT;
         }
         return new SystemDiagnostic(Source.ANDROID_EXIT_INFO, kind, timestampMillis, timestampMillis,
-            new AndroidExit(reasonCode, status, processID, importance, pssKiB, rssKiB), null);
+            new AndroidExit(reasonCode, status, processID, importance, pssKiB, rssKiB), null, null);
     }
     public static SystemDiagnostic metricKit(long startMillis, long endMillis, Kind kind, Map<MetadataKey, Text> metadata,
                                              Integer signal, Long exceptionType, String exceptionCode, Long hangDurationMillis) {
@@ -101,7 +102,12 @@ public final class SystemDiagnostic {
             copy.put(Objects.requireNonNull(entry.getKey(), "metadata key"), Objects.requireNonNull(entry.getValue(), "metadata value"));
         }
         return new SystemDiagnostic(Source.METRIC_KIT, kind, startMillis, endMillis, null,
-            new MetricKit(Collections.unmodifiableMap(copy), signal, exceptionType, exceptionCode, hangDurationMillis));
+            new MetricKit(Collections.unmodifiableMap(copy), signal, exceptionType, exceptionCode, hangDurationMillis), null);
+    }
+    public static SystemDiagnostic appleSignal(AppleSignalCrash evidence) {
+        Objects.requireNonNull(evidence, "evidence");
+        return new SystemDiagnostic(Source.APPLE_SIGNAL, Kind.NATIVE_CRASH, evidence.timestampMillis, evidence.timestampMillis,
+            null, null, evidence);
     }
     private static boolean validCode(String value) {
         if (value.isEmpty() || value.length() > 20 || !value.matches("0|-?[1-9][0-9]*")) return false;

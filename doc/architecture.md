@@ -179,7 +179,9 @@ storage recovery and public recorder installation are not connected yet.
 Existing SDK products do not link the optional backend.
 Core also validates [address-only signal evidence](crash-evidence.md). The
 internal iOS decoder enforces the backend's privacy profile before producing
-these values; their archive, UI and export paths are not connected yet.
+these values. The incident archive, recovery port, native UI and portable export
+preserve these facts; public recorder installation and pending-file recovery are
+not connected yet.
 
 Publish a capability description for each supported runtime, network stack, and
 integration mode. It must identify prerequisites, available observations,

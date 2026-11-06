@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 3,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "9223372036854775807",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": null,
+      "http": null,
+      "webSockets": null,
+      "origin": "systemDiagnostic",
+      "systemDiagnostic": {
+        "source": "appleSignal",
+        "kind": "nativeCrash",
+        "intervalStartMillis": "1700000000000",
+        "intervalEndMillis": "1700000000000",
+        "androidExit": null,
+        "metricKit": null,
+        "appleSignal": {
+          "reportID": "12345678-1234-1234-1234-abcdef123456",
+          "signal": "SIGABRT",
+          "code": "#0",
+          "faultAddress": "18446744073709551615",
+          "threadNumber": 4294967295,
+          "frames": [
+            "0",
+            "18446744073709551615"
+          ],
+          "images": [
+            {
+              "baseAddress": "4096",
+              "size": "4096",
+              "uuid": "12345678123412341234abcdef123456",
+              "cpuType": "16777228",
+              "cpuSubtype": "18446744073709551615"
+            },
+            {
+              "baseAddress": "18446744073709551615",
+              "size": "0",
+              "uuid": null,
+              "cpuType": null,
+              "cpuSubtype": null
+            }
+          ],
+          "metadata": {
+            "appVersion": {
+              "text": "😀",
+              "isTruncated": false
+            },
+            "appBuild": {
+              "text": "42",
+              "isTruncated": false
+            }
+          },
+          "imageCacheIncomplete": true
+        }
+      }
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 3,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {}
+  }
+}

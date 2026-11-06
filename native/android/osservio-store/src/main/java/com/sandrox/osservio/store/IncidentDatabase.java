@@ -19,7 +19,6 @@ import com.sandrox.osservio.core.SystemDiagnostic;
 import com.sandrox.osservio.core.SystemDiagnosticBatch;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -37,14 +36,14 @@ final class IncidentDatabase implements AutoCloseable {
     private final IncidentPersistenceOptions options;
     IncidentDatabase(File file, IncidentPersistenceOptions options, long now) {
         this.options = options;
-        String[] schema = Arrays.copyOf(SCHEMA, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length + IncidentDiagnosticDatabase.SCHEMA.length + DiagnosticRecoveryDatabase.SCHEMA.length);
-        System.arraycopy(IncidentDetailDatabase.SCHEMA, 0, schema, SCHEMA.length, IncidentDetailDatabase.SCHEMA.length);
-        System.arraycopy(IncidentDiagnosticDatabase.SCHEMA, 0, schema, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length, IncidentDiagnosticDatabase.SCHEMA.length);
-        System.arraycopy(DiagnosticRecoveryDatabase.SCHEMA, 0, schema, SCHEMA.length + IncidentDetailDatabase.SCHEMA.length + IncidentDiagnosticDatabase.SCHEMA.length, DiagnosticRecoveryDatabase.SCHEMA.length);
+        List<String> schema = new ArrayList<>();
+        for (String[] part : new String[][] {SCHEMA, IncidentDetailDatabase.SCHEMA, IncidentDiagnosticDatabase.SCHEMA,
+                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA}) Collections.addAll(schema, part);
         Map<Long, String[]> migrations = new HashMap<>();
         migrations.put(1L, IncidentDetailDatabase.SCHEMA); migrations.put(2L, IncidentDiagnosticDatabase.SCHEMA);
         migrations.put(3L, DiagnosticRecoveryDatabase.SCHEMA);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 4, schema, migrations);
+        migrations.put(4L, SignalCrashDatabase.SCHEMA);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 5, schema.toArray(new String[0]), migrations);
         details = new IncidentDetailDatabase(database);
         diagnostics = new IncidentDiagnosticDatabase(database);
         recovery = new DiagnosticRecoveryDatabase(database, options);

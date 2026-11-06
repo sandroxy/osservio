@@ -1,5 +1,6 @@
 package com.sandrox.osservio.store;
 
+import com.sandrox.osservio.core.AppleSignalCrash;
 import com.sandrox.osservio.core.DiagnosticRecoveryReceipt;
 import com.sandrox.osservio.core.SystemDiagnostic;
 import com.sandrox.osservio.core.SystemDiagnosticBatch;
@@ -23,6 +24,13 @@ public final class DiagnosticRecoveryTest {
     private SystemDiagnostic evidence(String name) {
         Map<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> metadata = new EnumMap<>(SystemDiagnostic.MetadataKey.class);
         switch (name) {
+            case "diagnostic-signal":
+                metadata.put(SystemDiagnostic.MetadataKey.APP_VERSION, SystemDiagnostic.Text.capturePublic("😀"));
+                metadata.put(SystemDiagnostic.MetadataKey.APP_BUILD, SystemDiagnostic.Text.capturePublic("42"));
+                return SystemDiagnostic.appleSignal(AppleSignalCrash.restore("12345678-1234-1234-1234-abcdef123456", 1700000000000L,
+                    AppleSignalCrash.Signal.ABORT, "#0", "18446744073709551615", 4294967295L, Arrays.asList("0", "18446744073709551615"),
+                    Arrays.asList(AppleSignalCrash.Image.restore("4096", "4096", "12345678123412341234abcdef123456", "16777228", "18446744073709551615"),
+                        AppleSignalCrash.Image.restore("18446744073709551615", "0", null, null, null)), metadata, true));
             case "diagnostic-android":
                 return SystemDiagnostic.androidExit(9007199254740993L, 5, Integer.MIN_VALUE, Integer.MAX_VALUE, 100, Long.MAX_VALUE, null);
             case "diagnostic-crash":

@@ -1,6 +1,7 @@
 package com.sandrox.osservio.store;
 
 import static com.sandrox.osservio.store.IncidentNames.name;
+import com.sandrox.osservio.core.AppleSignalCrash;
 import com.sandrox.osservio.core.SystemDiagnostic;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -32,6 +33,22 @@ final class DiagnosticFingerprint {
         for (SystemDiagnostic.MetadataKey key : SystemDiagnostic.MetadataKey.values()) {
             SystemDiagnostic.Text text = metric == null ? null : metric.metadata.get(key);
             field(digest, text == null ? null : text.value); field(digest, text == null ? null : text.isTruncated ? "1" : "0");
+        }
+        AppleSignalCrash crash = value.appleSignal;
+        if (crash != null) {
+            field(digest, crash.reportID); field(digest, crash.signal.wireName); field(digest, crash.code);
+            field(digest, crash.faultAddress); field(digest, crash.threadNumber == null ? null : crash.threadNumber.toString());
+            field(digest, crash.imageCacheIncomplete ? "1" : "0"); field(digest, Integer.toString(crash.frames.size()));
+            for (String address : crash.frames) field(digest, address);
+            field(digest, Integer.toString(crash.images.size()));
+            for (AppleSignalCrash.Image image : crash.images) {
+                field(digest, image.baseAddress); field(digest, image.size); field(digest, image.uuid);
+                field(digest, image.cpuType); field(digest, image.cpuSubtype);
+            }
+            for (SystemDiagnostic.MetadataKey key : SystemDiagnostic.MetadataKey.values()) {
+                SystemDiagnostic.Text text = crash.metadata.get(key);
+                field(digest, text == null ? null : text.value); field(digest, text == null ? null : text.isTruncated ? "1" : "0");
+            }
         }
         StringBuilder result = new StringBuilder(64);
         for (byte octet : digest.digest()) result.append(String.format(Locale.ROOT, "%02x", octet & 255));

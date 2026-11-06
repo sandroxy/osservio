@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_diagnostic_source_apple_signal">Apple fatal signal recorder</string>
+    <string name="osservio_crash_time">Recorded failure time</string>
+    <string name="osservio_crash_report_id">Recorder report ID</string>
+    <string name="osservio_crash_code">Signal code</string>
+    <string name="osservio_crash_fault_address">Fault address</string>
+    <string name="osservio_crash_thread">Faulting thread index</string>
+    <string name="osservio_crash_frames">Instruction addresses</string>
+    <string name="osservio_crash_images">Binary images</string>
+    <string name="osservio_crash_frame_count">Recorded frames</string>
+    <string name="osservio_crash_image_count">Recorded images</string>
+    <string name="osservio_crash_limit_reached">Recording limit reached</string>
+    <string name="osservio_crash_image_cache">Loader cache</string>
+    <string name="osservio_crash_image_cache_excluded">Some images were excluded</string>
+    <string name="osservio_crash_image_cache_no_exclusion">No exclusion reported</string>
+    <string name="osservio_crash_base_address">Load address</string>
+    <string name="osservio_crash_image_size">Image extent</string>
+    <string name="osservio_crash_cpu_type">Mach CPU type</string>
+    <string name="osservio_crash_cpu_subtype">Mach CPU subtype</string>
+    <string name="osservio_crash_copy_all">Copy all</string>
+    <string name="osservio_crash_copied">Copied</string>
+    <string name="osservio_crash_copy_hint">Tap a row to copy its evidence.</string>
+    <string name="osservio_crash_hint">The recorder captured a fatal BSD signal at whole-second precision. Stack addresses are best effort and are not symbolicated. Missing frames and images are not reconstructed; a signal alone does not identify the underlying cause.</string>
+    <string name="osservio_crash_frames_hint">Newest frame first. The thread index is local to this report, not an OS thread ID. Reaching the recording limit can mean that frames are missing.</string>
+    <string name="osservio_crash_images_hint">UUIDs identify binary builds for matching symbol files. A zero extent means the size was unavailable. Neither a shorter list nor an unflagged cache proves complete image coverage.</string>
+    <string name="osservio_crash_browser_hint">%1$s\n%2$s</string>
+</resources>

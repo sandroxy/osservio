@@ -110,10 +110,16 @@ tables and a private log with an exact large sequence number. Both native engine
 verify direct revision-2 to the current schema migration, preserved attachments/save time,
 new diagnostic writes, and rollback of the added column and tables on failure.
 `incident-v3.sql` extends those fixtures with independently specified system
-evidence. Both SQLite suites verify migration to revision 4, preservation of
+evidence. Both SQLite suites verify migration to the current revision, preservation of
 manual and system records, and rollback on an acknowledgement-table conflict.
+`incident-v4.sql` adds an independently specified acknowledgement for the retained
+MetricKit report. Signal storage tests verify that upgrading to revision 5 keeps
+that acknowledgement, old report identities, save times and attachments, and
+rolls back all new tables if a signal-table name conflicts.
 `diagnostic-fingerprints.tsv` gives independent SHA-256 vectors for reviewed
 facts, including Unicode, framing delimiters, missing fields, and exact integers.
+The signal vector additionally covers report identity, frame/image order, full
+unsigned addresses, paired CPU values, historical metadata and cache loss.
 `diagnostic-acknowledgement-corruption.tsv` defines invalid acknowledgement rows
 that both stores must reject without modifying the file, even after expiry.
 Recovery tests separately cover duplicate multiplicity, deletion/reopen,
@@ -127,6 +133,11 @@ for strict diagnostic reads. Cases cover missing records, source/kind conflicts,
 invalid numbers/text, inconsistent metadata, and byte accounting. Additional tests
 cover separate manual/system retention, complete deletion, asynchronous reopening,
 and rollback of retention and partial evidence when a metadata write fails.
+`signal-crash-corruption.tsv` adds name/SQL mutations for normalized signal facts:
+missing children, gaps/counts, source conflicts, exact values, optional CPU/UUID
+fields, metadata privacy and text accounting. Both SQLite engines reject them
+without repair. Tests also check image-write rollback, cascading deletion, missing
+stacks, reopen and repeated recovery after deleting a report.
 
 `incident-detail-corruption.tsv` contains a case name and a SQL mutation applied
 to a valid synthetic attachment snapshot. Both SQLite suites require rejection
@@ -138,14 +149,16 @@ exact integers, source loss counters, optional columns, and whole-report retenti
 Capacity failures also verify that pruning and partial attachment writes roll back
 together. Asynchronous store tests verify committed attachments after close/reopen.
 
-`incident-export/{absent,empty,complete,diagnostic-android,diagnostic-crash,diagnostic-hang}.json` contains independent golden pairs
+`incident-export/{absent,empty,complete,diagnostic-android,diagnostic-crash,diagnostic-hang,diagnostic-signal}.json` contains independent golden pairs
 of metadata and content documents. Both native Export suites construct typed
 snapshots and compare their encoded JSON values with these files. Object key
 order is irrelevant. `cases.json` describes strict-writer and tolerant-reader
 expectations after explicit mutations; `http-lifecycle.json` covers valid
 observation states and invalid revisions. Protocol tests separately exercise
 UTF-8 limits, duplicate identities, collection bounds, source/kind/time conflicts,
-exact diagnostic codes, metadata bounds, and reader extensions. These are portable
-revision-2 documents, separate from the private SQLite migration fixture.
-The unchanged goldens in `incident-export/revisions/1` verify supported old reads;
+exact diagnostic codes, metadata bounds, signal privacy and reader extensions.
+The signal protocol suite reuses the 44 model boundary cases independently of
+the native encoders. These are portable revision-3 documents, separate from the
+private SQLite migration fixtures.
+The unchanged goldens in `incident-export/revisions/1` and `revisions/2` verify supported old reads;
 old schemas reject new documents and mixed/unsupported revisions fail explicitly.

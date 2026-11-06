@@ -75,5 +75,54 @@ final class SystemDiagnosticTests: XCTestCase {
         XCTAssertEqual(viewer.tableView(viewer.tableView, numberOfRowsInSection: 0), 3)
         XCTAssertEqual(IncidentPresentation.hint(manual), RuntimePresentation.text("incident_snapshot_hint"))
     }
+
+    @MainActor
+    func testSignalOverviewAndAddressListsPreserveExactEvidenceAndLimits() throws {
+        let crash = try AppleSignalCrash.restore(reportID: "12345678-1234-1234-1234-abcdef123456", timestampMillis: 1_700_000_000_000,
+            signal: .segmentationViolation, code: "SEGV_MAPERR", faultAddress: .max, threadNumber: .max,
+            frames: Array(repeating: UInt64.max, count: 128),
+            images: Array(repeating: .restore(baseAddress: .max, size: 0, uuid: "12345678123412341234abcdef123456",
+                                             cpuType: 16_777_228, cpuSubtype: .max), count: 512),
+            metadata: [.appBuild: .capture(publicValue: "historical-build")], imageCacheIncomplete: true)
+        let diagnostic = SystemDiagnostic.appleSignal(crash)
+        let fields = Dictionary(uniqueKeysWithValues: SystemDiagnosticPresentation.fields(diagnostic).map { ($0.title, $0.value) })
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_fault_address")], "0xffffffffffffffff")
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_thread")], "4294967295")
+        XCTAssertEqual(fields[RuntimePresentation.text("env_appBuild")], "historical-build")
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_frame_count")], "128 · " + RuntimePresentation.text("crash_limit_reached"))
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_image_cache")], RuntimePresentation.text("crash_image_cache_excluded"))
+        XCTAssertNil(fields[RuntimePresentation.text("diagnostic_interval_start")])
+        XCTAssertEqual(SystemDiagnosticPresentation.hint(diagnostic), RuntimePresentation.text("crash_hint"))
+        let overview = SystemDiagnosticViewController(diagnostic); overview.loadViewIfNeeded()
+        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 2)
+        for row in 0..<2 {
+            let cell = overview.tableView(overview.tableView, cellForRowAt: IndexPath(row: row, section: 1))
+            XCTAssertEqual(cell.accessoryType, .disclosureIndicator)
+        }
+        let frames = SignalCrashViewController(crash, content: .frames); frames.loadViewIfNeeded()
+        XCTAssertEqual(frames.tableView(frames.tableView, numberOfRowsInSection: 0), 128)
+        XCTAssertEqual(frames.copyText(at: 127), "#127\n0xffffffffffffffff")
+        let images = SignalCrashViewController(crash, content: .images); images.loadViewIfNeeded()
+        XCTAssertEqual(images.tableView(images.tableView, numberOfRowsInSection: 0), 512)
+        let image = images.copyText(at: 511)
+        XCTAssertTrue(image.contains("#511 · 12345678123412341234abcdef123456")); XCTAssertTrue(image.contains("18446744073709551615"))
+        XCTAssertTrue(image.contains(RuntimePresentation.text("crash_image_size") + ": " + RuntimePresentation.text("runtime_unavailable")))
+        XCTAssertFalse(image.contains("0 B"))
+    }
+
+    @MainActor
+    func testMissingSignalStackHasNoNavigationOrInventedThread() throws {
+        let crash = try AppleSignalCrash.restore(reportID: "12345678-1234-1234-1234-abcdef123456", timestampMillis: 1000,
+            signal: .abort, code: "#0", faultAddress: 0, threadNumber: nil, frames: [], images: [], metadata: [:], imageCacheIncomplete: false)
+        let overview = SystemDiagnosticViewController(.appleSignal(crash)); overview.loadViewIfNeeded()
+        for row in 0..<2 {
+            let cell = overview.tableView(overview.tableView, cellForRowAt: IndexPath(row: row, section: 1))
+            XCTAssertEqual(cell.accessoryType, .none); XCTAssertEqual(cell.detailTextLabel?.text, RuntimePresentation.text("runtime_unavailable"))
+        }
+        let fields = Dictionary(uniqueKeysWithValues: SystemDiagnosticPresentation.fields(.appleSignal(crash)).map { ($0.title, $0.value) })
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_thread")], RuntimePresentation.text("runtime_unavailable"))
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_fault_address")], "0x0")
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_image_cache")], RuntimePresentation.text("crash_image_cache_no_exclusion"))
+    }
 }
 #endif
