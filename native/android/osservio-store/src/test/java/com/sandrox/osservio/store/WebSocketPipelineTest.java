@@ -27,6 +27,7 @@ public final class WebSocketPipelineTest {
             assertEquals(row[0], row[2], result.name().toLowerCase(java.util.Locale.ROOT));
             assertEquals(row[0], Integer.parseInt(row[3]), store.snapshot().events.size());
             assertEquals(row[0], Integer.parseInt(row[4]), recorder.status().activeConnections);
+            for (WebSocketEvent event : store.snapshot().events) EvidenceRestorationTest.check(event);
         }
     }
     private static final List<HTTPHeader> EMPTY = Collections.emptyList();
@@ -56,6 +57,7 @@ public final class WebSocketPipelineTest {
         assertEquals(WebSocketEvent.PayloadState.BINARY, events.get(2).payload.state);
         assertEquals(Long.valueOf(1234), events.get(2).payload.byteCount);
         assertEquals(0, store.snapshot().retainedPayloadBytes);
+        for (WebSocketEvent event : events) EvidenceRestorationTest.check(event);
     }
     private static String decode(String value) {
         return value.equals("~") ? "" : new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
@@ -68,11 +70,13 @@ public final class WebSocketPipelineTest {
             WebSocketRecorder.Token token = begin(recorder);
             assertEquals(WebSocketRecorder.Result.RECORDED, recorder.text(token, WebSocketEvent.Direction.INCOMING, WebSocketEvent.Outcome.RECEIVED, decode(row[2])));
             WebSocketEvent.PayloadReference ref = store.snapshot().events.get(1).payload;
+            EvidenceRestorationTest.check(store.snapshot().events.get(1));
             boolean truncated = Boolean.parseBoolean(row[4]);
             assertEquals(row[0], truncated ? WebSocketEvent.PayloadState.TRUNCATED : WebSocketEvent.PayloadState.AVAILABLE, ref.state);
             WebSocketPayload payload = store.payload(ref.blobId).payload;
             assertEquals(row[0], decode(row[3]), payload.text);
             assertEquals(truncated ? null : Long.valueOf(payload.byteCount), ref.byteCount);
+            assertEquals(payload.byteCount, WebSocketPayload.restore(payload.id, payload.text).byteCount);
         }
         MemoryWebSocketStore store = new MemoryWebSocketStore();
         WebSocketRecorder recorder = recorder(store, true, 10, 100);
@@ -114,6 +118,7 @@ public final class WebSocketPipelineTest {
         WebSocketEvent event = store.snapshot().events.get(1);
         assertEquals(Integer.valueOf(403), event.statusCode);
         assertEquals("[redacted]", event.headers.get(0).value);
+        EvidenceRestorationTest.check(event);
         assertEquals(0, recorder.status().activeConnections);
     }
     @Test public void independentPayloadEvictionClearAndImmutableSnapshots() {
@@ -146,13 +151,16 @@ public final class WebSocketPipelineTest {
         store.clear();
         assertEquals(WebSocketRecorder.Result.RECORDED, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.SENT, null));
         WebSocketEvent event = store.snapshot().events.get(0);
+        EvidenceRestorationTest.check(event);
         assertEquals(WebSocketEvent.Kind.MESSAGE_RESULT, event.kind);
         assertEquals(messageId.toString(), event.relatedMessageId);
         assertNotEquals(messageId.toString(), event.id);
         assertNull(event.payload);
         assertEquals(WebSocketHistory.PayloadLookup.State.UNAVAILABLE, store.payload(blob).state);
         assertEquals(WebSocketRecorder.Result.RECORDED, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.UNOBSERVED, null));
+        EvidenceRestorationTest.check(store.snapshot().events.get(0));
         assertEquals(WebSocketRecorder.Result.RECORDED, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.FAILED, WebSocketEvent.Failure.CONNECTION));
+        EvidenceRestorationTest.check(store.snapshot().events.get(0));
         recorder.captureController.startDetailed();
         assertEquals(WebSocketRecorder.Result.STALE, recorder.sendResult(token, messageId, WebSocketEvent.Outcome.SENT, null));
         assertEquals(1, store.snapshot().events.size());

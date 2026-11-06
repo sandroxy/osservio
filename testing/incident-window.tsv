@@ -1,0 +1,9 @@
+count-window	31,31,31,31,31	3	128	7	3,4,5	true
+byte-window	31,31,31,31,31	200	64	7	4,5	true
+stop-at-large-boundary	31,99,31	200	64	0	3	true
+large-newest-is-not-skipped	31,99	200	64	0	-	true
+empty-is-attached	-	200	64	9	-	true
+zero-count	31	0	64	0	-	false
+oversized-count	31	2001	64	0	-	false
+undersized-budget	31	200	63	0	-	false
+negative-source-loss	31	200	64	-1	-	false

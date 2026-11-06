@@ -65,6 +65,7 @@ public final class HTTPPipelineTest {
             HTTPRecorder capture = recorder(store, new HTTPPrivacyPolicy(Boolean.parseBoolean(row[1]), Collections.emptySet(), HTTPPrivacyPolicy.BodyPolicy.OMIT, 16384));
             assertEquals(row[0], HTTPRecorder.Result.RECORDED, capture.begin("GET", row[2], EMPTY).result);
             assertEquals(row[0], row[3], store.snapshot().events.get(0).url);
+            EvidenceRestorationTest.check(store.snapshot().events.get(0));
         }
     }
 
@@ -78,6 +79,7 @@ public final class HTTPPipelineTest {
         assertEquals(HTTPRecorder.Result.RECORDED, capture.observeBody(token, HTTPRecorder.Direction.REQUEST, 123, count -> { fail("Omitted body was read"); return null; }));
         assertEquals(HTTPRecorder.Result.RECORDED, capture.finish(token, HTTPEvent.State.FAILED, HTTPEvent.Failure.CONNECTION, false, false));
         HTTPEvent event = store.snapshot().events.get(0);
+        EvidenceRestorationTest.check(event);
         assertEquals("POST", event.method);
         assertEquals(3, event.requestHeaders.size());
         assertEquals("[redacted]", event.requestHeaders.get(0).value);
@@ -102,12 +104,14 @@ public final class HTTPPipelineTest {
             assertEquals(HTTPRecorder.Result.RECORDED, capture.observeBody(token, HTTPRecorder.Direction.RESPONSE, bytes.length, count -> Arrays.copyOf(bytes, count)));
             assertEquals(HTTPRecorder.Result.RECORDED, capture.finish(token, HTTPEvent.State.COMPLETED, null, true, true));
             HTTPEvent event = store.snapshot().events.get(0);
+            EvidenceRestorationTest.check(event);
             String state = event.responseBody.state == HTTPEvent.BodyState.INVALID_TEXT ? "invalidText" : event.responseBody.state.name().toLowerCase(java.util.Locale.ROOT);
             assertEquals(row[0], row[4], state);
             if (event.responseBody.blobId != null) {
                 HTTPHistory.BodyLookup lookup = store.body(event.responseBody.blobId);
                 assertEquals(row[0], HTTPHistory.BodyLookup.State.AVAILABLE, lookup.state);
                 assertEquals(row[0], row[5].equals("~") ? "" : row[5], Base64.getEncoder().encodeToString(lookup.body.text.getBytes(StandardCharsets.UTF_8)));
+                assertEquals(lookup.body.byteCount, HTTPBody.restore(lookup.body.id, lookup.body.text).byteCount);
             } else assertEquals(row[0], "-", row[5]);
         }
     }

@@ -26,6 +26,7 @@ final class WebSocketPipelineTests: XCTestCase {
             XCTAssertEqual(String(describing: result), row[2], row[0])
             XCTAssertEqual(store.snapshot()?.events.count, Int(row[3]), row[0])
             XCTAssertEqual(recorder.status()?.activeConnections, Int(row[4]), row[0])
+            for event in try XCTUnwrap(store.snapshot()).events { try EvidenceRestorationTests.check(event) }
         }
     }
     private func recorder(_ store: MemoryWebSocketStore, capture: CaptureController = CaptureController(),
@@ -53,6 +54,7 @@ final class WebSocketPipelineTests: XCTestCase {
         XCTAssertEqual(events[2].payload?.state, .binary)
         XCTAssertEqual(events[2].payload?.byteCount, 1234)
         XCTAssertEqual(store.snapshot()?.retainedPayloadBytes, 0)
+        for event in events { try EvidenceRestorationTests.check(event) }
     }
     func testSharedTextBoundaries() throws {
         var root = URL(fileURLWithPath: #filePath)
@@ -70,11 +72,13 @@ final class WebSocketPipelineTests: XCTestCase {
             let token = try begin(capture)
             XCTAssertEqual(capture.text(token, direction: .incoming, outcome: .received, value: try decode(row[2])), .recorded)
             let event = try XCTUnwrap(store.snapshot()?.events.last)
+            try EvidenceRestorationTests.check(event)
             let ref = try XCTUnwrap(event.payload)
             XCTAssertEqual(ref.state, row[4] == "true" ? .truncated : .available, row[0])
             guard case .available(let payload) = store.payload(id: try XCTUnwrap(ref.blobID)) else { return XCTFail(row[0]) }
             XCTAssertEqual(payload.text, try decode(row[3]), row[0])
             XCTAssertEqual(ref.byteCount, row[4] == "true" ? nil : Int64(payload.byteCount))
+            XCTAssertEqual(try WebSocketPayload.restore(id: payload.id, text: payload.text).byteCount, payload.byteCount)
         }
     }
     func testLifecycleValidationAndSessionBoundaries() throws {
@@ -104,6 +108,7 @@ final class WebSocketPipelineTests: XCTestCase {
             statusCode: 403, failure: .transport), .recorded)
         XCTAssertEqual(store.snapshot()?.events.last?.statusCode, 403)
         XCTAssertEqual(store.snapshot()?.events.last?.headers.first?.value, "[redacted]")
+        try EvidenceRestorationTests.check(XCTUnwrap(store.snapshot()?.events.last))
         XCTAssertEqual(capture.status()?.activeConnections, 0)
     }
     func testSendCompletionRemainsCorrelatedAfterEvictionWithoutRecreatingContent() throws {
@@ -120,13 +125,16 @@ final class WebSocketPipelineTests: XCTestCase {
         store.clear()
         XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .sent), .recorded)
         let result = try XCTUnwrap(store.snapshot()?.events.first)
+        try EvidenceRestorationTests.check(result)
         XCTAssertEqual(result.kind, .messageResult)
         XCTAssertEqual(result.relatedMessageID, messageID.uuidString)
         XCTAssertNotEqual(result.id, messageID.uuidString)
         XCTAssertNil(result.payload)
         if case .unavailable = store.payload(id: blob) {} else { XCTFail("Completion must not restore a body") }
         XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .unobserved), .recorded)
+        try EvidenceRestorationTests.check(XCTUnwrap(store.snapshot()?.events.first))
         XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .failed, failure: .connection), .recorded)
+        try EvidenceRestorationTests.check(XCTUnwrap(store.snapshot()?.events.first))
         try capture.captureController.startDetailed()
         XCTAssertEqual(capture.sendResult(token, messageID: messageID, outcome: .sent), .stale)
         XCTAssertEqual(store.snapshot()?.events.count, 1)

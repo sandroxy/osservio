@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Arrays;
+import java.util.Locale;
 
 /** Immutable sanitized evidence, not reconstructed connection state or a wire frame. */
 public final class WebSocketEvent {
@@ -20,6 +22,18 @@ public final class WebSocketEvent {
         /** Null means the byte count was unavailable without inspecting more content. */
         public final Long byteCount;
         PayloadReference(PayloadState state, String blobId, Long byteCount) { this.state = state; this.blobId = blobId; this.byteCount = byteCount; }
+        public static PayloadReference restore(PayloadState state, String blobId, Long byteCount) {
+            boolean content = state == PayloadState.AVAILABLE || state == PayloadState.TRUNCATED;
+            if (state == null || content != (blobId != null) || (blobId != null && !EvidenceValidation.id(blobId))
+                || (byteCount != null && byteCount < 0)) throw EvidenceValidation.invalid();
+            switch (state) {
+                case AVAILABLE: if (byteCount == null || byteCount > 65536) throw EvidenceValidation.invalid(); break;
+                case BINARY: if (byteCount == null) throw EvidenceValidation.invalid(); break;
+                case OMITTED: case INVALID_TEXT: case TRUNCATED: if (byteCount != null) throw EvidenceValidation.invalid(); break;
+                default: throw EvidenceValidation.invalid();
+            }
+            return new PayloadReference(state, blobId, byteCount);
+        }
     }
     public final String id;
     public final String connectionId;
@@ -53,6 +67,44 @@ public final class WebSocketEvent {
         this.headers = Collections.unmodifiableList(new ArrayList<>(headers)); this.headersLimited = headersLimited;
         this.statusCode = statusCode; this.closeCode = closeCode; this.failure = failure;
         this.direction = direction; this.outcome = outcome; this.payload = payload; this.relatedMessageId = relatedMessageId;
+        int bytes = url.getBytes(StandardCharsets.UTF_8).length;
+        for (HTTPHeader header : headers) bytes += header.name.getBytes(StandardCharsets.UTF_8).length + header.value.getBytes(StandardCharsets.UTF_8).length;
+        textByteCount = bytes;
+    }
+
+    /** Restores an observation, not a reconstructed connection. Related submissions may be absent. */
+    public static WebSocketEvent restore(String id, String connectionId, String sessionId, long sequence, long timestampMillis,
+                                         String url, Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited,
+                                         Integer statusCode, Integer closeCode, Failure failure, Direction direction, Outcome outcome,
+                                         String relatedMessageId, PayloadReference payload) {
+        if (!EvidenceValidation.id(id) || !EvidenceValidation.id(connectionId) || !EvidenceValidation.id(sessionId)
+            || sequence <= 0 || source == null || kind == null || !EvidenceValidation.url(url) || !EvidenceValidation.headers(headers)
+            || (statusCode != null && (!Arrays.asList(Kind.OPENED, Kind.FAILED).contains(kind) || statusCode < 100 || statusCode > 599))
+            || (closeCode != null && (!Arrays.asList(Kind.CLOSE_REQUESTED, Kind.CLOSING, Kind.CLOSED, Kind.CANCEL_REQUESTED).contains(kind) || closeCode < 1000 || closeCode > 4999))
+            || ((!headers.isEmpty() || headersLimited) && !Arrays.asList(Kind.CONNECTING, Kind.ATTACHED, Kind.OPENED, Kind.FAILED).contains(kind))) throw EvidenceValidation.invalid();
+        switch (kind) {
+            case MESSAGE:
+                if (direction == null || outcome == null || payload == null || outcome == Outcome.UNOBSERVED
+                    || (direction == Direction.INCOMING) != (outcome == Outcome.RECEIVED) || failure != null || relatedMessageId != null
+                    || (payload.blobId != null && !payload.blobId.toLowerCase(Locale.ROOT).equals(id.toLowerCase(Locale.ROOT)))) throw EvidenceValidation.invalid();
+                break;
+            case MESSAGE_RESULT:
+                if (direction != Direction.OUTGOING || !Arrays.asList(Outcome.SENT, Outcome.FAILED, Outcome.UNOBSERVED).contains(outcome)
+                    || (outcome == Outcome.FAILED) != (failure != null) || !EvidenceValidation.id(relatedMessageId) || payload != null) throw EvidenceValidation.invalid();
+                break;
+            default:
+                if (direction != null || outcome != null || payload != null || relatedMessageId != null || (kind == Kind.FAILED) != (failure != null)) throw EvidenceValidation.invalid();
+        }
+        return new WebSocketEvent(id, connectionId, sessionId, sequence, timestampMillis, url, source, kind, headers,
+            headersLimited, statusCode, closeCode, failure, direction, outcome, relatedMessageId, payload);
+    }
+    private WebSocketEvent(String id, String connectionId, String sessionId, long sequence, long timestampMillis,
+                           String url, Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited, Integer statusCode,
+                           Integer closeCode, Failure failure, Direction direction, Outcome outcome, String relatedMessageId, PayloadReference payload) {
+        this.id = id; this.connectionId = connectionId; this.sessionId = sessionId; this.sequence = sequence; this.timestampMillis = timestampMillis;
+        this.url = url; this.source = source; this.kind = kind; this.headers = Collections.unmodifiableList(new ArrayList<>(headers));
+        this.headersLimited = headersLimited; this.statusCode = statusCode; this.closeCode = closeCode; this.failure = failure;
+        this.direction = direction; this.outcome = outcome; this.relatedMessageId = relatedMessageId; this.payload = payload;
         int bytes = url.getBytes(StandardCharsets.UTF_8).length;
         for (HTTPHeader header : headers) bytes += header.name.getBytes(StandardCharsets.UTF_8).length + header.value.getBytes(StandardCharsets.UTF_8).length;
         textByteCount = bytes;

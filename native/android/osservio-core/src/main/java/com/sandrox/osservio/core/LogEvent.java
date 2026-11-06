@@ -27,4 +27,11 @@ public final class LogEvent {
         this.textByteCount = category.getBytes(StandardCharsets.UTF_8).length
             + message.getBytes(StandardCharsets.UTF_8).length;
     }
+    /** Restores sanitized evidence without regenerating identity or truncating invalid stored text. */
+    public static LogEvent restore(String sessionId, long sequence, long timestampMillis, LogLevel level,
+                                   String category, String message, boolean isPrivate, boolean isTruncated) {
+        if (!EvidenceValidation.id(sessionId) || sequence <= 0 || level == null || !EvidenceValidation.label(category)
+            || !EvidenceValidation.text(message, 65536) || (isPrivate && (!"[private]".equals(message) || isTruncated))) throw EvidenceValidation.invalid();
+        return new LogEvent(sessionId, sequence, timestampMillis, level, category, message, isPrivate, isTruncated);
+    }
 }

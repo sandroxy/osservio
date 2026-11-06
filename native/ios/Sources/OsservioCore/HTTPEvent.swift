@@ -18,6 +18,16 @@ public struct HTTPBodyReference: Sendable {
     public let state: HTTPBodyState
     public let blobID: String?
     public let observedBytes: Int64
+
+    public static func restore(state: HTTPBodyState, blobID: String?, observedBytes: Int64) throws -> HTTPBodyReference {
+        let hasContent = state == .available || state == .truncated
+        guard observedBytes >= 0, hasContent == (blobID != nil),
+              blobID.map(EvidenceValidation.httpBodyID) ?? true,
+              state != .pending || observedBytes == 0,
+              state != .available || observedBytes <= 65_536,
+              state != .truncated || observedBytes > 0 else { throw PersistenceError.invalidRecord }
+        return HTTPBodyReference(state: state, blobID: blobID, observedBytes: observedBytes)
+    }
 }
 
 /// Sanitized metadata. Body content is queried separately and may be evicted independently.
@@ -69,6 +79,50 @@ public struct HTTPEvent: Sendable {
     private static func size(method: String, url: String, headers: [HTTPHeader]) -> Int {
         method.utf8.count + url.utf8.count + headers.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count }
     }
+
+    /// Validates persisted sanitized metadata without changing its identity, revision, or transport outcome.
+    public static func restore(id: String, sessionID: String, sequence: Int64, revision: Int64, timestampMillis: Int64,
+                               method: String, source: HTTPSource, url: String, responseURL: String?,
+                               requestHeaders: [HTTPHeader], responseHeaders: [HTTPHeader], headersLimited: Bool,
+                               statusCode: Int?, state: HTTPState, failure: HTTPFailure?, durationMillis: UInt64?,
+                               requestBody: HTTPBodyReference, responseBody: HTTPBodyReference) throws -> HTTPEvent {
+        guard EvidenceValidation.id(id), EvidenceValidation.id(sessionID), sequence > 0, revision >= 0,
+              ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH", "OTHER"].contains(method),
+              EvidenceValidation.url(url), responseURL.map(EvidenceValidation.url) ?? true,
+              EvidenceValidation.headers(requestHeaders), EvidenceValidation.headers(responseHeaders),
+              statusCode.map({ (100...599).contains($0) }) ?? true,
+              (state == .failed) == (failure != nil),
+              requestBody.blobID.map({ $0.lowercased() == id.lowercased() + ".request" }) ?? true,
+              responseBody.blobID.map({ $0.lowercased() == id.lowercased() + ".response" }) ?? true,
+              statusCode != nil || (responseURL == nil && responseHeaders.isEmpty) else { throw PersistenceError.invalidRecord }
+        switch state {
+        case .pending, .receiving:
+            guard durationMillis == nil, requestBody.state == .pending, responseBody.state == .pending,
+                  revision == (state == .pending ? 0 : 1), (state == .receiving) == (statusCode != nil) else { throw PersistenceError.invalidRecord }
+        case .captureEnded:
+            guard durationMillis == nil, [.omitted, .incomplete].contains(requestBody.state),
+                  [.omitted, .incomplete].contains(responseBody.state), revision == (statusCode == nil ? 1 : 2) else { throw PersistenceError.invalidRecord }
+        case .completed, .failed, .cancelled, .closedEarly:
+            guard requestBody.state != .pending, responseBody.state != .pending,
+                  revision == (statusCode == nil ? 1 : 2), state != .completed || statusCode != nil,
+                  state == .completed || [.omitted, .incomplete].contains(responseBody.state) else { throw PersistenceError.invalidRecord }
+        }
+        return HTTPEvent(id: id, sessionID: sessionID, sequence: sequence, revision: revision, timestampMillis: timestampMillis,
+            method: method, source: source, url: url, responseURL: responseURL, requestHeaders: requestHeaders,
+            responseHeaders: responseHeaders, headersLimited: headersLimited, statusCode: statusCode, state: state,
+            failure: failure, durationMillis: durationMillis, requestBody: requestBody, responseBody: responseBody)
+    }
+    private init(id: String, sessionID: String, sequence: Int64, revision: Int64, timestampMillis: Int64,
+                 method: String, source: HTTPSource, url: String, responseURL: String?, requestHeaders: [HTTPHeader],
+                 responseHeaders: [HTTPHeader], headersLimited: Bool, statusCode: Int?, state: HTTPState,
+                 failure: HTTPFailure?, durationMillis: UInt64?, requestBody: HTTPBodyReference, responseBody: HTTPBodyReference) {
+        self.id = id; self.sessionID = sessionID; self.sequence = sequence; self.revision = revision; self.timestampMillis = timestampMillis
+        self.method = method; self.source = source; self.url = url; self.responseURL = responseURL
+        self.requestHeaders = requestHeaders; self.responseHeaders = responseHeaders; self.headersLimited = headersLimited
+        self.statusCode = statusCode; self.state = state; self.failure = failure; self.durationMillis = durationMillis
+        self.requestBody = requestBody; self.responseBody = responseBody
+        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (responseURL?.utf8.count ?? 0)
+    }
 }
 
 public struct HTTPBody: Sendable {
@@ -76,6 +130,10 @@ public struct HTTPBody: Sendable {
     public let text: String
     public let byteCount: Int
     init(id: String, text: String) { self.id = id; self.text = text; byteCount = text.utf8.count }
+    public static func restore(id: String, text: String) throws -> HTTPBody {
+        guard EvidenceValidation.httpBodyID(id), EvidenceValidation.text(text, limit: 65_536) else { throw PersistenceError.invalidRecord }
+        return HTTPBody(id: id, text: text)
+    }
 }
 
 public struct HTTPUpdate: Sendable {

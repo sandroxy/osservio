@@ -13,6 +13,8 @@ Core and Store also provide explicit manual incident snapshots with independent
 SQLite retention, strict restoration, asynchronous queries, and deletion.
 Native problem views provide explicit attachment selection, a bounded description
 editor, and an immutable snapshot browser through Core archive contracts.
+Core also provides bounded frozen log/HTTP/WebSocket windows with separate body
+inclusion states. Their persistence and UI integration are not implemented yet.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 

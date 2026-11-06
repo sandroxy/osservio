@@ -55,6 +55,7 @@ final class HTTPPipelineTests: XCTestCase {
             let capture = try recorder(store, policy: HTTPPrivacyPolicy(publicURLPath: row[1] == "true"))
             XCTAssertEqual(capture.begin(method: "GET", url: row[2]).result, .recorded, row[0])
             XCTAssertEqual(store.snapshot()?.events.first?.url, row[3], row[0])
+            try EvidenceRestorationTests.check(XCTUnwrap(store.snapshot()?.events.first))
         }
     }
 
@@ -68,6 +69,7 @@ final class HTTPPipelineTests: XCTestCase {
         XCTAssertEqual(capture.observeBody(token, direction: .request, byteCount: 123) { _ in XCTFail("Omitted body was read"); return Data() }, .recorded)
         XCTAssertEqual(capture.finish(token, state: .failed, failure: .connection, requestComplete: false, responseComplete: false), .recorded)
         let event = try XCTUnwrap(store.snapshot()?.events.first)
+        try EvidenceRestorationTests.check(event)
         XCTAssertEqual(event.method, "POST")
         XCTAssertEqual(event.requestHeaders.map(\.value), ["[redacted]", "application/json", "123"])
         XCTAssertTrue(event.headersLimited)
@@ -88,10 +90,12 @@ final class HTTPPipelineTests: XCTestCase {
             XCTAssertEqual(capture.observeBody(token, direction: .response, byteCount: Int64(bytes.count)) { Data(bytes.prefix($0)) }, .recorded)
             XCTAssertEqual(capture.finish(token, state: .completed), .recorded)
             let event = try XCTUnwrap(store.snapshot()?.events.first)
+            try EvidenceRestorationTests.check(event)
             XCTAssertEqual(event.responseBody.state.rawValue, row[4], row[0])
             if let id = event.responseBody.blobID {
                 guard case .available(let body) = store.body(id: id) else { XCTFail(row[0]); continue }
                 XCTAssertEqual(Data(body.text.utf8).base64EncodedString(), row[5] == "~" ? "" : row[5], row[0])
+                XCTAssertEqual(try HTTPBody.restore(id: body.id, text: body.text).byteCount, body.byteCount)
             } else { XCTAssertEqual(row[5], "-", row[0]) }
         }
     }

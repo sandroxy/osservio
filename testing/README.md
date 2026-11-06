@@ -67,3 +67,18 @@ and truncation. `~` means empty text. Both suites also verify missing versus emp
 breadcrumb context, newest-window selection, omitted versus source-evicted counts,
 preserved observation times, duplicate rejection, and strict environment
 restoration without silently repairing oversized values.
+
+`evidence-restoration.tsv` exercises log, HTTP, and WebSocket restoration with
+valid and invalid identities, exact sequence values, text/header bounds, URL
+privacy, and incompatible observation states. Columns are name, evidence family,
+field, value, and validity. `~` denotes empty text. Native tests also round-trip
+actual captured URL/body/lifecycle fixtures, validate body references, reject
+unpaired UTF-16 surrogates on Android, and preserve send-result correlation.
+
+`incident-window.tsv` describes newest contiguous log-window selection. Columns
+are name, comma-separated message byte counts (`-` for no events), event limit,
+text-byte limit, source eviction count, expected source sequences (`-` for no
+retained events), and validity. Each event has a one-byte category. Independent
+network tests cover content opt-out without lookup, unavailable and busy bodies,
+payload budgets, available empty text, live-history clearing, immutable snapshots,
+duplicate identities, and references that do not match their supplied content.

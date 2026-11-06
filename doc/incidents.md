@@ -8,8 +8,9 @@ implicitly when a snapshot is made or saved.
 
 This API records a manual observation. It is not a crash detector, and the
 snapshot's existence does not establish a failure or its cause. Log, HTTP, and
-WebSocket attachments and export are not implemented yet. The optional native UI
-provides a composer and saved-snapshot browser through Core contracts only.
+WebSocket attachment persistence and export are not implemented yet. Standalone
+in-memory detail windows are described below. The optional native UI provides a
+composer and saved-snapshot browser through Core contracts only.
 
 ## Evidence and privacy
 
@@ -108,6 +109,48 @@ sources again. Copy actions use the displayed sanitized evidence. Individual
 and all-snapshot deletion require a native confirmation; cancelling leaves the
 archive untouched. iOS exposes individual deletion as a list-row swipe action;
 Android also offers it from the snapshot detail.
+
+## Frozen log and network windows
+
+Core's `IncidentLogs`, `IncidentHTTP`, and `IncidentWebSockets` capture explicit,
+immutable windows from their corresponding live snapshots. These types do not
+start recording, query a host transport, clear history, or persist anything.
+They are not yet fields of `IncidentSnapshot`; the SQLite archive and native
+composer currently store only the note, environment, and breadcrumb attachments.
+
+Each window records its supplied observation time, source event count, retained
+events, omitted count, and source eviction counters. Select the newest contiguous
+suffix within both count and metadata-text budgets. Selection stops before the
+first event that would not fit; it does not skip that event to collect older
+ones. Defaults are 200 logs, 50 HTTP exchanges, or 200 WebSocket observations,
+each within 65,536 metadata-text bytes. All three accept 1–2,000 events and
+64–1,048,576 metadata-text bytes. An attached empty window is different from
+not having a window. Counters describe that source, not every possible capture
+loss or all activity in the application.
+
+Network content selection is independent and defaults off. Unselected content
+is never queried. When enabled, each referenced body is looked up once without
+retry, within a default 65,536-byte payload budget (accepted range 0–262,144).
+Allocation prefers newer observations; HTTP responses precede their requests.
+A captured body is either included whole or excluded for budget, preserving its
+original truncation state instead of truncating it again. Text stays separate
+from searchable event metadata. An available empty body can fit a zero-byte
+budget; it is not a missing body.
+
+`IncidentPayload` distinguishes `available`, `notSelected`, `unavailable`, `busy`,
+and `budgetExceeded`. These states describe snapshot inclusion. The original
+event still describes what was observed, including omitted, binary, incomplete,
+or truncated content. A body may leave live storage between metadata selection
+and lookup; an unavailable result does not rewrite the event or invent text.
+The selection is bounded but not an atomic read across sources or body lookups.
+Missing WebSocket handshakes and send submissions are not reconstructed.
+
+`restore` methods on log, HTTP, and WebSocket evidence validate existing
+identities, sequence/revision constraints, state relationships, field bounds,
+privacy markers, and body references. They preserve timestamps and counters,
+reject oversized text rather than repairing it, and require referenced payload
+entries to match the selected metadata. They are for already sanitized evidence;
+they do not establish that arbitrary public text or custom headers are safe.
 
 ## Operations and lifecycle
 
