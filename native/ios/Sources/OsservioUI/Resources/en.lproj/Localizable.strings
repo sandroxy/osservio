@@ -278,7 +278,7 @@
 "incident_body_selected" = "Content copied: %ld / %ld · Bytes: %ld";
 
 "incident_share" = "Share snapshot";
-"incident_export_preparing" = "Preparing the saved description and attachments for sharing…";
+"incident_export_preparing" = "Preparing saved evidence for sharing…";
 "incident_export_busy" = "Another export is being prepared. Try again shortly.";
 "incident_export_closed" = "File export has been closed by the app.";
 "incident_export_too_large" = "This snapshot exceeds the export size limit.";
@@ -286,3 +286,34 @@
 "incident_export_invalid" = "This snapshot could not be validated for export.";
 "incident_export_unavailable" = "Sharing is unavailable. The saved snapshot is still available. Try again.";
 "incident_export_cancel" = "Cancel file preparation";
+
+"diagnostic_title" = "System diagnostic";
+"diagnostic_source" = "Source";
+"diagnostic_source_androidExitInfo" = "Android exit history";
+"diagnostic_source_metricKit" = "MetricKit";
+"diagnostic_kind" = "Classification";
+"diagnostic_kind_managedCrash" = "Java-layer crash";
+"diagnostic_kind_nativeCrash" = "Native crash";
+"diagnostic_kind_anr" = "Application not responding (ANR)";
+"diagnostic_kind_lowMemoryTermination" = "Low-memory termination (system report)";
+"diagnostic_kind_signalTermination" = "Signal termination";
+"diagnostic_kind_otherExit" = "Other exit";
+"diagnostic_kind_crash" = "Crash (system report)";
+"diagnostic_kind_hang" = "Hang (system report)";
+"diagnostic_recovered_at" = "Report read at";
+"diagnostic_exit_time" = "Exited at";
+"diagnostic_interval_start" = "Report interval starts";
+"diagnostic_interval_end" = "Report interval ends";
+"diagnostic_reason" = "System reason code";
+"diagnostic_status" = "Exit status";
+"diagnostic_importance" = "Process importance";
+"diagnostic_pss" = "Last PSS sample";
+"diagnostic_rss" = "Last RSS sample";
+"diagnostic_signal" = "Signal";
+"diagnostic_exception_type" = "Exception type";
+"diagnostic_exception_code" = "Exception code";
+"diagnostic_hang_duration" = "Hang duration";
+"diagnostic_snapshot_hint" = "Saved system evidence. Report read time is separate from failure time. Attachments retain their own times; no matching historical run is inferred.";
+"diagnostic_android_hint" = "The OS supplies the exit reason and time. Memory values are its last samples, not a measurement at exit. A signal alone does not establish a low-memory kill. Stack traces are not included.";
+"diagnostic_metric_hint" = "The interval describes the system report, not an exact failure time. Build and device fields come from that report. A hang does not establish termination. Stack traces are not included.";
+"incident_archive_hint" = "Saved reports may contain manual observations or system evidence. Review their source and times. Opening a report does not change capture.";

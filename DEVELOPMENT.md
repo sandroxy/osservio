@@ -118,6 +118,9 @@ Use the same package test scheme with `-only-testing:OsservioUITests` and
 delayed environment delivery, input preservation, optional attachments, and
 original mark time. A running consumer separately verifies actual event routing
 and navigation; controller tests do not replace visual acceptance.
+System-diagnostic view tests cover immutable navigation, distinct report/read
+times, historical metadata, exact codes, missing memory, hang duration, and
+copy-text formatting. System clipboard delivery requires an application host.
 
 Run the SQLite store tests on the simulator with the same package test scheme,
 using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,

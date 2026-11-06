@@ -4,8 +4,8 @@ The optional Runtime modules read OS-owned diagnostic history through Core's
 `SystemDiagnosticProvider`. iOS also supplies an explicit MetricKit subscriber.
 These APIs install no fatal signal, Mach exception, or Java exception handler.
 They do not persist records automatically. Hosts can explicitly save a reviewed
-record through the incident archive and export it through the optional Export
-module. The native diagnostic viewer is not connected yet.
+record through the incident archive, inspect it in Problems, and export it through
+the optional Export module.
 
 ## Sources and coverage
 
@@ -87,7 +87,7 @@ callback may finish during stop; subsequently received payloads are ignored.
 
 The provider does not subscribe automatically. These APIs are independent of
 `CaptureController`; a host must bind subscription lifetime to its capture/access
-policy. Automatic recovery and the Problems view are not connected yet. Reports
+policy. Automatic recovery is not connected yet. Reports
 are not deduplicated, and identical symptoms do not receive
 invented stable identities.
 
@@ -113,6 +113,25 @@ time/range, historical metadata, exact numeric codes, and missing-value states.
 It preserves recovery observation time separately and adds no current context.
 See the [document contract](../protocol/README.md) and
 [file export](incident-export.md) for explicit encoding and sharing.
+
+## Native inspection
+
+Problems distinguishes system classifications from manual marks. System rows show
+the report read time explicitly; the saved record opens a System diagnostic page
+on iOS or a selectable detail dialog on Android. Opening it performs no system
+query, environment refresh, archive write, or change to capture.
+
+The detail preserves Android exit time/reason/status, last memory samples, or the
+MetricKit report interval, historical metadata and available crash codes or hang
+duration. Missing facts remain unavailable; truncated historical text is labeled.
+Signal termination is not relabeled as low-memory termination. Report intervals
+are not exact occurrence times, and a hang does not prove process termination.
+Source-specific explanations also state that this evidence has no stack trace.
+
+Copy summary includes these facts and their interpretation limits. With an
+exporter supplied, the existing Share action exports the same frozen snapshot.
+The viewer does not implicitly associate current logs, traffic, environment, or
+the latest saved breadcrumb run with an older diagnostic.
 
 ## Privacy and bounds
 

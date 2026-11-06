@@ -36,7 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/** Optional manual problem workflow. The host owns persistence, live histories, and presentation. */
+/** Saved incident browsing and manual marking. The host owns persistence, histories, and presentation. */
 @SuppressLint("ViewConstructor")
 public final class IncidentInspectorView extends FrameLayout {
     private final IncidentArchive archive;
@@ -91,7 +91,7 @@ public final class IncidentInspectorView extends FrameLayout {
         health = caption(); listing.addView(health, new LinearLayout.LayoutParams(-1, -2));
         empty = caption(); empty.setPadding(0, dp(24), 0, dp(24)); listing.addView(empty, new LinearLayout.LayoutParams(-1, -2));
         list = new ListView(context);
-        TextView hint = caption(); hint.setText(R.string.osservio_incident_snapshot_hint); hint.setPadding(0, dp(16), 0, dp(16));
+        TextView hint = caption(); hint.setText(R.string.osservio_incident_archive_hint); hint.setPadding(0, dp(16), 0, dp(16));
         list.addFooterView(hint, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> { if (!reading && position < snapshots.size()) open(snapshots.get(position).id); });
         listing.addView(list, new LinearLayout.LayoutParams(-1, 0, 1)); render();
@@ -228,9 +228,9 @@ public final class IncidentInspectorView extends FrameLayout {
                 row.addView(title, new LinearLayout.LayoutParams(-1, -2)); row.addView(subtitle, new LinearLayout.LayoutParams(-1, -2));
             }
             IncidentSummary snapshot = snapshots.get(position);
-            ((TextView) row.getChildAt(0)).setText(RuntimePresentation.date(snapshot.timestampMillis));
-            ((TextView) row.getChildAt(1)).setText(getContext().getString(R.string.osservio_incident_row_detail,
-                IncidentPresentation.note(getContext(), snapshot.note), IncidentPresentation.attachments(getContext(), snapshot)));
+            ((TextView) row.getChildAt(0)).setText(snapshot.diagnosticKind == null ? RuntimePresentation.date(snapshot.timestampMillis)
+                : SystemDiagnosticPresentation.kind(getContext(), snapshot.diagnosticKind));
+            ((TextView) row.getChildAt(1)).setText(IncidentPresentation.listDetail(getContext(), snapshot));
             return row;
         }
     }

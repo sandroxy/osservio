@@ -2,7 +2,7 @@
 import OsservioCore
 import UIKit
 
-/// Optional manual problem workflow. The host owns persistence, histories, and presentation.
+/// Saved incident browsing and manual marking. The host owns persistence, histories, and presentation.
 @MainActor
 public final class IncidentInspectorViewController: UITableViewController {
     private let archive: any IncidentArchive
@@ -16,7 +16,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private var reading = false
     private var generation = 0
     private var updatedAt: Int64?
-    private var notice = RuntimePresentation.text("incident_snapshot_hint")
+    private var notice = RuntimePresentation.text("incident_archive_hint")
     private var justSaved = false
     public init(archive: any IncidentArchive, environment: any EnvironmentProvider, breadcrumbs: any BreadcrumbHistory,
                 logs: (any LogHistory)? = nil, http: (any HTTPHistory)? = nil, webSockets: (any WebSocketHistory)? = nil,
@@ -61,7 +61,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : snapshots.count }
     public override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if section == 0 { return notice + "\n\n" + PersistencePresentation.status(archive.persistenceStatus(), formatKey: "incident_status") }
-        return (snapshots.isEmpty && updatedAt != nil ? RuntimePresentation.text("incident_empty") + "\n\n" : "") + RuntimePresentation.text("incident_snapshot_hint")
+        return (snapshots.isEmpty && updatedAt != nil ? RuntimePresentation.text("incident_empty") + "\n\n" : "") + RuntimePresentation.text("incident_archive_hint")
     }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "incident") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "incident")
@@ -74,8 +74,8 @@ public final class IncidentInspectorViewController: UITableViewController {
             cell.textLabel?.textColor = !enabled ? .secondaryLabel : indexPath.row == 2 ? .systemRed : view.tintColor
         } else {
             let snapshot = snapshots[indexPath.row]
-            cell.textLabel?.text = RuntimePresentation.date(snapshot.timestampMillis)
-            cell.detailTextLabel?.text = IncidentPresentation.note(snapshot.note) + "\n" + IncidentPresentation.attachments(snapshot)
+            cell.textLabel?.text = snapshot.diagnosticKind.map(SystemDiagnosticPresentation.kind) ?? RuntimePresentation.date(snapshot.timestampMillis)
+            cell.detailTextLabel?.text = IncidentPresentation.listDetail(snapshot)
             cell.detailTextLabel?.numberOfLines = 3; cell.accessoryType = .disclosureIndicator
         }
         if !enabled { cell.accessibilityTraits.insert(.notEnabled) }

@@ -70,8 +70,8 @@ Pass the exporter as the last optional dependency of Android's full
 it neither creates nor closes an exporter. Without this dependency, the saved
 snapshot page does not offer sharing.
 
-Share prepares exactly the snapshot being viewed, including only its already
-saved description and attachments. There is no refresh, new body lookup,
+Share prepares exactly the snapshot being viewed, including its already saved
+system diagnostic, description, and attachments when present. There is no refresh, new body lookup,
 automatic upload, or archive mutation. Android shows a cancellable preparation
 dialog. iOS shows preparation status within the snapshot page and temporarily
 turns Share into Cancel. Leaving the page or deactivating its application or

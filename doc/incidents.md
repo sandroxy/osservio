@@ -15,9 +15,11 @@ inspected in the native browser. Optional Export modules encode a frozen snapsho
 into [portable JSON documents](../protocol/README.md) and prepare
 [temporary ZIP files](incident-export.md). Supplying an exporter to a native
 problem view enables explicit system sharing of the saved snapshot.
-System diagnostic persistence is currently API-only: automatic recovery and
-native inspection are not connected yet. The revision-2 document encoder includes
-diagnostic evidence and preserves its original time/range separately from recovery.
+System diagnostics are saved explicitly through the API; automatic recovery is
+not connected yet. The native browser distinguishes their classification and read
+time from manual marks and opens immutable source-specific details. Copy and
+revision-2 export include the evidence, preserving its original time/range
+separately from recovery. See [system diagnostic inspection](system-diagnostics.md#native-inspection).
 
 ## Evidence and privacy
 

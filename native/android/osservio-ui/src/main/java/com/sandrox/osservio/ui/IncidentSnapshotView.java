@@ -19,6 +19,7 @@ import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentExporter;
+import com.sandrox.osservio.core.SystemDiagnostic;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -49,10 +50,13 @@ final class IncidentSnapshotView extends LinearLayout {
         addView(controls, new LayoutParams(-1, -2));
         status = caption(""); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE); addView(status, new LayoutParams(-1, -2));
         search = new EditText(context); search.setSingleLine(true); search.setHint(R.string.osservio_crumb_search); search.setMinHeight(dp(48));
+        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE);
         addView(search, new LayoutParams(-1, -2));
         ListView list = new ListView(context);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
-        TextView metadata = caption(context.getString(R.string.osservio_incident_frozen_time) + " · " + RuntimePresentation.date(snapshot.timestampMillis) + "\nID: " + snapshot.id);
+        SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
+        TextView metadata = caption(IncidentPresentation.title(context, kind) + "\n" + IncidentPresentation.timeLabel(context, kind)
+            + " · " + RuntimePresentation.date(snapshot.timestampMillis) + "\nID: " + snapshot.id);
         metadata.setTextIsSelectable(true); header.addView(metadata, new LayoutParams(-1, -2));
         TextView note = new TextView(context); note.setTextAppearance(android.R.style.TextAppearance_Material_Body1); note.setText(IncidentPresentation.note(context, snapshot.note));
         note.setPadding(0, dp(8), 0, dp(8)); note.setMaxLines(4); note.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -65,6 +69,11 @@ final class IncidentSnapshotView extends LinearLayout {
             share = button(R.string.osservio_incident_share); header.addView(share, new LayoutParams(-1, -2));
             sharing = new IncidentSharePresentation(this, share, exporter, snapshot,
                 message -> status.setText(message == 0 ? "" : context.getString(message)));
+        }
+        if (snapshot.systemDiagnostic != null) {
+            Button diagnostic = button(R.string.osservio_diagnostic_title);
+            diagnostic.setOnClickListener(view -> showText(R.string.osservio_diagnostic_title, SystemDiagnosticPresentation.summary(context, snapshot.systemDiagnostic)));
+            header.addView(diagnostic, new LayoutParams(-1, -2));
         }
         Button environment = button(R.string.osservio_runtime_environment);
         environment.setEnabled(snapshot.environment != null);
@@ -126,6 +135,7 @@ final class IncidentSnapshotView extends LinearLayout {
         hideKeyboard();
         if (evidence != null) { removeView(evidence); evidence = null; }
         for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(VISIBLE);
+        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE);
     }
     private void hideKeyboard() {
         View focused = findFocus(); if (focused != null) focused.clearFocus();
@@ -142,7 +152,7 @@ final class IncidentSnapshotView extends LinearLayout {
         }
         footer.setText(events.isEmpty() ? getContext().getString(R.string.osservio_incident_empty_detail,
             getContext().getString(snapshot.breadcrumbs == null ? R.string.osservio_incident_not_attached : R.string.osservio_ws_no_matches),
-            getContext().getString(R.string.osservio_incident_snapshot_hint)) : getContext().getString(R.string.osservio_incident_snapshot_hint));
+            IncidentPresentation.hint(getContext(), snapshot)) : IncidentPresentation.hint(getContext(), snapshot));
         rows.notifyDataSetChanged();
     }
     private void showText(int title, String value) {

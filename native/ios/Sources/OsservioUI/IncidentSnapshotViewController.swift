@@ -20,11 +20,12 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.text("incident_manual")
+        super.viewDidLoad(); title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         search.searchResultsUpdater = self; search.obscuresBackgroundDuringPresentation = false
         search.searchBar.placeholder = RuntimePresentation.text("crumb_search")
-        navigationItem.searchController = search; navigationItem.hidesSearchBarWhenScrolling = false; definesPresentationContext = true
+        if snapshot.breadcrumbs != nil { navigationItem.searchController = search }
+        navigationItem.hidesSearchBarWhenScrolling = false; definesPresentationContext = true
         let copy = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
             target: self, action: #selector(copySummary))
         navigationItem.rightBarButtonItems = sharing.map { [$0.button, copy] } ?? [copy]
@@ -63,13 +64,13 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 4 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 { return 3 }
+        if section == 0 { return snapshot.systemDiagnostic == nil ? 3 : 4 }
         if section == 1 { return snapshot.environment == nil ? 0 : 1 }
         if section == 2 { return 3 }
         return events.count
     }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        if section == 0 { return RuntimePresentation.text("incident_manual") }
+        if section == 0 { return IncidentPresentation.title(snapshot.systemDiagnostic?.kind) }
         if section == 1 {
             return RuntimePresentation.text("runtime_environment")
         }
@@ -77,7 +78,7 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
         return RuntimePresentation.text("runtime_breadcrumbs") + "\n" + IncidentPresentation.counts(snapshot.breadcrumbs)
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        if section == 0 { return RuntimePresentation.text("incident_snapshot_hint") }
+        if section == 0 { return IncidentPresentation.hint(snapshot) }
         if section == 1 && snapshot.environment == nil { return RuntimePresentation.text("incident_not_attached") }
         if section == 3 && events.isEmpty && snapshot.breadcrumbs != nil { return RuntimePresentation.text("ws_no_matches") }
         return nil
@@ -87,7 +88,13 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
         PersistencePresentation.style(cell); cell.selectionStyle = .none; cell.accessoryType = .none
         cell.accessibilityTraits = .staticText
         if indexPath.section == 0 {
-            let titles = [RuntimePresentation.text("incident_frozen_time"), "ID", RuntimePresentation.text("incident_note")]
+            if indexPath.row == 3, let diagnostic = snapshot.systemDiagnostic {
+                cell.textLabel?.text = RuntimePresentation.text("diagnostic_title")
+                cell.detailTextLabel?.text = SystemDiagnosticPresentation.kind(diagnostic.kind)
+                cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button
+                return cell
+            }
+            let titles = [IncidentPresentation.timeLabel(snapshot.systemDiagnostic?.kind), "ID", RuntimePresentation.text("incident_note")]
             let values = [RuntimePresentation.date(snapshot.timestampMillis), snapshot.id, IncidentPresentation.note(snapshot.note)]
             cell.textLabel?.text = titles[indexPath.row]; cell.detailTextLabel?.text = values[indexPath.row]
         } else if indexPath.section == 1, let environment = snapshot.environment {
@@ -110,6 +117,9 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        if indexPath.section == 0, indexPath.row == 3, let diagnostic = snapshot.systemDiagnostic {
+            navigationController?.pushViewController(SystemDiagnosticViewController(diagnostic), animated: true)
+        }
         if indexPath.section == 1, let environment = snapshot.environment {
             navigationController?.pushViewController(EnvironmentSnapshotViewController(snapshot: environment), animated: true)
         }

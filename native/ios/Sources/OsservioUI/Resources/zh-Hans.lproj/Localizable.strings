@@ -278,7 +278,7 @@
 "incident_body_selected" = "已复制：%ld / %ld 份引用内容 · %ld 字节";
 
 "incident_share" = "分享快照";
-"incident_export_preparing" = "正在准备已保存的描述和附件…";
+"incident_export_preparing" = "正在准备已保存的诊断内容…";
 "incident_export_busy" = "正在准备另一份导出文件，请稍后重试。";
 "incident_export_closed" = "宿主应用已关闭文件导出。";
 "incident_export_too_large" = "这份快照超过了导出大小上限。";
@@ -286,3 +286,34 @@
 "incident_export_invalid" = "这份快照未通过导出校验。";
 "incident_export_unavailable" = "暂时无法分享，已保存的快照仍然保留。请重试。";
 "incident_export_cancel" = "取消文件准备";
+
+"diagnostic_title" = "系统诊断";
+"diagnostic_source" = "来源";
+"diagnostic_source_androidExitInfo" = "Android 退出记录";
+"diagnostic_source_metricKit" = "MetricKit";
+"diagnostic_kind" = "类别";
+"diagnostic_kind_managedCrash" = "Java 层崩溃";
+"diagnostic_kind_nativeCrash" = "原生层崩溃";
+"diagnostic_kind_anr" = "应用无响应（ANR）";
+"diagnostic_kind_lowMemoryTermination" = "低内存终止（系统报告）";
+"diagnostic_kind_signalTermination" = "信号终止";
+"diagnostic_kind_otherExit" = "其他退出";
+"diagnostic_kind_crash" = "崩溃（系统报告）";
+"diagnostic_kind_hang" = "卡顿（系统报告）";
+"diagnostic_recovered_at" = "读取时间";
+"diagnostic_exit_time" = "退出时间";
+"diagnostic_interval_start" = "报告区间起点";
+"diagnostic_interval_end" = "报告区间终点";
+"diagnostic_reason" = "系统退出原因码";
+"diagnostic_status" = "退出状态码";
+"diagnostic_importance" = "进程重要性";
+"diagnostic_pss" = "最近一次 PSS 采样";
+"diagnostic_rss" = "最近一次 RSS 采样";
+"diagnostic_signal" = "信号";
+"diagnostic_exception_type" = "异常类型";
+"diagnostic_exception_code" = "异常代码";
+"diagnostic_hang_duration" = "卡顿时长";
+"diagnostic_snapshot_hint" = "这是已保存的系统证据。读取时间与故障发生时间不同；附件保留各自的观察时间，不会默认归属到某次历史运行。";
+"diagnostic_android_hint" = "退出原因和时间由系统提供。内存值是系统最近一次采样，并非退出瞬间的测量；仅凭信号不能判断为低内存终止。本记录不含调用栈。";
+"diagnostic_metric_hint" = "时间区间属于这份系统报告，不能据此确定故障发生的具体时刻。版本和设备信息来自报告本身；卡顿不代表进程已终止。本记录不含调用栈。";
+"incident_archive_hint" = "问题档案可能来自手动标记或系统记录，请结合来源和时间查看。打开档案不会改变采集状态。";

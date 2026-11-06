@@ -3,9 +3,24 @@ package com.sandrox.osservio.ui;
 import android.content.Context;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentSummary;
+import com.sandrox.osservio.core.SystemDiagnostic;
 
 final class IncidentPresentation {
     private IncidentPresentation() { }
+    static String title(Context context, SystemDiagnostic.Kind kind) {
+        return kind == null ? context.getString(R.string.osservio_incident_manual) : SystemDiagnosticPresentation.kind(context, kind);
+    }
+    static String timeLabel(Context context, SystemDiagnostic.Kind kind) {
+        return context.getString(kind == null ? R.string.osservio_incident_frozen_time : R.string.osservio_diagnostic_recovered_at);
+    }
+    static String hint(Context context, IncidentSnapshot snapshot) {
+        return context.getString(snapshot.systemDiagnostic == null ? R.string.osservio_incident_snapshot_hint : R.string.osservio_diagnostic_snapshot_hint);
+    }
+    static String listDetail(Context context, IncidentSummary summary) {
+        if (summary.diagnosticKind == null) return context.getString(R.string.osservio_incident_row_detail, note(context, summary.note), attachments(context, summary));
+        return timeLabel(context, summary.diagnosticKind) + ": " + RuntimePresentation.date(summary.timestampMillis)
+            + (summary.note == null ? "" : "\n" + note(context, summary.note));
+    }
     static String note(Context context, IncidentSnapshot.Note note) {
         if (note == null) return context.getString(R.string.osservio_incident_no_note);
         return note.text + (note.isPrivate ? "\n" + context.getString(R.string.osservio_crumb_private) : "")
@@ -29,10 +44,12 @@ final class IncidentPresentation {
             + (payloadEvicted == null ? "" : "\n" + context.getString(R.string.osservio_incident_evidence_payload_evicted, payloadEvicted));
     }
     static String summary(Context context, IncidentSnapshot snapshot) {
-        StringBuilder value = new StringBuilder(context.getString(R.string.osservio_incident_manual));
-        value.append("\n\n").append(context.getString(R.string.osservio_incident_frozen_time)).append(": ").append(RuntimePresentation.date(snapshot.timestampMillis));
+        SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
+        StringBuilder value = new StringBuilder(title(context, kind));
+        value.append("\n\n").append(timeLabel(context, kind)).append(": ").append(RuntimePresentation.date(snapshot.timestampMillis));
         value.append("\n\nID: ").append(snapshot.id).append("\n\n").append(note(context, snapshot.note));
         value.append("\n\n").append(context.getString(R.string.osservio_runtime_breadcrumbs)).append(": ").append(counts(context, snapshot.breadcrumbs));
+        if (snapshot.systemDiagnostic != null) value.append("\n\n").append(SystemDiagnosticPresentation.summary(context, snapshot.systemDiagnostic));
         value.append("\n\n").append(snapshot.environment == null
             ? context.getString(R.string.osservio_runtime_environment) + ": " + context.getString(R.string.osservio_incident_not_attached)
             : RuntimePresentation.environment(context, snapshot.environment));
@@ -42,6 +59,6 @@ final class IncidentPresentation {
             : window(context, snapshot.http.observedAtMillis, snapshot.http.events.size(), snapshot.http.omittedEventCount, snapshot.http.sourceEvictedEvents, snapshot.http.sourceEvictedBodies));
         value.append("\n\n").append(context.getString(R.string.osservio_ws_title)).append(": ").append(snapshot.webSockets == null ? count(context, null)
             : window(context, snapshot.webSockets.observedAtMillis, snapshot.webSockets.events.size(), snapshot.webSockets.omittedEventCount, snapshot.webSockets.sourceEvictedEvents, snapshot.webSockets.sourceEvictedPayloads));
-        return value.append("\n\n").append(context.getString(R.string.osservio_incident_snapshot_hint)).toString();
+        return value.append("\n\n").append(hint(context, snapshot)).toString();
     }
 }

@@ -3,6 +3,20 @@ import OsservioCore
 import UIKit
 
 enum IncidentPresentation {
+    static func title(_ kind: SystemDiagnosticKind?) -> String {
+        kind.map(SystemDiagnosticPresentation.kind) ?? RuntimePresentation.text("incident_manual")
+    }
+    static func timeLabel(_ kind: SystemDiagnosticKind?) -> String {
+        RuntimePresentation.text(kind == nil ? "incident_frozen_time" : "diagnostic_recovered_at")
+    }
+    static func hint(_ snapshot: IncidentSnapshot) -> String {
+        RuntimePresentation.text(snapshot.systemDiagnostic == nil ? "incident_snapshot_hint" : "diagnostic_snapshot_hint")
+    }
+    static func listDetail(_ summary: IncidentSummary) -> String {
+        guard summary.diagnosticKind != nil else { return note(summary.note) + "\n" + attachments(summary) }
+        return timeLabel(summary.diagnosticKind) + ": " + RuntimePresentation.date(summary.timestampMillis)
+            + (summary.note.map { "\n" + note($0) } ?? "")
+    }
     static func note(_ note: IncidentNote?) -> String {
         guard let note else { return RuntimePresentation.text("incident_no_note") }
         return note.text + (note.isPrivate ? "\n" + RuntimePresentation.text("crumb_private") : "")
@@ -28,10 +42,11 @@ enum IncidentPresentation {
         return value
     }
     static func summary(_ snapshot: IncidentSnapshot) -> String {
-        var lines = [RuntimePresentation.text("incident_manual"),
-            RuntimePresentation.text("incident_frozen_time") + ": " + RuntimePresentation.date(snapshot.timestampMillis),
+        var lines = [title(snapshot.systemDiagnostic?.kind),
+            timeLabel(snapshot.systemDiagnostic?.kind) + ": " + RuntimePresentation.date(snapshot.timestampMillis),
             "ID: " + snapshot.id, note(snapshot.note),
             RuntimePresentation.text("runtime_breadcrumbs") + ": " + counts(snapshot.breadcrumbs)]
+        if let diagnostic = snapshot.systemDiagnostic { lines.append(SystemDiagnosticPresentation.summary(diagnostic)) }
         if let environment = snapshot.environment { lines.append(RuntimePresentation.environment(environment)) }
         else { lines.append(RuntimePresentation.text("runtime_environment") + ": " + RuntimePresentation.text("incident_not_attached")) }
         lines.append(RuntimePresentation.text("logs") + ": " + (snapshot.logs.map { window(time: $0.observedAtMillis, count: $0.events.count, omitted: $0.omittedEventCount, evicted: $0.sourceEvictedCount) } ?? count(nil)))
@@ -39,7 +54,7 @@ enum IncidentPresentation {
             evicted: $0.sourceEvictedEvents, payloadEvicted: $0.sourceEvictedBodies) } ?? count(nil)))
         lines.append(RuntimePresentation.text("ws_title") + ": " + (snapshot.webSockets.map { window(time: $0.observedAtMillis, count: $0.events.count,
             omitted: $0.omittedEventCount, evicted: $0.sourceEvictedEvents, payloadEvicted: $0.sourceEvictedPayloads) } ?? count(nil)))
-        lines.append(RuntimePresentation.text("incident_snapshot_hint"))
+        lines.append(hint(snapshot))
         return lines.joined(separator: "\n\n")
     }
 }

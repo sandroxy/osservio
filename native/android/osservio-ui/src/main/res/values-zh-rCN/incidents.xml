@@ -59,11 +59,12 @@
     <string name="osservio_incident_body_failed">未能准备这份内容，本次不附带。如需重新读取，请重新标记问题。</string>
     <string name="osservio_incident_body_selected">已复制：%1$d / %2$d 份引用内容 · %3$d 字节</string>
     <string name="osservio_incident_share">分享快照</string>
-    <string name="osservio_incident_export_preparing">正在准备已保存的描述和附件…</string>
+    <string name="osservio_incident_export_preparing">正在准备已保存的诊断内容…</string>
     <string name="osservio_incident_export_busy">正在准备另一份导出文件，请稍后重试。</string>
     <string name="osservio_incident_export_closed">宿主应用已关闭文件导出。</string>
     <string name="osservio_incident_export_too_large">这份快照超过了导出大小上限。</string>
     <string name="osservio_incident_export_storage_full">可用存储空间不足，无法准备这份文件。</string>
     <string name="osservio_incident_export_invalid">这份快照未通过导出校验。</string>
     <string name="osservio_incident_export_unavailable">暂时无法分享，已保存的快照仍然保留。请重试。</string>
+    <string name="osservio_incident_archive_hint">问题档案可能来自手动标记或系统记录，请结合来源和时间查看。打开档案不会改变采集状态。</string>
 </resources>

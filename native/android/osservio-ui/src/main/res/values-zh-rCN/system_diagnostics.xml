@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_diagnostic_title">系统诊断</string>
+    <string name="osservio_diagnostic_source">来源</string>
+    <string name="osservio_diagnostic_source_android_exit_info">Android 退出记录</string>
+    <string name="osservio_diagnostic_source_metric_kit">MetricKit</string>
+    <string name="osservio_diagnostic_kind">类别</string>
+    <string name="osservio_diagnostic_kind_managed_crash">Java 层崩溃</string>
+    <string name="osservio_diagnostic_kind_native_crash">原生层崩溃</string>
+    <string name="osservio_diagnostic_kind_anr">应用无响应（ANR）</string>
+    <string name="osservio_diagnostic_kind_low_memory_termination">低内存终止（系统报告）</string>
+    <string name="osservio_diagnostic_kind_signal_termination">信号终止</string>
+    <string name="osservio_diagnostic_kind_other_exit">其他退出</string>
+    <string name="osservio_diagnostic_kind_crash">崩溃（系统报告）</string>
+    <string name="osservio_diagnostic_kind_hang">卡顿（系统报告）</string>
+    <string name="osservio_diagnostic_recovered_at">读取时间</string>
+    <string name="osservio_diagnostic_exit_time">退出时间</string>
+    <string name="osservio_diagnostic_interval_start">报告区间起点</string>
+    <string name="osservio_diagnostic_interval_end">报告区间终点</string>
+    <string name="osservio_diagnostic_reason">系统退出原因码</string>
+    <string name="osservio_diagnostic_status">退出状态码</string>
+    <string name="osservio_diagnostic_importance">进程重要性</string>
+    <string name="osservio_diagnostic_pss">最近一次 PSS 采样</string>
+    <string name="osservio_diagnostic_rss">最近一次 RSS 采样</string>
+    <string name="osservio_diagnostic_signal">信号</string>
+    <string name="osservio_diagnostic_exception_type">异常类型</string>
+    <string name="osservio_diagnostic_exception_code">异常代码</string>
+    <string name="osservio_diagnostic_hang_duration">卡顿时长</string>
+    <string name="osservio_diagnostic_snapshot_hint">这是已保存的系统证据。读取时间与故障发生时间不同；附件保留各自的观察时间，不会默认归属到某次历史运行。</string>
+    <string name="osservio_diagnostic_android_hint">退出原因和时间由系统提供。内存值是系统最近一次采样，并非退出瞬间的测量；仅凭信号不能判断为低内存终止。本记录不含调用栈。</string>
+    <string name="osservio_diagnostic_metric_hint">时间区间属于这份系统报告，不能据此确定故障发生的具体时刻。版本和设备信息来自报告本身；卡顿不代表进程已终止。本记录不含调用栈。</string>
+</resources>

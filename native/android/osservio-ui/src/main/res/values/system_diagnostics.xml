@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_diagnostic_title">System diagnostic</string>
+    <string name="osservio_diagnostic_source">Source</string>
+    <string name="osservio_diagnostic_source_android_exit_info">Android exit history</string>
+    <string name="osservio_diagnostic_source_metric_kit">MetricKit</string>
+    <string name="osservio_diagnostic_kind">Classification</string>
+    <string name="osservio_diagnostic_kind_managed_crash">Java-layer crash</string>
+    <string name="osservio_diagnostic_kind_native_crash">Native crash</string>
+    <string name="osservio_diagnostic_kind_anr">Application not responding (ANR)</string>
+    <string name="osservio_diagnostic_kind_low_memory_termination">Low-memory termination (system report)</string>
+    <string name="osservio_diagnostic_kind_signal_termination">Signal termination</string>
+    <string name="osservio_diagnostic_kind_other_exit">Other exit</string>
+    <string name="osservio_diagnostic_kind_crash">Crash (system report)</string>
+    <string name="osservio_diagnostic_kind_hang">Hang (system report)</string>
+    <string name="osservio_diagnostic_recovered_at">Report read at</string>
+    <string name="osservio_diagnostic_exit_time">Exited at</string>
+    <string name="osservio_diagnostic_interval_start">Report interval starts</string>
+    <string name="osservio_diagnostic_interval_end">Report interval ends</string>
+    <string name="osservio_diagnostic_reason">System reason code</string>
+    <string name="osservio_diagnostic_status">Exit status</string>
+    <string name="osservio_diagnostic_importance">Process importance</string>
+    <string name="osservio_diagnostic_pss">Last PSS sample</string>
+    <string name="osservio_diagnostic_rss">Last RSS sample</string>
+    <string name="osservio_diagnostic_signal">Signal</string>
+    <string name="osservio_diagnostic_exception_type">Exception type</string>
+    <string name="osservio_diagnostic_exception_code">Exception code</string>
+    <string name="osservio_diagnostic_hang_duration">Hang duration</string>
+    <string name="osservio_diagnostic_snapshot_hint">Saved system evidence. Report read time is separate from failure time. Attachments retain their own times; no matching historical run is inferred.</string>
+    <string name="osservio_diagnostic_android_hint">The OS supplies the exit reason and time. Memory values are its last samples, not a measurement at exit. A signal alone does not establish a low-memory kill. Stack traces are not included.</string>
+    <string name="osservio_diagnostic_metric_hint">The interval describes the system report, not an exact failure time. Build and device fields come from that report. A hang does not establish termination. Stack traces are not included.</string>
+</resources>
