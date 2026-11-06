@@ -17,6 +17,8 @@ let package = Package(
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")
     ],
     targets: [
+        .target(name: "OsservioCrash", dependencies: ["OsservioCore", "OsservioCrashSupport", "OsservioCrashBackend"],
+                path: "native/ios/Sources/OsservioCrash"),
         .target(name: "OsservioCrashSupport", path: "native/ios/Sources/OsservioCrashSupport",
                 resources: [.copy("Resources/PrivacyInfo.xcprivacy")]),
         .target(name: "OsservioCrashBackend", dependencies: ["OsservioCrashSupport"],
@@ -54,7 +56,9 @@ let package = Package(
         .testTarget(name: "OsservioExportTests", dependencies: ["OsservioCore", "OsservioExport"],
                     path: "native/ios/Tests/OsservioExportTests"),
         .testTarget(name: "OsservioCrashBackendTests", dependencies: ["OsservioCrashBackend", "OsservioCrashSupport"],
-                    path: "native/ios/Tests/OsservioCrashBackendTests")
+                    path: "native/ios/Tests/OsservioCrashBackendTests"),
+        .testTarget(name: "OsservioCrashTests", dependencies: ["OsservioCore", "OsservioCrash", "OsservioCrashSupport"],
+                    path: "native/ios/Tests/OsservioCrashTests")
     ],
     swiftLanguageVersions: [.v5]
 )

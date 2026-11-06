@@ -43,6 +43,7 @@ public final class CaptureController: @unchecked Sendable {
     private var sequence: Int64 = 0
     private var sessionStartMillis: UInt64
     private var observers: [WeakCaptureObserver] = []
+    private weak var permissionObserver: (any CapturePermissionObserver)?
 
     public init(baselineEnabled: Bool = false, clock: any LogClock = SystemLogClock()) {
         self.baselineEnabled = baselineEnabled
@@ -79,6 +80,7 @@ public final class CaptureController: @unchecked Sendable {
         if baselineEnabled != enabled {
             baselineEnabled = enabled
             if deadline == 0 { replaceSession(at: now) }
+            else { publishPermission() }
         }
         return true
     }
@@ -98,6 +100,20 @@ public final class CaptureController: @unchecked Sendable {
 
     /// Nil means contention. It never means that capture has stopped.
     public func status() -> CaptureStatus? { inspect { $0 } }
+
+    // Native fatal mechanisms cannot call an injected Swift clock from a signal handler.
+    package var usesSystemClock: Bool { clock is SystemLogClock }
+
+    /// The caller retains the observer and controller for the entire binding lifetime.
+    /// Initial delivery and subsequent changes are serialized with capture control; no initial-state gap exists.
+    package func observePermission(_ observer: any CapturePermissionObserver) throws {
+        guard lock.try() else { throw CapturePermissionBindingError.busy }
+        defer { lock.unlock() }
+        guard permissionObserver == nil else { throw CapturePermissionBindingError.alreadyBound }
+        expire(at: clock.monotonicMillis())
+        permissionObserver = observer
+        publishPermission()
+    }
 
     func register(_ observer: any CaptureSessionObserver) throws {
         guard lock.try() else { throw CaptureConfigurationError.busy }
@@ -147,5 +163,11 @@ public final class CaptureController: @unchecked Sendable {
         sessionID = UUID().uuidString
         sequence = 0
         sessionStartMillis = now
+        publishPermission()
+    }
+
+    private func publishPermission() {
+        permissionObserver?.capturePermissionDidChange(CapturePermission(
+            baselineEnabled: baselineEnabled, detailedDeadlineMillis: deadline))
     }
 }

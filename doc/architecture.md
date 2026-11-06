@@ -173,8 +173,10 @@ Store implements them, UI consumes them, and the host wires the concrete store
 and recorder. The optional Runtime module supplies explicitly started lifecycle
 observers and one-shot environment queries. SQLite persistence accepts only
 sanitized restart-relevant breadcrumbs. The internal fatal-recording backend has
-separate [verification](../testing/crash-backend/README.md); it is not connected
-to Core, storage recovery, or existing SDK products.
+separate [verification](../testing/crash-backend/README.md). Its internal
+permission bridge follows Core control and absolute detailed-session expiry;
+storage recovery and public recorder installation are not connected yet.
+Existing SDK products do not link the optional backend.
 
 Publish a capability description for each supported runtime, network stack, and
 integration mode. It must identify prerequisites, available observations,

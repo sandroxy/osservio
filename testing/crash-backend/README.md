@@ -9,13 +9,21 @@ From the repository root, run the non-fatal package tests:
 
 ```sh
 swift test --filter CrashBackendTests -Xswiftc -warnings-as-errors
+swift test --filter CrashCapturePermissionTests -Xswiftc -warnings-as-errors
 ```
 
 They exercise permission changes and expiry, the actual address-only live report
 format, privacy exclusions, limits and incomplete decoding. They install no
 crash handler in the test runner. Use the iOS package test scheme with
-`-only-testing:OsservioCrashBackendTests` for platform validation as described in
+`-only-testing:OsservioCrashBackendTests` and `-only-testing:OsservioCrashTests`
+for platform validation as described in
 [Development](../../DEVELOPMENT.md).
+
+The internal permission bridge checks Core lifecycle updates, absolute expiry
+without polling, exclusive ownership, failed binding, object lifetime, and
+revocation on release. Core's `CapturePermissionTests` separately checks initial
+delivery, fallback changes during detail, binding contention, and callback reentry.
+These checks do not install a crash handler or exercise report persistence.
 
 On macOS with Xcode command-line tools, run:
 

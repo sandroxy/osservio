@@ -4,6 +4,7 @@
 #import "PLCrashAsync.h"
 #import "PLCrashReport.pb-c.h"
 #include <fcntl.h>
+#include <mach/mach_time.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -19,6 +20,12 @@ static void *poisonAllocation(void *context, size_t size) {
     return result;
 }
 static void releaseAllocation(void *context, void *pointer) { (void)context; free(pointer); }
+
+static uint64_t deadlineAfter(uint64_t milliseconds) {
+    mach_timebase_info_data_t timebase;
+    if (mach_timebase_info(&timebase) != KERN_SUCCESS || timebase.denom == 0) abort();
+    return (uint64_t)((__uint128_t)mach_absolute_time() * timebase.numer / timebase.denom / 1000000) + milliseconds;
+}
 
 @interface PLCrashReporter (OsservioTestMetadata)
 - (id)initWithApplicationIdentifier:(NSString *)identifier appVersion:(NSString *)version
@@ -185,10 +192,10 @@ int main(int argc, char **argv) {
         }
         REQUIRE(enabled, "recording installation failed");
         if ([mode isEqualToString:@"on"] || [mode isEqualToString:@"small-budget"]) OsservioCrashCaptureUpdate(true, 0);
-        else if ([mode isEqualToString:@"detail"]) OsservioCrashCaptureUpdate(false, 10000);
+        else if ([mode isEqualToString:@"detail"]) OsservioCrashCaptureUpdate(false, deadlineAfter(10000));
         else if ([mode isEqualToString:@"off"]) { OsservioCrashCaptureUpdate(true, 0); OsservioCrashCaptureUpdate(false, 0); }
-        else if ([mode isEqualToString:@"expired"]) { OsservioCrashCaptureUpdate(false, 1); usleep(10000); }
-        else if ([mode isEqualToString:@"baseline-after-expiry"]) { OsservioCrashCaptureUpdate(true, 1); usleep(10000); }
+        else if ([mode isEqualToString:@"expired"]) { OsservioCrashCaptureUpdate(false, deadlineAfter(1)); usleep(10000); }
+        else if ([mode isEqualToString:@"baseline-after-expiry"]) { OsservioCrashCaptureUpdate(true, deadlineAfter(1)); usleep(10000); }
         else if ([mode isEqualToString:@"default-off"]) { /* The process starts without a capture permission. */ }
         else return 72;
         puts(reporter.crashReportPath.fileSystemRepresentation);

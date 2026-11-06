@@ -59,7 +59,17 @@ an atomic write permission; it does not uninstall the backend or remove its
 loader bookkeeping. Detailed permission expires using the uptime clock without
 calling Swift, Objective-C, a database, or normal ingestion from the signal
 handler. A fatal write already admitted may finish after permission closes.
-The Core capture controller is not connected to this internal permission yet.
+The internal `OsservioCrash` module mirrors Core changes into this permission
+under Core's admission lock. It uses the absolute `SystemLogClock` deadline, so
+delayed delivery cannot extend a session. Injected Swift clocks are rejected
+because the signal handler cannot call them. There is one permission owner per
+process; failed secondary bindings cannot change an existing owner's permission.
+Releasing that owner revokes permission. This internal connection does not yet
+provide a public recorder or install a backend in consumer applications.
+
+Core's clock and the backend use the same Mach uptime domain, which excludes
+system sleep; see [DispatchTime](https://developer.apple.com/documentation/dispatch/dispatchtime).
+Permission expiry therefore follows the same clock as ordinary detailed capture.
 
 This backend cannot report SIGKILL, watchdog termination, or an OOM kill, and it
 does not provide an original Objective-C exception throw stack. BSD handler

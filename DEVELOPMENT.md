@@ -106,6 +106,9 @@ vendored recording profile, or decoding behavior. Use
 `GCC_TREAT_WARNINGS_AS_ERRORS=YES` alongside the Swift warning settings. These
 internal targets are not exported SDK products and do not install a handler in
 the package test runner or existing consumer applications.
+Include `-only-testing:OsservioCrashTests` and
+`-only-testing:OsservioCoreTests/CapturePermissionTests` when changing its
+Core-to-native permission lifecycle.
 
 Run Runtime's UIKit notification ownership and system-query tests on an available
 iOS simulator using the package's test scheme (replace the simulator ID):

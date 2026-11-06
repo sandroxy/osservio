@@ -11,16 +11,27 @@ final class CrashBackendTests: XCTestCase {
         XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
         OsservioCrashCaptureUpdate(true, 0)
         XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
-        OsservioCrashCaptureUpdate(false, 10_000)
+        OsservioCrashCaptureUpdate(false, deadline(after: 10_000))
         XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
         OsservioCrashCaptureUpdate(false, 0)
         XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
-        OsservioCrashCaptureUpdate(false, 1)
+        OsservioCrashCaptureUpdate(false, deadline(after: 1))
         Thread.sleep(forTimeInterval: 0.01)
         XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
-        OsservioCrashCaptureUpdate(true, 1)
+        OsservioCrashCaptureUpdate(true, deadline(after: 1))
         Thread.sleep(forTimeInterval: 0.01)
         XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
+    }
+
+    func testAnAlreadyElapsedAbsoluteDeadlineCannotGrantFreshTime() {
+        let elapsed = deadline(after: 0)
+        Thread.sleep(forTimeInterval: 0.01)
+        OsservioCrashCaptureUpdate(false, elapsed)
+        XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
+    }
+
+    private func deadline(after milliseconds: UInt64) -> UInt64 {
+        DispatchTime.now().uptimeNanoseconds / 1_000_000 + milliseconds
     }
 
     func testLiveReportExcludesRawContentAndPreservesAnAddressStack() throws {

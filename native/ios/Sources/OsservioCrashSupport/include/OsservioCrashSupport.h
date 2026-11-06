@@ -5,8 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-// Normal execution only. A zero duration leaves only the baseline permission.
-void OsservioCrashCaptureUpdate(bool baseline, uint64_t detailedRemainingMillis);
+// Normal execution only. Absolute uptime milliseconds in the mach_absolute_time
+// domain (the same as DispatchTime uptimeNanoseconds). Zero leaves baseline only.
+void OsservioCrashCaptureUpdate(bool baseline, uint64_t detailedDeadlineUptimeMillis);
 // Async-signal-safe: one lock-free load and the platform uptime clock.
 bool OsservioCrashCaptureAllowsRecording(void);
 
