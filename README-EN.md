@@ -69,9 +69,11 @@ the optional Export module. Manual and system records have separate count limits
 An explicit batch recovery API atomically saves eligible reports with bounded
 acknowledgements to reduce duplicates from repeated reads. Matching summaries
 do not prove that two reports describe the same failure.
+Hosts can bind startup reads and report delivery to capture-gated recovery. Off
+rejects new batches; an already admitted persistence operation may finish.
 The viewer distinguishes failure time from report read time and does not relabel
-signal termination or a hang as a crash. Automatic recovery triggers are not connected yet;
-immediate next-launch delivery is not guaranteed. See [system diagnostics](doc/system-diagnostics.md).
+signal termination or a hang as a crash. Immediate next-launch delivery is not
+guaranteed. See [system diagnostics](doc/system-diagnostics.md).
 
 Automatic system-log capture, fatal crash handlers, global network interception,
 and framework adapters are not implemented.

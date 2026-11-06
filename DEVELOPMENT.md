@@ -112,6 +112,11 @@ The product-specific `OsservioRuntime` scheme is a build scheme, not a test
 scheme. Runtime tests on macOS cover callback leases and diagnostic query
 admission/close/reentry; UIKit and MetricKit checks compile
 and execute exclusively in an iOS test run.
+Core's `SystemDiagnosticRecoveryTests` separately exercises capture-gated history
+and delivery admission, stale query rejection, close during read/save, typed
+failures, and reentry. Run it on iOS with the same scheme and
+`-only-testing:OsservioCoreTests/SystemDiagnosticRecoveryTests` when changing
+recovery lifecycle behavior.
 
 Use the same package test scheme with `-only-testing:OsservioUITests` and
 `-derivedDataPath .build/ios-ui` for composer regressions. These checks exercise

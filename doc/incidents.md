@@ -16,8 +16,9 @@ into [portable JSON documents](../protocol/README.md) and prepare
 [temporary ZIP files](incident-export.md). Supplying an exporter to a native
 problem view enables explicit system sharing of the saved snapshot.
 System diagnostics are saved explicitly through the API, including a bounded
-batch recovery operation for repeated history reads. Automatic recovery triggers
-are not connected yet. The native browser distinguishes their classification and read
+batch recovery operation for repeated history reads. A capture-gated coordinator
+can bind host-owned startup and delivery triggers to that operation. The native
+browser distinguishes their classification and read
 time from manual marks and opens immutable source-specific details. Copy and
 revision-2 export include the evidence, preserving its original time/range
 separately from recovery. See [system diagnostic inspection](system-diagnostics.md#native-inspection).

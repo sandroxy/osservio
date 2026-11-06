@@ -85,10 +85,63 @@ Mapping runs on MetricKit's callback queue, with one mapping in flight per
 observer. Overlapping delivery reports `busy`. An already admitted sanitized
 callback may finish during stop; subsequently received payloads are ignored.
 
-The provider does not subscribe automatically. These APIs are independent of
-`CaptureController`; a host must bind subscription lifetime to its capture/access
-policy. Automatic recovery is not connected yet. Provider batches preserve
+The provider does not subscribe automatically. Source lifetime is independent of
+`CaptureController`; the host owns subscription/access policy. Use the capture-gated
+recovery workflow below when saving reports automatically. Provider batches preserve
 repeated entries; identical symptoms do not receive invented stable identities.
+
+## Capture-gated recovery
+
+Core's `SystemDiagnosticRecovery` combines a host-owned `CaptureController` and
+`DiagnosticRecoveryArchive`. It admits one source read or delivered batch at a
+time, with no waiting queue, polling, or automatic retries. Baseline and detailed
+capture allow recovery; off rejects new work with `inactive` before querying a
+provider. Construction installs no source and changes no capture state.
+
+Given a configured controller and incident store, retain a coordinator in the
+composition root and invoke it at the host's chosen startup point:
+
+```swift
+let recovery = SystemDiagnosticRecovery(captureController: capture, archive: incidents)
+recovery.recover(from: diagnostics) { result in
+    // Handle the receipt or typed recovery error on this callback queue.
+}
+```
+
+```java
+SystemDiagnosticRecovery recovery = new SystemDiagnosticRecovery(capture, incidents);
+recovery.recover(diagnostics, (receipt, error) -> {
+    // Handle the receipt or typed recovery error on this callback thread.
+});
+```
+
+For new MetricKit delivery, pass each successful sanitized batch from
+`MetricDiagnosticObserver.start(delivery:)` to `recovery.recover(batch, completion:)`.
+Handle the observer's own delivery error separately. The host must retain the
+observer and remove it when that subscription is no longer wanted. A subscriber
+can remain installed while capture is off, but its deliveries are not admitted
+to storage; OS delivery and bounded mapping can still run. Stopping capture
+does not remove OS history or another component's subscriber.
+
+Before sending a read result to storage, the coordinator checks the current
+capture session again. Off returns `inactive`; a changed active session returns
+`captureChanged`. This includes replacing detailed capture or returning to
+baseline on expiry. A host can explicitly retry in the new session. A stop and
+restart therefore cannot let an older pending query silently enter the archive.
+No current session context is attached to historical system evidence.
+
+The capture check is the admission boundary: a batch admitted before stop may
+finish saving afterward. `close` rejects future work and completes a pending
+read with `closed`; late source callbacks are ignored. An already admitted
+storage operation completes normally. It does not close the provider or archive;
+the host still owns both. Completions run once outside coordinator
+locks and can reenter. They may run synchronously for rejection.
+
+Recovery errors preserve whether failure came from the source or persistence.
+Unsupported OS coverage is a source error, not an empty successful recovery.
+Coordinator contention/overlap reports `busy`; inactive, changed-session, and
+closed states remain distinct. Hosts must present receipts and failures rather
+than treating every zero saved count as a crash-free run.
 
 ## Explicit persistence
 

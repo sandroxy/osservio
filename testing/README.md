@@ -111,6 +111,9 @@ that both stores must reject without modifying the file, even after expiry.
 Recovery tests separately cover duplicate multiplicity, deletion/reopen,
 eligibility and capacity selection, atomic save/acknowledgement rollback,
 bounded acknowledgements, admission counters, callback reentry, and ordered close.
+Coordinator tests cover off admission, stop/restart and detailed-session expiry,
+late source callbacks, bounded overlap, close during a read versus an admitted
+save, typed source/storage failures, and completion reentry.
 `incident-diagnostic-corruption.tsv` supplies name, source family, and SQL mutation
 for strict diagnostic reads. Cases cover missing records, source/kind conflicts,
 invalid numbers/text, inconsistent metadata, and byte accounting. Additional tests
