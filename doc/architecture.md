@@ -19,8 +19,9 @@ and explicit [manual problem snapshots](incidents.md) without changing capture
 on presentation. Snapshot persistence and inspection are independent of live
 histories. Native APIs can persist bounded log/network attachments with separate
 payload selection. Native composers freeze metadata and optionally copy referenced
-content once. The immutable browser exposes these attachments; export remains
-unimplemented.
+content once. The immutable browser exposes these attachments. Optional Export
+modules encode them into [portable JSON documents](../protocol/README.md);
+file packaging and native sharing remain unimplemented.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 
@@ -156,8 +157,9 @@ may follow platform conventions while preserving the same inspection semantics.
 
 Implementation currently targets Android and iOS only. Native behavior and
 interaction must be exercised before adding framework adapters or adapter
-prototypes. The log modules share text-boundary fixtures without introducing an
-interchange protocol prematurely. Core declares `LogSink` and `LogHistory`;
+prototypes. The log modules share text-boundary fixtures, and Export modules
+implement the document protocol using platform JSON encoders. Core declares
+`LogSink` and `LogHistory`;
 Store implements them, UI consumes them, and the host wires the concrete store
 and recorder. The optional Runtime module supplies explicitly started lifecycle
 observers and one-shot environment queries. SQLite persistence accepts only

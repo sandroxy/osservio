@@ -10,7 +10,8 @@ let package = Package(
         .library(name: "OsservioStore", targets: ["OsservioStore"]),
         .library(name: "OsservioUI", targets: ["OsservioUI"]),
         .library(name: "OsservioURLSession", targets: ["OsservioURLSession"]),
-        .library(name: "OsservioRuntime", targets: ["OsservioRuntime"])
+        .library(name: "OsservioRuntime", targets: ["OsservioRuntime"]),
+        .library(name: "OsservioExport", targets: ["OsservioExport"])
     ],
     targets: [
         .target(name: "OsservioCore", path: "native/ios/Sources/OsservioCore"),
@@ -20,13 +21,16 @@ let package = Package(
                 resources: [.process("Resources")]),
         .target(name: "OsservioURLSession", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioURLSession"),
         .target(name: "OsservioRuntime", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioRuntime"),
+        .target(name: "OsservioExport", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioExport"),
         .testTarget(name: "OsservioCoreTests", dependencies: ["OsservioCore", "OsservioStore"], path: "native/ios/Tests/OsservioCoreTests"),
         .testTarget(name: "OsservioURLSessionTests", dependencies: ["OsservioCore", "OsservioStore", "OsservioURLSession"],
                     path: "native/ios/Tests/OsservioURLSessionTests"),
         .testTarget(name: "OsservioRuntimeTests", dependencies: ["OsservioCore", "OsservioStore", "OsservioRuntime"],
                     path: "native/ios/Tests/OsservioRuntimeTests"),
         .testTarget(name: "OsservioUITests", dependencies: ["OsservioCore", "OsservioUI"],
-                    path: "native/ios/Tests/OsservioUITests")
+                    path: "native/ios/Tests/OsservioUITests"),
+        .testTarget(name: "OsservioExportTests", dependencies: ["OsservioCore", "OsservioExport"],
+                    path: "native/ios/Tests/OsservioExportTests")
     ],
     swiftLanguageVersions: [.v5]
 )

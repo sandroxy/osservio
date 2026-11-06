@@ -1,0 +1,925 @@
+[
+  {
+    "name": "unknown-document-field",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "producerHint"
+        ],
+        "value": {
+          "label": "future"
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown-nested-field",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "futureOptional"
+        ],
+        "value": [
+          "ignored"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unknown-environment-fact",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "environment",
+          "values",
+          "futureOptional"
+        ],
+        "value": {
+          "newShape": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown-payload-document-field",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "futureOptional"
+        ],
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "unsupported-metadata-revision",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "revision"
+        ],
+        "value": 2
+      }
+    ]
+  },
+  {
+    "name": "unsupported-payload-revision",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "revision"
+        ],
+        "value": 2
+      }
+    ]
+  },
+  {
+    "name": "wrong-format",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "format"
+        ],
+        "value": "other.incident"
+      }
+    ]
+  },
+  {
+    "name": "non-fixed-body-file",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "payloadFile"
+        ],
+        "value": "../private.json"
+      }
+    ]
+  },
+  {
+    "name": "wrong-known-field-type",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "isPrivate"
+        ],
+        "value": "false"
+      }
+    ]
+  },
+  {
+    "name": "missing-known-field",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "isPrivate"
+        ],
+        "remove": true
+      }
+    ]
+  },
+  {
+    "name": "unknown-enum-is-not-optional",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "level"
+        ],
+        "value": "futureLevel"
+      }
+    ]
+  },
+  {
+    "name": "different-document-identity",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "incidentID"
+        ],
+        "value": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+      }
+    ]
+  },
+  {
+    "name": "uuid-trailing-newline",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "id"
+        ],
+        "value": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\n"
+      }
+    ]
+  },
+  {
+    "name": "label-trailing-newline",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "category"
+        ],
+        "value": "fixture\n"
+      }
+    ]
+  },
+  {
+    "name": "header-name-trailing-newline",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "requestHeaders",
+          0,
+          "name"
+        ],
+        "value": "authorization\n"
+      }
+    ]
+  },
+  {
+    "name": "unredacted-private-note",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "note",
+          "text"
+        ],
+        "value": "synthetic-secret"
+      }
+    ]
+  },
+  {
+    "name": "unredacted-private-log",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          1,
+          "message"
+        ],
+        "value": "synthetic-secret"
+      }
+    ]
+  },
+  {
+    "name": "unredacted-secret-header",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "requestHeaders",
+          0,
+          "value"
+        ],
+        "value": "synthetic-secret"
+      }
+    ]
+  },
+  {
+    "name": "raw-query",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "url"
+        ],
+        "value": "https://example.com/?secret=1"
+      }
+    ]
+  },
+  {
+    "name": "raw-credentials",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "url"
+        ],
+        "value": "https://name:secret@example.com/frozen?[redacted]"
+      }
+    ]
+  },
+  {
+    "name": "empty-fragment",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "url"
+        ],
+        "value": "https://example.com/#"
+      }
+    ]
+  },
+  {
+    "name": "empty-query",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "url"
+        ],
+        "value": "https://example.com/?"
+      }
+    ]
+  },
+  {
+    "name": "numeric-time-loses-type",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "timestampMillis"
+        ],
+        "value": 9007199254740993
+      }
+    ]
+  },
+  {
+    "name": "decimal-negative-zero",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "timestampMillis"
+        ],
+        "value": "-0"
+      }
+    ]
+  },
+  {
+    "name": "decimal-leading-zero",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "sequence"
+        ],
+        "value": "01"
+      }
+    ]
+  },
+  {
+    "name": "decimal-overflow",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "timestampMillis"
+        ],
+        "value": "9223372036854775808"
+      }
+    ]
+  },
+  {
+    "name": "zero-sequence",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          0,
+          "sequence"
+        ],
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "name": "unsigned-duration-overflow",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "durationMillis"
+        ],
+        "value": "18446744073709551616"
+      }
+    ]
+  },
+  {
+    "name": "unsigned-duration-max",
+    "base": "complete",
+    "writerAccepts": true,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "durationMillis"
+        ],
+        "value": "18446744073709551615"
+      }
+    ]
+  },
+  {
+    "name": "battery-out-of-range",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "environment",
+          "values",
+          "batteryPercent"
+        ],
+        "value": {
+          "type": "number",
+          "value": "101",
+          "isTruncated": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown-number-not-truncated",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "environment",
+          "values",
+          "physicalMemoryBytes",
+          "isTruncated"
+        ],
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "wrong-environment-type",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "environment",
+          "values",
+          "appVersion"
+        ],
+        "value": {
+          "type": "number",
+          "value": "1",
+          "isTruncated": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "wrong-source-count",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "sourceEventCount"
+        ],
+        "value": 4
+      }
+    ]
+  },
+  {
+    "name": "wrong-text-total",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "retainedTextBytes"
+        ],
+        "value": 38
+      }
+    ]
+  },
+  {
+    "name": "duplicate-log-identity",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "logs",
+          "events",
+          1,
+          "sequence"
+        ],
+        "value": "9007199254740993"
+      }
+    ]
+  },
+  {
+    "name": "wrong-http-revision",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "revision"
+        ],
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "name": "failure-without-failed-state",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "failure"
+        ],
+        "value": "transport"
+      }
+    ]
+  },
+  {
+    "name": "body-reference-owner",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "requestBody",
+          "blobID"
+        ],
+        "value": "cccccccc-cccc-cccc-cccc-cccccccccccc.request"
+      }
+    ]
+  },
+  {
+    "name": "empty-body-is-not-missing",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "http",
+          "dddddddd-dddd-dddd-dddd-dddddddddddd.request"
+        ],
+        "remove": true
+      }
+    ]
+  },
+  {
+    "name": "mismatched-body-bytes",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "events",
+          0,
+          "responseBody",
+          "observedBytes"
+        ],
+        "value": "2"
+      }
+    ]
+  },
+  {
+    "name": "mismatched-included-bytes",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "payloads",
+          "dddddddd-dddd-dddd-dddd-dddddddddddd.response",
+          "textByteCount"
+        ],
+        "value": 2
+      }
+    ]
+  },
+  {
+    "name": "unselected-body-cannot-have-content",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "webSockets",
+          "eeeeeeee-eeee-eeee-eeee-000000000001"
+        ],
+        "value": "abc"
+      }
+    ]
+  },
+  {
+    "name": "unselected-body-cannot-have-size",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "webSockets",
+          "payloads",
+          "eeeeeeee-eeee-eeee-eeee-000000000001",
+          "textByteCount"
+        ],
+        "value": 3
+      }
+    ]
+  },
+  {
+    "name": "missing-body-selection",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http",
+          "payloads",
+          "dddddddd-dddd-dddd-dddd-dddddddddddd.request"
+        ],
+        "remove": true
+      }
+    ]
+  },
+  {
+    "name": "detached-body-content",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "http",
+          "cccccccc-cccc-cccc-cccc-cccccccccccc.request"
+        ],
+        "value": ""
+      }
+    ]
+  },
+  {
+    "name": "missing-http-group",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http"
+        ],
+        "value": null
+      }
+    ]
+  },
+  {
+    "name": "invalid-message-direction",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "webSockets",
+          "events",
+          0,
+          "direction"
+        ],
+        "value": "incoming"
+      }
+    ]
+  },
+  {
+    "name": "missing-send-correlation",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "webSockets",
+          "events",
+          6,
+          "relatedMessageID"
+        ],
+        "value": null
+      }
+    ]
+  },
+  {
+    "name": "send-result-cannot-receive",
+    "base": "complete",
+    "writerAccepts": false,
+    "readerAccepts": false,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "webSockets",
+          "events",
+          6,
+          "outcome"
+        ],
+        "value": "received"
+      }
+    ]
+  },
+  {
+    "name": "unobserved-related-message-permitted",
+    "base": "complete",
+    "writerAccepts": true,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "webSockets",
+          "events",
+          6,
+          "relatedMessageID"
+        ],
+        "value": "ffffffff-ffff-ffff-ffff-ffffffffffff"
+      }
+    ]
+  },
+  {
+    "name": "uuid-case-preserves-identity",
+    "base": "complete",
+    "writerAccepts": true,
+    "readerAccepts": true,
+    "changes": [
+      {
+        "path": [
+          "payloads",
+          "incidentID"
+        ],
+        "value": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"
+      }
+    ]
+  }
+]

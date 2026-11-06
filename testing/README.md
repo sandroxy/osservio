@@ -98,3 +98,12 @@ tests preserve empty versus absent groups/content, all payload inclusion states,
 exact integers, source loss counters, optional columns, and whole-report retention.
 Capacity failures also verify that pruning and partial attachment writes roll back
 together. Asynchronous store tests verify committed attachments after close/reopen.
+
+`incident-export/{absent,empty,complete}.json` contains independent golden pairs
+of metadata and content documents. Both native Export suites construct typed
+snapshots and compare their encoded JSON values with these files. Object key
+order is irrelevant. `cases.json` describes strict-writer and tolerant-reader
+expectations after explicit mutations; `http-lifecycle.json` covers valid
+observation states and invalid revisions. Protocol tests separately exercise
+UTF-8 limits, duplicate identities, and collection bounds. These are portable
+revision-1 documents, separate from the private SQLite migration fixture.

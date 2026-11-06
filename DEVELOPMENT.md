@@ -19,6 +19,8 @@ upgrades existing incident databases without replacing reports. The immutable pr
 these groups, metadata search, and saved body states without querying live history.
 The composer freezes metadata at the mark and optionally copies captured network
 content once, preserving that copy through editing and failed-save retry.
+Optional Export modules encode a frozen snapshot into portable metadata and
+payload JSON documents. File packaging and native sharing are not implemented.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -37,6 +39,8 @@ native behavior and interaction validation. No artifacts have been published.
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment
   selection, incident persistence, privacy, and failure semantics.
+- [Incident documents](protocol/README.md) defines the portable export encoding,
+  independent compatibility revision, and conformance rules.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.
@@ -121,6 +125,7 @@ use the ignored `native/android/local.properties` with `sdk.dir`. From
 ```sh
 ./gradlew testDebugUnitTest assembleDebug lintDebug
 ./gradlew :osservio-store:connectedDebugAndroidTest
+./gradlew :osservio-export:connectedDebugAndroidTest
 ```
 
 The wrapper pins Gradle 8.14.5 with a distribution checksum. Android Gradle Plugin
@@ -141,6 +146,10 @@ emulator, with isolated test-owned directories. They verify reopen, transactiona
 rollback, budgets, corruption, additive incident migration, unsupported revisions, exclusive ownership,
 asynchronous admission, and close ordering. They do not establish physical-device
 performance or fatal crash capture.
+Export instrumentation compares Android's platform JSON encoding with shared
+independent fixtures. Set `ANDROID_SERIAL` to the intended device or emulator
+when multiple devices are connected; do not inadvertently install test APKs on
+another device.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.
 URLSession tests use Foundation with a host-configured synthetic URLProtocol.
 WebSocket tests use actual client connections to loopback MockWebServer and
@@ -154,6 +163,21 @@ reviewing an intentional dependency change, then run the integration tests.
 Build outputs, local configuration, and temporary verification evidence are
 ignored. The Gradle wrapper JAR is an intentional build-tool input; its provenance
 and license are recorded in [third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Portable document checks
+
+Use Python 3.10 or later in an isolated development environment:
+
+```sh
+python3 -m venv .work/protocol
+.work/protocol/bin/python -m pip install -r protocol/requirements.txt
+.work/protocol/bin/python -m unittest discover -s protocol -v
+```
+
+This checks the export schemas, cross-document semantics, strict writers,
+tolerant readers, corruption cases, UTF-8 bounds, and transport lifecycle states.
+The Python tools are not shipped in the native SDK. Native encoding is tested
+separately by `swift test` and Android Export instrumentation.
 
 ## Review and acceptance
 

@@ -51,11 +51,14 @@ history windows. Network content is excluded by default; the first explicit
 selection reads a bounded copy, which is reused on reselection or save retry.
 Description text also requires opt-in. It is public diagnostic content and is
 not automatically scrubbed for secrets. Snapshots have independent count, age,
-and storage limits; export is not implemented yet. See
-[manual problem snapshots](doc/incidents.md).
+and storage limits. See [manual problem snapshots](doc/incidents.md). Optional
+Export modules encode a frozen snapshot into separate metadata and payload JSON
+documents, preserving observation times, exact integers, and missing-content
+states. See [incident documents](protocol/README.md). File packaging and native
+sharing are not implemented yet.
 
 Automatic system-log and crash capture, global network interception, incident
-export, and framework adapters are not implemented.
+file sharing, and framework adapters are not implemented.
 Network observation covers only explicitly integrated methods; see
 [network coverage](doc/network-integration.md). Core behavior and
 native interaction will be refined on Android and iOS before expanding to React

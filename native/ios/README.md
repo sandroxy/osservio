@@ -167,7 +167,10 @@ body states without live refresh. The composer also freezes log/network metadata
 and offers separate opt-in content selection. Its first content lookup is reused through editing and save
 retry. The combined inspector supplies its live histories; standalone callers
 can pass optional `logs`, `http`, and `webSockets` histories after `breadcrumbs`.
-Export is not implemented yet.
+For portable JSON encoding, link the optional `OsservioExport` product and call
+`IncidentDocuments.encode(snapshot)` on a background worker. It encodes only the
+frozen snapshot. File packaging and native sharing are not implemented yet.
+See [incident documents](../../protocol/README.md) for format, bounds, and errors.
 
 The package also declares a macOS target version so Core and Store tests can run
 on the development machine. The UIKit source is excluded on macOS; this does

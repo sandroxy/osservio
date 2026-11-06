@@ -1,0 +1,74 @@
+[
+  {
+    "name": "pending",
+    "revision": "0",
+    "state": "pending",
+    "statusCode": null,
+    "failure": null,
+    "durationMillis": null,
+    "bodyState": "pending"
+  },
+  {
+    "name": "receiving",
+    "revision": "1",
+    "state": "receiving",
+    "statusCode": 200,
+    "failure": null,
+    "durationMillis": null,
+    "bodyState": "pending"
+  },
+  {
+    "name": "completed",
+    "revision": "2",
+    "state": "completed",
+    "statusCode": 200,
+    "failure": null,
+    "durationMillis": "42",
+    "bodyState": "omitted"
+  },
+  {
+    "name": "ended-before-response",
+    "revision": "1",
+    "state": "captureEnded",
+    "statusCode": null,
+    "failure": null,
+    "durationMillis": null,
+    "bodyState": "incomplete"
+  },
+  {
+    "name": "ended-after-response",
+    "revision": "2",
+    "state": "captureEnded",
+    "statusCode": 200,
+    "failure": null,
+    "durationMillis": null,
+    "bodyState": "incomplete"
+  },
+  {
+    "name": "failed-before-response",
+    "revision": "1",
+    "state": "failed",
+    "statusCode": null,
+    "failure": "transport",
+    "durationMillis": "42",
+    "bodyState": "incomplete"
+  },
+  {
+    "name": "cancelled-after-response",
+    "revision": "2",
+    "state": "cancelled",
+    "statusCode": 200,
+    "failure": null,
+    "durationMillis": "42",
+    "bodyState": "incomplete"
+  },
+  {
+    "name": "closed-early",
+    "revision": "2",
+    "state": "closedEarly",
+    "statusCode": 200,
+    "failure": null,
+    "durationMillis": "42",
+    "bodyState": "incomplete"
+  }
+]

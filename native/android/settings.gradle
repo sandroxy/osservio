@@ -4,4 +4,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "OsservioAndroid"
-include(":osservio-core", ":osservio-store", ":osservio-ui", ":osservio-okhttp", ":osservio-runtime")
+include(":osservio-core", ":osservio-store", ":osservio-ui", ":osservio-okhttp", ":osservio-runtime", ":osservio-export")

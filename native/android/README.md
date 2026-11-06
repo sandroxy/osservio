@@ -18,6 +18,7 @@ includeBuild('../osservio/native/android') {
         substitute(module('io.github.sandroxy:osservio-ui')).using(project(':osservio-ui'))
         substitute(module('io.github.sandroxy:osservio-okhttp')).using(project(':osservio-okhttp'))
         substitute(module('io.github.sandroxy:osservio-runtime')).using(project(':osservio-runtime'))
+        substitute(module('io.github.sandroxy:osservio-export')).using(project(':osservio-export'))
     }
 }
 ```
@@ -208,4 +209,8 @@ composer also freezes log/network metadata and offers separate opt-in content
 selection. Its first content lookup is reused through editing and save retry.
 The combined inspector supplies its live histories; standalone callers can pass
 optional `logs`, `http`, and `webSockets` histories after `breadcrumbs`.
-Export is not implemented yet.
+For portable JSON encoding, add the optional local dependency
+`io.github.sandroxy:osservio-export:0.1.0-dev.0` and call
+`IncidentDocuments.encode(snapshot)` on a background worker. It encodes only the
+frozen snapshot. File packaging and native sharing are not implemented yet.
+See [incident documents](../../protocol/README.md) for format, bounds, and errors.
