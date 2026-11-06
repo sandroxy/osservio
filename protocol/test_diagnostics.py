@@ -38,6 +38,8 @@ class DiagnosticTests(unittest.TestCase):
             else:
                 target = diagnostic["androidExit" if source == "android" else "metricKit"]
                 target[fields.get(field, field)] = int(value) if field in ("reason", "pid", "importance", "signal") else value
+            if source == "android":
+                diagnostic["androidExit"]["tombstoneState"] = "notRequested" if diagnostic["androidExit"]["reasonCode"] == 5 else "notApplicable"
             for reader in (False, True):
                 with self.subTest(case=name, reader=reader):
                     self.check(document, expected != "invalid", reader)

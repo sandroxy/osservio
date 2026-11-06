@@ -31,8 +31,12 @@ value. Both native models check architecture/signal/thread constraints, exact
 addresses, bounded hexadecimal ELF build IDs, absent evidence and frame limits.
 The Runtime decoder also uses the attributed real crash bytes described in
 [the Epitaph vendor record](../native/android/vendor/epitaph/README.md), plus
-synthetic malformed, privacy and work-budget cases. This value has no incident
-or portable encoding yet; these tests do not establish Android capture.
+synthetic malformed, privacy and work-budget cases. `android-tombstone-states.tsv`
+checks source/read-state/evidence consistency, and `tombstone-corruption.tsv`
+checks private archive restoration. `incident-v5.sql` preserves legacy signal
+and exit records for additive migration tests. Both native export encoders use
+the same revision-4 documents, including absent and available tombstones.
+These fixture checks do not establish real Android OS delivery.
 
 `capture-lifecycle.tsv` is a sequential scenario consumed by both native test
 suites. Rows contain a case name, monotonic milliseconds, control operation,

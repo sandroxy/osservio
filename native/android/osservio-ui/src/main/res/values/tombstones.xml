@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_tombstone_state">Native stack evidence</string>
+    <string name="osservio_tombstone_not_requested">Not requested in this record</string>
+    <string name="osservio_tombstone_not_applicable">Not a native-crash record</string>
+    <string name="osservio_tombstone_unsupported">Requires Android 12 or later</string>
+    <string name="osservio_tombstone_unavailable">No readable system trace</string>
+    <string name="osservio_tombstone_invalid">Invalid or mismatched system trace</string>
+    <string name="osservio_tombstone_too_large">System trace exceeds the size limit</string>
+    <string name="osservio_tombstone_limit_reached">Read or decoding budget reached</string>
+    <string name="osservio_tombstone_available">System report decoded</string>
+    <string name="osservio_tombstone_thread_id">Faulting OS thread ID</string>
+    <string name="osservio_tombstone_pc">Program counter</string>
+    <string name="osservio_tombstone_relative_pc">ELF-relative PC</string>
+    <string name="osservio_tombstone_build_id">ELF build ID</string>
+    <string name="osservio_tombstone_frames_hint">Newest frame first. Relative addresses are preserved as reported by the OS. Matching ELF symbol files are needed to resolve function names. Reaching the limit may mean that frames are missing.</string>
+</resources>

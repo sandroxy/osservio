@@ -27,6 +27,6 @@
     <string name="osservio_diagnostic_exception_code">异常代码</string>
     <string name="osservio_diagnostic_hang_duration">卡顿时长</string>
     <string name="osservio_diagnostic_snapshot_hint">这是已保存的系统证据。读取时间与故障发生时间不同；附件保留各自的观察时间，不会默认归属到某次历史运行。</string>
-    <string name="osservio_diagnostic_android_hint">退出原因和时间由系统提供。内存值是系统最近一次采样，并非退出瞬间的测量；仅凭信号不能判断为低内存终止。本记录不含调用栈。</string>
+    <string name="osservio_diagnostic_android_hint">退出原因和时间由系统提供。内存值是系统最近一次采样，并非退出瞬间的测量；仅凭信号不能判断为低内存终止。原生堆栈取决于 Android 版本和系统记录是否可用，旧记录可能被系统覆盖。</string>
     <string name="osservio_diagnostic_metric_hint">时间区间属于这份系统报告，不能据此确定故障发生的具体时刻。版本和设备信息来自报告本身；卡顿不代表进程已终止。本记录不含调用栈。</string>
 </resources>

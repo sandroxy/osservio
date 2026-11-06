@@ -1,0 +1,30 @@
+missing-header	DELETE FROM android_tombstones
+missing-frame	DELETE FROM android_tombstone_frames WHERE position=0
+frame-gap	UPDATE android_tombstone_frames SET position=2 WHERE position=1
+wrong-frame-count	UPDATE android_tombstones SET frame_count=1
+negative-frame-count	UPDATE android_tombstones SET frame_count=-1
+oversize-frame-count	UPDATE android_tombstones SET frame_count=129
+zero-signal	UPDATE android_tombstones SET signal_number=0
+oversize-signal	UPDATE android_tombstones SET signal_number=2147483648
+oversize-code	UPDATE android_tombstones SET signal_code=-2147483649
+negative-architecture	UPDATE android_tombstones SET architecture=-1
+fractional-thread	UPDATE android_tombstones SET thread_id=1.5
+zero-thread	UPDATE android_tombstones SET thread_id=0
+address-overflow	UPDATE android_tombstones SET fault_address='18446744073709551616'
+leading-zero	UPDATE android_tombstone_frames SET pc='01' WHERE position=0
+negative-relative	UPDATE android_tombstone_frames SET relative_pc='-1' WHERE position=0
+blob-address	UPDATE android_tombstone_frames SET pc=x'31' WHERE position=0
+uppercase-build-id	UPDATE android_tombstone_frames SET build_id='AB' WHERE position=0
+odd-build-id	UPDATE android_tombstone_frames SET build_id='abc' WHERE position=0
+empty-build-id	UPDATE android_tombstone_frames SET build_id='' WHERE position=0
+oversize-build-id	UPDATE android_tombstone_frames SET build_id=hex(zeroblob(1000)) WHERE position=0
+empty-state	UPDATE incident_diagnostics SET tombstone_state=''
+unknown-state	UPDATE incident_diagnostics SET tombstone_state='newState'
+missing-state	UPDATE incident_diagnostics SET tombstone_state=NULL
+contradictory-state	UPDATE incident_diagnostics SET tombstone_state='unavailable'
+wrong-reason	UPDATE incident_diagnostics SET reason=4
+interval-mismatch	UPDATE incident_diagnostics SET interval_end=1001
+mixed-source	UPDATE incident_diagnostics SET source='metricKit'
+foreign-scalar	UPDATE incident_diagnostics SET signal=6
+orphan-evidence	DELETE FROM incident_diagnostics
+bad-text-accounting	UPDATE incidents SET text_bytes=0

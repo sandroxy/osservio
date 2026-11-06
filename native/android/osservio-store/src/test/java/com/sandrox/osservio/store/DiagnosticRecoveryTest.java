@@ -1,6 +1,7 @@
 package com.sandrox.osservio.store;
 
 import com.sandrox.osservio.core.AppleSignalCrash;
+import com.sandrox.osservio.core.AndroidTombstone;
 import com.sandrox.osservio.core.DiagnosticRecoveryReceipt;
 import com.sandrox.osservio.core.SystemDiagnostic;
 import com.sandrox.osservio.core.SystemDiagnosticBatch;
@@ -24,6 +25,12 @@ public final class DiagnosticRecoveryTest {
     private SystemDiagnostic evidence(String name) {
         Map<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> metadata = new EnumMap<>(SystemDiagnostic.MetadataKey.class);
         switch (name) {
+            case "diagnostic-tombstone-summary": return SystemDiagnostic.androidExit(1000, 5, 6, 123, 100, null, null);
+            case "diagnostic-tombstone":
+                return SystemDiagnostic.androidExit(1000, 5, 6, 123, 100, null, null, SystemDiagnostic.TombstoneState.AVAILABLE,
+                    AndroidTombstone.restore(1, 6, -6, 99, "18446744073709551615",
+                        Arrays.asList(AndroidTombstone.Frame.restore("18446744073709551615", "18446744073709551615", "0123456789abcdef0123456789abcdef01234567"),
+                            AndroidTombstone.Frame.restore("0", "0", null))));
             case "diagnostic-signal":
                 metadata.put(SystemDiagnostic.MetadataKey.APP_VERSION, SystemDiagnostic.Text.capturePublic("😀"));
                 metadata.put(SystemDiagnostic.MetadataKey.APP_BUILD, SystemDiagnostic.Text.capturePublic("42"));
@@ -47,6 +54,16 @@ public final class DiagnosticRecoveryTest {
                 metadata.put(SystemDiagnostic.MetadataKey.APP_BUILD, SystemDiagnostic.Text.capturePublic("-\n"));
                 return SystemDiagnostic.metricKit(Long.MIN_VALUE, Long.MAX_VALUE, SystemDiagnostic.Kind.CRASH, metadata, null, 0L, "-9223372036854775808", null);
             default: throw new IllegalArgumentException("Unknown fingerprint fixture");
+        }
+    }
+    @Test public void richerMaterialAcknowledgesItsUnchangedSummary() {
+        SystemDiagnostic rich = evidence("diagnostic-tombstone"), summary = evidence("diagnostic-tombstone-summary");
+        assertEquals(DiagnosticFingerprint.make(summary), DiagnosticFingerprint.summaryAlias(rich));
+        assertNotEquals(DiagnosticFingerprint.make(summary), DiagnosticFingerprint.make(rich));
+        assertNull(DiagnosticFingerprint.summaryAlias(summary));
+        for (SystemDiagnostic.TombstoneState state : SystemDiagnostic.TombstoneState.values()) {
+            if (state == SystemDiagnostic.TombstoneState.AVAILABLE || state == SystemDiagnostic.TombstoneState.NOT_APPLICABLE) continue;
+            assertEquals(DiagnosticFingerprint.make(summary), DiagnosticFingerprint.make(SystemDiagnostic.androidExit(1000, 5, 6, 123, 100, null, null, state, null)));
         }
     }
     @Test public void receiptAccountsForEveryCandidateAndPreservesSourceLosses() {

@@ -20,8 +20,10 @@ final class SystemDiagnosticViewController: UITableViewController {
             target: self, action: #selector(copyDiagnostic))
     }
     @objc private func copyDiagnostic() { UIPasteboard.general.string = SystemDiagnosticPresentation.summary(diagnostic) }
-    override func numberOfSections(in tableView: UITableView) -> Int { diagnostic.appleSignal == nil ? 1 : 2 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? fields.count : 2 }
+    override func numberOfSections(in tableView: UITableView) -> Int { diagnostic.appleSignal != nil || diagnostic.androidExit?.tombstone != nil ? 2 : 1 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        section == 0 ? fields.count : diagnostic.appleSignal == nil ? 1 : 2
+    }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         section == 0 ? SystemDiagnosticPresentation.hint(diagnostic) : nil
     }
@@ -34,6 +36,11 @@ final class SystemDiagnosticViewController: UITableViewController {
             cell.detailTextLabel?.text = count == 0 ? RuntimePresentation.text("runtime_unavailable") : String(count)
             cell.accessoryType = count == 0 ? .none : .disclosureIndicator
             cell.selectionStyle = count == 0 ? .none : .default; cell.accessibilityTraits = count == 0 ? .staticText : .button
+        } else if indexPath.section == 1, let trace = diagnostic.androidExit?.tombstone {
+            cell.textLabel?.text = RuntimePresentation.text("crash_frames")
+            cell.detailTextLabel?.text = SignalCrashPresentation.count(trace.frames.count, limited: trace.frameLimitReached)
+            cell.accessoryType = trace.frames.isEmpty ? .none : .disclosureIndicator
+            cell.selectionStyle = trace.frames.isEmpty ? .none : .default; cell.accessibilityTraits = trace.frames.isEmpty ? .staticText : .button
         } else {
             cell.selectionStyle = .none; cell.accessibilityTraits = .staticText
             cell.textLabel?.text = fields[indexPath.row].title; cell.detailTextLabel?.text = fields[indexPath.row].value
@@ -42,9 +49,12 @@ final class SystemDiagnosticViewController: UITableViewController {
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard indexPath.section == 1, let crash = diagnostic.appleSignal,
-              !(indexPath.row == 0 ? crash.frames.isEmpty : crash.images.isEmpty) else { return }
-        navigationController?.pushViewController(SignalCrashViewController(crash, content: indexPath.row == 0 ? .frames : .images), animated: true)
+        guard indexPath.section == 1 else { return }
+        if let crash = diagnostic.appleSignal, !(indexPath.row == 0 ? crash.frames.isEmpty : crash.images.isEmpty) {
+            navigationController?.pushViewController(SignalCrashViewController(crash, content: indexPath.row == 0 ? .frames : .images), animated: true)
+        } else if let trace = diagnostic.androidExit?.tombstone, !trace.frames.isEmpty {
+            navigationController?.pushViewController(SignalCrashViewController(trace), animated: true)
+        }
     }
 }
 #endif

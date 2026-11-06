@@ -314,7 +314,7 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `5`. Product versions
+application ID `0x4f535649`, and private schema revision `6`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. Network
 headers and payload text use separate tables; list queries do not load them.
@@ -323,6 +323,8 @@ tables. Reads validate source-specific fields, classification, nullability,
 exact numbers, text budgets, and the presence of expected diagnostic rows.
 Address-only Apple signal records use separate ordered frame and image tables;
 see [native signal evidence](crash-evidence.md) for precision and completeness rules.
+Android native tombstones retain their read state and separate ordered frame
+rows with ELF-relative addresses and build IDs; see [their contract](android-tombstone.md).
 A separate bounded acknowledgement table supports repeated system-history
 processing; see [batch recovery](system-diagnostics.md#bounded-batch-recovery).
 This database is an internal format, not a portable export or interchange protocol.
@@ -335,7 +337,9 @@ the supported revision while validating every known field, type, count, and
 privacy invariant. Revision `1` first adds attachment tables; revision `2` adds
 the nullable diagnostic-kind column and diagnostic tables. Revision `3` adds
 the report acknowledgement table. Revision `4` adds the signal header, frame and
-image tables. The complete upgrade
+image tables. Revision `5` adds Android tombstone state, header and frame tables;
+older Android records retain their facts and use `notRequested` for native traces.
+The complete upgrade
 and revision change share one transaction. Existing identities, save times,
 and evidence remain unchanged; records from revisions 1 and 2 have no system diagnostic. A failed
 upgrade rolls back its added columns and tables without resetting the database.

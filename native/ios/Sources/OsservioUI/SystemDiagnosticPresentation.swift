@@ -22,6 +22,13 @@ enum SystemDiagnosticPresentation {
                        field("diagnostic_reason", String(exit.reasonCode)), field("diagnostic_status", String(exit.status)),
                        field("env_processID", String(exit.processID)), field("diagnostic_importance", String(exit.importance)),
                        field("diagnostic_pss", exit.pssKiB.map { "\($0) KiB" }), field("diagnostic_rss", exit.rssKiB.map { "\($0) KiB" })]
+            result.append(field("tombstone_state", TombstonePresentation.state(exit.tombstoneState)))
+            if let trace = exit.tombstone {
+                result += [field("env_architecture", TombstonePresentation.architecture(trace.architectureCode)),
+                           field("diagnostic_signal", String(trace.signalNumber)), field("crash_code", String(trace.signalCode)),
+                           field("tombstone_thread_id", String(trace.threadID)), field("crash_fault_address", trace.faultAddress.map(SignalCrashPresentation.address)),
+                           field("crash_frame_count", SignalCrashPresentation.count(trace.frames.count, limited: trace.frameLimitReached))]
+            }
         }
         if let metric = diagnostic.metricKit {
             result += [field("diagnostic_interval_start", RuntimePresentation.date(diagnostic.intervalStartMillis)),

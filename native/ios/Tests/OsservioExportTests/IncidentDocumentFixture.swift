@@ -12,6 +12,13 @@ enum IncidentDocumentFixture {
         if name.hasPrefix("diagnostic-") {
             let evidence: SystemDiagnostic
             switch name {
+            case "diagnostic-tombstone", "diagnostic-tombstone-unavailable":
+                let available = name == "diagnostic-tombstone"
+                evidence = try .androidExit(timestampMillis: 1000, reasonCode: 5, status: 6, processID: 123,
+                    importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: available ? .available : .unavailable,
+                    tombstone: available ? .restore(architectureCode: 1, signalNumber: 6, signalCode: -6, threadID: 99, faultAddress: .max,
+                        frames: [.restore(programCounter: .max, relativeProgramCounter: .max, buildID: "0123456789abcdef0123456789abcdef01234567"),
+                                 .restore(programCounter: 0, relativeProgramCounter: 0, buildID: nil)]) : nil)
             case "diagnostic-signal":
                 evidence = .appleSignal(try .restore(reportID: "12345678-1234-1234-1234-abcdef123456", timestampMillis: 1_700_000_000_000,
                     signal: .abort, code: "#0", faultAddress: .max, threadNumber: .max, frames: [0, .max],

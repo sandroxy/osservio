@@ -12,6 +12,8 @@ final class DiagnosticRecoveryTests: XCTestCase {
     }
     private func evidence(_ name: String) throws -> SystemDiagnostic {
         switch name {
+        case "diagnostic-tombstone-summary": return try TombstoneFixture.evidence(state: .notRequested)
+        case "diagnostic-tombstone": return try TombstoneFixture.evidence()
         case "diagnostic-signal": return try SignalCrashFixture.evidence()
         case "diagnostic-android":
             return try .androidExit(timestampMillis: 9_007_199_254_740_993, reasonCode: 5, status: .min,
@@ -28,6 +30,15 @@ final class DiagnosticRecoveryTests: XCTestCase {
                 metadata: [.appVersion: .restore(value: "a:\n汉😀\0", isTruncated: true), .appBuild: .capture(publicValue: "-\n")],
                 exceptionType: 0, exceptionCode: "-9223372036854775808")
         default: throw PersistenceError.invalidRecord
+        }
+    }
+    func testRicherMaterialAcknowledgesItsUnchangedSummary() throws {
+        let rich = try TombstoneFixture.evidence(), summary = try TombstoneFixture.evidence(state: .notRequested)
+        XCTAssertEqual(DiagnosticFingerprint.summaryAlias(rich), DiagnosticFingerprint.make(summary))
+        XCTAssertNotEqual(DiagnosticFingerprint.make(rich), DiagnosticFingerprint.make(summary))
+        XCTAssertNil(DiagnosticFingerprint.summaryAlias(summary))
+        for state in SystemDiagnostic.TombstoneState.allCases where state != .available && state != .notApplicable {
+            XCTAssertEqual(DiagnosticFingerprint.make(try TombstoneFixture.evidence(state: state)), DiagnosticFingerprint.make(summary))
         }
     }
     func testReceiptAccountsForEveryCandidateAndPreservesSourceLosses() throws {

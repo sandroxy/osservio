@@ -15,7 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** One-shot system history reads. Installs no handlers and never reads descriptions, traces or process-state summaries. */
+/** Bounded system history reads with selected API 31+ native tombstone evidence. Installs no handlers. */
 public final class SystemDiagnostics implements SystemDiagnosticProvider, AutoCloseable {
     interface Source { SystemDiagnosticBatch read(); }
     private final Source source;
@@ -61,6 +61,8 @@ public final class SystemDiagnostics implements SystemDiagnosticProvider, AutoCl
             List<ApplicationExitInfo> records = manager.getHistoricalProcessExitReasons(context.getPackageName(), 0, 32);
             List<SystemDiagnostic> chosen = new ArrayList<>();
             int rejected = 0, excluded = 0;
+            boolean traceLimitReached = false;
+            TombstoneReader tombstones = new TombstoneReader();
             String mainProcess = context.getApplicationInfo().processName;
             int packageUid = context.getApplicationInfo().uid;
             for (int i = 0; i < Math.min(32, records.size()); i++) {
@@ -72,12 +74,21 @@ public final class SystemDiagnostics implements SystemDiagnosticProvider, AutoCl
                 }
                 try {
                     long pss = record.getPss(), rss = record.getRss();
-                    chosen.add(SystemDiagnostic.androidExit(record.getTimestamp(), record.getReason(), record.getStatus(),
-                        record.getPid(), record.getImportance(), pss == 0 ? null : pss, rss == 0 ? null : rss));
+                    SystemDiagnostic facts = SystemDiagnostic.androidExit(record.getTimestamp(), record.getReason(), record.getStatus(),
+                        record.getPid(), record.getImportance(), pss == 0 ? null : pss, rss == 0 ? null : rss);
+                    if (facts.kind == SystemDiagnostic.Kind.NATIVE_CRASH) {
+                        SystemDiagnostic.AndroidExit exit = facts.androidExit;
+                        TombstoneReader.Result trace = Build.VERSION.SDK_INT >= 31 ? tombstones.read(record::getTraceInputStream, exit.processID) :
+                            new TombstoneReader.Result(SystemDiagnostic.TombstoneState.UNSUPPORTED, null);
+                        traceLimitReached |= trace.state == SystemDiagnostic.TombstoneState.LIMIT_REACHED;
+                        facts = SystemDiagnostic.androidExit(facts.intervalStartMillis, exit.reasonCode, exit.status, exit.processID,
+                            exit.importance, exit.pssKiB, exit.rssKiB, trace.state, trace.evidence);
+                    }
+                    chosen.add(facts);
                 } catch (IllegalArgumentException invalid) { rejected++; }
             }
             return new SystemDiagnosticBatch(SystemDiagnostic.Source.ANDROID_EXIT_INFO, System.currentTimeMillis(), chosen,
-                rejected, excluded, records.size() >= 32);
+                rejected, excluded, records.size() >= 32 || traceLimitReached);
         }
     }
 }

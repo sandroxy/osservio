@@ -27,7 +27,7 @@ class ConformanceTests(unittest.TestCase):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal"):
+        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)
@@ -41,7 +41,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 4, "3", None, True):
+        for revision in (0, 5, "4", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision

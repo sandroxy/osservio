@@ -42,6 +42,7 @@ final class DiagnosticRecoveryDatabase {
         let difference = now.subtractingReportingOverflow(options.maximumAgeMillis)
         let cutoff = difference.overflow ? Int64.min : difference.partialValue
         var occurrences: [String: Int] = [:]
+        var aliases: [String: Int] = [:]
         var candidates: [(index: Int, diagnostic: SystemDiagnostic)] = []
         var ignored = 0, outside = 0, capacity = 0, repeated = 0
         for (index, diagnostic) in batch.diagnostics.enumerated() {
@@ -53,6 +54,7 @@ final class DiagnosticRecoveryDatabase {
             occurrences[fingerprint] = occurrence
             if occurrence <= (prior[fingerprint] ?? 0) { repeated += 1 }
             else { candidates.append((index, diagnostic)) }
+            if let alias = DiagnosticFingerprint.summaryAlias(diagnostic) { aliases[alias, default: 0] += 1 }
         }
         candidates.sort {
             if $0.diagnostic.intervalEndMillis != $1.diagnostic.intervalEndMillis { return $0.diagnostic.intervalEndMillis > $1.diagnostic.intervalEndMillis }
@@ -65,6 +67,8 @@ final class DiagnosticRecoveryDatabase {
         for candidate in selected.reversed() {
             try save(.captureDiagnostic(candidate.diagnostic, observedAtMillis: batch.observedAtMillis))
         }
+        // Alias counts must not change candidate admission within the same batch.
+        for (alias, count) in aliases { occurrences[alias, default: 0] += count }
         for fingerprint in occurrences.keys.sorted() {
             let count = occurrences[fingerprint]!
             if let previous = prior[fingerprint] {

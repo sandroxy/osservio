@@ -2,6 +2,7 @@ package com.sandrox.osservio.store;
 
 import static com.sandrox.osservio.store.IncidentNames.name;
 import com.sandrox.osservio.core.AppleSignalCrash;
+import com.sandrox.osservio.core.AndroidTombstone;
 import com.sandrox.osservio.core.SystemDiagnostic;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -11,7 +12,12 @@ import java.util.Locale;
 /** Private acknowledgement format; never used as an incident or real-world failure identity. */
 final class DiagnosticFingerprint {
     private DiagnosticFingerprint() { }
-    static String make(SystemDiagnostic value) {
+    static String make(SystemDiagnostic value) { return make(value, true); }
+    /** Rich evidence also acknowledges the original summary, so later OS trace eviction cannot add a degraded duplicate. */
+    static String summaryAlias(SystemDiagnostic value) {
+        return value.androidExit != null && value.androidExit.tombstone != null ? make(value, false) : null;
+    }
+    private static String make(SystemDiagnostic value, boolean includeTombstone) {
         final MessageDigest digest;
         try { digest = MessageDigest.getInstance("SHA-256"); }
         catch (NoSuchAlgorithmException failure) { throw new IllegalStateException("SHA-256 is unavailable", failure); }
@@ -48,6 +54,17 @@ final class DiagnosticFingerprint {
             for (SystemDiagnostic.MetadataKey key : SystemDiagnostic.MetadataKey.values()) {
                 SystemDiagnostic.Text text = crash.metadata.get(key);
                 field(digest, text == null ? null : text.value); field(digest, text == null ? null : text.isTruncated ? "1" : "0");
+            }
+        }
+        // Retrieval state is not new failure material. Preserve summary-only fingerprints byte-for-byte.
+        AndroidTombstone tombstone = exit == null ? null : exit.tombstone;
+        if (includeTombstone && tombstone != null) {
+            field(digest, "androidTombstone/1"); field(digest, Integer.toString(tombstone.architectureCode));
+            field(digest, Integer.toString(tombstone.signalNumber)); field(digest, Integer.toString(tombstone.signalCode));
+            field(digest, Integer.toString(tombstone.threadID)); field(digest, tombstone.faultAddress);
+            field(digest, Integer.toString(tombstone.frames.size()));
+            for (AndroidTombstone.Frame frame : tombstone.frames) {
+                field(digest, frame.programCounter); field(digest, frame.relativeProgramCounter); field(digest, frame.buildID);
             }
         }
         StringBuilder result = new StringBuilder(64);

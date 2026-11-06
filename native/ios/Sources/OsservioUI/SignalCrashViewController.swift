@@ -22,29 +22,45 @@ enum SignalCrashPresentation {
 @MainActor
 final class SignalCrashViewController: UITableViewController {
     enum Content { case frames, images }
-    private let crash: AppleSignalCrash
-    private let content: Content
+    private enum Evidence { case apple(AppleSignalCrash, Content), android(AndroidTombstone) }
+    private let evidence: Evidence
     init(_ crash: AppleSignalCrash, content: Content) {
-        self.crash = crash; self.content = content; super.init(style: .insetGrouped)
+        evidence = .apple(crash, content); super.init(style: .insetGrouped)
+    }
+    init(_ trace: AndroidTombstone) {
+        evidence = .android(trace); super.init(style: .insetGrouped)
+    }
+    private var images: Bool {
+        if case .apple(_, .images) = evidence { return true }; return false
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.text(content == .frames ? "crash_frames" : "crash_images")
+        super.viewDidLoad(); title = RuntimePresentation.text(images ? "crash_images" : "crash_frames")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 100
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("crash_copy_all"), style: .plain,
             target: self, action: #selector(copyAll))
     }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        content == .frames ? crash.frames.count : crash.images.count
+        switch evidence {
+        case .apple(let crash, let content): return content == .frames ? crash.frames.count : crash.images.count
+        case .android(let trace): return trace.frames.count
+        }
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        RuntimePresentation.text(content == .frames ? "crash_frames_hint" : "crash_images_hint") + "\n" + RuntimePresentation.text("crash_copy_hint")
+        let hint: String
+        if case .android = evidence { hint = "tombstone_frames_hint" }
+        else { hint = images ? "crash_images_hint" : "crash_frames_hint" }
+        return RuntimePresentation.text(hint) + "\n" + RuntimePresentation.text("crash_copy_hint")
     }
     private func row(_ index: Int) -> (String, String) {
-        if content == .frames { return ("#\(index)", SignalCrashPresentation.address(crash.frames[index])) }
-        let image = crash.images[index]
-        return ("#\(index) · " + (image.uuid ?? RuntimePresentation.text("runtime_unavailable")), SignalCrashPresentation.image(image))
+        switch evidence {
+        case .apple(let crash, .frames): return ("#\(index)", SignalCrashPresentation.address(crash.frames[index]))
+        case .apple(let crash, .images):
+            let image = crash.images[index]
+            return ("#\(index) · " + (image.uuid ?? RuntimePresentation.text("runtime_unavailable")), SignalCrashPresentation.image(image))
+        case .android(let trace): return ("#\(index)", TombstonePresentation.frame(trace.frames[index]))
+        }
     }
     func copyText(at index: Int) -> String {
         let value = row(index); return value.0 + "\n" + value.1

@@ -5,7 +5,10 @@ import OsservioCore
 final class IncidentDiagnosticDatabase {
     private let connection: SQLiteConnection
     private let signals: SignalCrashDatabase
-    init(connection: SQLiteConnection) { self.connection = connection; signals = SignalCrashDatabase(connection: connection) }
+    private let tombstones: TombstoneDatabase
+    init(connection: SQLiteConnection) {
+        self.connection = connection; signals = SignalCrashDatabase(connection: connection); tombstones = TombstoneDatabase(connection: connection)
+    }
     static let schema = [
         "ALTER TABLE incidents ADD COLUMN diagnostic_kind TEXT",
         """
@@ -24,28 +27,30 @@ final class IncidentDiagnosticDatabase {
         let exit = diagnostic.androidExit, metric = diagnostic.metricKit
         try connection.execute("""
             INSERT INTO incident_diagnostics(incident_id, source, interval_start, interval_end, reason, status, process_id,
-                importance, pss, rss, signal, exception_type, exception_code, hang_duration)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                importance, pss, rss, signal, exception_type, exception_code, hang_duration, tombstone_state)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [.text(snapshot.id), .text(diagnostic.source.rawValue), .integer(diagnostic.intervalStartMillis),
                 .integer(diagnostic.intervalEndMillis), integer(exit.map { Int64($0.reasonCode) }), integer(exit.map { Int64($0.status) }),
                 integer(exit.map { Int64($0.processID) }), integer(exit.map { Int64($0.importance) }), integer(exit?.pssKiB), integer(exit?.rssKiB),
                 integer(metric?.signal.map(Int64.init)), integer(metric?.exceptionType), metric?.exceptionCode.map(SQLiteValue.text) ?? .null,
-                integer(metric?.hangDurationMillis)])
+                integer(metric?.hangDurationMillis), exit.map { .text($0.tombstoneState.rawValue) } ?? .null])
         for (key, value) in metric?.metadata ?? diagnostic.appleSignal?.metadata ?? [:] {
             try connection.execute("INSERT INTO diagnostic_metadata(incident_id, key, value, truncated) VALUES (?, ?, ?, ?)",
                 [.text(snapshot.id), .text(key.rawValue), .text(value.value), .integer(value.isTruncated ? 1 : 0)])
         }
         if let signal = diagnostic.appleSignal { try signals.save(signal, id: snapshot.id) }
+        if let tombstone = exit?.tombstone { try tombstones.save(tombstone, id: snapshot.id) }
     }
     func read(id: String, expectedKind: SystemDiagnosticKind?) throws -> SystemDiagnostic? {
         let metadata = try readMetadata(id: id)
         return try connection.statement("""
             SELECT source, interval_start, interval_end, reason, status, process_id, importance, pss, rss,
-                signal, exception_type, exception_code, hang_duration FROM incident_diagnostics WHERE incident_id=? LIMIT 2
+                signal, exception_type, exception_code, hang_duration, tombstone_state FROM incident_diagnostics WHERE incident_id=? LIMIT 2
             """, [.text(id)]) { row in
             guard try row.step() else {
                 guard expectedKind == nil, metadata.isEmpty else { throw PersistenceError.invalidRecord }
                 try signals.requireAbsent(id: id)
+                try tombstones.requireAbsent(id: id)
                 return nil
             }
             guard let expectedKind, let source = SystemDiagnosticSource(rawValue: try row.text(0, byteLimit: 32)) else {
@@ -54,11 +59,24 @@ final class IncidentDiagnosticDatabase {
             let start = try row.integer(1), end = try row.integer(2)
             let result: SystemDiagnostic
             if source != .appleSignal { try signals.requireAbsent(id: id) }
+            if source != .androidExitInfo {
+                try tombstones.requireAbsent(id: id)
+                guard row.isNull(13) else { throw PersistenceError.invalidRecord }
+            }
             switch source {
             case .androidExitInfo:
                 guard start == end, metadata.isEmpty, (9...12).allSatisfy({ row.isNull($0) }) else { throw PersistenceError.invalidRecord }
-                result = try .androidExit(timestampMillis: start, reasonCode: int32(row, 3), status: int32(row, 4),
-                    processID: int32(row, 5), importance: int32(row, 6), pssKiB: optionalInteger(row, 7), rssKiB: optionalInteger(row, 8))
+                let reason = try int32(row, 3)
+                let state: SystemDiagnostic.TombstoneState
+                if row.isNull(13) { state = reason == 5 ? .notRequested : .notApplicable }
+                else {
+                    guard let restored = SystemDiagnostic.TombstoneState(rawValue: try row.text(13, byteLimit: 32)) else { throw PersistenceError.invalidRecord }
+                    state = restored
+                }
+                if state != .available { try tombstones.requireAbsent(id: id) }
+                result = try .androidExit(timestampMillis: start, reasonCode: reason, status: int32(row, 4),
+                    processID: int32(row, 5), importance: int32(row, 6), pssKiB: optionalInteger(row, 7), rssKiB: optionalInteger(row, 8),
+                    tombstoneState: state, tombstone: state == .available ? tombstones.read(id: id) : nil)
             case .metricKit:
                 guard (3...8).allSatisfy({ row.isNull($0) }) else { throw PersistenceError.invalidRecord }
                 result = try .metricKit(intervalStartMillis: start, intervalEndMillis: end, kind: expectedKind, metadata: metadata,

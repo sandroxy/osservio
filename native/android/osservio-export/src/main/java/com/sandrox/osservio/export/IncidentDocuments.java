@@ -1,6 +1,7 @@
 package com.sandrox.osservio.export;
 
 import com.sandrox.osservio.core.AppleSignalCrash;
+import com.sandrox.osservio.core.AndroidTombstone;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.HTTPEvent;
@@ -49,8 +50,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 3, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 3, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 4, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 4, "incidentID", snapshot.id,
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
         if (metadata == null || payloads == null) throw new IllegalArgumentException("Snapshot cannot be represented as JSON");
@@ -96,11 +97,19 @@ public final class IncidentDocuments {
         return object("source", code(value.source), "kind", code(value.kind),
             "intervalStartMillis", Long.toString(value.intervalStartMillis), "intervalEndMillis", Long.toString(value.intervalEndMillis),
             "androidExit", exit == null ? null : object("reasonCode", exit.reasonCode, "status", exit.status, "processID", exit.processID,
-                "importance", exit.importance, "pssKiB", decimal(exit.pssKiB), "rssKiB", decimal(exit.rssKiB)),
+                "importance", exit.importance, "pssKiB", decimal(exit.pssKiB), "rssKiB", decimal(exit.rssKiB),
+                "tombstoneState", code(exit.tombstoneState), "tombstone", exit.tombstone == null ? null : tombstone(exit.tombstone)),
             "metricKit", report == null ? null : object("metadata", metadata, "signal", report.signal,
                 "exceptionType", decimal(report.exceptionType), "exceptionCode", report.exceptionCode,
                 "hangDurationMillis", decimal(report.hangDurationMillis)),
             "appleSignal", value.appleSignal == null ? null : signalCrash(value.appleSignal));
+    }
+    private static Map<String, Object> tombstone(AndroidTombstone trace) {
+        List<Object> frames = new ArrayList<>();
+        for (AndroidTombstone.Frame frame : trace.frames) frames.add(object("programCounter", frame.programCounter,
+            "relativeProgramCounter", frame.relativeProgramCounter, "buildID", frame.buildID));
+        return object("architectureCode", trace.architectureCode, "signalNumber", trace.signalNumber, "signalCode", trace.signalCode,
+            "threadID", trace.threadID, "faultAddress", trace.faultAddress, "frames", frames);
     }
     private static Map<String, Object> signalCrash(AppleSignalCrash crash) {
         Map<String, Object> metadata = new TreeMap<>();

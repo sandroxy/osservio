@@ -46,6 +46,7 @@ final class DiagnosticRecoveryDatabase {
     }
     DiagnosticRecoveryReceipt recover(SystemDiagnosticBatch batch, long now, Saver save) {
         Map<String, Integer> prior = prepare(now), occurrences = new TreeMap<>();
+        Map<String, Integer> aliases = new HashMap<>();
         List<Candidate> candidates = new ArrayList<>();
         int ignored = 0, outside = 0, capacity = 0, repeated = 0;
         long cutoff = cutoff(now);
@@ -61,6 +62,8 @@ final class DiagnosticRecoveryDatabase {
             Integer processed = prior.get(fingerprint);
             if (processed != null && occurrence <= processed) repeated++;
             else candidates.add(new Candidate(index, diagnostic));
+            String alias = DiagnosticFingerprint.summaryAlias(diagnostic);
+            if (alias != null) aliases.put(alias, aliases.containsKey(alias) ? aliases.get(alias) + 1 : 1);
         }
         Collections.sort(candidates, (left, right) -> {
             int result = Long.compare(right.diagnostic.intervalEndMillis, left.diagnostic.intervalEndMillis);
@@ -71,6 +74,11 @@ final class DiagnosticRecoveryDatabase {
         capacity += candidates.size() - selected;
         // Oldest first preserves the newest selected evidence under ordinal-based retention.
         for (int index = selected - 1; index >= 0; index--) save.save(IncidentSnapshot.captureDiagnostic(candidates.get(index).diagnostic, batch.observedAtMillis));
+        // Keep alias counts out of candidate admission; a batch may contain both richer and summary material.
+        for (Map.Entry<String, Integer> alias : aliases.entrySet()) {
+            Integer count = occurrences.get(alias.getKey());
+            occurrences.put(alias.getKey(), (count == null ? 0 : count) + alias.getValue());
+        }
         for (Map.Entry<String, Integer> entry : occurrences.entrySet()) {
             Integer previous = prior.get(entry.getKey());
             if (previous != null) {

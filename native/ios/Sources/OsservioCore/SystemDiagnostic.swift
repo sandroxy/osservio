@@ -7,6 +7,9 @@ public enum SystemDiagnosticKind: String, Sendable {
 
 /// Reviewed system facts, not raw crash reports. No exception message, user context, or stack text is accepted.
 public struct SystemDiagnostic: Sendable {
+    public enum TombstoneState: String, CaseIterable, Sendable {
+        case notRequested, notApplicable, unsupported, unavailable, invalid, tooLarge, limitReached, available
+    }
     public struct AndroidExit: Sendable {
         public let reasonCode: Int32
         public let status: Int32
@@ -15,6 +18,8 @@ public struct SystemDiagnostic: Sendable {
         /// Last system sample, not memory measured at termination. Nil means unavailable.
         public let pssKiB: Int64?
         public let rssKiB: Int64?
+        public let tombstoneState: TombstoneState
+        public let tombstone: AndroidTombstone?
     }
     public enum MetadataKey: String, CaseIterable, Sendable { case appVersion, appBuild, osVersion, deviceModel }
     public struct Text: Sendable {
@@ -53,12 +58,22 @@ public struct SystemDiagnostic: Sendable {
     public var textByteCount: Int {
         (metricKit?.metadata.values.reduce(0) { $0 + $1.value.utf8.count } ?? 0)
             + (metricKit?.exceptionCode?.utf8.count ?? 0) + (appleSignal?.textByteCount ?? 0)
+            + (androidExit?.tombstone?.textByteCount ?? 0)
     }
 
     public static func androidExit(timestampMillis: Int64, reasonCode: Int32, status: Int32,
                                    processID: Int32, importance: Int32, pssKiB: Int64?, rssKiB: Int64?) throws -> Self {
+        try androidExit(timestampMillis: timestampMillis, reasonCode: reasonCode, status: status, processID: processID,
+            importance: importance, pssKiB: pssKiB, rssKiB: rssKiB,
+            tombstoneState: reasonCode == 5 ? .notRequested : .notApplicable, tombstone: nil)
+    }
+    public static func androidExit(timestampMillis: Int64, reasonCode: Int32, status: Int32,
+                                   processID: Int32, importance: Int32, pssKiB: Int64?, rssKiB: Int64?,
+                                   tombstoneState: TombstoneState, tombstone: AndroidTombstone?) throws -> Self {
         guard timestampMillis >= 0, reasonCode >= 0, processID > 0, importance >= 0,
-              pssKiB.map({ $0 > 0 }) ?? true, rssKiB.map({ $0 > 0 }) ?? true else { throw PersistenceError.invalidRecord }
+              pssKiB.map({ $0 > 0 }) ?? true, rssKiB.map({ $0 > 0 }) ?? true,
+              (tombstoneState == .available) == (tombstone != nil),
+              (reasonCode != 5) == (tombstoneState == .notApplicable) else { throw PersistenceError.invalidRecord }
         let kind: SystemDiagnosticKind
         switch reasonCode {
         case 2: kind = .signalTermination
@@ -70,7 +85,8 @@ public struct SystemDiagnostic: Sendable {
         }
         return Self(source: .androidExitInfo, kind: kind, intervalStartMillis: timestampMillis, intervalEndMillis: timestampMillis,
                     androidExit: AndroidExit(reasonCode: reasonCode, status: status, processID: processID,
-                        importance: importance, pssKiB: pssKiB, rssKiB: rssKiB), metricKit: nil, appleSignal: nil)
+                        importance: importance, pssKiB: pssKiB, rssKiB: rssKiB,
+                        tombstoneState: tombstoneState, tombstone: tombstone), metricKit: nil, appleSignal: nil)
     }
     public static func metricKit(intervalStartMillis: Int64, intervalEndMillis: Int64, kind: SystemDiagnosticKind,
                                  metadata: [MetadataKey: Text], signal: Int32? = nil, exceptionType: Int64? = nil,

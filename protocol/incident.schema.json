@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:incident:3",
-  "title": "Osservio incident metadata revision 3",
+  "$id": "urn:osservio:incident:4",
+  "title": "Osservio incident metadata revision 4",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident"
     },
     "revision": {
-      "const": 3
+      "const": 4
     },
     "payloadFile": {
       "const": "payloads.json"
@@ -197,6 +197,28 @@
                       "type": "null"
                     }
                   ]
+                },
+                "tombstoneState": {
+                  "enum": [
+                    "notRequested",
+                    "notApplicable",
+                    "unsupported",
+                    "unavailable",
+                    "invalid",
+                    "tooLarge",
+                    "limitReached",
+                    "available"
+                  ]
+                },
+                "tombstone": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/androidTombstone"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -205,7 +227,9 @@
                 "processID",
                 "importance",
                 "pssKiB",
-                "rssKiB"
+                "rssKiB",
+                "tombstoneState",
+                "tombstone"
               ],
               "additionalProperties": false
             },
@@ -581,6 +605,84 @@
         "images",
         "metadata",
         "imageCacheIncomplete"
+      ],
+      "additionalProperties": false
+    },
+    "androidTombstone": {
+      "type": "object",
+      "properties": {
+        "architectureCode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "signalNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "signalCode": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "threadID": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "faultAddress": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/uint64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "properties": {
+              "programCounter": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "relativeProgramCounter": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "buildID": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 128,
+                    "pattern": "^(?:[0-9a-f]{2}){1,64}(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "programCounter",
+              "relativeProgramCounter",
+              "buildID"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "architectureCode",
+        "signalNumber",
+        "signalCode",
+        "threadID",
+        "faultAddress",
+        "frames"
       ],
       "additionalProperties": false
     }

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 3,
+    "revision": 4,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -24,7 +24,9 @@
           "processID": 2147483647,
           "importance": 100,
           "pssKiB": "9223372036854775807",
-          "rssKiB": null
+          "rssKiB": null,
+          "tombstoneState": "notRequested",
+          "tombstone": null
         },
         "metricKit": null,
         "appleSignal": null
@@ -33,7 +35,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 3,
+    "revision": 4,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {},
     "webSockets": {}

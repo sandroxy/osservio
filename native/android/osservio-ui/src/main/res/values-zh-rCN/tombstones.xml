@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_tombstone_state">原生堆栈证据</string>
+    <string name="osservio_tombstone_not_requested">本记录未读取堆栈</string>
+    <string name="osservio_tombstone_not_applicable">该记录不是原生崩溃</string>
+    <string name="osservio_tombstone_unsupported">需要 Android 12 及以上版本</string>
+    <string name="osservio_tombstone_unavailable">系统未提供可读取的记录</string>
+    <string name="osservio_tombstone_invalid">系统记录无效或不匹配</string>
+    <string name="osservio_tombstone_too_large">系统记录超出大小上限</string>
+    <string name="osservio_tombstone_limit_reached">读取或解析达到预算上限</string>
+    <string name="osservio_tombstone_available">已读取系统记录</string>
+    <string name="osservio_tombstone_thread_id">故障线程 ID</string>
+    <string name="osservio_tombstone_pc">指令地址</string>
+    <string name="osservio_tombstone_relative_pc">ELF 相对地址</string>
+    <string name="osservio_tombstone_build_id">ELF 构建标识</string>
+    <string name="osservio_tombstone_frames_hint">按最新栈帧在前排列，相对地址保留系统报告的原值。还原函数名需要匹配的 ELF 符号文件；达到记录上限时，后续栈帧可能缺失。</string>
+</resources>

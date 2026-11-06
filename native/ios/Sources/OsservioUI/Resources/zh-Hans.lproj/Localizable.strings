@@ -314,7 +314,7 @@
 "diagnostic_exception_code" = "异常代码";
 "diagnostic_hang_duration" = "卡顿时长";
 "diagnostic_snapshot_hint" = "这是已保存的系统证据。读取时间与故障发生时间不同；附件保留各自的观察时间，不会默认归属到某次历史运行。";
-"diagnostic_android_hint" = "退出原因和时间由系统提供。内存值是系统最近一次采样，并非退出瞬间的测量；仅凭信号不能判断为低内存终止。本记录不含调用栈。";
+"diagnostic_android_hint" = "退出原因和时间由系统提供。内存值是系统最近一次采样，并非退出瞬间的测量；仅凭信号不能判断为低内存终止。原生堆栈取决于 Android 版本和系统记录是否可用，旧记录可能被系统覆盖。";
 "diagnostic_metric_hint" = "时间区间属于这份系统报告，不能据此确定故障发生的具体时刻。版本和设备信息来自报告本身；卡顿不代表进程已终止。本记录不含调用栈。";
 "incident_archive_hint" = "问题档案可能来自手动标记或系统记录，请结合来源和时间查看。打开档案不会改变采集状态。";
 
@@ -342,3 +342,18 @@
 "crash_hint" = "记录器捕获了致命 BSD 信号，时间精度为秒。调用栈仅保留尽力获取的地址，尚未解析成函数名；缺失的栈帧和映像无法补回，仅凭信号不能确定根因。";
 "crash_frames_hint" = "按最新栈帧在前排列。线程序号仅在这份报告中有效，并非系统线程 ID。达到记录上限时，后续栈帧可能缺失。";
 "crash_images_hint" = "UUID 用于匹配对应构建的符号文件。大小为 0 表示未取得有效范围；列表未达上限或缓存未报告丢失，都不代表映像记录完整。";
+
+"tombstone_state" = "原生堆栈证据";
+"tombstone_notRequested" = "本记录未读取堆栈";
+"tombstone_notApplicable" = "该记录不是原生崩溃";
+"tombstone_unsupported" = "需要 Android 12 及以上版本";
+"tombstone_unavailable" = "系统未提供可读取的记录";
+"tombstone_invalid" = "系统记录无效或不匹配";
+"tombstone_tooLarge" = "系统记录超出大小上限";
+"tombstone_limitReached" = "读取或解析达到预算上限";
+"tombstone_available" = "已读取系统记录";
+"tombstone_thread_id" = "故障线程 ID";
+"tombstone_pc" = "指令地址";
+"tombstone_relative_pc" = "ELF 相对地址";
+"tombstone_build_id" = "ELF 构建标识";
+"tombstone_frames_hint" = "按最新栈帧在前排列，相对地址保留系统报告的原值。还原函数名需要匹配的 ELF 符号文件；达到记录上限时，后续栈帧可能缺失。";

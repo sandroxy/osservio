@@ -75,6 +75,14 @@ The viewer distinguishes failure time from report read time and does not relabel
 signal termination or a hang as a crash. Immediate next-launch delivery is not
 guaranteed. See [system diagnostics](doc/system-diagnostics.md).
 
+On Android 12+, Runtime can also extract bounded address stacks, ELF build IDs,
+signal and thread facts from system native-crash traces for retention, inspection
+and export. It installs no additional signal handler. OS traces may be missing
+or overwritten; unsupported, unavailable, invalid and budget-limited results
+remain visible. This does not include Java exception stacks or raw ANR traces,
+and resolving function names still requires matching symbols. See
+[Android native-crash evidence](doc/android-tombstone.md).
+
 The optional iOS `OsservioCrash` product supports explicit fatal-signal recorder
 installation and bounded pending-file reads on a later launch. Recording follows
 baseline and detailed capture independently of inspector visibility. A debugger

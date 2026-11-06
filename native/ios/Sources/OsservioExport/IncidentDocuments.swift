@@ -23,8 +23,8 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 3, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 3, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 4, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 4, "incidentID": snapshot.id,
             "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
@@ -46,7 +46,8 @@ public struct IncidentDocuments: Sendable {
     private static func diagnostic(_ value: SystemDiagnostic) -> [String: Any] {
         let android = value.androidExit.map { exit -> [String: Any] in
             ["reasonCode": exit.reasonCode, "status": exit.status, "processID": exit.processID,
-             "importance": exit.importance, "pssKiB": decimal(exit.pssKiB), "rssKiB": decimal(exit.rssKiB)]
+             "importance": exit.importance, "pssKiB": decimal(exit.pssKiB), "rssKiB": decimal(exit.rssKiB),
+             "tombstoneState": exit.tombstoneState.rawValue, "tombstone": optional(exit.tombstone.map(tombstone))]
         }
         let metric = value.metricKit.map { report -> [String: Any] in
             var metadata: [String: Any] = [:]
@@ -59,6 +60,12 @@ public struct IncidentDocuments: Sendable {
         return ["source": value.source.rawValue, "kind": value.kind.rawValue,
                 "intervalStartMillis": String(value.intervalStartMillis), "intervalEndMillis": String(value.intervalEndMillis),
                 "androidExit": optional(android), "metricKit": optional(metric), "appleSignal": optional(value.appleSignal.map(signalCrash))]
+    }
+    private static func tombstone(_ trace: AndroidTombstone) -> [String: Any] {
+        ["architectureCode": trace.architectureCode, "signalNumber": trace.signalNumber, "signalCode": trace.signalCode,
+         "threadID": trace.threadID, "faultAddress": decimal(trace.faultAddress), "frames": trace.frames.map { frame -> [String: Any] in
+             ["programCounter": String(frame.programCounter), "relativeProgramCounter": String(frame.relativeProgramCounter), "buildID": optional(frame.buildID)]
+         }]
     }
     private static func signalCrash(_ crash: AppleSignalCrash) -> [String: Any] {
         var metadata: [String: Any] = [:]

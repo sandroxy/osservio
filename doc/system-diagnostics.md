@@ -12,12 +12,14 @@ the optional Export module.
 | Source | Evidence | Limits |
 | --- | --- | --- |
 | Android `ApplicationExitInfo`, API 30+ | Main process exit time, reason/status, PID, importance, last PSS/RSS samples | OS-owned bounded history; incomplete coverage is possible |
+| Android native tombstone, API 31+ | Faulting-thread addresses, ELF build IDs, signal/code and optional fault address | Native exits only; separate OS trace buffer can be overwritten or unavailable |
 | iOS MetricKit, iOS 14+ | Delivered crash/hang report intervals, historical metadata, numeric crash codes, hang duration | OS-controlled delivery may be delayed or absent; an interval is not an exact occurrence time |
 
 Older OS versions return `unsupported`, not an empty success. Empty supported
-history does not prove that no failure occurred. CPU exceptions, disk-write and
-launch diagnostics, stack trees, native tombstones, and raw ANR traces are not
-read. This is not complete fatal recording or a guarantee of next-launch recovery.
+history does not prove that no failure occurred. MetricKit CPU exceptions,
+disk-write and launch diagnostics, MetricKit stack trees, Java exception stacks
+and raw ANR traces are not read. This is not complete fatal recording or a
+guarantee of next-launch recovery.
 
 Android queries its package with a maximum of 32 records and excludes records
 whose process name or package UID does not match the host's declared main process.
@@ -29,6 +31,13 @@ out-of-memory kill; normal exits and user stops are not relabeled as crashes.
 Zero PSS/RSS becomes unavailable. Nonzero values are the last system samples in
 KiB, not memory at termination. This API supplies no historical app build; the
 current build must not be substituted for it.
+
+Native exits additionally expose a trace-read state and, when available, bounded
+[Android tombstone evidence](android-tombstone.md). API 30 reports unsupported
+native traces while preserving its exit facts. API 31+ reads only
+`REASON_CRASH_NATIVE` streams; an ANR trace attached to another exit is never
+reinterpreted as a native crash. A missing or invalid trace does not discard a
+valid exit record. No raw system report enters the archive.
 
 MetricKit keeps each diagnostic's historical metadata and the payload's reporting
 interval. Numeric exception codes preserve exact signed or unsigned 64-bit
@@ -182,13 +191,20 @@ The store applies these rules in one transaction:
 - Save selected records and acknowledge processed report material atomically.
   A failed transaction rolls back records, retention cleanup, and acknowledgements.
 
-Acknowledgements store a SHA-256 fingerprint of all reviewed diagnostic facts,
+Acknowledgements store a SHA-256 fingerprint of reviewed diagnostic material,
 with the highest observed multiplicity of identical material in one batch.
 Two identical entries in the first batch can produce two records; reading that
 batch again produces none. A later batch with three matching entries can add
 one. This is best-effort deduplication of report material, not proof of unique
 real-world occurrences: separate failures can have identical available facts.
 The fingerprint is private storage metadata, not a public incident identity.
+
+Android tombstone read states do not create new failure material. A newly
+available trace may add a richer immutable report after an earlier summary.
+It also acknowledges that summary, preventing later OS trace eviction from
+creating a degraded duplicate. The original summary fingerprints remain
+compatible; each richer trace uses an additional acknowledgement. Existing
+snapshots are never rewritten, and two material reports need not mean two crashes.
 
 At most 256 acknowledgements are retained. They expire using the archive's age
 window from first processing and are evicted by insertion order. Deleting an
@@ -214,7 +230,7 @@ disables that store instance and preserves its files.
 
 ## Portable export
 
-Portable document revision 3 includes the reviewed system evidence, original
+Portable document revision 4 includes the reviewed system evidence, original
 time/range, historical metadata, exact numeric codes, and missing-value states.
 It preserves recovery observation time separately and adds no current context.
 See the [document contract](../protocol/README.md) and
@@ -232,7 +248,8 @@ MetricKit report interval, historical metadata and available crash codes or hang
 duration. Missing facts remain unavailable; truncated historical text is labeled.
 Signal termination is not relabeled as low-memory termination. Report intervals
 are not exact occurrence times, and a hang does not prove process termination.
-Source-specific explanations also state that this evidence has no stack trace.
+Native-crash trace states and address lists remain distinct from Java crash and
+ANR summaries, which have no stack evidence in this provider.
 
 Copy summary includes these facts and their interpretation limits. With an
 exporter supplied, the existing Share action exports the same frozen snapshot.
@@ -241,7 +258,8 @@ the latest saved breadcrumb run with an older diagnostic.
 
 ## Privacy and bounds
 
-Only the declared numeric fields and four public metadata fields are accepted:
+In addition to the reviewed tombstone addresses and ELF identifiers, the
+declared numeric fields and four public metadata fields are accepted:
 app version, app build, OS version, and device model. Each text value is bounded
 to 256 UTF-8 bytes at scalar boundaries, with explicit truncation. Empty metadata
 is absent. Restoration rejects oversized values rather than repairing them.
@@ -249,8 +267,11 @@ These fields accept public build/system metadata, not arbitrary host context.
 
 The adapters never request free-form termination descriptions, Objective-C
 exception reasons, process-state summaries, signposts, virtual-memory descriptions,
-or JSON representations of raw reports. They do not read or persist stack trees
-or trace streams. Only sanitized facts cross the Core port.
+or JSON representations of raw reports. Android reads native tombstone streams
+within the separate byte/traversal limits, retaining only reviewed fields;
+raw memory, paths, text and registers are discarded. MetricKit stack trees and
+non-native Android trace streams are not read. Only sanitized facts cross the
+Core port.
 
 A batch contains at most 32 inspected records, including rejected or excluded
 records. iOS visits at most four payloads, considering crashes before hangs within

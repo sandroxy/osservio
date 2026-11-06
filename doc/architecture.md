@@ -18,6 +18,10 @@ limits. An explicit batch recovery port processes repeated history atomically
 with bounded acknowledgements. Core's capture-gated recovery coordinator connects
 host-selected startup reads and sanitized source deliveries to that port. The
 native Problems browser and Export include these reviewed facts.
+Android 12+ history reads can also recover selected
+[native tombstone evidence](android-tombstone.md) within independent byte and
+decoding limits. Trace availability stays distinct from exit classification;
+the OS remains the owner of its crash history even when SDK capture is off.
 Store also supplies opt-in [SQLite breadcrumb persistence](breadcrumb-storage.md)
 through Core's archive and status contracts, with independent live and durable
 retention. The local database is not a cross-platform interchange protocol.

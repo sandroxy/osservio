@@ -83,6 +83,12 @@ final class IncidentSnapshotView extends LinearLayout {
                     header.addView(addresses, new LayoutParams(-1, -2));
                 }
             }
+            if (snapshot.systemDiagnostic.androidExit != null && snapshot.systemDiagnostic.androidExit.tombstone != null) {
+                com.sandrox.osservio.core.AndroidTombstone trace = snapshot.systemDiagnostic.androidExit.tombstone;
+                Button addresses = button(R.string.osservio_crash_frames); addresses.setEnabled(!trace.frames.isEmpty());
+                addresses.setOnClickListener(view -> openEvidence(new SignalCrashView(context, trace, this::closeEvidence)));
+                header.addView(addresses, new LayoutParams(-1, -2));
+            }
         }
         Button environment = button(R.string.osservio_runtime_environment);
         environment.setEnabled(snapshot.environment != null);

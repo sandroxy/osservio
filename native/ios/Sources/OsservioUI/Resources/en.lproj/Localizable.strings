@@ -314,7 +314,7 @@
 "diagnostic_exception_code" = "Exception code";
 "diagnostic_hang_duration" = "Hang duration";
 "diagnostic_snapshot_hint" = "Saved system evidence. Report read time is separate from failure time. Attachments retain their own times; no matching historical run is inferred.";
-"diagnostic_android_hint" = "The OS supplies the exit reason and time. Memory values are its last samples, not a measurement at exit. A signal alone does not establish a low-memory kill. Stack traces are not included.";
+"diagnostic_android_hint" = "The OS supplies the exit reason and time. Memory values are its last samples, not a measurement at exit. A signal alone does not establish a low-memory kill. Native stack evidence depends on Android version and system trace availability; the OS can overwrite older traces.";
 "diagnostic_metric_hint" = "The interval describes the system report, not an exact failure time. Build and device fields come from that report. A hang does not establish termination. Stack traces are not included.";
 "incident_archive_hint" = "Saved reports may contain manual observations or system evidence. Review their source and times. Opening a report does not change capture.";
 
@@ -342,3 +342,18 @@
 "crash_hint" = "The recorder captured a fatal BSD signal at whole-second precision. Stack addresses are best effort and are not symbolicated. Missing frames and images are not reconstructed; a signal alone does not identify the underlying cause.";
 "crash_frames_hint" = "Newest frame first. The thread index is local to this report, not an OS thread ID. Reaching the recording limit can mean that frames are missing.";
 "crash_images_hint" = "UUIDs identify binary builds for matching symbol files. A zero extent means the size was unavailable. Neither a shorter list nor an unflagged cache proves complete image coverage.";
+
+"tombstone_state" = "Native stack evidence";
+"tombstone_notRequested" = "Not requested in this record";
+"tombstone_notApplicable" = "Not a native-crash record";
+"tombstone_unsupported" = "Requires Android 12 or later";
+"tombstone_unavailable" = "No readable system trace";
+"tombstone_invalid" = "Invalid or mismatched system trace";
+"tombstone_tooLarge" = "System trace exceeds the size limit";
+"tombstone_limitReached" = "Read or decoding budget reached";
+"tombstone_available" = "System report decoded";
+"tombstone_thread_id" = "Faulting OS thread ID";
+"tombstone_pc" = "Program counter";
+"tombstone_relative_pc" = "ELF-relative PC";
+"tombstone_build_id" = "ELF build ID";
+"tombstone_frames_hint" = "Newest frame first. Relative addresses are preserved as reported by the OS. Matching ELF symbol files are needed to resolve function names. Reaching the limit may mean that frames are missing.";

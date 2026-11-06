@@ -6,6 +6,46 @@ import XCTest
 
 final class SystemDiagnosticTests: XCTestCase {
     @MainActor
+    func testAndroidTraceKeepsExactAddressesAndDistinctMissingStates() throws {
+        let trace = try AndroidTombstone.restore(architectureCode: 1, signalNumber: 6, signalCode: -6, threadID: 99, faultAddress: nil,
+            frames: Array(repeating: .restore(programCounter: .max, relativeProgramCounter: 9_223_372_036_854_775_808, buildID: "ab01"), count: 128))
+        let diagnostic = try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 5, status: 6, processID: 123,
+            importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: .available, tombstone: trace)
+        let fields = Dictionary(uniqueKeysWithValues: SystemDiagnosticPresentation.fields(diagnostic).map { ($0.title, $0.value) })
+        XCTAssertEqual(fields[RuntimePresentation.text("env_architecture")], "ARM64")
+        XCTAssertEqual(fields[RuntimePresentation.text("tombstone_state")], RuntimePresentation.text("tombstone_available"))
+        XCTAssertEqual(fields[RuntimePresentation.text("tombstone_thread_id")], "99")
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_fault_address")], RuntimePresentation.text("runtime_unavailable"))
+        XCTAssertEqual(fields[RuntimePresentation.text("crash_frame_count")], "128 · " + RuntimePresentation.text("crash_limit_reached"))
+        XCTAssertNil(fields[RuntimePresentation.text("crash_report_id")])
+        let overview = SystemDiagnosticViewController(diagnostic); overview.loadViewIfNeeded()
+        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 2)
+        XCTAssertEqual(overview.tableView(overview.tableView, numberOfRowsInSection: 1), 1)
+        XCTAssertEqual(overview.tableView(overview.tableView, cellForRowAt: IndexPath(row: 0, section: 1)).accessoryType, .disclosureIndicator)
+        let frames = SignalCrashViewController(trace); frames.loadViewIfNeeded()
+        XCTAssertEqual(frames.tableView(frames.tableView, numberOfRowsInSection: 0), 128)
+        let row = frames.copyText(at: 127)
+        XCTAssertTrue(row.hasPrefix("#127\n")); XCTAssertTrue(row.contains("0xffffffffffffffff")); XCTAssertTrue(row.contains("0x8000000000000000"))
+        XCTAssertTrue(row.contains(RuntimePresentation.text("tombstone_build_id") + ": ab01"))
+        XCTAssertEqual(Set(SystemDiagnostic.TombstoneState.allCases.map(TombstonePresentation.state)).count, 8)
+        XCTAssertEqual(TombstonePresentation.architecture(999), "#999")
+    }
+
+    @MainActor
+    func testAbsentAndroidStackDoesNotInventNavigationOrZeroAddresses() throws {
+        let absent = try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 5, status: 6, processID: 123,
+            importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: .unavailable, tombstone: nil)
+        let overview = SystemDiagnosticViewController(absent); overview.loadViewIfNeeded()
+        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 1)
+        let trace = try AndroidTombstone.restore(architectureCode: 1, signalNumber: 11, signalCode: 1, threadID: 99, faultAddress: 0, frames: [])
+        let noFrames = try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 5, status: 11, processID: 123,
+            importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: .available, tombstone: trace)
+        let detail = SystemDiagnosticViewController(noFrames); detail.loadViewIfNeeded()
+        let cell = detail.tableView(detail.tableView, cellForRowAt: IndexPath(row: 0, section: 1))
+        XCTAssertEqual(cell.accessoryType, .none); XCTAssertEqual(cell.detailTextLabel?.text, RuntimePresentation.text("runtime_unavailable"))
+        XCTAssertTrue(SystemDiagnosticPresentation.summary(noFrames).contains("0x0"))
+    }
+    @MainActor
     func testSavedDiagnosticNavigationKeepsReportAndReadTimesDistinct() async throws {
         let diagnostic = try SystemDiagnostic.metricKit(intervalStartMillis: 1_700_000_000_000, intervalEndMillis: 1_700_086_400_000,
             kind: .crash, metadata: [.appBuild: .restore(value: "historical-build", isTruncated: true)],

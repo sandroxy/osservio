@@ -27,6 +27,6 @@
     <string name="osservio_diagnostic_exception_code">Exception code</string>
     <string name="osservio_diagnostic_hang_duration">Hang duration</string>
     <string name="osservio_diagnostic_snapshot_hint">Saved system evidence. Report read time is separate from failure time. Attachments retain their own times; no matching historical run is inferred.</string>
-    <string name="osservio_diagnostic_android_hint">The OS supplies the exit reason and time. Memory values are its last samples, not a measurement at exit. A signal alone does not establish a low-memory kill. Stack traces are not included.</string>
+    <string name="osservio_diagnostic_android_hint">The OS supplies the exit reason and time. Memory values are its last samples, not a measurement at exit. A signal alone does not establish a low-memory kill. Native stack evidence depends on Android version and system trace availability; the OS can overwrite older traces.</string>
     <string name="osservio_diagnostic_metric_hint">The interval describes the system report, not an exact failure time. Build and device fields come from that report. A hang does not establish termination. Stack traces are not included.</string>
 </resources>

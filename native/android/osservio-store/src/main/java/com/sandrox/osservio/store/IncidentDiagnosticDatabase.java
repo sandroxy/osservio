@@ -17,7 +17,10 @@ import java.util.Map;
 final class IncidentDiagnosticDatabase {
     private final SQLiteDatabase database;
     private final SignalCrashDatabase signals;
-    IncidentDiagnosticDatabase(SQLiteDatabase database) { this.database = database; signals = new SignalCrashDatabase(database); }
+    private final TombstoneDatabase tombstones;
+    IncidentDiagnosticDatabase(SQLiteDatabase database) {
+        this.database = database; signals = new SignalCrashDatabase(database); tombstones = new TombstoneDatabase(database);
+    }
     static final String[] SCHEMA = {
         "ALTER TABLE incidents ADD COLUMN diagnostic_kind TEXT",
         "CREATE TABLE incident_diagnostics (incident_id TEXT PRIMARY KEY NOT NULL REFERENCES incidents(id) ON DELETE CASCADE, "
@@ -32,12 +35,13 @@ final class IncidentDiagnosticDatabase {
         SystemDiagnostic.AndroidExit exit = diagnostic.androidExit;
         SystemDiagnostic.MetricKit metric = diagnostic.metricKit;
         database.execSQL("INSERT INTO incident_diagnostics(incident_id, source, interval_start, interval_end, reason, status, process_id, "
-            + "importance, pss, rss, signal, exception_type, exception_code, hang_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
+            + "importance, pss, rss, signal, exception_type, exception_code, hang_duration, tombstone_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {
                 snapshot.id, name(diagnostic.source), diagnostic.intervalStartMillis, diagnostic.intervalEndMillis,
                 exit == null ? null : exit.reasonCode, exit == null ? null : exit.status, exit == null ? null : exit.processID,
                 exit == null ? null : exit.importance, exit == null ? null : exit.pssKiB, exit == null ? null : exit.rssKiB,
                 metric == null ? null : metric.signal, metric == null ? null : metric.exceptionType,
-                metric == null ? null : metric.exceptionCode, metric == null ? null : metric.hangDurationMillis});
+                metric == null ? null : metric.exceptionCode, metric == null ? null : metric.hangDurationMillis,
+                exit == null ? null : name(exit.tombstoneState)});
         Map<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> metadata = metric != null ? metric.metadata :
             diagnostic.appleSignal != null ? diagnostic.appleSignal.metadata : java.util.Collections.emptyMap();
         for (Map.Entry<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> entry : metadata.entrySet()) {
@@ -45,28 +49,40 @@ final class IncidentDiagnosticDatabase {
                 new Object[] {snapshot.id, name(entry.getKey()), entry.getValue().value, entry.getValue().isTruncated ? 1 : 0});
         }
         if (diagnostic.appleSignal != null) signals.save(diagnostic.appleSignal, snapshot.id);
+        if (exit != null && exit.tombstone != null) tombstones.save(exit.tombstone, snapshot.id);
     }
     SystemDiagnostic read(String id, SystemDiagnostic.Kind expectedKind) {
         Map<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> metadata = readMetadata(id);
         String projection = textColumn("source", 32) + ",interval_start,interval_end,reason,status,process_id,importance,pss,rss,signal,exception_type,"
-            + textColumn("exception_code", 20) + ",hang_duration";
+            + textColumn("exception_code", 20) + ",hang_duration," + textColumn("tombstone_state", 32);
         try (Cursor row = database.rawQuery("SELECT " + projection + " FROM incident_diagnostics WHERE incident_id=? LIMIT 2", new String[] {id})) {
             if (!row.moveToFirst()) {
                 if (expectedKind != null || !metadata.isEmpty()) throw EvidenceStorageException.invalid();
                 signals.requireAbsent(id);
+                tombstones.requireAbsent(id);
                 return null;
             }
             if (expectedKind == null) throw EvidenceStorageException.invalid();
             SystemDiagnostic.Source source = parse(SystemDiagnostic.Source.values(), text(row, 0, 32));
             if (source != SystemDiagnostic.Source.APPLE_SIGNAL) signals.requireAbsent(id);
+            if (source != SystemDiagnostic.Source.ANDROID_EXIT_INFO) {
+                tombstones.requireAbsent(id);
+                if (!row.isNull(13)) throw EvidenceStorageException.invalid();
+            }
             long start = integer(row, 1), end = integer(row, 2);
             SystemDiagnostic result;
             try {
                 if (source == SystemDiagnostic.Source.ANDROID_EXIT_INFO) {
                     if (start != end || !metadata.isEmpty()) throw EvidenceStorageException.invalid();
                     for (int i = 9; i <= 12; i++) if (!row.isNull(i)) throw EvidenceStorageException.invalid();
-                    result = SystemDiagnostic.androidExit(start, int32(row, 3), int32(row, 4), int32(row, 5), int32(row, 6),
-                        optionalInteger(row, 7), optionalInteger(row, 8));
+                    int reason = int32(row, 3);
+                    SystemDiagnostic.TombstoneState state = row.isNull(13) ?
+                        (reason == 5 ? SystemDiagnostic.TombstoneState.NOT_REQUESTED : SystemDiagnostic.TombstoneState.NOT_APPLICABLE) :
+                        parse(SystemDiagnostic.TombstoneState.values(), text(row, 13, 32));
+                    if (state != SystemDiagnostic.TombstoneState.AVAILABLE) tombstones.requireAbsent(id);
+                    result = SystemDiagnostic.androidExit(start, reason, int32(row, 4), int32(row, 5), int32(row, 6),
+                        optionalInteger(row, 7), optionalInteger(row, 8), state,
+                        state == SystemDiagnostic.TombstoneState.AVAILABLE ? tombstones.read(id) : null);
                 } else if (source == SystemDiagnostic.Source.METRIC_KIT) {
                     for (int i = 3; i <= 8; i++) if (!row.isNull(i)) throw EvidenceStorageException.invalid();
                     result = SystemDiagnostic.metricKit(start, end, expectedKind, metadata, row.isNull(9) ? null : int32(row, 9),

@@ -1,6 +1,7 @@
 package com.sandrox.osservio.store;
 
 import com.sandrox.osservio.core.AndroidTombstone;
+import com.sandrox.osservio.core.SystemDiagnostic;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -35,6 +36,19 @@ public final class AndroidTombstoneTest {
             assertThrows(IllegalArgumentException.class, () -> make("relative_pc", invalid));
             assertThrows(IllegalArgumentException.class, () -> make("address", invalid));
         }
+    }
+    @Test public void sharedSourceAndReadStateInvariants() throws Exception {
+        for (String line : Files.readAllLines(Paths.get(System.getProperty("osservio.fixtures"), "android-tombstone-states.tsv"), StandardCharsets.UTF_8)) {
+            String[] row = line.split("\t");
+            try {
+                SystemDiagnostic value = SystemDiagnostic.androidExit(1000, Integer.parseInt(row[1]), 6, 123, 100, null, null,
+                    IncidentNames.parse(SystemDiagnostic.TombstoneState.values(), row[2]), Boolean.parseBoolean(row[3]) ? make("frames", "2") : null);
+                assertEquals(row[0], "valid", row[4]);
+                assertEquals(Boolean.parseBoolean(row[3]) ? 80 : 0, value.textByteCount());
+            } catch (IllegalArgumentException invalid) { assertEquals(row[0], "invalid", row[4]); }
+        }
+        assertEquals(SystemDiagnostic.TombstoneState.NOT_REQUESTED, SystemDiagnostic.androidExit(1000, 5, 6, 123, 100, null, null).androidExit.tombstoneState);
+        assertEquals(SystemDiagnostic.TombstoneState.NOT_APPLICABLE, SystemDiagnostic.androidExit(1000, 6, 0, 123, 100, null, null).androidExit.tombstoneState);
     }
     private AndroidTombstone make(String field, String value) {
         String build = "0123456789abcdef0123456789abcdef01234567";

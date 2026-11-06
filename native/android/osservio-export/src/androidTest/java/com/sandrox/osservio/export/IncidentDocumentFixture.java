@@ -21,6 +21,13 @@ final class IncidentDocumentFixture {
         if (name.startsWith("diagnostic-")) {
             SystemDiagnostic evidence;
             switch (name) {
+                case "diagnostic-tombstone": case "diagnostic-tombstone-unavailable":
+                    boolean available = name.equals("diagnostic-tombstone");
+                    evidence = SystemDiagnostic.androidExit(1000, 5, 6, 123, 100, null, null,
+                        available ? SystemDiagnostic.TombstoneState.AVAILABLE : SystemDiagnostic.TombstoneState.UNAVAILABLE,
+                        available ? AndroidTombstone.restore(1, 6, -6, 99, "18446744073709551615",
+                            Arrays.asList(AndroidTombstone.Frame.restore("18446744073709551615", "18446744073709551615", "0123456789abcdef0123456789abcdef01234567"),
+                                AndroidTombstone.Frame.restore("0", "0", null))) : null); break;
                 case "diagnostic-signal":
                     Map<SystemDiagnostic.MetadataKey, SystemDiagnostic.Text> signalMetadata = new EnumMap<>(SystemDiagnostic.MetadataKey.class);
                     signalMetadata.put(SystemDiagnostic.MetadataKey.APP_VERSION, SystemDiagnostic.Text.capturePublic("😀"));

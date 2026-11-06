@@ -2,6 +2,7 @@ package com.sandrox.osservio.ui;
 
 import android.content.Context;
 import com.sandrox.osservio.core.AppleSignalCrash;
+import com.sandrox.osservio.core.AndroidTombstone;
 import com.sandrox.osservio.core.SystemDiagnostic;
 
 /** Formats only the immutable saved source facts, without querying the current environment. */
@@ -42,6 +43,16 @@ final class SystemDiagnosticPresentation {
             field(text, context, R.string.osservio_diagnostic_importance, Integer.toString(exit.importance));
             field(text, context, R.string.osservio_diagnostic_pss, exit.pssKiB == null ? null : exit.pssKiB + " KiB");
             field(text, context, R.string.osservio_diagnostic_rss, exit.rssKiB == null ? null : exit.rssKiB + " KiB");
+            field(text, context, R.string.osservio_tombstone_state, TombstonePresentation.state(context, exit.tombstoneState));
+            AndroidTombstone trace = exit.tombstone;
+            if (trace != null) {
+                field(text, context, R.string.osservio_env_architecture, TombstonePresentation.architecture(trace.architectureCode));
+                field(text, context, R.string.osservio_diagnostic_signal, Integer.toString(trace.signalNumber));
+                field(text, context, R.string.osservio_crash_code, Integer.toString(trace.signalCode));
+                field(text, context, R.string.osservio_tombstone_thread_id, Integer.toString(trace.threadID));
+                field(text, context, R.string.osservio_crash_fault_address, trace.faultAddress == null ? null : SignalCrashPresentation.address(trace.faultAddress));
+                field(text, context, R.string.osservio_crash_frame_count, SignalCrashPresentation.count(context, trace.frames.size(), trace.frameLimitReached()));
+            }
         }
         SystemDiagnostic.MetricKit metric = diagnostic.metricKit;
         if (metric != null) {

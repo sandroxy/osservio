@@ -29,6 +29,13 @@ public final class SystemDiagnosticPlatformTest {
                 assertNull(error.get()); assertNotNull(result.get());
                 assertEquals(SystemDiagnostic.Source.ANDROID_EXIT_INFO, result.get().source);
                 assertTrue(result.get().diagnostics.size() <= 32);
+                for (SystemDiagnostic value : result.get().diagnostics) {
+                    SystemDiagnostic.AndroidExit exit = value.androidExit;
+                    if (value.kind != SystemDiagnostic.Kind.NATIVE_CRASH) assertEquals(SystemDiagnostic.TombstoneState.NOT_APPLICABLE, exit.tombstoneState);
+                    else if (Build.VERSION.SDK_INT == 30) assertEquals(SystemDiagnostic.TombstoneState.UNSUPPORTED, exit.tombstoneState);
+                    else assertNotEquals(SystemDiagnostic.TombstoneState.NOT_REQUESTED, exit.tombstoneState);
+                    assertEquals(exit.tombstoneState == SystemDiagnostic.TombstoneState.AVAILABLE, exit.tombstone != null);
+                }
             }
         }
         assertSame(handler, Thread.getDefaultUncaughtExceptionHandler());

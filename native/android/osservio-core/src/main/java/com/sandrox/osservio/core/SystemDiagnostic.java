@@ -12,6 +12,7 @@ public final class SystemDiagnostic {
     public enum Source { ANDROID_EXIT_INFO, METRIC_KIT, APPLE_SIGNAL }
     public enum Kind { MANAGED_CRASH, NATIVE_CRASH, ANR, LOW_MEMORY_TERMINATION, SIGNAL_TERMINATION, OTHER_EXIT, CRASH, HANG }
     public enum MetadataKey { APP_VERSION, APP_BUILD, OS_VERSION, DEVICE_MODEL }
+    public enum TombstoneState { NOT_REQUESTED, NOT_APPLICABLE, UNSUPPORTED, UNAVAILABLE, INVALID, TOO_LARGE, LIMIT_REACHED, AVAILABLE }
     public static final class Text {
         public final String value;
         public final boolean isTruncated;
@@ -33,9 +34,13 @@ public final class SystemDiagnostic {
         public final int reasonCode, status, processID, importance;
         /** Last system sample, not memory measured at termination. Null means unavailable. */
         public final Long pssKiB, rssKiB;
-        private AndroidExit(int reasonCode, int status, int processID, int importance, Long pssKiB, Long rssKiB) {
+        public final TombstoneState tombstoneState;
+        public final AndroidTombstone tombstone;
+        private AndroidExit(int reasonCode, int status, int processID, int importance, Long pssKiB, Long rssKiB,
+                            TombstoneState tombstoneState, AndroidTombstone tombstone) {
             this.reasonCode = reasonCode; this.status = status; this.processID = processID;
             this.importance = importance; this.pssKiB = pssKiB; this.rssKiB = rssKiB;
+            this.tombstoneState = tombstoneState; this.tombstone = tombstone;
         }
     }
     public static final class MetricKit {
@@ -66,12 +71,22 @@ public final class SystemDiagnostic {
             for (Text text : metricKit.metadata.values()) total += text.value.getBytes(StandardCharsets.UTF_8).length;
             if (metricKit.exceptionCode != null) total += metricKit.exceptionCode.length();
         }
-        return total + (appleSignal == null ? 0 : appleSignal.textByteCount());
+        return total + (appleSignal == null ? 0 : appleSignal.textByteCount()) +
+            (androidExit == null || androidExit.tombstone == null ? 0 : androidExit.tombstone.textByteCount());
     }
     public static SystemDiagnostic androidExit(long timestampMillis, int reasonCode, int status, int processID,
                                                int importance, Long pssKiB, Long rssKiB) {
+        return androidExit(timestampMillis, reasonCode, status, processID, importance, pssKiB, rssKiB,
+            reasonCode == 5 ? TombstoneState.NOT_REQUESTED : TombstoneState.NOT_APPLICABLE, null);
+    }
+    public static SystemDiagnostic androidExit(long timestampMillis, int reasonCode, int status, int processID,
+                                               int importance, Long pssKiB, Long rssKiB,
+                                               TombstoneState tombstoneState, AndroidTombstone tombstone) {
+        Objects.requireNonNull(tombstoneState, "tombstone state");
         if (timestampMillis < 0 || reasonCode < 0 || processID <= 0 || importance < 0 ||
-            (pssKiB != null && pssKiB <= 0) || (rssKiB != null && rssKiB <= 0)) {
+            (pssKiB != null && pssKiB <= 0) || (rssKiB != null && rssKiB <= 0) ||
+            ((tombstoneState == TombstoneState.AVAILABLE) != (tombstone != null)) ||
+            ((reasonCode != 5) != (tombstoneState == TombstoneState.NOT_APPLICABLE))) {
             throw new IllegalArgumentException("Invalid process exit evidence");
         }
         Kind kind;
@@ -84,7 +99,7 @@ public final class SystemDiagnostic {
             default: kind = Kind.OTHER_EXIT;
         }
         return new SystemDiagnostic(Source.ANDROID_EXIT_INFO, kind, timestampMillis, timestampMillis,
-            new AndroidExit(reasonCode, status, processID, importance, pssKiB, rssKiB), null, null);
+            new AndroidExit(reasonCode, status, processID, importance, pssKiB, rssKiB, tombstoneState, tombstone), null, null);
     }
     public static SystemDiagnostic metricKit(long startMillis, long endMillis, Kind kind, Map<MetadataKey, Text> metadata,
                                              Integer signal, Long exceptionType, String exceptionCode, Long hangDurationMillis) {

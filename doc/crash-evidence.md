@@ -160,9 +160,9 @@ whole list is explicit. Zero image size is displayed as unavailable, while a zer
 fault/instruction address remains an actual recorded value. The summary counts
 are not a complete stack dump; use the address lists or export for that evidence.
 
-[Portable revision 3](../protocol/README.md) carries the complete bounded facts
+[Portable revision 4](../protocol/README.md) carries the complete bounded facts
 in `systemDiagnostic.appleSignal`, with unsigned 64-bit values encoded as decimal
-strings. Revision-1 and revision-2 documents remain independently validated by the
+strings. Revision-1, revision-2 and revision-3 documents remain independently validated by the
 development conformance checker. There is no native document importer or in-app
 symbolication service.
 

@@ -187,9 +187,11 @@ coverage, privacy, and metric definitions.
 
 The optional Runtime module also provides `SystemDiagnostics`, a bounded
 asynchronous read of main-process exit history on API 30+. Older versions report
-`unsupported`. It installs no crash handler; read [system diagnostics](../../doc/system-diagnostics.md)
-for permitted fields, source limits, lifecycle, explicit incident persistence,
-and the remaining automatic-recovery, export, and UI limitations.
+`unsupported`. API 31+ also reads selected native tombstone evidence when the OS
+trace is available; Java stacks and raw ANR traces are not included. It installs
+no crash handler. Read [system diagnostics](../../doc/system-diagnostics.md) and
+[Android tombstones](../../doc/android-tombstone.md) for fields, budgets, read
+states, capture-gated recovery, archive, export and native inspection.
 
 ## Manual problem snapshots
 

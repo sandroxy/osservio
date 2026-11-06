@@ -3,6 +3,21 @@ import OsservioCore
 import XCTest
 
 final class AndroidTombstoneTests: XCTestCase {
+    func testSharedSourceAndReadStateInvariants() throws {
+        for line in try IncidentDetailFixture.shared("android-tombstone-states.tsv").split(separator: "\n") {
+            let row = line.split(separator: "\t").map(String.init)
+            do {
+                let value = try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: Int32(row[1])!, status: 6, processID: 123,
+                    importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: SystemDiagnostic.TombstoneState(rawValue: row[2])!,
+                    tombstone: row[3] == "true" ? make(field: "frames", value: "2") : nil)
+                XCTAssertEqual(row[4], "valid", row[0]); XCTAssertEqual(value.textByteCount, row[3] == "true" ? 80 : 0)
+            } catch { XCTAssertEqual(row[4], "invalid", row[0]) }
+        }
+        XCTAssertEqual(try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 5, status: 6, processID: 123,
+            importance: 100, pssKiB: nil, rssKiB: nil).androidExit?.tombstoneState, .notRequested)
+        XCTAssertEqual(try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 6, status: 0, processID: 123,
+            importance: 100, pssKiB: nil, rssKiB: nil).androidExit?.tombstoneState, .notApplicable)
+    }
     func testSharedBoundsAndEvidenceInvariants() throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }

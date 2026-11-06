@@ -9,7 +9,7 @@ sanitized `IncidentSnapshot` into two UTF-8 JSON documents:
 | `payloads.json` | Available copied HTTP and WebSocket text, keyed by the referenced body identity |
 
 The format identifiers are `osservio.incident` and `osservio.incident.payloads`.
-Both declare compatibility revision `3`, independently of SDK and private
+Both declare compatibility revision `4`, independently of SDK and private
 SQLite schema versions. The metadata's `payloadFile` is the fixed literal
 `payloads.json`, not an arbitrary path. The schema URNs identify local definitions;
 validation does not fetch a remote schema.
@@ -94,6 +94,18 @@ restoration constructors enforce the input's typed evidence invariants.
   Count caps and the cache flag expose possible loss without asserting that a
   shorter stack or image list is complete. No paths, registers, symbols, raw
   memory or exception text are permitted by the strict writer schema.
+- [Android tombstone evidence](../doc/android-tombstone.md) belongs to
+  `androidExitInfo`. Its `androidExit` object requires `tombstoneState` and
+  `tombstone`. Only state `available` has evidence; only a reason other than 5
+  uses `notApplicable`. The remaining states distinguish no read, unsupported
+  OS, unavailable/invalid trace, oversized input and exhausted work budget.
+  A tombstone preserves architecture code, numeric signal and signed signal
+  code, OS thread ID, optional fault address and up to 128 ordered frames.
+  Each frame has absolute and ELF-relative PCs as unsigned 64-bit decimal
+  strings, plus a nullable, lowercase, even-length ELF build ID of at most
+  128 hex digits. Missing fault address differs from zero. Empty frames mean
+  unavailable; the cap may indicate missing frames. No paths, symbols,
+  registers, memory or arbitrary error text are accepted by strict writers.
 - Body observation state and incident inclusion state describe different facts.
   A captured body can have been excluded from this incident, evicted before
   selection, busy during lookup, or rejected by its inclusion budget. Only
@@ -123,18 +135,20 @@ bound concurrent encodes and the lifetime of returned data.
 
 ## Compatibility and conformance
 
-The root schemas describe strict revision-3 writers. Preserved
+The root schemas describe strict revision-4 writers. Preserved
 [revision-1 metadata](revisions/1/incident.schema.json) and
 [payload schemas](revisions/1/payloads.schema.json), and
 [revision-2 metadata](revisions/2/incident.schema.json) and
-[payload schemas](revisions/2/payloads.schema.json), remain readable by the
-conformance checker. Revisions 2 and 3 reference unchanged revision-1 event definitions.
+[payload schemas](revisions/2/payloads.schema.json), and
+[revision-3 metadata](revisions/3/incident.schema.json) and
+[payload schemas](revisions/3/payloads.schema.json), remain readable by the
+conformance checker. Revisions 2 through 4 reference unchanged revision-1 event definitions.
 A reader may ignore unknown optional object fields within a supported revision,
 while still validating every known
 field, required field, enum, identifier, privacy constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
 Unsupported revisions and mixed document revisions are rejected. Native writers
-always emit revision 3, including for manual snapshots. Earlier readers must
+always emit revision 4, including for manual snapshots. Earlier readers must
 reject newer revisions rather than overlook their evidence. No automatic
 document rewriting, downgrade, or SDK runtime importer is provided.
 Private incident database migrations are tested separately in native Store
@@ -150,5 +164,5 @@ archive-import API. It does not extract ZIP files or accept remote data.
 The independent fixtures in `testing/incident-export` cover absent and empty
 groups, exact 64-bit values, redaction, Unicode and escaping, body states, HTTP
 lifecycles, system source/time invariants, corruption, and compatibility.
-Unmodified revision-1 and revision-2 golden documents are retained separately. Both native encoders compare their
+Unmodified revision-1, revision-2 and revision-3 golden documents are retained separately. Both native encoders compare their
 output with the same golden documents. See [development checks](../DEVELOPMENT.md).

@@ -198,6 +198,11 @@ def diagnostic_semantics(diagnostic, revision):
         require(start == end and start >= 0, "Android exit must preserve its exact time")
         kind = {2: "signalTermination", 3: "lowMemoryTermination", 4: "managedCrash", 5: "nativeCrash", 6: "anr"}.get(exit_info["reasonCode"], "otherExit")
         require(diagnostic["kind"] == kind, "Android reason classification mismatch")
+        if revision >= 4:
+            state, trace = exit_info["tombstoneState"], exit_info["tombstone"]
+            require((state == "available") == (trace is not None), "Tombstone availability mismatch")
+            require((exit_info["reasonCode"] != 5) == (state == "notApplicable"), "Tombstone belongs only to native crashes")
+            return 0 if trace is None else sum(utf8(frame["buildID"]) for frame in trace["frames"])
         return 0
     metric = diagnostic["metricKit"]
     require(metric is not None and diagnostic["androidExit"] is None, "Invalid MetricKit fields")
@@ -241,10 +246,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=3):
-    require(type(revision) is int and revision in (1, 2, 3), "Unsupported incident revision")
+def validators(reader=False, revision=4):
+    require(type(revision) is int and revision in (1, 2, 3, 4), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)
