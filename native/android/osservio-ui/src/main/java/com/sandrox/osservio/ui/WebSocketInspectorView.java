@@ -71,21 +71,20 @@ public final class WebSocketInspectorView extends LinearLayout {
         super(context);
         this.recorder = recorder; this.history = history; this.connectionId = connectionId;
         setOrientation(VERTICAL); setPadding(dp(16), dp(8), dp(16), 0);
+        LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
         summary = new TextView(context);
         summary.setTextAppearance(android.R.style.TextAppearance_Material_Caption);
-        addView(summary, new LayoutParams(-1, -2));
-        LinearLayout controls = new LinearLayout(context);
+        header.addView(summary, new LayoutParams(-1, -2));
         capture = button(R.string.osservio_http_start);
         capture.setOnClickListener(view -> toggleCapture());
         pause = button(R.string.osservio_pause);
         pause.setOnClickListener(view -> { setPaused(!paused); refreshView(); });
         Button clear = button(R.string.osservio_ws_clear);
         clear.setOnClickListener(view -> { history.clear(); latest = history.snapshot(); dirty = true; refreshView(); });
-        for (Button button : new Button[] {capture, pause, clear}) controls.addView(button, new LayoutParams(0, -2, 1));
-        addView(controls, new LayoutParams(-1, -2));
+        header.addView(new InspectorControls(context, capture, pause, clear), new LayoutParams(-1, -2));
         search = new EditText(context);
         search.setSingleLine(true); search.setHint(R.string.osservio_ws_search); search.setMinHeight(dp(48));
-        addView(search, new LayoutParams(-1, -2));
+        header.addView(search, new LayoutParams(-1, -2));
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence value, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence value, int start, int before, int count) { dirty = true; refreshView(); }
@@ -98,7 +97,7 @@ public final class WebSocketInspectorView extends LinearLayout {
         options.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         filter.setAdapter(options); filter.setMinimumHeight(dp(48));
         filter.setContentDescription(context.getString(R.string.osservio_ws_filter));
-        addView(filter, new LayoutParams(-1, -2));
+        header.addView(filter, new LayoutParams(-1, -2));
         filter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { dirty = true; refreshView(); }
             @Override public void onNothingSelected(AdapterView<?> parent) { }
@@ -106,10 +105,14 @@ public final class WebSocketInspectorView extends LinearLayout {
         empty = new TextView(context);
         empty.setTextAppearance(android.R.style.TextAppearance_Material_Body1);
         empty.setPadding(0, dp(24), 0, dp(24));
-        addView(empty, new LayoutParams(-1, -2));
+        header.addView(empty, new LayoutParams(-1, -2));
         list = new ListView(context);
-        list.setAdapter(rows); list.setEmptyView(empty);
-        list.setOnItemClickListener((parent, view, position, id) -> showDetail(events.get(position)));
+        list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
+        list.setAdapter(rows);
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            if (index >= 0 && index < events.size()) showDetail(events.get(index));
+        });
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override public void onScrollStateChanged(AbsListView view, int state) {
                 if (state == SCROLL_STATE_TOUCH_SCROLL) setPaused(true);
@@ -174,6 +177,7 @@ public final class WebSocketInspectorView extends LinearLayout {
             }
         }
         empty.setText(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_ws_empty : R.string.osservio_ws_no_matches);
+        empty.setVisibility(events.isEmpty() ? VISIBLE : GONE);
         rows.notifyDataSetChanged(); dirty = false;
     }
     private void toggleCapture() {

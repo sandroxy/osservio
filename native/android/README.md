@@ -68,6 +68,13 @@ stopped or expired. Check `recorder.stop()` when stopping explicitly; false mean
 the recorder was busy and the operation must be retried. Clearing `history` is
 a separate operation.
 
+Live log, HTTP, WebSocket and breadcrumb controls scroll with their histories.
+This keeps short windows and large fonts from consuming the entire history area.
+Scroll to the top to reach capture, pause and search controls. Action titles
+wrap, with a vertical arrangement at larger font scales. An empty result keeps
+these controls and its explanation in the scrollable list. Scrolling pauses the
+displayed history without stopping capture.
+
 Use `LogMessage.privateText(value)` for text that must not enter history.
 `publicText` is explicit permission to record that text, not an automatic secret
 scrubber. Read [the logging contract](../../doc/logging.md) for privacy, limits,

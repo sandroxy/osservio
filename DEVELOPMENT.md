@@ -227,6 +227,11 @@ incompatible-install fallback from uninstalling them. They do not authorize a
 data reset. Store fixtures use their own fresh directories. UI instrumentation
 checks address precision, missing evidence and virtualized frame/image lists;
 it does not replace visual or physical-device acceptance.
+`InspectorLayoutTest` also measures the four live Android viewers in compact
+portrait and landscape-sized bounds at normal and doubled font scale. It uses
+fresh memory stores to check row reachability, unclipped actions, empty results,
+nonselectable headers and capture independence. These detached-view checks do
+not establish real keyboard, TalkBack, rotation or gesture behavior.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.
 URLSession tests use Foundation with a host-configured synthetic URLProtocol.
 WebSocket tests use actual client connections to loopback MockWebServer and
