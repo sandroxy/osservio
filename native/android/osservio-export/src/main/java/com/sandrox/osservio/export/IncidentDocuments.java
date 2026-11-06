@@ -24,6 +24,10 @@ import org.json.JSONObject;
 /** Portable documents from one sanitized immutable snapshot. No capture, history lookup, or I/O.
  * Encode away from capture and UI paths. Large input or output is rejected, never truncated. */
 public final class IncidentDocuments {
+    static final class LimitExceeded extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+        LimitExceeded() { super("Snapshot exceeds the export limit"); }
+    }
     public static final int MAXIMUM_TEXT_BYTES = 2097152;
     public static final int MAXIMUM_DOCUMENT_BYTES = 16777216;
     public final String metadataJSON;
@@ -34,7 +38,7 @@ public final class IncidentDocuments {
     }
     public static IncidentDocuments encode(IncidentSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
-        if (snapshot.textByteCount > MAXIMUM_TEXT_BYTES) throw new IllegalArgumentException("Snapshot exceeds the export text limit");
+        if (snapshot.textByteCount > MAXIMUM_TEXT_BYTES) throw new LimitExceeded();
         Map<String, Object> incident = object("id", snapshot.id, "timestampMillis", Long.toString(snapshot.timestampMillis),
             "note", snapshot.note == null ? null : object("text", snapshot.note.text, "isPrivate", snapshot.note.isPrivate, "isTruncated", snapshot.note.isTruncated),
             "environment", snapshot.environment == null ? null : environment(snapshot.environment),
@@ -47,7 +51,7 @@ public final class IncidentDocuments {
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
         if (metadata == null || payloads == null) throw new IllegalArgumentException("Snapshot cannot be represented as JSON");
         if (metadata.getBytes(StandardCharsets.UTF_8).length > MAXIMUM_DOCUMENT_BYTES - payloads.getBytes(StandardCharsets.UTF_8).length)
-            throw new IllegalArgumentException("Snapshot exceeds the export document limit");
+            throw new LimitExceeded();
         return new IncidentDocuments(metadata, payloads);
     }
     // Only this encoder supplies keys and values. No arbitrary application objects are traversed.

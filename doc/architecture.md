@@ -20,8 +20,9 @@ on presentation. Snapshot persistence and inspection are independent of live
 histories. Native APIs can persist bounded log/network attachments with separate
 payload selection. Native composers freeze metadata and optionally copy referenced
 content once. The immutable browser exposes these attachments. Optional Export
-modules encode them into [portable JSON documents](../protocol/README.md);
-file packaging and native sharing remain unimplemented.
+modules encode them into [portable JSON documents](../protocol/README.md) and
+prepare [bounded temporary ZIP files](incident-export.md) through Core's export
+port. Native sharing remains unimplemented.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

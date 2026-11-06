@@ -10,8 +10,8 @@ This API records a manual observation. It is not a crash detector, and the
 snapshot's existence does not establish a failure or its cause. All attachments
 can be selected in the native composer or supplied through native APIs, then
 inspected in the native browser. Optional Export modules encode a frozen snapshot
-into [portable JSON documents](../protocol/README.md). File packaging and native
-sharing are not implemented yet.
+into [portable JSON documents](../protocol/README.md) and prepare
+[temporary ZIP files](incident-export.md). Native sharing is not connected yet.
 
 ## Evidence and privacy
 

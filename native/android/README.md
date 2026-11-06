@@ -212,5 +212,7 @@ optional `logs`, `http`, and `webSockets` histories after `breadcrumbs`.
 For portable JSON encoding, add the optional local dependency
 `io.github.sandroxy:osservio-export:0.1.0-dev.0` and call
 `IncidentDocuments.encode(snapshot)` on a background worker. It encodes only the
-frozen snapshot. File packaging and native sharing are not implemented yet.
+frozen snapshot. For asynchronous ZIP preparation, use `IncidentFileExporter`
+with an application context; see [file export](../../doc/incident-export.md).
+Native inspector sharing is not connected yet.
 See [incident documents](../../protocol/README.md) for format, bounds, and errors.

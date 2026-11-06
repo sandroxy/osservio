@@ -13,6 +13,9 @@ let package = Package(
         .library(name: "OsservioRuntime", targets: ["OsservioRuntime"]),
         .library(name: "OsservioExport", targets: ["OsservioExport"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.20")
+    ],
     targets: [
         .target(name: "OsservioCore", path: "native/ios/Sources/OsservioCore"),
         .target(name: "OsservioStore", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioStore",
@@ -21,7 +24,8 @@ let package = Package(
                 resources: [.process("Resources")]),
         .target(name: "OsservioURLSession", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioURLSession"),
         .target(name: "OsservioRuntime", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioRuntime"),
-        .target(name: "OsservioExport", dependencies: ["OsservioCore"], path: "native/ios/Sources/OsservioExport"),
+        .target(name: "OsservioExport", dependencies: ["OsservioCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
+                path: "native/ios/Sources/OsservioExport"),
         .testTarget(name: "OsservioCoreTests", dependencies: ["OsservioCore", "OsservioStore"], path: "native/ios/Tests/OsservioCoreTests"),
         .testTarget(name: "OsservioURLSessionTests", dependencies: ["OsservioCore", "OsservioStore", "OsservioURLSession"],
                     path: "native/ios/Tests/OsservioURLSessionTests"),

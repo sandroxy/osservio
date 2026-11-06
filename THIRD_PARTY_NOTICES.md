@@ -24,3 +24,21 @@ lockfile records the resolved development and test dependencies, including Okio
 and the Kotlin standard library. Applications distributing those runtimes must
 retain their corresponding notices. No upstream source modifications are
 distributed by this adapter.
+
+## ZIPFoundation
+
+The optional iOS Export module uses ZIPFoundation 0.9.20, copyright 2017–2025
+Thomas Zoechling, under the MIT License. The exact version and commit
+`22787ffb59de99e5dc1fbfe80b19c97a904ad48d` are recorded in `Package.swift` and
+`Package.resolved`. See [the license text](licenses/ZIPFoundation-MIT.txt) and
+[the pinned upstream source](https://github.com/weichsel/ZIPFoundation/tree/22787ffb59de99e5dc1fbfe80b19c97a904ad48d).
+No modified or vendored upstream source is distributed here. Applications linking
+the Export product must retain the dependency's license and bundled privacy
+manifest. That manifest declares file-timestamp access, without tracking or
+collected-data categories; it does not replace the application's own disclosures.
+
+ZIPFoundation uses Apple's platform compression implementation on iOS. Osservio
+uses its bounded data-provider and extraction APIs for two fixed entries, with
+cancellation checks and readback verification before exposing an export. Other
+Osservio products do not link ZIPFoundation. Android Export uses the platform
+`java.util.zip` implementation instead.

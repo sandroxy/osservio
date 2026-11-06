@@ -169,7 +169,9 @@ retry. The combined inspector supplies its live histories; standalone callers
 can pass optional `logs`, `http`, and `webSockets` histories after `breadcrumbs`.
 For portable JSON encoding, link the optional `OsservioExport` product and call
 `IncidentDocuments.encode(snapshot)` on a background worker. It encodes only the
-frozen snapshot. File packaging and native sharing are not implemented yet.
+frozen snapshot. For asynchronous ZIP preparation, use `IncidentFileExporter`
+with a dedicated private cache directory; see [file export](../../doc/incident-export.md).
+This optional product links ZIPFoundation. Native inspector sharing is not connected yet.
 See [incident documents](../../protocol/README.md) for format, bounds, and errors.
 
 The package also declares a macOS target version so Core and Store tests can run

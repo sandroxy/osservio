@@ -20,7 +20,8 @@ these groups, metadata search, and saved body states without querying live histo
 The composer freezes metadata at the mark and optionally copies captured network
 content once, preserving that copy through editing and failed-save retry.
 Optional Export modules encode a frozen snapshot into portable metadata and
-payload JSON documents. File packaging and native sharing are not implemented.
+payload JSON documents and prepare temporary ZIP files on a bounded worker.
+Native sharing is not connected yet.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -41,6 +42,8 @@ native behavior and interaction validation. No artifacts have been published.
   selection, incident persistence, privacy, and failure semantics.
 - [Incident documents](protocol/README.md) defines the portable export encoding,
   independent compatibility revision, and conformance rules.
+- [Incident file export](doc/incident-export.md) defines asynchronous preparation,
+  cancellation, cache retention, and file ownership.
 - [Engineering standards](doc/engineering-standards.md) define implementation,
   documentation, verification, and third-party reuse requirements.
 - The root README and its English counterpart introduce the product to consumers.
@@ -72,19 +75,22 @@ swift test -Xswiftc -warnings-as-errors
 xcodebuild -scheme OsservioUI -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .build/ios-sdk CODE_SIGNING_ALLOWED=NO \
-  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES SWIFT_SUPPRESS_WARNINGS=NO build
 xcodebuild -scheme OsservioURLSession -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .build/ios-network CODE_SIGNING_ALLOWED=NO \
-  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES SWIFT_SUPPRESS_WARNINGS=NO build
 xcodebuild -scheme OsservioRuntime -configuration Debug \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath .build/ios-runtime CODE_SIGNING_ALLOWED=NO \
-  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES SWIFT_SUPPRESS_WARNINGS=NO build
 ```
 
 `swift test` exercises Core and Store on the development Mac. The UIKit source
 is conditionally excluded there, so the iOS build is a separate required check.
+`SWIFT_SUPPRESS_WARNINGS=NO` keeps warnings enabled in Xcode package dependencies
+as well as local targets. It also avoids Xcode combining suppression with
+`-warnings-as-errors`; no warning is waived.
 The simulator build compiles UI and resources without launching an application.
 Device behavior and supported-OS coverage require separate acceptance.
 
@@ -95,7 +101,7 @@ iOS simulator using the package's test scheme (replace the simulator ID):
 xcodebuild -scheme Osservio-Package \
   -destination 'platform=iOS Simulator,id=SIMULATOR_ID,arch=arm64' \
   -derivedDataPath .build/ios-runtime -only-testing:OsservioRuntimeTests \
-  CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES test
+  CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES SWIFT_SUPPRESS_WARNINGS=NO test
 ```
 
 The product-specific `OsservioRuntime` scheme is a build scheme, not a test
@@ -147,7 +153,11 @@ rollback, budgets, corruption, additive incident migration, unsupported revision
 asynchronous admission, and close ordering. They do not establish physical-device
 performance or fatal crash capture.
 Export instrumentation compares Android's platform JSON encoding with shared
-independent fixtures. Set `ANDROID_SERIAL` to the intended device or emulator
+independent fixtures and exercises ZIP preparation, cancellation, exclusive
+ownership, cache recovery, retention, and rejection. Swift's Export tests cover
+the corresponding contracts; also run them with `-only-testing:OsservioExportTests`
+on the iOS package test scheme. These tests do not exercise a native share sheet.
+Set `ANDROID_SERIAL` to the intended device or emulator
 when multiple devices are connected; do not inadvertently install test APKs on
 another device.
 The optional OkHttp tests use loopback MockWebServer and instrumented streams.
@@ -159,6 +169,9 @@ Their coverage and limits are described in the network integration contract.
 The OkHttp module locks its resolved development and test dependencies. Normal
 checks must not rewrite the lockfile. Use Gradle's `--write-locks` only while
 reviewing an intentional dependency change, then run the integration tests.
+The optional iOS Export product pins ZIPFoundation with an exact dependency and
+`Package.resolved`. Review its version, behavior, license, and privacy manifest
+before an intentional update. It is not linked by Core, Store, UI, or collectors.
 
 Build outputs, local configuration, and temporary verification evidence are
 ignored. The Gradle wrapper JAR is an intentional build-tool input; its provenance

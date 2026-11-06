@@ -53,9 +53,10 @@ Description text also requires opt-in. It is public diagnostic content and is
 not automatically scrubbed for secrets. Snapshots have independent count, age,
 and storage limits. See [manual problem snapshots](doc/incidents.md). Optional
 Export modules encode a frozen snapshot into separate metadata and payload JSON
-documents, preserving observation times, exact integers, and missing-content
-states. See [incident documents](protocol/README.md). File packaging and native
-sharing are not implemented yet.
+documents and asynchronously package them into temporary ZIP files, preserving
+observation times, exact integers, and missing-content states. Preparation supports
+cancellation and independent cache limits; see [file export](doc/incident-export.md).
+Native inspector sharing is not connected yet.
 
 Automatic system-log and crash capture, global network interception, incident
 file sharing, and framework adapters are not implemented.
