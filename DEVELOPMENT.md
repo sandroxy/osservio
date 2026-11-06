@@ -277,6 +277,12 @@ pause versus capture stop, loss and truncation, long sessions, constrained-devic
 performance, localization, large text, keyboard and safe areas, appearance,
 navigation, and host lifecycle.
 
+The opt-in [sustained capture workload](testing/capture-load.md) records off,
+baseline, detailed and periodically queried operation with the same synthetic
+inputs on both native platforms. It checks overload and retention invariants
+while collecting latency, CPU and process-memory observations. It does not
+measure visible UI, persistent storage or production energy consumption.
+
 Publication instructions belong in a maintained release guide when the release
 workflow exists. Publication must use the same immutable artifacts that were
 accepted; source-level checks alone cannot establish release readiness. A

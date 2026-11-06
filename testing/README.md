@@ -1,5 +1,9 @@
 # Shared native fixtures
 
+The opt-in [sustained capture workload](capture-load.md) complements the focused
+fixtures below with actual-clock admission/eviction checks and raw resource
+measurements. It is separate from UI, storage, and device acceptance.
+
 `log-text-cases.tsv` is consumed by the Swift and Java tests. Each row contains a
 case name, privacy classification, message byte limit, Base64-encoded UTF-8 input,
 Base64-encoded expected text, and the expected truncation flag. Empty fields
