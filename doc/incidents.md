@@ -8,8 +8,8 @@ implicitly when a snapshot is made or saved.
 
 This API records a manual observation. It is not a crash detector, and the
 snapshot's existence does not establish a failure or its cause. Log, HTTP, and
-WebSocket attachments, native snapshot inspection, and export are not yet part
-of this API.
+WebSocket attachments and export are not implemented yet. The optional native UI
+provides a composer and saved-snapshot browser through Core contracts only.
 
 ## Evidence and privacy
 
@@ -77,6 +77,37 @@ app-private directory, normally below Application Support. It is excluded from
 backup and uses `completeUntilFirstUserAuthentication` protection. Existing
 group- or world-accessible directories are rejected. Initialization and all
 filesystem operations run on a private serial background worker.
+
+## Native problem workflow
+
+Use `IncidentInspectorView(context, archive, environment, breadcrumbs)` on Android,
+or embed `IncidentInspectorViewController(archive:environment:breadcrumbs:)` in
+a navigation controller on iOS. Supply the same long-lived archive, a Core
+`EnvironmentProvider`, and a Core `BreadcrumbHistory`. The full combined
+inspector also accepts an optional incident archive and adds a Problems section.
+
+Marking a problem freezes its identity, time, and current bounded breadcrumb
+window immediately. A separate one-shot environment query keeps its own time.
+The composer waits up to five seconds for that query; an unavailable attachment
+is disclosed rather than replaced with empty or zero-valued data. Unchecking
+environment information permits saving without waiting. Late results cannot
+alter an already saved snapshot. Neither opening the browser nor marking a
+problem enables capture or flushes pending breadcrumb persistence.
+
+The user chooses whether to attach the environment and breadcrumbs. Description
+text is excluded by default and requires an explicit choice. Included text is
+treated as public diagnostic content, with a visible reminder that secrets are
+not automatically removed. The editor rejects input beyond 4,096 UTF-8 bytes.
+Cancellation writes nothing. A failed save keeps the draft for retry, and a
+successful save is reported only after the archive completes its commit.
+
+The browser reads summaries on entry or explicit refresh, with a read time and
+per-instance storage status. It does not continuously poll the database. Details
+are immutable: environment inspection and breadcrumb search never query live
+sources again. Copy actions use the displayed sanitized evidence. Individual
+and all-snapshot deletion require a native confirmation; cancelling leaves the
+archive untouched. iOS exposes individual deletion as a list-row swipe action;
+Android also offers it from the snapshot detail.
 
 ## Operations and lifecycle
 

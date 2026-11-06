@@ -15,6 +15,9 @@ final class PersistencePresentation {
             run.platform.name(), Long.toString(run.processId), RuntimePresentation.date(run.lastRecordedAtMillis), run.id);
     }
     static String status(Context context, PersistenceStatus status) {
+        return status(context, status, R.string.osservio_archive_status);
+    }
+    static String status(Context context, PersistenceStatus status, int format) {
         if (status == null) return context.getString(R.string.osservio_busy);
         int key;
         switch (status.state) {
@@ -25,7 +28,7 @@ final class PersistencePresentation {
             case CLOSED: key = R.string.osservio_archive_state_closed; break;
             default: throw new IllegalStateException("Unknown persistence state");
         }
-        return context.getString(R.string.osservio_archive_status, context.getString(key), status.queuedEvents, status.committedEvents, status.discardedEvents)
+        return context.getString(format, context.getString(key), status.queuedEvents, status.committedEvents, status.discardedEvents)
             + (status.lastError == null ? "" : "\n" + error(context, status.lastError));
     }
     static String error(Context context, PersistenceStatus.Error error) {

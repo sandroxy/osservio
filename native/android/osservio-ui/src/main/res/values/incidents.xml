@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_incident_title">Problems</string>
+    <string name="osservio_incident_mark">Mark a problem</string>
+    <string name="osservio_incident_refresh">Refresh snapshots</string>
+    <string name="osservio_incident_save">Save snapshot</string>
+    <string name="osservio_incident_saving">Saving snapshot…</string>
+    <string name="osservio_incident_saved">Snapshot saved</string>
+    <string name="osservio_incident_saved_read_at">Snapshot saved\nRead at · %1$s</string>
+    <string name="osservio_incident_row_detail">%1$s\n%2$s</string>
+    <string name="osservio_incident_empty_detail">%1$s\n\n%2$s</string>
+    <string name="osservio_incident_breadcrumb_title">%1$s · %2$s</string>
+    <string name="osservio_incident_breadcrumb_detail">%1$s · #%2$d%3$s</string>
+    <string name="osservio_incident_empty">No saved problem snapshots.</string>
+    <string name="osservio_incident_missing">This snapshot is no longer retained. Refresh the list.</string>
+    <string name="osservio_incident_manual">Manual snapshot</string>
+    <string name="osservio_incident_note">Description</string>
+    <string name="osservio_incident_no_note">No description attached</string>
+    <string name="osservio_incident_include_note">Save description text</string>
+    <string name="osservio_incident_note_hint">Include only diagnostic text that may be stored on this device. Secrets and personal information are not automatically removed.</string>
+    <string name="osservio_incident_note_limit">The description is limited to 4,096 UTF-8 bytes.</string>
+    <string name="osservio_incident_include_environment">Attach environment information</string>
+    <string name="osservio_incident_include_breadcrumbs">Attach recent breadcrumbs</string>
+    <string name="osservio_incident_mark_hint">The mark time and recent breadcrumbs are frozen now. Environment is sampled separately. Nothing is saved until you choose Save.</string>
+    <string name="osservio_incident_environment_loading">Reading environment information…</string>
+    <string name="osservio_incident_environment_failed">Environment information is unavailable. This snapshot will be saved without it.</string>
+    <string name="osservio_incident_breadcrumbs_failed">Recent breadcrumbs are unavailable. This snapshot will be saved without them.</string>
+    <string name="osservio_incident_mark_failed">A valid snapshot could not be prepared. Try marking the problem again.</string>
+    <string name="osservio_incident_frozen_time">Marked at</string>
+    <string name="osservio_incident_not_attached">Not attached</string>
+    <string name="osservio_incident_snapshot_hint">This is a manual observation, not a confirmed crash. Attachments keep their own observation times; they are not a single atomic reading.</string>
+    <string name="osservio_incident_delete">Delete snapshot</string>
+    <string name="osservio_incident_delete_all">Delete all snapshots</string>
+    <string name="osservio_incident_delete_confirmation">This permanently deletes the selected problem snapshots and their attachments. Live histories and saved breadcrumb runs remain available.</string>
+    <string name="osservio_incident_counts">Breadcrumbs: %1$d · Not included: %2$d · Evicted earlier: %3$d</string>
+    <string name="osservio_incident_status">%1$s · This store · Snapshots queued: %2$d · Saved: %3$d · Not saved: %4$d</string>
+</resources>

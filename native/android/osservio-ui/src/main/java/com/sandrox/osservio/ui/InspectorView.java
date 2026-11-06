@@ -12,6 +12,7 @@ import com.sandrox.osservio.core.BreadcrumbRecorder;
 import com.sandrox.osservio.core.BreadcrumbHistory;
 import com.sandrox.osservio.core.BreadcrumbArchive;
 import com.sandrox.osservio.core.EnvironmentProvider;
+import com.sandrox.osservio.core.IncidentArchive;
 import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.HTTPRecorder;
 import com.sandrox.osservio.core.LogHistory;
@@ -79,8 +80,17 @@ public final class InspectorView extends LinearLayout {
                          WebSocketRecorder webSocketRecorder, WebSocketHistory webSocketHistory,
                          EnvironmentProvider environment, BreadcrumbRecorder breadcrumbRecorder, BreadcrumbHistory breadcrumbHistory,
                          BreadcrumbArchive breadcrumbArchive) {
+        this(context, logRecorder, logHistory, httpRecorder, httpHistory, webSocketRecorder, webSocketHistory,
+            environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive, null);
+    }
+    public InspectorView(Context context, LogRecorder logRecorder, LogHistory logHistory,
+                         HTTPRecorder httpRecorder, HTTPHistory httpHistory,
+                         WebSocketRecorder webSocketRecorder, WebSocketHistory webSocketHistory,
+                         EnvironmentProvider environment, BreadcrumbRecorder breadcrumbRecorder, BreadcrumbHistory breadcrumbHistory,
+                         BreadcrumbArchive breadcrumbArchive, IncidentArchive incidentArchive) {
         this(context, logRecorder, logHistory, httpRecorder, httpHistory, webSocketRecorder, webSocketHistory);
         addSection(R.string.osservio_runtime_title, new RuntimeInspectorView(context, environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive));
+        if (incidentArchive != null) addSection(R.string.osservio_incident_title, new IncidentInspectorView(context, incidentArchive, environment, breadcrumbHistory));
     }
     private static RadioButton tab(Context context, int label) {
         RadioButton button = new RadioButton(context);

@@ -43,11 +43,14 @@ receipt. Native inspectors group events by connection and provide timeline
 filters and on-demand content lookup; see the
 [WebSocket observation contract](doc/websocket.md).
 
-Native APIs also let hosts explicitly save manual problem snapshots with a
-privacy-classified note, an existing environment observation, and bounded
-breadcrumb context. Snapshots can be queried or deleted after restart, with
-independent count, age, and storage limits. Native snapshot inspection and export
-are not implemented yet; see [manual problem snapshots](doc/incidents.md).
+Native APIs and the Problems view support explicit manual snapshots with optional
+descriptions, environment information, and bounded breadcrumbs. Saved snapshots
+remain browsable after restart, with breadcrumb search, copying, and confirmed
+deletion. Marking freezes the time and breadcrumb window; failed saves preserve
+the draft for retry. The editor excludes description text by default. Opted-in
+text is public diagnostic content and is not automatically scrubbed for secrets.
+Snapshots have independent count, age, and storage limits. Log and network
+attachments and export are not implemented yet; see [manual problem snapshots](doc/incidents.md).
 
 Automatic system-log and crash capture, global network interception, incident
 export, and framework adapters are not implemented.

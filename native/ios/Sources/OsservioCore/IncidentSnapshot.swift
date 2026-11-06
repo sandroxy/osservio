@@ -42,7 +42,8 @@ public struct IncidentNote: Sendable {
     public let text: String
     public let isPrivate: Bool
     public let isTruncated: Bool
-    fileprivate static func capture(_ message: LogMessage) throws -> IncidentNote {
+    /// Classifies a note independently of the mark time, retaining at most 4,096 UTF-8 bytes.
+    public static func capture(_ message: LogMessage) throws -> IncidentNote {
         guard let safe = BoundedText.prefix(message.text, bytes: 4_096) else { throw PersistenceError.invalidRecord }
         return IncidentNote(text: safe.text, isPrivate: message.isPrivate, isTruncated: safe.truncated)
     }

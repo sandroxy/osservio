@@ -152,8 +152,16 @@ list, read, delete, and close operations. Supply a dedicated private directory
 and retain the store at application scope. It does not change live histories or
 capture controls. Success follows the database commit; dispatch callbacks to the
 main actor before updating views. See [manual problem snapshots](../../doc/incidents.md)
-for examples, budgets, retention, and failure behavior. Native incident UI and
-export are not implemented yet.
+for examples, budgets, retention, and failure behavior.
+
+On the main actor, embed `IncidentInspectorViewController(archive: incidents,
+environment: environment, breadcrumbs: breadcrumbHistory)` in a navigation
+controller, or pass `incidentArchive: incidents` to the full combined inspector
+initializer. Problems provides an explicit composer and immutable archive browser.
+Marking freezes the current context; saving is explicit, and failure retains the
+draft. Description text requires an explicit opt-in and must be safe to store.
+The UI uses Core contracts and does not own or close the supplied archive.
+Export is not implemented yet.
 
 The package also declares a macOS target version so Core and Store tests can run
 on the development machine. The UIKit source is excluded on macOS; this does

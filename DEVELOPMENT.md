@@ -11,6 +11,8 @@ restart-relevant breadcrumbs through platform SQLite with bounded asynchronous
 admission and archive queries.
 Core and Store also provide explicit manual incident snapshots with independent
 SQLite retention, strict restoration, asynchronous queries, and deletion.
+Native problem views provide explicit attachment selection, a bounded description
+editor, and an immutable snapshot browser through Core archive contracts.
 Current work is native only; framework adapters follow
 native behavior and interaction validation. No artifacts have been published.
 
@@ -89,6 +91,12 @@ xcodebuild -scheme Osservio-Package \
 The product-specific `OsservioRuntime` scheme is a build scheme, not a test
 scheme. Runtime tests on macOS cover callback leases only; UIKit checks compile
 and execute exclusively in an iOS test run.
+
+Use the same package test scheme with `-only-testing:OsservioUITests` and
+`-derivedDataPath .build/ios-ui` for composer regressions. These checks exercise
+delayed environment delivery, input preservation, optional attachments, and
+original mark time. A running consumer separately verifies actual event routing
+and navigation; controller tests do not replace visual acceptance.
 
 Run the SQLite store tests on the simulator with the same package test scheme,
 using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,

@@ -193,7 +193,7 @@ enum PersistencePresentation {
         }
         return RuntimePresentation.text("archive_error_" + key)
     }
-    static func status(_ status: PersistenceStatus?) -> String {
+    static func status(_ status: PersistenceStatus?, formatKey: String = "archive_status") -> String {
         guard let status else { return RuntimePresentation.text("busy") }
         let key: String
         switch status.state {
@@ -203,7 +203,7 @@ enum PersistencePresentation {
         case .closing: key = "closing"
         case .closed: key = "closed"
         }
-        var result = String(format: RuntimePresentation.text("archive_status"), RuntimePresentation.text("archive_state_" + key),
+        var result = String(format: RuntimePresentation.text(formatKey), RuntimePresentation.text("archive_state_" + key),
             status.queuedEvents, status.committedEvents, status.discardedEvents)
         if let failure = status.lastError { result += "\n" + error(failure) }
         return result

@@ -24,7 +24,9 @@ let package = Package(
         .testTarget(name: "OsservioURLSessionTests", dependencies: ["OsservioCore", "OsservioStore", "OsservioURLSession"],
                     path: "native/ios/Tests/OsservioURLSessionTests"),
         .testTarget(name: "OsservioRuntimeTests", dependencies: ["OsservioCore", "OsservioStore", "OsservioRuntime"],
-                    path: "native/ios/Tests/OsservioRuntimeTests")
+                    path: "native/ios/Tests/OsservioRuntimeTests"),
+        .testTarget(name: "OsservioUITests", dependencies: ["OsservioCore", "OsservioUI"],
+                    path: "native/ios/Tests/OsservioUITests")
     ],
     swiftLanguageVersions: [.v5]
 )

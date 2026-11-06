@@ -193,5 +193,12 @@ asynchronous list, read, delete, and close operations. It uses independent priva
 storage; no live histories or capture controls are changed. Success follows the
 database commit. Keep this store at application scope and marshal its callbacks
 to the main thread before updating views. See [manual problem snapshots](../../doc/incidents.md)
-for examples, budgets, retention, and failure behavior. Native incident UI and
-export are not implemented yet.
+for examples, budgets, retention, and failure behavior.
+
+On the main thread, use `new IncidentInspectorView(activity, incidents,
+environment, breadcrumbHistory)` for the manual composer and archive browser.
+Alternatively, pass `incidents` after the optional breadcrumb archive in the full
+`InspectorView` constructor to add Problems. Marking freezes the current context;
+saving is explicit, and failure retains the draft. Description text requires an
+explicit opt-in and must be safe to store. The view uses Core contracts and does
+not own or close the supplied archive. Export is not implemented yet.

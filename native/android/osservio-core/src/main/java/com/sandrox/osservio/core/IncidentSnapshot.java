@@ -49,7 +49,8 @@ public final class IncidentSnapshot {
         public final boolean isPrivate;
         public final boolean isTruncated;
         private Note(String text, boolean isPrivate, boolean isTruncated) { this.text = text; this.isPrivate = isPrivate; this.isTruncated = isTruncated; }
-        private static Note capture(LogMessage message) {
+        /** Classifies a note independently of the mark time, retaining at most 4,096 UTF-8 bytes. */
+        public static Note capture(LogMessage message) {
             BoundedText safe = BoundedText.prefix(message.text, 4096);
             if (safe == null) throw invalid();
             return new Note(safe.text, message.isPrivate, safe.truncated);
