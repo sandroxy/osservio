@@ -10,7 +10,7 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
     private let history: any WebSocketHistory
     private let connectionID: String?
     private var counts: [String: Int] = [:]
-    private let table = UITableView(frame: .zero, style: .plain)
+    private let table = InspectorTableView(frame: .zero, style: .plain)
     private let summary = UILabel()
     private let filter = UISegmentedControl(items: [WebSocketPresentation.text("ws_all"),
         WebSocketPresentation.text("ws_issues"), WebSocketPresentation.text("ws_messages")])
@@ -55,30 +55,21 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
         let clear = UIButton(type: .system)
         clear.setTitle(WebSocketPresentation.text("ws_clear"), for: .normal)
         clear.addTarget(self, action: #selector(clearHistory), for: .touchUpInside)
-        let controls = UIStackView(arrangedSubviews: [capture, pause, clear])
-        controls.distribution = .fillEqually
-        controls.spacing = 8
-        for button in [capture, pause, clear] {
-            button.titleLabel?.numberOfLines = 0
-            button.titleLabel?.textAlignment = .center
-            button.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
-            button.titleLabel?.adjustsFontForContentSizeCategory = true
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        }
+        let controls = InspectorControls(buttons: [capture, pause, clear])
         filter.selectedSegmentIndex = 0
         filter.addTarget(self, action: #selector(filterChanged), for: .valueChanged)
         let header = UIStackView(arrangedSubviews: [summary, controls, filter])
         header.axis = .vertical; header.spacing = 8
         header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
-        let stack = UIStackView(arrangedSubviews: [header, table])
-        stack.axis = .vertical; stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        table.tableHeaderView = header
+        table.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(table)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
+            table.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            table.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            table.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            table.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
         ])
         table.dataSource = self; table.delegate = self
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 88
@@ -110,6 +101,7 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
                                   WebSocketPresentation.text("http_" + status.mode.rawValue), latest.events.count,
                                   latest.evictedEvents, latest.evictedPayloads, socketStatus.rateLimitedCount)
         }
+        table.setNeedsLayout()
     }
     private func render() {
         let query = search.searchBar.text ?? ""
@@ -134,7 +126,7 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
         empty.text = WebSocketPresentation.text(latest == nil ? "busy" : latest?.events.isEmpty == false ? "ws_no_matches" : "ws_empty")
         empty.textColor = .secondaryLabel; empty.numberOfLines = 0; empty.textAlignment = .center
         empty.font = .preferredFont(forTextStyle: .body); empty.adjustsFontForContentSizeCategory = true
-        table.backgroundView = events.isEmpty ? empty : nil
+        table.setEmptyState(events.isEmpty ? empty : nil)
         dirty = false
     }
     public func updateSearchResults(for searchController: UISearchController) { filterChanged() }

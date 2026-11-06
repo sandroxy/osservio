@@ -6,7 +6,7 @@ import UIKit
 final class BreadcrumbInspectorViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
     private let recorder: BreadcrumbRecorder
     private let history: any BreadcrumbHistory
-    private let table = UITableView(frame: .zero, style: .plain)
+    private let table = InspectorTableView(frame: .zero, style: .plain)
     private let search = UITextField()
     private let summary = UILabel()
     private let baseline = UIButton(type: .system)
@@ -36,14 +36,7 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
         let clear = UIButton(type: .system)
         clear.setTitle(RuntimePresentation.text("crumb_clear"), for: .normal)
         clear.addTarget(self, action: #selector(clearHistory), for: .touchUpInside)
-        let controls = UIStackView(arrangedSubviews: [baseline, pause, clear])
-        controls.distribution = .fillEqually; controls.spacing = 8
-        for button in [baseline, pause, clear] {
-            button.titleLabel?.numberOfLines = 0; button.titleLabel?.textAlignment = .center
-            button.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
-            button.titleLabel?.adjustsFontForContentSizeCategory = true
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        }
+        let controls = InspectorControls(buttons: [baseline, pause, clear])
         search.placeholder = RuntimePresentation.text("crumb_search")
         search.borderStyle = .roundedRect; search.clearButtonMode = .whileEditing; search.returnKeyType = .done
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true; search.delegate = self
@@ -51,12 +44,14 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
         search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
         let header = UIStackView(arrangedSubviews: [summary, controls, explanation, search])
         header.axis = .vertical; header.spacing = 8
-        let stack = UIStackView(arrangedSubviews: [header, table])
-        stack.axis = .vertical; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+        table.tableHeaderView = header
+        table.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(table)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.topAnchor), stack.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8), stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8)
+            table.topAnchor.constraint(equalTo: view.topAnchor), table.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            table.leadingAnchor.constraint(equalTo: view.leadingAnchor), table.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
         table.dataSource = self; table.delegate = self; table.keyboardDismissMode = .onDrag
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 80; table.tableFooterView = UIView()
@@ -87,13 +82,14 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
             empty.text = RuntimePresentation.text(latest == nil ? "busy" : latest?.events.isEmpty == false ? "ws_no_matches" : "crumb_empty")
             empty.numberOfLines = 0; empty.textAlignment = .center; empty.textColor = .secondaryLabel
             empty.font = .preferredFont(forTextStyle: .body); empty.adjustsFontForContentSizeCategory = true
-            table.backgroundView = events.isEmpty ? empty : nil
+            table.setEmptyState(events.isEmpty ? empty : nil)
         }
         if let status = recorder.captureController.status(), let recording = recorder.status() {
             baseline.setTitle(RuntimePresentation.text(status.baselineEnabled ? "crumb_disable_baseline" : "crumb_enable_baseline"), for: .normal)
             summary.text = String(format: RuntimePresentation.text("crumb_summary"), RuntimePresentation.text("http_" + status.mode.rawValue),
                 latest?.events.count ?? 0, latest?.evictedCount ?? 0, recording.rateLimitedCount)
         }
+        table.setNeedsLayout()
     }
     @objc private func toggleBaseline() {
         if let status = recorder.captureController.status(), recorder.captureController.setBaselineEnabled(!status.baselineEnabled) { refresh() }

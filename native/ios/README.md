@@ -69,6 +69,13 @@ retained view without changing capture or undoing a user's pause. Custom
 container controllers must forward UIKit appearance transitions correctly.
 This lifecycle belongs to the viewer, not to collectors or the archive.
 
+The live lists keep their summaries, capture controls and filters in the
+scrolling content so short windows and large text do not collapse the history
+area. Scroll back to the top to reach these controls. Accessibility text sizes
+use vertically arranged actions; empty-state text follows the controls instead
+of appearing behind them. Scrolling still pauses the displayed history without
+stopping capture.
+
 Use `.privateText(value)` for text that must not enter history. `.publicText`
 is explicit permission to record that text, not an automatic secret scrubber.
 Read [the logging contract](../../doc/logging.md) for privacy, limits, concurrency,

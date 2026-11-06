@@ -12,7 +12,7 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
     UITableViewDelegate, UISearchResultsUpdating {
     private let recorder: LogRecorder
     private let history: any LogHistory
-    private let table = UITableView(frame: .zero, style: .plain)
+    private let table = InspectorTableView(frame: .zero, style: .plain)
     private let summary = UILabel()
     private let levels = UISegmentedControl(items: [copyText("all"), "DEBUG", "INFO", "WARN", "ERROR"])
     private let search = UISearchController(searchResultsController: nil)
@@ -61,23 +61,20 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
         let clear = UIButton(type: .system)
         clear.setTitle(copyText("clear"), for: .normal)
         clear.addTarget(self, action: #selector(clearHistory), for: .touchUpInside)
-        let controls = UIStackView(arrangedSubviews: [captureButton, pauseButton, clear])
-        controls.distribution = .equalSpacing
-        controls.spacing = 12
+        let controls = InspectorControls(buttons: [captureButton, pauseButton, clear])
         let header = UIStackView(arrangedSubviews: [summary, controls, levels])
         header.axis = .vertical
         header.spacing = 8
         header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
-        let stack = UIStackView(arrangedSubviews: [header, table])
-        stack.axis = .vertical
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
+        table.tableHeaderView = header
+        table.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(table)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
+            table.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            table.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            table.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            table.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
         ])
         table.dataSource = self
         table.delegate = self
@@ -112,6 +109,7 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
             summary.text = String(format: copyText("summary"), state, latest?.events.count ?? 0,
                                   latest?.evictedCount ?? 0, status.rateLimitedCount)
         }
+        table.setNeedsLayout()
     }
 
     private func render() {
@@ -128,9 +126,10 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
         empty.text = copyText(latest?.events.isEmpty == false ? "noMatches" : "empty")
         empty.textColor = .secondaryLabel
         empty.font = .preferredFont(forTextStyle: .body)
+        empty.adjustsFontForContentSizeCategory = true
         empty.textAlignment = .center
         empty.numberOfLines = 0
-        table.backgroundView = visibleEvents.isEmpty ? empty : nil
+        table.setEmptyState(visibleEvents.isEmpty ? empty : nil)
         needsRender = false
     }
 

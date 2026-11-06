@@ -52,7 +52,7 @@ let package = Package(
                     path: "native/ios/Tests/OsservioURLSessionTests"),
         .testTarget(name: "OsservioRuntimeTests", dependencies: ["OsservioCore", "OsservioStore", "OsservioRuntime"],
                     path: "native/ios/Tests/OsservioRuntimeTests"),
-        .testTarget(name: "OsservioUITests", dependencies: ["OsservioCore", "OsservioUI"],
+        .testTarget(name: "OsservioUITests", dependencies: ["OsservioCore", "OsservioStore", "OsservioUI"],
                     path: "native/ios/Tests/OsservioUITests"),
         .testTarget(name: "OsservioExportTests", dependencies: ["OsservioCore", "OsservioExport"],
                     path: "native/ios/Tests/OsservioExportTests"),

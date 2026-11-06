@@ -150,6 +150,12 @@ live viewers through Core history probes to verify that suspending UI queries
 does not stop capture or clear history. These injected lifecycle checks are
 separate from a multi-window device session.
 
+`InspectorLayoutTests` exercises all four live viewers with real Core/Store
+fixtures in compact portrait and landscape-sized viewports, including the largest
+accessibility text category. It checks reachable history, readable action titles,
+empty-state placement and reflow after size/category changes. Geometry assertions
+do not replace visual, VoiceOver or real keyboard acceptance.
+
 Run the SQLite store tests on the simulator with the same package test scheme,
 using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,
 `-only-testing:OsservioCoreTests/BreadcrumbDatabaseTests`, and
