@@ -18,7 +18,7 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
     private let search = UISearchController(searchResultsController: nil)
     private let pauseButton = UIButton(type: .system)
     private let captureButton = UIButton(type: .system)
-    private var timer: Timer?
+    private lazy var refreshLoop = InspectorRefreshLoop { [weak self] in self?.refresh() }
     private var latest: LogSnapshot?
     private var visibleEvents: [LogEvent] = []
     private var paused = false
@@ -89,23 +89,16 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
 
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        refresh()
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self, self.timer != nil else { return }
-                self.refresh()
-            }
-        }
+        refreshLoop.show(in: view)
     }
-
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        refreshLoop.show(in: view)
+    }
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        timer?.invalidate()
-        timer = nil
+        refreshLoop.hide()
     }
-
-    deinit { timer?.invalidate() }
 
     private func refresh() {
         if !paused, let snapshot = history.snapshot() {

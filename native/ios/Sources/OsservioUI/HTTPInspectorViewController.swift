@@ -15,7 +15,7 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
     private let search = UISearchController(searchResultsController: nil)
     private let capture = UIButton(type: .system)
     private let pause = UIButton(type: .system)
-    private var timer: Timer?
+    private lazy var refreshLoop = InspectorRefreshLoop { [weak self] in self?.refresh() }
     private var latest: HTTPSnapshot?
     private var events: [HTTPEvent] = []
     private var paused = false
@@ -80,20 +80,16 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
 
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        refresh()
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self, self.timer != nil else { return }
-                self.refresh()
-            }
-        }
+        refreshLoop.show(in: view)
+    }
+    public override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        refreshLoop.show(in: view)
     }
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        timer?.invalidate(); timer = nil
+        refreshLoop.hide()
     }
-    deinit { timer?.invalidate() }
 
     private func refresh() {
         recorder.maintenance()

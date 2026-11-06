@@ -123,7 +123,8 @@ only the displayed sanitized snapshot to the local clipboard. Read errors keep
 the prior snapshot visibly dated; unsupported and unavailable values remain
 distinct. The viewer never polls process memory in the background.
 
-The breadcrumb timeline refreshes at 250 ms while visible. Scrolling pauses
+The breadcrumb timeline refreshes at 250 ms while visible. On iOS, an inactive
+application or window scene suspends polling. Scrolling pauses
 rendering without changing capture. Search matches kind, static label, and
 sanitized message. Details preserve the opened event snapshot, with session,
 sequence, elapsed time, native value, privacy/truncation, and retention intent.

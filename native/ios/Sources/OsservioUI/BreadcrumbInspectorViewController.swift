@@ -12,7 +12,7 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
     private let baseline = UIButton(type: .system)
     private let pause = UIButton(type: .system)
     private var paused = false
-    private var timer: Timer?
+    private lazy var refreshLoop = InspectorRefreshLoop { [weak self] in self?.refresh() }
     private var latest: BreadcrumbSnapshot?
     private var events: [BreadcrumbEvent] = []
     private var dirty = true
@@ -62,13 +62,18 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 80; table.tableFooterView = UIView()
     }
     override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated); refresh(); timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in guard let self, self.timer != nil else { return }; self.refresh() }
-        }
+        super.viewWillAppear(animated)
+        refreshLoop.show(in: view)
     }
-    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); timer?.invalidate(); timer = nil }
-    deinit { timer?.invalidate() }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        refreshLoop.show(in: view)
+    }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        refreshLoop.hide()
+    }
+
     private func refresh() {
         if !paused, let snapshot = history.snapshot() {
             if latest?.revision != snapshot.revision { dirty = true }; latest = snapshot

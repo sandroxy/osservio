@@ -144,6 +144,11 @@ and navigation; controller tests do not replace visual acceptance.
 System-diagnostic view tests cover immutable navigation, distinct report/read
 times, historical metadata, exact codes, missing memory, hang duration, and
 copy-text formatting. System clipboard delivery requires an application host.
+`InspectorRefreshTests` checks real timer intervals, application interruptions,
+hidden/detached windows, reentrant hiding and teardown. It also exercises all four
+live viewers through Core history probes to verify that suspending UI queries
+does not stop capture or clear history. These injected lifecycle checks are
+separate from a multi-window device session.
 
 Run the SQLite store tests on the simulator with the same package test scheme,
 using `-only-testing:OsservioCoreTests/SQLiteConnectionTests`,

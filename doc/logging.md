@@ -133,6 +133,8 @@ Both native inspectors provide newest-first logs, level filtering, message and
 category search, details, copy, clear, capture controls, and view pause/resume.
 Periodic refresh runs every 250 milliseconds while visible; user controls can
 refresh immediately. Viewers reuse their current snapshot during contention.
+On iOS, an inactive application or window scene suspends periodic refresh;
+returning does not undo a paused view or change capture.
 Copy writes only the displayed, admitted message to
 the system clipboard after an explicit action.
 

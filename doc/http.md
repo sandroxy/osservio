@@ -155,6 +155,7 @@ pausing rendering do not change capture. Clearing requests affects HTTP history
 only, not the log store or host calls.
 
 The visible list refreshes at most every 250 ms; hidden sections stop polling.
+On iOS, polling also stops when its application or window scene becomes inactive.
 Scrolling pauses rendering to keep rows stable. Search covers initial/final URL,
 method, and status code, never body content. Filters separate awaiting-completion
 entries from HTTP errors and incomplete outcomes. An HTTP 503 response can be

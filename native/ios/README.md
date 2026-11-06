@@ -62,6 +62,13 @@ running until stopped or expired. To stop explicitly, check the result of
 `recorder.stop()`; false means the recorder was busy and the operation must be
 retried. Clearing `history` is a separate operation.
 
+The live log, HTTP, WebSocket and breadcrumb lists poll only while their view is
+visible in an active application or window scene. Losing activity, hiding the
+window or leaving the page stops the polling timer; returning refreshes the
+retained view without changing capture or undoing a user's pause. Custom
+container controllers must forward UIKit appearance transitions correctly.
+This lifecycle belongs to the viewer, not to collectors or the archive.
+
 Use `.privateText(value)` for text that must not enter history. `.publicText`
 is explicit permission to record that text, not an automatic secret scrubber.
 Read [the logging contract](../../doc/logging.md) for privacy, limits, concurrency,

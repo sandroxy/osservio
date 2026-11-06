@@ -131,7 +131,8 @@ current state of another capture session or connection.
 
 Visible lists refresh at most four times per second. Scrolling pauses rendering;
 resuming refreshes the retained window. Detail is refreshed manually. Hiding the
-viewer stops its refresh work without stopping capture. Clear removes the entire
+viewer stops its refresh work without stopping capture. On iOS, an inactive
+application or window scene also suspends polling. Clear removes the entire
 WebSocket history, including when invoked from one connection's timeline; it
 does not close host sockets. Detailed capture controls are shared with the other
 recorders on the same controller. The combined inspector accepts an additional
