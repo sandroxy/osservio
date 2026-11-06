@@ -1,0 +1,266 @@
+// Derived from Epitaph, copyright (c) 2026 Above Vacant, MIT licensed.
+// See native/android/vendor/epitaph for provenance and local changes.
+package com.sandrox.osservio.runtime.internal.epitaph;
+
+import java.io.EOFException;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * Low-level protobuf wire format reader.
+ *
+ * <p>Supports reading:
+ *
+ * <ul>
+ *   <li>Wire type 0: varint (int32, int64, uint32, uint64, bool, enum)
+ *   <li>Wire type 1: 64-bit fixed
+ *   <li>Wire type 2: Length-delimited (string, bytes, embedded messages)
+ *   <li>Wire type 5: 32-bit fixed
+ * </ul>
+ */
+public final class WireReader {
+
+  public static final int WIRETYPE_VARINT = 0;
+  public static final int WIRETYPE_FIXED64 = 1;
+  public static final int WIRETYPE_LENGTH_DELIMITED = 2;
+  public static final int WIRETYPE_FIXED32 = 5;
+
+  private static final int MAX_FIELD_NUMBER = (1 << 29) - 1;
+  private static final long MAX_TAG_VALUE = ((long) MAX_FIELD_NUMBER << 3) | WIRETYPE_FIXED32;
+
+  private final byte[] buffer;
+  private int position;
+  private final int limit;
+
+  public WireReader(final byte[] data) {
+    this(data, 0, data.length);
+  }
+
+  public WireReader(final byte[] data, final int offset, final int length) {
+    if (offset < 0 || length < 0 || offset > data.length || length > data.length - offset) {
+      throw new IndexOutOfBoundsException(
+          "Invalid offset/length: offset="
+              + offset
+              + ", length="
+              + length
+              + ", data length="
+              + data.length);
+    }
+    this.buffer = data;
+    this.position = offset;
+    this.limit = offset + length;
+  }
+
+  public boolean hasRemaining() {
+    return position < limit;
+  }
+
+  public int remaining() {
+    return limit - position;
+  }
+
+  /**
+   * Reads a tag (field number + wire type).
+   *
+   * @return the tag value, or 0 if at end of data
+   */
+  public int readTag() throws IOException {
+    if (!hasRemaining()) {
+      return 0;
+    }
+
+    final long rawTag = readVarInt();
+    if (rawTag < 0 || rawTag > MAX_TAG_VALUE) {
+      throw new IOException("Invalid tag: " + rawTag);
+    }
+
+    final int tag = (int) rawTag;
+    if (getFieldNumber(tag) == 0) {
+      throw new IOException("Invalid tag: field number 0");
+    }
+    return tag;
+  }
+
+  /** Extracts the field number from a tag. */
+  public static int getFieldNumber(final int tag) {
+    return tag >>> 3;
+  }
+
+  /** Extracts the wire type from a tag. */
+  public static int getWireType(final int tag) {
+    return tag & 0x7;
+  }
+
+  /**
+   * Reads a varint (variable-length integer).
+   *
+   * <p>varints use 7 bits per byte, with the MSB indicating continuation.
+   */
+  public long readVarInt() throws IOException {
+    long result = 0;
+    int shift = 0;
+    while (true) {
+      if (!hasRemaining()) {
+        throw new EOFException("Truncated varint");
+      }
+      final int b = buffer[position++] & 0xFF;
+      if (shift == 63 && (b & 0xFE) != 0) {
+        throw new IOException("Malformed varint");
+      }
+      result |= (long) (b & 0x7F) << shift;
+      if ((b & 0x80) == 0) {
+        return result;
+      }
+      shift += 7;
+    }
+  }
+
+  /** Reads a 32-bit varint. */
+  public int readVarInt32() throws IOException {
+    return (int) readVarInt();
+  }
+
+  private int readLength() throws IOException {
+    final long length = readVarInt();
+    if (length < 0) {
+      throw new IOException("Negative length: " + length);
+    }
+    if (length > Integer.MAX_VALUE) {
+      throw new IOException("Length too large: " + length);
+    }
+    return (int) length;
+  }
+
+  /** Reads a 64-bit fixed value (little-endian). */
+  public long readFixed64() throws IOException {
+    if (remaining() < 8) {
+      throw new EOFException("Not enough bytes for fixed64");
+    }
+    long result = 0;
+    for (int i = 0; i < 8; i++) {
+      result |= (long) (buffer[position++] & 0xFF) << (i * 8);
+    }
+    return result;
+  }
+
+  /** Reads a 32-bit fixed value (little-endian). */
+  public int readFixed32() throws IOException {
+    if (remaining() < 4) {
+      throw new EOFException("Not enough bytes for fixed32");
+    }
+    int result = 0;
+    for (int i = 0; i < 4; i++) {
+      result |= (buffer[position++] & 0xFF) << (i * 8);
+    }
+    return result;
+  }
+
+  /** Reads a length-delimited field as raw bytes. */
+  public byte[] readBytes() throws IOException {
+    return readBytes(Integer.MAX_VALUE);
+  }
+
+  /** Rejects an oversized field before allocating its byte array. */
+  public byte[] readBytes(final int maximumBytes) throws IOException {
+    if (maximumBytes < 0) throw new IllegalArgumentException("Negative byte limit");
+    final int length = readLength();
+    if (length > maximumBytes) throw new IOException("Field exceeds byte limit");
+    if (remaining() < length) {
+      throw new EOFException("Not enough bytes for length-delimited field");
+    }
+    final byte[] result = new byte[length];
+    System.arraycopy(buffer, position, result, 0, length);
+    position += length;
+    return result;
+  }
+
+  /** Reads a length-delimited field as a UTF-8 string. */
+  public String readString() throws IOException {
+    return new String(readBytes(), StandardCharsets.UTF_8);
+  }
+
+  /** Reads a boolean (as varint). */
+  public boolean readBool() throws IOException {
+    return readVarInt() != 0;
+  }
+
+  /** Creates a bounded, zero-copy sub-reader. The caller must not mutate the input bytes. */
+  public WireReader readMessage() throws IOException {
+    final int length = readLength();
+    if (remaining() < length) throw new EOFException("Not enough bytes for embedded message");
+    final WireReader message = new WireReader(buffer, position, length);
+    position += length;
+    return message;
+  }
+
+  /**
+   * Validates that the actual wire type matches the expected wire type.
+   *
+   * @param fieldNumber the field number (for error messages)
+   * @param expected the expected wire type
+   * @param actual the actual wire type from the tag
+   * @throws IOException if the wire types don't match
+   */
+  public static void expectWireType(final int fieldNumber, final int expected, final int actual)
+      throws IOException {
+    if (expected != actual) {
+      throw new IOException(
+          "Field "
+              + fieldNumber
+              + ": expected "
+              + wireTypeName(expected)
+              + " (wire type "
+              + expected
+              + ") but got "
+              + wireTypeName(actual)
+              + " (wire type "
+              + actual
+              + ")");
+    }
+  }
+
+  private static String wireTypeName(final int wireType) {
+    switch (wireType) {
+      case WIRETYPE_VARINT:
+        return "varint";
+      case WIRETYPE_FIXED64:
+        return "fixed64";
+      case WIRETYPE_LENGTH_DELIMITED:
+        return "length-delimited";
+      case WIRETYPE_FIXED32:
+        return "fixed32";
+      default:
+        return "unknown";
+    }
+  }
+
+  /** Skips a field based on its wire type. */
+  public void skipField(final int wireType) throws IOException {
+    switch (wireType) {
+      case WIRETYPE_VARINT:
+        readVarInt();
+        break;
+      case WIRETYPE_FIXED64:
+        if (remaining() < 8) {
+          throw new EOFException("Not enough bytes to skip fixed64");
+        }
+        position += 8;
+        break;
+      case WIRETYPE_LENGTH_DELIMITED:
+        final int length = readLength();
+        if (remaining() < length) {
+          throw new EOFException("Not enough bytes to skip length-delimited");
+        }
+        position += length;
+        break;
+      case WIRETYPE_FIXED32:
+        if (remaining() < 4) {
+          throw new EOFException("Not enough bytes to skip fixed32");
+        }
+        position += 4;
+        break;
+      default:
+        throw new IOException("Unknown wire type: " + wireType);
+    }
+  }
+}

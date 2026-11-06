@@ -1,5 +1,17 @@
 # Third-party notices
 
+## Epitaph
+
+Android Runtime vendors Epitaph 0.2.0's protobuf wire reader, commit
+`660898c859055491d8a258664aee27b2555073cb`, copyright (c) 2026 Above Vacant,
+under the [MIT license](native/android/osservio-runtime/src/main/resources/META-INF/osservio/epitaph-LICENSE.txt).
+The license is included in Runtime's Java resources. The
+[vendor record](native/android/vendor/epitaph/README.md) describes namespace
+isolation, bounded reads, retained regression tests, an upstream test fixture,
+original source identities and local changes. The full Epitaph report model and
+decoder are not distributed by Osservio. This source subset adds no runtime
+dependency or crash handler.
+
 ## PLCrashReporter
 
 The private iOS crash backend vendors PLCrashReporter 1.12.2 at commit

@@ -1,0 +1,928 @@
+--- a/src/main/java/com/abovevacant/epitaph/io/WireReader.java
++++ b/native/android/osservio-runtime/src/main/java/com/sandrox/osservio/runtime/internal/epitaph/WireReader.java
+@@ -1,8 +1,9 @@
+-package com.abovevacant.epitaph.io;
++// Derived from Epitaph, copyright (c) 2026 Above Vacant, MIT licensed.
++// See native/android/vendor/epitaph for provenance and local changes.
++package com.sandrox.osservio.runtime.internal.epitaph;
+ 
+ import java.io.EOFException;
+ import java.io.IOException;
+-import java.io.InputStream;
+ import java.nio.charset.StandardCharsets;
+ 
+ /**
+@@ -48,18 +49,6 @@
+     this.buffer = data;
+     this.position = offset;
+     this.limit = offset + length;
+-  }
+-
+-  /** Creates a WireReader from an InputStream by reading all bytes. */
+-  public static WireReader fromInputStream(final InputStream stream) throws IOException {
+-    // Read all bytes from the stream
+-    final java.io.ByteArrayOutputStream os = new java.io.ByteArrayOutputStream();
+-    final byte[] buf = new byte[8192];
+-    int bytesRead;
+-    while ((bytesRead = stream.read(buf)) != -1) {
+-      os.write(buf, 0, bytesRead);
+-    }
+-    return new WireReader(os.toByteArray());
+   }
+ 
+   public boolean hasRemaining() {
+@@ -168,7 +157,14 @@
+ 
+   /** Reads a length-delimited field as raw bytes. */
+   public byte[] readBytes() throws IOException {
++    return readBytes(Integer.MAX_VALUE);
++  }
++
++  /** Rejects an oversized field before allocating its byte array. */
++  public byte[] readBytes(final int maximumBytes) throws IOException {
++    if (maximumBytes < 0) throw new IllegalArgumentException("Negative byte limit");
+     final int length = readLength();
++    if (length > maximumBytes) throw new IOException("Field exceeds byte limit");
+     if (remaining() < length) {
+       throw new EOFException("Not enough bytes for length-delimited field");
+     }
+@@ -188,10 +184,13 @@
+     return readVarInt() != 0;
+   }
+ 
+-  /** Creates a sub-reader for an embedded message. */
++  /** Creates a bounded, zero-copy sub-reader. The caller must not mutate the input bytes. */
+   public WireReader readMessage() throws IOException {
+-    final byte[] data = readBytes();
+-    return new WireReader(data);
++    final int length = readLength();
++    if (remaining() < length) throw new EOFException("Not enough bytes for embedded message");
++    final WireReader message = new WireReader(buffer, position, length);
++    position += length;
++    return message;
+   }
+ 
+   /**
+--- a/src/test/java/com/abovevacant/epitaph/io/WireReaderEdgeCaseTest.java
++++ b/native/android/osservio-runtime/src/test/java/com/sandrox/osservio/runtime/internal/epitaph/WireReaderEdgeCaseTest.java
+@@ -1,25 +1,28 @@
+-package com.abovevacant.epitaph.io;
+-
+-import static org.junit.jupiter.api.Assertions.*;
++// Derived from Epitaph, copyright (c) 2026 Above Vacant, MIT licensed.
++// See native/android/vendor/epitaph for provenance and local changes.
++package com.sandrox.osservio.runtime.internal.epitaph;
++
++import static org.junit.Assert.*;
+ 
+ import java.io.EOFException;
+ import java.io.IOException;
+-import org.junit.jupiter.api.Nested;
+-import org.junit.jupiter.api.Test;
++import org.junit.experimental.runners.Enclosed;
++import org.junit.runner.RunWith;
++import org.junit.Test;
+ 
+ /**
+  * Tests that challenge WireReader behavior at boundaries and edge cases, rather than simply
+  * confirming existing behavior.
+  */
+-class WireReaderEdgeCaseTest {
++@RunWith(Enclosed.class)
++public final class WireReaderEdgeCaseTest {
+ 
+   // --- Varint edge cases ---
+ 
+-  @Nested
+-  class VarintEdgeCases {
+-
+-    @Test
+-    void largeVarintTruncatedToInt32() throws IOException {
++  public static class VarintEdgeCases {
++
++    @Test
++    public void largeVarintTruncatedToInt32() throws IOException {
+       // 0x1_0000_0000 (4294967296) — doesn't fit in int32, readVarInt32 casts to int → 0.
+       // This matches standard protobuf behavior: protobuf-java's readInt32() does the same
+       // long-to-int cast. The int32/uint32 wire format is defined this way.
+@@ -33,7 +36,7 @@
+     }
+ 
+     @Test
+-    void varintMaxPositiveInt32() throws IOException {
++    public void varintMaxPositiveInt32() throws IOException {
+       // Integer.MAX_VALUE = 2147483647 = 0x7FFFFFFF
+       WireReader r =
+           new WireReader(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x07});
+@@ -41,7 +44,7 @@
+     }
+ 
+     @Test
+-    void varintMinNegativeInt32() throws IOException {
++    public void varintMinNegativeInt32() throws IOException {
+       // Integer.MIN_VALUE = -2147483648 as signed int32
+       // As uint64 varint: 0xFFFFFFFF80000000 (sign-extended by protobuf for negative int32)
+       // Actually, protobuf encodes negative int32 as 10-byte sign-extended varint
+@@ -63,7 +66,7 @@
+     }
+ 
+     @Test
+-    void varintExactly10BytesMaxValid() throws IOException {
++    public void varintExactly10BytesMaxValid() throws IOException {
+       // Maximum valid varint is 10 bytes with the last byte having only 1 bit
+       // This represents 0xFFFFFFFFFFFFFFFF (-1 as signed)
+       WireReader r =
+@@ -84,7 +87,7 @@
+     }
+ 
+     @Test
+-    void varintWithPayloadBitsBeyond64IsRejected() {
++    public void varintWithPayloadBitsBeyond64IsRejected() {
+       // A 10-byte varint may only use the lowest bit in the final byte. Anything larger
+       // encodes a value that does not fit in uint64 and must not be silently truncated.
+       WireReader r =
+@@ -106,7 +109,7 @@
+     }
+ 
+     @Test
+-    void varintWithUnnecessaryZeroPadding() throws IOException {
++    public void varintWithUnnecessaryZeroPadding() throws IOException {
+       // Value 1 encoded with unnecessary continuation bytes: 0x81 0x00
+       // This is technically valid protobuf (overlong encoding)
+       WireReader r = new WireReader(new byte[] {(byte) 0x81, 0x00});
+@@ -114,7 +117,7 @@
+     }
+ 
+     @Test
+-    void varintAllContinuationBytesZeroPayload() throws IOException {
++    public void varintAllContinuationBytesZeroPayload() throws IOException {
+       // 0x80 0x80 0x00 = value 0 with overlong encoding
+       WireReader r = new WireReader(new byte[] {(byte) 0x80, (byte) 0x80, 0x00});
+       assertEquals(0, r.readVarInt());
+@@ -123,11 +126,10 @@
+ 
+   // --- Tag parsing edge cases ---
+ 
+-  @Nested
+-  class TagEdgeCases {
+-
+-    @Test
+-    void zeroTagIsRejected() {
++  public static class TagEdgeCases {
++
++    @Test
++    public void zeroTagIsRejected() {
+       // A tag value of 0 means field number 0, which protobuf reserves as invalid.
+       // EOF is represented by having no bytes left, not by an encoded zero tag.
+       WireReader r = new WireReader(new byte[] {0x00});
+@@ -136,7 +138,7 @@
+     }
+ 
+     @Test
+-    void zeroTagMidStreamIsRejected() {
++    public void zeroTagMidStreamIsRejected() {
+       // This used to silently terminate parsing and ignore the remaining valid field.
+       WireReader r = new WireReader(new byte[] {0x00, 0x08, 0x01});
+       IOException ex = assertThrows(IOException.class, r::readTag);
+@@ -146,7 +148,7 @@
+     }
+ 
+     @Test
+-    void tagWithFieldNumber0() {
++    public void tagWithFieldNumber0() {
+       // Tag = 0x00 means field 0, wire type 0. Field 0 is reserved.
+       // getFieldNumber(0) == 0
+       assertEquals(0, WireReader.getFieldNumber(0));
+@@ -154,14 +156,14 @@
+     }
+ 
+     @Test
+-    void tagWithFieldNumber0IsRejectedWhenRead() {
++    public void tagWithFieldNumber0IsRejectedWhenRead() {
+       WireReader r = new WireReader(new byte[] {0x05}); // field 0, wire type fixed32
+       IOException ex = assertThrows(IOException.class, r::readTag);
+       assertTrue(ex.getMessage().contains("field number 0"));
+     }
+ 
+     @Test
+-    void oversizedTagIsRejected() {
++    public void oversizedTagIsRejected() {
+       // Encode a tag with a field number above protobuf's maximum:
+       // field 536870912 wire type 0 = 4294967296 = 0x1_0000_0000.
+       // This used to truncate to 0 and stop parsing.
+@@ -172,7 +174,7 @@
+     }
+ 
+     @Test
+-    void negativeDecodedTagIsRejected() {
++    public void negativeDecodedTagIsRejected() {
+       WireReader r =
+           new WireReader(
+               new byte[] {
+@@ -192,7 +194,7 @@
+     }
+ 
+     @Test
+-    void highFieldNumberWithinInt32Range() throws IOException {
++    public void highFieldNumberWithinInt32Range() throws IOException {
+       // Field 536870911 (max that fits in 29 bits) wire type 0
+       // = (536870911 << 3) | 0 = 4294967288 = 0xFFFFFFF8
+       // As int this is negative but getFieldNumber uses >>> so it works
+@@ -206,11 +208,10 @@
+ 
+   // --- Length-delimited edge cases ---
+ 
+-  @Nested
+-  class LengthDelimitedEdgeCases {
+-
+-    @Test
+-    void lengthExactlyEqualsRemaining() throws IOException {
++  public static class LengthDelimitedEdgeCases {
++
++    @Test
++    public void lengthExactlyEqualsRemaining() throws IOException {
+       // length=3, exactly 3 bytes — should work
+       WireReader r = new WireReader(new byte[] {0x03, 0x41, 0x42, 0x43});
+       byte[] result = r.readBytes();
+@@ -219,14 +220,14 @@
+     }
+ 
+     @Test
+-    void lengthExceedsRemainingByOne() {
++    public void lengthExceedsRemainingByOne() {
+       // length=4, only 3 bytes
+       WireReader r = new WireReader(new byte[] {0x04, 0x41, 0x42, 0x43});
+       assertThrows(EOFException.class, r::readBytes);
+     }
+ 
+     @Test
+-    void zeroLengthMessageProducesEmptySubReader() throws IOException {
++    public void zeroLengthMessageProducesEmptySubReader() throws IOException {
+       // Embedded message with length 0
+       WireReader r = new WireReader(new byte[] {0x00});
+       WireReader sub = r.readMessage();
+@@ -235,7 +236,7 @@
+     }
+ 
+     @Test
+-    void lengthExceedingIntMaxIsRejected() {
++    public void lengthExceedingIntMaxIsRejected() {
+       // Varint 2147483648 (0x80000000) must be rejected as too large for an in-memory Java
+       // byte array, rather than cast to Integer.MIN_VALUE.
+       WireReader r =
+@@ -245,7 +246,7 @@
+     }
+ 
+     @Test
+-    void lengthAtUint32BoundaryDoesNotWrapToZero() {
++    public void lengthAtUint32BoundaryDoesNotWrapToZero() {
+       // 4294967296 used to cast to int zero, causing readBytes() to return an empty array and
+       // leave the stream misaligned.
+       WireReader r =
+@@ -255,7 +256,7 @@
+     }
+ 
+     @Test
+-    void negativeDecodedLengthIsRejected() {
++    public void negativeDecodedLengthIsRejected() {
+       WireReader r =
+           new WireReader(
+               new byte[] {
+@@ -275,7 +276,7 @@
+     }
+ 
+     @Test
+-    void veryLargeLengthWithInsufficientData() {
++    public void veryLargeLengthWithInsufficientData() {
+       // length = 1000000, but only a few bytes available
+       // 1000000 = 0xF4240 -> varint: 0xC0 0xC4 0x07 (I think... let me just use a known encoding)
+       // Actually doesn't matter for the test — any large length that exceeds remaining
+@@ -286,11 +287,10 @@
+ 
+   // --- Skip edge cases ---
+ 
+-  @Nested
+-  class SkipEdgeCases {
+-
+-    @Test
+-    void skipVarintWithOverlongEncoding() throws IOException {
++  public static class SkipEdgeCases {
++
++    @Test
++    public void skipVarintWithOverlongEncoding() throws IOException {
+       // Skip a varint encoded as 0x80 0x80 0x00 (overlong zero), then read next value
+       WireReader r = new WireReader(new byte[] {(byte) 0x80, (byte) 0x80, 0x00, 0x42});
+       r.skipField(WireReader.WIRETYPE_VARINT);
+@@ -298,7 +298,7 @@
+     }
+ 
+     @Test
+-    void skipLengthDelimitedExactlyToEnd() throws IOException {
++    public void skipLengthDelimitedExactlyToEnd() throws IOException {
+       // length=3, 3 bytes — skip consumes everything
+       WireReader r = new WireReader(new byte[] {0x03, 0x41, 0x42, 0x43});
+       r.skipField(WireReader.WIRETYPE_LENGTH_DELIMITED);
+@@ -306,7 +306,7 @@
+     }
+ 
+     @Test
+-    void skipLengthDelimitedRejectsLengthTooLarge() {
++    public void skipLengthDelimitedRejectsLengthTooLarge() {
+       WireReader r =
+           new WireReader(new byte[] {(byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80, 0x08});
+       IOException ex =
+@@ -315,7 +315,7 @@
+     }
+ 
+     @Test
+-    void skipWireType3Throws() {
++    public void skipWireType3Throws() {
+       // Wire type 3 = start group (deprecated)
+       WireReader r = new WireReader(new byte[] {0x00});
+       IOException ex = assertThrows(IOException.class, () -> r.skipField(3));
+@@ -323,7 +323,7 @@
+     }
+ 
+     @Test
+-    void skipWireType4Throws() {
++    public void skipWireType4Throws() {
+       // Wire type 4 = end group (deprecated)
+       WireReader r = new WireReader(new byte[] {0x00});
+       IOException ex = assertThrows(IOException.class, () -> r.skipField(4));
+@@ -331,14 +331,14 @@
+     }
+ 
+     @Test
+-    void skipWireType6Throws() {
++    public void skipWireType6Throws() {
+       WireReader r = new WireReader(new byte[] {0x00});
+       IOException ex = assertThrows(IOException.class, () -> r.skipField(6));
+       assertTrue(ex.getMessage().contains("Unknown wire type: 6"));
+     }
+ 
+     @Test
+-    void skipWireType7Throws() {
++    public void skipWireType7Throws() {
+       WireReader r = new WireReader(new byte[] {0x00});
+       IOException ex = assertThrows(IOException.class, () -> r.skipField(7));
+       assertTrue(ex.getMessage().contains("Unknown wire type: 7"));
+@@ -347,11 +347,10 @@
+ 
+   // --- Sub-reader isolation ---
+ 
+-  @Nested
+-  class SubReaderIsolation {
+-
+-    @Test
+-    void subReaderDoesNotConsumeParentBytes() throws IOException {
++  public static class SubReaderIsolation {
++
++    @Test
++    public void subReaderDoesNotConsumeParentBytes() throws IOException {
+       // Parent: [length=2, 0x08, 0x01, 0x42]
+       // Sub-reader should read only [0x08, 0x01], parent should still have 0x42
+       WireReader parent = new WireReader(new byte[] {0x02, 0x08, 0x01, 0x42});
+@@ -365,7 +364,7 @@
+     }
+ 
+     @Test
+-    void subReaderCannotReadBeyondItsLimit() throws IOException {
++    public void subReaderCannotReadBeyondItsLimit() throws IOException {
+       // Sub-reader has 1 byte, tries to read 2-byte varint
+       WireReader parent = new WireReader(new byte[] {0x01, (byte) 0x80, 0x42});
+       WireReader sub = parent.readMessage();
+@@ -377,23 +376,22 @@
+ 
+   // --- expectWireType edge cases ---
+ 
+-  @Nested
+-  class ExpectWireTypeEdgeCases {
+-
+-    @Test
+-    void errorMessageIncludesUnknownForBogusWireTypes() {
++  public static class ExpectWireTypeEdgeCases {
++
++    @Test
++    public void errorMessageIncludesUnknownForBogusWireTypes() {
+       IOException ex = assertThrows(IOException.class, () -> WireReader.expectWireType(1, 0, 6));
+       assertTrue(ex.getMessage().contains("unknown"));
+     }
+ 
+     @Test
+-    void errorMessageIncludesFixed64() {
++    public void errorMessageIncludesFixed64() {
+       IOException ex = assertThrows(IOException.class, () -> WireReader.expectWireType(1, 1, 0));
+       assertTrue(ex.getMessage().contains("fixed64"));
+     }
+ 
+     @Test
+-    void errorMessageIncludesFixed32() {
++    public void errorMessageIncludesFixed32() {
+       IOException ex = assertThrows(IOException.class, () -> WireReader.expectWireType(1, 5, 0));
+       assertTrue(ex.getMessage().contains("fixed32"));
+     }
+@@ -401,11 +399,10 @@
+ 
+   // --- Offset/limit boundary ---
+ 
+-  @Nested
+-  class OffsetLimitBoundary {
+-
+-    @Test
+-    void offsetAtArrayEndIsAllowed() {
++  public static class OffsetLimitBoundary {
++
++    @Test
++    public void offsetAtArrayEndIsAllowed() {
+       byte[] data = new byte[] {0x01, 0x02};
+       WireReader r = new WireReader(data, 2, 0);
+       assertFalse(r.hasRemaining());
+@@ -413,31 +410,31 @@
+     }
+ 
+     @Test
+-    void constructorRejectsNegativeOffset() {
++    public void constructorRejectsNegativeOffset() {
+       byte[] data = new byte[] {0x01, 0x02};
+       assertThrows(IndexOutOfBoundsException.class, () -> new WireReader(data, -1, 0));
+     }
+ 
+     @Test
+-    void constructorRejectsNegativeLength() {
++    public void constructorRejectsNegativeLength() {
+       byte[] data = new byte[] {0x01, 0x02};
+       assertThrows(IndexOutOfBoundsException.class, () -> new WireReader(data, 0, -1));
+     }
+ 
+     @Test
+-    void constructorRejectsOffsetPastArrayEnd() {
++    public void constructorRejectsOffsetPastArrayEnd() {
+       byte[] data = new byte[] {0x01, 0x02};
+       assertThrows(IndexOutOfBoundsException.class, () -> new WireReader(data, 3, 0));
+     }
+ 
+     @Test
+-    void constructorRejectsLengthPastArrayEnd() {
++    public void constructorRejectsLengthPastArrayEnd() {
+       byte[] data = new byte[] {0x01, 0x02};
+       assertThrows(IndexOutOfBoundsException.class, () -> new WireReader(data, 1, 2));
+     }
+ 
+     @Test
+-    void zeroLengthReader() throws IOException {
++    public void zeroLengthReader() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x42}, 0, 0);
+       assertFalse(r.hasRemaining());
+       assertEquals(0, r.readTag());
+--- a/src/test/java/com/abovevacant/epitaph/io/WireReaderTest.java
++++ b/native/android/osservio-runtime/src/test/java/com/sandrox/osservio/runtime/internal/epitaph/WireReaderTest.java
+@@ -1,48 +1,50 @@
+-package com.abovevacant.epitaph.io;
+-
+-import static org.junit.jupiter.api.Assertions.*;
+-
+-import java.io.ByteArrayInputStream;
++// Derived from Epitaph, copyright (c) 2026 Above Vacant, MIT licensed.
++// See native/android/vendor/epitaph for provenance and local changes.
++package com.sandrox.osservio.runtime.internal.epitaph;
++
++import static org.junit.Assert.*;
++
+ import java.io.EOFException;
+ import java.io.IOException;
+-import org.junit.jupiter.api.Nested;
+-import org.junit.jupiter.api.Test;
+-
+-class WireReaderTest {
++import org.junit.experimental.runners.Enclosed;
++import org.junit.runner.RunWith;
++import org.junit.Test;
++
++@RunWith(Enclosed.class)
++public final class WireReaderTest {
+ 
+   // --- Varint ---
+ 
+-  @Nested
+-  class Varint {
+-
+-    @Test
+-    void zero() throws IOException {
++  public static class Varint {
++
++    @Test
++    public void zero() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x00});
+       assertEquals(0, r.readVarInt());
+       assertFalse(r.hasRemaining());
+     }
+ 
+     @Test
+-    void singleByte() throws IOException {
++    public void singleByte() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x01});
+       assertEquals(1, r.readVarInt());
+     }
+ 
+     @Test
+-    void maxSingleByte() throws IOException {
++    public void maxSingleByte() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x7F});
+       assertEquals(127, r.readVarInt());
+     }
+ 
+     @Test
+-    void twoByte() throws IOException {
++    public void twoByte() throws IOException {
+       // 300 = 0b100101100 -> 0xAC 0x02
+       WireReader r = new WireReader(new byte[] {(byte) 0xAC, 0x02});
+       assertEquals(300, r.readVarInt());
+     }
+ 
+     @Test
+-    void maxUint32() throws IOException {
++    public void maxUint32() throws IOException {
+       // 0xFFFFFFFF = 4294967295
+       WireReader r =
+           new WireReader(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x0F});
+@@ -50,7 +52,7 @@
+     }
+ 
+     @Test
+-    void maxUint64() throws IOException {
++    public void maxUint64() throws IOException {
+       // 0xFFFFFFFFFFFFFFFF encoded as 10 bytes of 0xFF, last byte 0x01
+       WireReader r =
+           new WireReader(
+@@ -70,7 +72,7 @@
+     }
+ 
+     @Test
+-    void negativeOneAsSigned() throws IOException {
++    public void negativeOneAsSigned() throws IOException {
+       // protobuf encodes -1 as 10 bytes (sign-extended varint)
+       WireReader r =
+           new WireReader(
+@@ -90,21 +92,21 @@
+     }
+ 
+     @Test
+-    void truncatedVarintThrows() {
++    public void truncatedVarintThrows() {
+       // Continuation bit set but no more bytes
+       WireReader r = new WireReader(new byte[] {(byte) 0x80});
+       assertThrows(EOFException.class, r::readVarInt);
+     }
+ 
+     @Test
+-    void truncatedMultiByteVarintThrows() {
++    public void truncatedMultiByteVarintThrows() {
+       // Two continuation bytes, then EOF
+       WireReader r = new WireReader(new byte[] {(byte) 0x80, (byte) 0x80});
+       assertThrows(EOFException.class, r::readVarInt);
+     }
+ 
+     @Test
+-    void malformedVarintTooLongThrows() {
++    public void malformedVarintTooLongThrows() {
+       // 11 continuation bytes — exceeds 64-bit capacity
+       WireReader r =
+           new WireReader(
+@@ -126,13 +128,13 @@
+     }
+ 
+     @Test
+-    void emptyBufferThrows() {
++    public void emptyBufferThrows() {
+       WireReader r = new WireReader(new byte[] {});
+       assertThrows(EOFException.class, r::readVarInt);
+     }
+ 
+     @Test
+-    void readMultipleSequentially() throws IOException {
++    public void readMultipleSequentially() throws IOException {
+       // 1, 300, 0
+       WireReader r = new WireReader(new byte[] {0x01, (byte) 0xAC, 0x02, 0x00});
+       assertEquals(1, r.readVarInt());
+@@ -142,14 +144,14 @@
+     }
+ 
+     @Test
+-    void boolTrueAndFalse() throws IOException {
++    public void boolTrueAndFalse() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x01, 0x00});
+       assertTrue(r.readBool());
+       assertFalse(r.readBool());
+     }
+ 
+     @Test
+-    void boolNonOneIsTrue() throws IOException {
++    public void boolNonOneIsTrue() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x42});
+       assertTrue(r.readBool());
+     }
+@@ -157,43 +159,42 @@
+ 
+   // --- Fixed ---
+ 
+-  @Nested
+-  class Fixed {
+-
+-    @Test
+-    void fixed32LittleEndian() throws IOException {
++  public static class Fixed {
++
++    @Test
++    public void fixed32LittleEndian() throws IOException {
+       // 0x04030201
+       WireReader r = new WireReader(new byte[] {0x01, 0x02, 0x03, 0x04});
+       assertEquals(0x04030201, r.readFixed32());
+     }
+ 
+     @Test
+-    void fixed64LittleEndian() throws IOException {
++    public void fixed64LittleEndian() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
+       assertEquals(0x0807060504030201L, r.readFixed64());
+     }
+ 
+     @Test
+-    void fixed32TruncatedThrows() {
++    public void fixed32TruncatedThrows() {
+       WireReader r = new WireReader(new byte[] {0x01, 0x02, 0x03});
+       assertThrows(EOFException.class, r::readFixed32);
+     }
+ 
+     @Test
+-    void fixed64TruncatedThrows() {
++    public void fixed64TruncatedThrows() {
+       WireReader r = new WireReader(new byte[] {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07});
+       assertThrows(EOFException.class, r::readFixed64);
+     }
+ 
+     @Test
+-    void fixed32AllOnes() throws IOException {
++    public void fixed32AllOnes() throws IOException {
+       WireReader r =
+           new WireReader(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+       assertEquals(-1, r.readFixed32());
+     }
+ 
+     @Test
+-    void fixed64AllOnes() throws IOException {
++    public void fixed64AllOnes() throws IOException {
+       WireReader r =
+           new WireReader(
+               new byte[] {
+@@ -206,51 +207,50 @@
+ 
+   // --- Length-delimited ---
+ 
+-  @Nested
+-  class LengthDelimited {
+-
+-    @Test
+-    void readBytes() throws IOException {
++  public static class LengthDelimited {
++
++    @Test
++    public void readBytes() throws IOException {
+       // length=3, then 3 bytes
+       WireReader r = new WireReader(new byte[] {0x03, 0x41, 0x42, 0x43});
+       assertArrayEquals(new byte[] {0x41, 0x42, 0x43}, r.readBytes());
+     }
+ 
+     @Test
+-    void readEmptyBytes() throws IOException {
++    public void readEmptyBytes() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x00});
+       assertArrayEquals(new byte[] {}, r.readBytes());
+     }
+ 
+     @Test
+-    void readString() throws IOException {
++    public void readString() throws IOException {
+       // length=5, "hello"
+       WireReader r = new WireReader(new byte[] {0x05, 0x68, 0x65, 0x6C, 0x6C, 0x6F});
+       assertEquals("hello", r.readString());
+     }
+ 
+     @Test
+-    void readEmptyString() throws IOException {
++    public void readEmptyString() throws IOException {
+       WireReader r = new WireReader(new byte[] {0x00});
+       assertEquals("", r.readString());
+     }
+ 
+     @Test
+-    void readStringUtf8() throws IOException {
++    public void readStringUtf8() throws IOException {
+       // "ä" = 0xC3 0xA4 in UTF-8
+       WireReader r = new WireReader(new byte[] {0x02, (byte) 0xC3, (byte) 0xA4});
+       assertEquals("ä", r.readString());
+     }
+ 
+     @Test
+-    void truncatedLengthDelimitedThrows() {
++    public void truncatedLengthDelimitedThrows() {
+       // Claims length=5 but only 2 bytes follow
+       WireReader r = new WireReader(new byte[] {0x05, 0x41, 0x42});
+       assertThrows(EOFException.class, r::readBytes);
+     }
+ 
+     @Test
+-    void lengthTooLargeThrows() {
++    public void lengthTooLargeThrows() {
+       // 0x80 0x80 0x80 0x80 0x08 = 2147483648, which exceeds Java's max byte[] size.
+       WireReader r =
+           new WireReader(new byte[] {(byte) 0x80, (byte) 0x80, (byte) 0x80, (byte) 0x80, 0x08});
+@@ -259,7 +259,7 @@
+     }
+ 
+     @Test
+-    void readMessage() throws IOException {
++    public void readMessage() throws IOException {
+       // Embedded message: length=2, containing varint 150 (0x96 0x01)
+       WireReader r = new WireReader(new byte[] {0x02, (byte) 0x96, 0x01});
+       WireReader sub = r.readMessage();
+@@ -271,38 +271,37 @@
+ 
+   // --- Tags ---
+ 
+-  @Nested
+-  class Tags {
+-
+-    @Test
+-    void fieldNumberAndWireType() {
++  public static class Tags {
++
++    @Test
++    public void fieldNumberAndWireType() {
+       // Field 1, wire type 0 (varint) = (1 << 3) | 0 = 0x08
+       assertEquals(1, WireReader.getFieldNumber(0x08));
+       assertEquals(0, WireReader.getWireType(0x08));
+     }
+ 
+     @Test
+-    void fieldNumberAndWireTypeLengthDelimited() {
++    public void fieldNumberAndWireTypeLengthDelimited() {
+       // Field 2, wire type 2 = (2 << 3) | 2 = 0x12
+       assertEquals(2, WireReader.getFieldNumber(0x12));
+       assertEquals(2, WireReader.getWireType(0x12));
+     }
+ 
+     @Test
+-    void highFieldNumber() {
++    public void highFieldNumber() {
+       // Field 100, wire type 0 = (100 << 3) | 0 = 800 = 0x320
+       assertEquals(100, WireReader.getFieldNumber(0x320));
+       assertEquals(0, WireReader.getWireType(0x320));
+     }
+ 
+     @Test
+-    void readTagAtEnd() throws IOException {
++    public void readTagAtEnd() throws IOException {
+       WireReader r = new WireReader(new byte[] {});
+       assertEquals(0, r.readTag());
+     }
+ 
+     @Test
+-    void readTagReturnsFullTag() throws IOException {
++    public void readTagReturnsFullTag() throws IOException {
+       // Field 1, varint = 0x08
+       WireReader r = new WireReader(new byte[] {0x08, 0x00});
+       int tag = r.readTag();
+@@ -313,11 +312,10 @@
+ 
+   // --- Skip ---
+ 
+-  @Nested
+-  class Skip {
+-
+-    @Test
+-    void skipVarint() throws IOException {
++  public static class Skip {
++
++    @Test
++    public void skipVarint() throws IOException {
+       // varint 300 (2 bytes) then varint 1
+       WireReader r = new WireReader(new byte[] {(byte) 0xAC, 0x02, 0x01});
+       r.skipField(WireReader.WIRETYPE_VARINT);
+@@ -325,21 +323,21 @@
+     }
+ 
+     @Test
+-    void skipFixed64() throws IOException {
++    public void skipFixed64() throws IOException {
+       WireReader r = new WireReader(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 0x42});
+       r.skipField(WireReader.WIRETYPE_FIXED64);
+       assertEquals(0x42, r.readVarInt());
+     }
+ 
+     @Test
+-    void skipFixed32() throws IOException {
++    public void skipFixed32() throws IOException {
+       WireReader r = new WireReader(new byte[] {1, 2, 3, 4, 0x42});
+       r.skipField(WireReader.WIRETYPE_FIXED32);
+       assertEquals(0x42, r.readVarInt());
+     }
+ 
+     @Test
+-    void skipLengthDelimited() throws IOException {
++    public void skipLengthDelimited() throws IOException {
+       // length=3, 3 bytes of data, then varint 0x42
+       WireReader r = new WireReader(new byte[] {0x03, 0x41, 0x42, 0x43, 0x42});
+       r.skipField(WireReader.WIRETYPE_LENGTH_DELIMITED);
+@@ -347,26 +345,26 @@
+     }
+ 
+     @Test
+-    void skipUnknownWireTypeThrows() {
++    public void skipUnknownWireTypeThrows() {
+       WireReader r = new WireReader(new byte[] {0x00});
+       IOException ex = assertThrows(IOException.class, () -> r.skipField(3));
+       assertTrue(ex.getMessage().contains("Unknown wire type"));
+     }
+ 
+     @Test
+-    void skipTruncatedFixed64Throws() {
++    public void skipTruncatedFixed64Throws() {
+       WireReader r = new WireReader(new byte[] {1, 2, 3});
+       assertThrows(EOFException.class, () -> r.skipField(WireReader.WIRETYPE_FIXED64));
+     }
+ 
+     @Test
+-    void skipTruncatedFixed32Throws() {
++    public void skipTruncatedFixed32Throws() {
+       WireReader r = new WireReader(new byte[] {1, 2});
+       assertThrows(EOFException.class, () -> r.skipField(WireReader.WIRETYPE_FIXED32));
+     }
+ 
+     @Test
+-    void skipTruncatedLengthDelimitedThrows() {
++    public void skipTruncatedLengthDelimitedThrows() {
+       // claims length=10, only 2 bytes
+       WireReader r = new WireReader(new byte[] {0x0A, 0x01, 0x02});
+       assertThrows(EOFException.class, () -> r.skipField(WireReader.WIRETYPE_LENGTH_DELIMITED));
+@@ -375,16 +373,15 @@
+ 
+   // --- Wire type validation ---
+ 
+-  @Nested
+-  class WireTypeValidation {
+-
+-    @Test
+-    void expectWireTypeMatchDoesNotThrow() throws IOException {
++  public static class WireTypeValidation {
++
++    @Test
++    public void expectWireTypeMatchDoesNotThrow() throws IOException {
+       WireReader.expectWireType(1, WireReader.WIRETYPE_VARINT, WireReader.WIRETYPE_VARINT);
+     }
+ 
+     @Test
+-    void expectWireTypeMismatchThrows() {
++    public void expectWireTypeMismatchThrows() {
+       IOException ex =
+           assertThrows(
+               IOException.class,
+@@ -399,11 +396,10 @@
+ 
+   // --- Offset/limit constructor ---
+ 
+-  @Nested
+-  class OffsetLimit {
+-
+-    @Test
+-    void readsOnlyWithinBounds() throws IOException {
++  public static class OffsetLimit {
++
++    @Test
++    public void readsOnlyWithinBounds() throws IOException {
+       byte[] data = new byte[] {0x00, 0x01, 0x02, 0x03, 0x00};
+       WireReader r = new WireReader(data, 1, 3);
+       assertEquals(3, r.remaining());
+@@ -414,23 +410,4 @@
+     }
+   }
+ 
+-  // --- fromInputStream ---
+-
+-  @Nested
+-  class FromInputStream {
+-
+-    @Test
+-    void readsAllBytes() throws IOException {
+-      byte[] data = new byte[] {(byte) 0xAC, 0x02};
+-      WireReader r = WireReader.fromInputStream(new ByteArrayInputStream(data));
+-      assertEquals(300, r.readVarInt());
+-    }
+-
+-    @Test
+-    void emptyStream() throws IOException {
+-      WireReader r = WireReader.fromInputStream(new ByteArrayInputStream(new byte[] {}));
+-      assertFalse(r.hasRemaining());
+-      assertEquals(0, r.readTag());
+-    }
+-  }
+ }

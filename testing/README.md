@@ -26,6 +26,14 @@ and metadata exclusions. Additional tests verify immutable collections, byte
 accounting and completeness flags. This is a native value contract, not a claim
 of Android crash capture or an extension of the portable document protocol.
 
+`android-tombstone-cases.tsv` defines the separate Android address-evidence
+value. Both native models check architecture/signal/thread constraints, exact
+addresses, bounded hexadecimal ELF build IDs, absent evidence and frame limits.
+The Runtime decoder also uses the attributed real crash bytes described in
+[the Epitaph vendor record](../native/android/vendor/epitaph/README.md), plus
+synthetic malformed, privacy and work-budget cases. This value has no incident
+or portable encoding yet; these tests do not establish Android capture.
+
 `capture-lifecycle.tsv` is a sequential scenario consumed by both native test
 suites. Rows contain a case name, monotonic milliseconds, control operation,
 argument, expected mode, remaining detailed-session milliseconds, and whether

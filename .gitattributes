@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.bat text eol=crlf
 *.jar binary
+# Unified diffs preserve a leading space on empty context lines and upstream whitespace.
+*.patch whitespace=-blank-at-eol

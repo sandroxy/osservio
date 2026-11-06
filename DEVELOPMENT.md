@@ -43,6 +43,8 @@ native behavior and interaction validation. No artifacts have been published.
 - [Native signal evidence](doc/crash-evidence.md) defines the reviewed address-stack
   model, safe-launch decoder, archive, native browsing and portable export, plus
   optional iOS recorder installation and independent pending-file recovery.
+- [Android tombstone evidence](doc/android-tombstone.md) defines the standalone
+  reviewed value and bounded internal decoder, separate from OS query and archive wiring.
 - [Breadcrumb storage](doc/breadcrumb-storage.md) defines persistence ownership,
   budgets, recovery, and the private database revision.
 - [Manual problem snapshots](doc/incidents.md) defines explicit attachment

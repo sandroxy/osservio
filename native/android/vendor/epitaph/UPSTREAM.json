@@ -1,0 +1,37 @@
+{
+  "repository": "https://github.com/abovevacant/epitaph",
+  "version": "0.2.0",
+  "commit": "660898c859055491d8a258664aee27b2555073cb",
+  "files": [
+    {
+      "upstreamPath": "src/main/java/com/abovevacant/epitaph/io/WireReader.java",
+      "upstreamGitBlob": "d196f98dca146453e0d98a87b5a7767f21072181",
+      "localPath": "native/android/osservio-runtime/src/main/java/com/sandrox/osservio/runtime/internal/epitaph/WireReader.java",
+      "sha256": "1cbf572acd6b3e7df6916a7cf5c453456c938d38f2d8f5f275b823de942346fb"
+    },
+    {
+      "upstreamPath": "src/test/java/com/abovevacant/epitaph/io/WireReaderEdgeCaseTest.java",
+      "upstreamGitBlob": "53bd7bb68374654d7c5a10d7b92bac0862baf9de",
+      "localPath": "native/android/osservio-runtime/src/test/java/com/sandrox/osservio/runtime/internal/epitaph/WireReaderEdgeCaseTest.java",
+      "sha256": "93fd58c6325166419c315cc4988257589e5f039ea803a0aeb6d8249f1c82865e"
+    },
+    {
+      "upstreamPath": "src/test/java/com/abovevacant/epitaph/io/WireReaderTest.java",
+      "upstreamGitBlob": "cce4c7753b05469ea0de5117fe4e189d32c63b2b",
+      "localPath": "native/android/osservio-runtime/src/test/java/com/sandrox/osservio/runtime/internal/epitaph/WireReaderTest.java",
+      "sha256": "35f708b6d3de11334ed6af99cdec6a30ef31e13df9fb01f326cd93294f6d8e97"
+    },
+    {
+      "upstreamPath": "LICENSE",
+      "upstreamGitBlob": "b186daa3c5b814fa08382cba5999ba27a1fcd2e7",
+      "localPath": "native/android/osservio-runtime/src/main/resources/META-INF/osservio/epitaph-LICENSE.txt",
+      "sha256": "ad69f0715c80c5550eefba7c177c99d014ca929a734df8764333b4ba2f6365f1"
+    },
+    {
+      "upstreamPath": "src/test/resources/tombstone_android17_abort.pb.gz",
+      "upstreamGitBlob": "b539fa68d124cac04968d61f601b21c66bf0f5a3",
+      "localPath": "testing/android-tombstone/tombstone_android17_abort.pb.gz",
+      "sha256": "f3b4252cb7103edf9de23d3b60d9fcf6789a21beb326211aa8a413f009f693ca"
+    }
+  ]
+}
