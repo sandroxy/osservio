@@ -1,0 +1,123 @@
+package com.sandrox.osservio.ui;
+
+import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.LogEvent;
+import com.sandrox.osservio.core.WebSocketEvent;
+import com.sandrox.osservio.core.IncidentSummary;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+
+/** View-only criteria: OR within one field, AND between independent fields. */
+final class InspectorQuery {
+    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD }
+    String text = "";
+    int recentMinutes;
+    final Map<Field, Set<String>> values = new EnumMap<>(Field.class);
+    InspectorQuery copy() {
+        InspectorQuery result = new InspectorQuery(); result.text = text; result.recentMinutes = recentMinutes;
+        for (Map.Entry<Field, Set<String>> entry : values.entrySet()) result.values.put(entry.getKey(), new HashSet<>(entry.getValue()));
+        return result;
+    }
+    int activeCount() {
+        int result = recentMinutes > 0 ? 1 : 0;
+        for (Set<String> selected : values.values()) if (!selected.isEmpty()) result++;
+        return result;
+    }
+    boolean allows(Field field, String value) {
+        Set<String> selected = values.get(field);
+        return selected == null || selected.isEmpty() || selected.contains(value);
+    }
+    boolean includesTime(long timestamp, long now) {
+        if (recentMinutes <= 0) return true;
+        long duration = Math.min(recentMinutes, 1440) * 60000L;
+        long lower = now < Long.MIN_VALUE + duration ? Long.MIN_VALUE : now - duration;
+        return timestamp >= lower && timestamp <= now;
+    }
+    boolean contains(String... candidates) {
+        if (text.isEmpty()) return true;
+        String query = text.toLowerCase(Locale.ROOT);
+        for (String candidate : candidates) if (candidate != null && candidate.toLowerCase(Locale.ROOT).contains(query)) return true;
+        return false;
+    }
+    boolean matches(LogEvent event, long now) {
+        return allows(Field.LEVEL, event.level.name()) && allows(Field.CATEGORY, event.category)
+            && includesTime(event.timestampMillis, now) && contains(event.message, event.category);
+    }
+    boolean matches(HTTPEvent event, long now) {
+        return allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
+            && allows(Field.STATUS, event.statusCode == null ? "none" : event.statusCode / 100 + "xx")
+            && allows(Field.HOST, host(event.url)) && allows(Field.SOURCE, event.source.name())
+            && includesTime(event.timestampMillis, now)
+            && contains(event.url, event.responseURL, event.method, event.statusCode == null ? null : event.statusCode.toString());
+    }
+    boolean matches(WebSocketEvent event, long now) {
+        return allows(Field.DIRECTION, event.direction == null ? "none" : event.direction.name())
+            && allows(Field.KIND, event.kind.name()) && allows(Field.HOST, host(event.url))
+            && allows(Field.SOURCE, event.source.name()) && includesTime(event.timestampMillis, now)
+            && contains(event.url, event.id, event.connectionId, event.kind.name(), event.outcome == null ? null : event.outcome.name());
+    }
+    boolean matches(Connection connection, long now) {
+        return allows(Field.STATE, connection.state()) && allows(Field.HOST, host(connection.latest.url))
+            && allows(Field.SOURCE, connection.latest.source.name()) && includesTime(connection.first.timestampMillis, now)
+            && contains(connection.latest.url, connection.latest.connectionId);
+    }
+    boolean matches(IncidentSummary incident, long now) {
+        return allows(Field.RECORD, incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name())
+            && allows(Field.SOURCE, incident.diagnosticKind == null ? "manual" : "system")
+            && includesTime(incident.timestampMillis, now)
+            && contains(incident.id, incident.note == null ? null : incident.note.text,
+                incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name());
+    }
+    static String host(String url) {
+        try { String host = new URI(url).getHost(); return host == null ? "" : host.toLowerCase(Locale.ROOT); }
+        catch (URISyntaxException invalid) { return ""; }
+    }
+    static String path(String url) {
+        try {
+            URI uri = new URI(url); if (uri.getHost() == null) return url;
+            String path = uri.getRawPath(); if (path == null || path.isEmpty()) path = "/";
+            return path + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery());
+        } catch (URISyntaxException invalid) { return url; }
+    }
+
+    /** Last retained lifecycle observation, never inferred from message success or failure. */
+    static final class Connection {
+        final WebSocketEvent first;
+        final WebSocketEvent latest;
+        final WebSocketEvent lifecycle;
+        final int count;
+        Connection(List<WebSocketEvent> ordered) {
+            first = ordered.get(0); latest = ordered.get(ordered.size() - 1); count = ordered.size();
+            WebSocketEvent observed = null;
+            for (WebSocketEvent event : ordered) if (event.kind != WebSocketEvent.Kind.MESSAGE && event.kind != WebSocketEvent.Kind.MESSAGE_RESULT) observed = event;
+            lifecycle = observed;
+        }
+        String state() { return lifecycle == null ? "unknown" : lifecycle.kind.name(); }
+    }
+    static List<Connection> connections(List<WebSocketEvent> events) {
+        Map<String, List<WebSocketEvent>> groups = new LinkedHashMap<>();
+        for (WebSocketEvent event : events) {
+            List<WebSocketEvent> group = groups.get(event.connectionId);
+            if (group == null) { group = new ArrayList<>(); groups.put(event.connectionId, group); }
+            group.add(event);
+        }
+        List<Connection> result = new ArrayList<>();
+        for (List<WebSocketEvent> group : groups.values()) {
+            Collections.sort(group, (left, right) -> left.sequence == right.sequence
+                ? left.id.compareTo(right.id) : Long.compare(left.sequence, right.sequence));
+            result.add(new Connection(group));
+        }
+        Collections.sort(result, (left, right) -> left.first.timestampMillis == right.first.timestampMillis
+            ? left.first.connectionId.compareTo(right.first.connectionId) : Long.compare(right.first.timestampMillis, left.first.timestampMillis));
+        return result;
+    }
+}
