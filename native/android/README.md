@@ -61,7 +61,12 @@ On the main thread, construct `new LogInspectorView(activity, recorder, history)
 and attach it to an activity or dialog with a bounded height. This is a
 programmatic view requiring explicit dependencies; XML inflation is not
 supported. The host owns dismissal, back navigation, and system/keyboard insets.
-Use a context with the appropriate light or dark theme.
+Standalone views use their supplied context. The combined `InspectorView`
+provides independent language and appearance preferences: Simplified Chinese
+and Light by default, with English and Dark available from App. Register
+`setOnCloseListener`, forward host back events to `navigateBack()`, and use
+`setAppearanceListener` to coordinate host-owned system bars. See
+[host presentation](../../doc/inspector.md#host-presentation) for ownership and insets.
 
 Detaching the view stops its refresh callbacks and leaves capture running until
 stopped or expired. Check `recorder.stop()` when stopping explicitly; false means
@@ -117,7 +122,7 @@ Use `addInterceptor`, not `addNetworkInterceptor`. Retain the recorder and store
 with the client. The default policy omits bodies and sensitive URL/header
 content. Use `HTTPInspectorView(activity, http, requests)` for network-only
 inspection, or `InspectorView(activity, recorder, history, http, requests)` for
-native log and network sections. Import these types from
+the combined Logs, Network, Problems and App destinations. Import these types from
 `com.sandrox.osservio.ui`. Attach the view with a bounded height and the same
 host-owned presentation/inset handling described above. Read [network coverage](../../doc/network-integration.md) and
 [HTTP privacy and limits](../../doc/http.md) before enabling body content.
@@ -183,8 +188,8 @@ visibility. Activity callbacks retain compiled class names, not view contents.
 Attach `RuntimeInspectorView(activity, environment, breadcrumbRecorder,
 breadcrumbs)` with host-owned presentation and insets, or append `environment,
 breadcrumbRecorder, breadcrumbs` after the WebSocket arguments of
-`InspectorView`. Its Context section provides one-shot environment reads and a
-searchable breadcrumb timeline. The example uses memory-only history. To retain
+`InspectorView`. Its App destination provides one-shot environment reads,
+the current breadcrumb timeline and saved-run navigation. The example uses memory-only history. To retain
 selected contexts across launches, substitute `SQLiteBreadcrumbStore` as
 described in [breadcrumb persistence](../../doc/breadcrumb-storage.md). Pass
 the same store as an additional final constructor argument to the combined or
@@ -215,7 +220,7 @@ for examples, budgets, retention, and failure behavior.
 On the main thread, use `new IncidentInspectorView(activity, incidents,
 environment, breadcrumbHistory)` for the manual composer and archive browser.
 Alternatively, pass `incidents` after the optional breadcrumb archive in the full
-`InspectorView` constructor to add Problems. Marking freezes the current context;
+`InspectorView` constructor to enable the Problems archive. Marking freezes the current context;
 saving is explicit, and failure retains the draft. Description text requires an
 explicit opt-in and must be safe to store. The view uses Core contracts and does
 not own or close the supplied archive. The browser also exposes saved log/network

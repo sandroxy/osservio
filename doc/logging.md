@@ -129,8 +129,10 @@ The native events are not a serialized interchange protocol.
 
 ## Inspection scope
 
-Both native inspectors provide newest-first logs, level filtering, message and
-category search, details, copy, clear, capture controls, and view pause/resume.
+Both native inspectors provide newest-first logs, combined level/category/time
+filters, message and category search, details, copy, confirmed clear, capture
+controls, and view pause/resume. See [the native inspector guide](inspector.md)
+for filter semantics and navigation.
 Periodic refresh runs every 250 milliseconds while visible; user controls can
 refresh immediately. Viewers reuse their current snapshot during contention.
 On iOS, an inactive application or window scene suspends periodic refresh;
@@ -138,14 +140,16 @@ returning does not undo a paused view or change capture.
 Copy writes only the displayed, admitted message to
 the system clipboard after an explicit action.
 
-English and Simplified Chinese strings and system appearance are provided.
-Android embeds a programmatic view; the host owns its window, back navigation,
-and system/keyboard insets. iOS provides a UIKit view controller intended for a
-navigation controller; the host owns its presentation and dismissal entry.
+The combined inspector defaults to Simplified Chinese and Light, with independent
+English and Dark preferences. Android embeds a programmatic view; the host owns
+its window, back dispatch and system/keyboard insets. iOS provides UIKit
+controllers with native navigation. Standalone views require host-owned
+presentation and dismissal.
 
 The current inspector shows retained, evicted, and rate-limited counts.
 Other rejections are exposed to the calling host through return values, not yet
 aggregated in the UI. Filtering and paused views operate on a bounded snapshot;
 they cannot recover data already evicted from the store. Process termination
-loses all of this history. Persistent incident evidence is a separate capability
-that is not implemented by these modules.
+loses this live history. Saving a selected log window as a
+[problem snapshot](incidents.md) is a separate, explicit workflow with its own
+retention policy.

@@ -30,6 +30,8 @@ native behavior and interaction validation. No artifacts have been published.
 
 - [Native capability coverage](doc/native-capabilities.md) summarizes implemented
   behavior, OS prerequisites and explicit gaps across both platforms.
+- [Native inspector](doc/inspector.md) describes navigation, filters, content
+  reading, preferences and host presentation.
 - [Architecture](doc/architecture.md) defines the intended runtime boundaries.
 - [Logging](doc/logging.md) describes the implemented native subset and limits.
 - [HTTP observation](doc/http.md) describes admission, privacy, body ownership,
@@ -139,9 +141,10 @@ failures, and reentry. Run it on iOS with the same scheme and
 recovery lifecycle behavior.
 
 Use the same package test scheme with `-only-testing:OsservioUITests` and
-`-derivedDataPath .build/ios-ui` for composer regressions. These checks exercise
-delayed environment delivery, input preservation, optional attachments, and
-original mark time. A running consumer separately verifies actual event routing
+`-derivedDataPath .build/ios-ui` for native UI regressions. These checks exercise
+navigation, query and preference isolation, draft filters, lazy body reads,
+literal content search, short-window/keyboard layouts, delayed environment
+delivery, input preservation, optional attachments and original mark time. A running consumer separately verifies actual event routing
 and navigation; controller tests do not replace visual acceptance.
 System-diagnostic view tests cover immutable navigation, distinct report/read
 times, historical metadata, exact codes, missing memory, hang duration, and

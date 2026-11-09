@@ -19,8 +19,11 @@ React Native, Uni and Flutter adapters are not implemented.
   does not automatically detect or remove sensitive data.
 - Time-limited capture sessions, per-message and admission-rate limits, and
   in-memory history bounded by both event count and UTF-8 text bytes.
-- An Android View and an iOS UIKit inspector with search, level filters, details,
-  copy, clear, and view pause/resume, in English and Simplified Chinese.
+- An Android View and an iOS UIKit inspector organized into Logs, Network,
+  Problems and App, with combined filters, layered details and on-demand content
+  reading and search. Language defaults to Simplified Chinese, with English
+  available; appearance defaults to Light, with Dark available. Both preferences
+  are independent of the host. See [the native inspector guide](doc/inspector.md).
 - Independent capture and presentation lifetimes: closing the inspector does
   not stop capture, and stopping capture does not clear history.
 - HTTP observation with request states, privacy policy, and independent body

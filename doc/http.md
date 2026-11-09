@@ -148,7 +148,9 @@ through these modules.
 
 ## Native inspection
 
-The combined native inspector has independent Logs and Network sections. HTTP
+The combined native inspector places HTTP exchanges and WebSocket connections
+inside Network. See [the native inspector guide](inspector.md) for its All, HTTP
+and WebSocket scopes. HTTP
 controls start or end detailed capture on the supplied shared controller. Ending
 detail returns to its configured baseline/off state; closing the inspector and
 pausing rendering do not change capture. Clearing requests affects HTTP history
@@ -157,14 +159,15 @@ only, not the log store or host calls.
 The visible list refreshes at most every 250 ms; hidden sections stop polling.
 On iOS, polling also stops when its application or window scene becomes inactive.
 Scrolling pauses rendering to keep rows stable. Search covers initial/final URL,
-method, and status code, never body content. Filters separate awaiting-completion
-entries from HTTP errors and incomplete outcomes. An HTTP 503 response can be
-fully received; it is not presented as a transport failure.
+method, and status code, never body content. HTTP filters combine host, source,
+method, observed state, HTTP status class and time. State and status are separate
+dimensions: a completed HTTP 503 is not presented as a transport failure.
 
-Details are snapshots with an explicit refresh action. Headers and observation
-provenance are available in Overview. Request/response bodies are queried only
-when the user selects them, displayed as bounded selectable raw text, and copied
-only on explicit action. Body policy, incomplete capture, unsupported format,
+Details are snapshots with an explicit metadata refresh action. Overview
+contains observation provenance; Request and Response contain their headers
+and body state. Selecting a section does not read content. Open reader performs
+the body lookup and displays bounded selectable text with literal search.
+Copying requires an explicit action. Body policy, incomplete capture, unsupported format,
 truncation, storage contention, and independent eviction remain distinguishable.
 If metadata has been removed, the detail view labels its last viewed snapshot; it
 does not resurrect it. Previously displayed text can remain visible until the

@@ -18,7 +18,7 @@ and observation points.
 | WebSocket | Host observations and optional OkHttp factory wrapper | Host observations and optional URLSession task wrapper | The iOS host forwards selected delegate events explicitly. Submission, queue acceptance, completion and peer receipt are distinct. Binary content is never copied. |
 | Environment | Explicit app, OS, device and process queries | Corresponding native queries | Allowlisted fields only. Unavailable and unsupported are separate from zero. No stable device identifier or user-assigned device name. |
 | Runtime breadcrumbs | Optional activity and memory callbacks; explicit host markers | Optional application and memory notifications; explicit host markers | Native lifecycle is not business-page navigation or proof that a screen rendered correctly. |
-| Live inspection | Native Views | UIKit controllers | Search, filtering, detail, copy and independent view pause. Capture continues when the viewer is closed. Content lookup is explicit. |
+| Live inspection | Native Views | UIKit controllers | Logs, Network, Problems and App; combined filters, details, explicit content reading and independent view pause. Simplified Chinese/English and Light/Dark settings are independent of the host. See [inspector](inspector.md). |
 
 Private log text becomes `[private]` before storage. Public text, an approved URL
 path or an approved body is a host assertion about that content; the SDK does not

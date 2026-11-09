@@ -96,8 +96,9 @@ Use `IncidentInspectorView(context, archive, environment, breadcrumbs)` on Andro
 or embed `IncidentInspectorViewController(archive:environment:breadcrumbs:)` in
 a navigation controller on iOS. Supply the same long-lived archive, a Core
 `EnvironmentProvider`, and a Core `BreadcrumbHistory`. The full combined
-inspector also accepts an optional incident archive and adds a Problems section,
-using its existing log, HTTP, and WebSocket histories. For the standalone view,
+inspector also accepts an optional incident archive to populate Problems,
+using its existing log, HTTP, and WebSocket histories. Without an archive,
+Problems explains that storage is not configured. For the standalone view,
 supply these as the optional `logs`, `http`, and `webSockets` arguments after
 `breadcrumbs`. Omitted histories remain unavailable for new marks; browsing
 already saved attachments does not require live histories.
@@ -141,7 +142,10 @@ guarantees. A host archive with stricter limits can still reject a save; the UI
 reports the error and preserves the draft. Use the Core API for custom budgets.
 
 The browser reads summaries on entry or explicit refresh, with a read time and
-per-instance storage status. It does not continuously poll the database. Details
+per-instance storage status. Its filters combine record type, manual/system
+source and record time, not the underlying failure time or reporting interval.
+See [the native inspector guide](inspector.md) for filter semantics. It does not
+continuously poll the database. Details
 are immutable: environment inspection, event search, and network details never
 query live sources again. Log, HTTP, and WebSocket groups show their observation
 times, retained and omitted counts, and source eviction counters. Missing groups

@@ -117,11 +117,13 @@ neither set establishes physical-device performance.
 ## Native inspection
 
 `WebSocketInspectorView` on Android and `WebSocketInspectorViewController` on
-iOS group the retained timeline by connection ID. A group shows matching event
-count and the latest matching observation, not a live socket state. Open a group
-to browse its events. Search uses sanitized URLs, identifiers, and event labels;
-message bodies are not loaded or searched by the list. Filters select all
-events, errors/observation gaps, or messages and send results.
+iOS group the retained timeline by connection ID. In the combined inspector,
+these connections appear within Network. A group shows its retained observation
+count and last retained lifecycle observation, not a live socket state. Missing
+lifecycle evidence stays Unknown. Connection filters combine host, source,
+observed state and time; a connection opens its event timeline with event-type,
+direction and time filters. Search uses sanitized metadata and identifiers;
+message bodies are not loaded or searched by the list.
 
 Event detail separates metadata from explicit content lookup and copying. It
 preserves correlation IDs, source, capture session, sequence, and observed time.
@@ -136,5 +138,7 @@ application or window scene also suspends polling. Clear removes the entire
 WebSocket history, including when invoked from one connection's timeline; it
 does not close host sockets. Detailed capture controls are shared with the other
 recorders on the same controller. The combined inspector accepts an additional
-recorder/history pair to expose the WebSocket section. Both viewers follow the
-host's native theme and provide English and Simplified Chinese copy.
+recorder/history pair to populate its WebSocket scope within Network. The
+combined inspector defaults to Simplified Chinese and Light, independently of
+the host, with English and Dark options in App. See
+[the native inspector guide](inspector.md) for filters and content reading.

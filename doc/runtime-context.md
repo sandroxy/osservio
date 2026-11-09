@@ -115,7 +115,9 @@ capture is off. They do not enter a history or create an archive by themselves.
 provide Environment and Breadcrumbs sections, plus Saved when an archive is
 supplied. Supply the environment provider,
 breadcrumb recorder, and history explicitly, or pass them to the combined
-inspector to add its Context tab. UI imports Core only; it neither creates
+inspector to populate App > Environment, Current timeline and Saved runs.
+The standalone runtime viewer retains its own section navigation. See
+[the native inspector guide](inspector.md). UI imports Core only; it neither creates
 collectors nor takes ownership of their shutdown.
 
 Environment is read once when first shown and on explicit refresh. Copy exports

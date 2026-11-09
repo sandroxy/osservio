@@ -105,8 +105,11 @@ replace its delegate, install a URL protocol, or modify requests.
 Only requests submitted through these methods are observed. The default policy
 omits bodies and sensitive URL/header content. On the main actor, present
 `InspectorViewController(logRecorder: recorder, logHistory: history,
-httpRecorder: http, httpHistory: requests)` directly for native log/network tabs
-with a Done control. For network-only inspection, embed
+httpRecorder: http, httpHistory: requests)` directly for Logs, Network, Problems
+and App, with a Close control. Optional capabilities remain explicitly
+unconfigured until their providers are supplied. The combined inspector
+defaults to Simplified Chinese and Light, with independent English and Dark
+preferences in App. See [the native inspector guide](../../doc/inspector.md). For network-only inspection, embed
 `HTTPInspectorViewController(recorder: http, history: requests)` in a navigation
 controller and supply dismissal appropriate to your presentation. Read
 [network coverage](../../doc/network-integration.md) and
@@ -165,8 +168,8 @@ Embed `RuntimeInspectorViewController(provider: environment, recorder:
 breadcrumbRecorder, history: breadcrumbs)` in a navigation controller with
 host-owned dismissal. Alternatively, add `environment`, `breadcrumbRecorder`,
 and `breadcrumbHistory` arguments to the combined inspector's WebSocket
-initializer. Its Context tab provides environment snapshots and a searchable
-breadcrumb timeline. The example uses memory-only history. To retain selected
+initializer. Its App destination provides environment snapshots, the current
+breadcrumb timeline and saved-run navigation. The example uses memory-only history. To retain selected
 contexts across launches, substitute `SQLiteBreadcrumbStore` as described in
 [breadcrumb persistence](../../doc/breadcrumb-storage.md), and pass it as
 `breadcrumbArchive` to the combined inspector (or `archive` to the runtime
@@ -178,8 +181,8 @@ The optional `OsservioRuntime` product also provides `SystemDiagnostics` for
 previously delivered MetricKit crash/hang facts on iOS 14+, and an explicitly
 started `MetricDiagnosticObserver` for new deliveries. It installs no fatal
 handler. See [system diagnostics](../../doc/system-diagnostics.md) for permitted
-fields, source limits, lifecycle, explicit incident persistence, and the remaining
-automatic-recovery, export, and UI limitations.
+fields, source limits, lifecycle, capture-gated recovery, incident persistence,
+export and the platform-specific delivery limitations.
 
 ## Manual problem snapshots
 
