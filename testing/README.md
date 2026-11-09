@@ -49,6 +49,13 @@ the visible session identity changed. It covers baseline fallback, expiry,
 replacement, repeated controls, and stopping all capture. Contention and shared
 recorder ordering are verified separately with bounded concurrency tests.
 
+`json-reader-cases.tsv` covers strict container syntax, exact number tokens,
+duplicate members, Unicode, escapes, incomplete input and non-JSON text. Its
+columns are a case name, expected result (`ok`, `invalid`, `notJSON`), and Base64
+UTF-8 source. Comment lines begin with `#`. Both UI model suites consume it;
+separate tests exercise input, depth and node budgets, cancellation, expansion
+and source offsets. These are reader checks, not capture or redaction rules.
+
 `http-url-cases.tsv` covers origin normalization and removal of credentials,
 paths, queries, and fragments. Each row contains a name, whether paths are
 approved, raw input, and the expected display URL.

@@ -1,0 +1,25 @@
+# name	expected	base64-encoded UTF-8 source
+empty-object	ok	e30=
+empty-array	ok	W10=
+nested	ok	eyJ1c2VyIjp7Im5hbWUiOiLkvaDlpb3wn5mCIiwiYWN0aXZlIjp0cnVlfSwiaXRlbXMiOlsxLG51bGwseyJ4IjpmYWxzZX1dfQ==
+precision	ok	eyJpZCI6OTAwNzE5OTI1NDc0MDk5MzEyMzQ1LCJpZCI6LTAsImRlY2ltYWwiOjEuMjMwMGUrOTl9
+escapes	ok	eyJhXHUwMDYyIjoibGluZVxuXCJxdW90ZWRcIlxcIiwic3Vycm9nYXRlIjoiXHVEODNEXHVERTQyIn0=
+whitespace	ok	IAkKIHsgIngiIDogWzEsIDJdIH0gDQo=
+truncated	invalid	eyJ4IjpbMSw=
+trailing-comma	invalid	WzEsXQ==
+object-trailing-comma	invalid	eyJ4IjoxLH0=
+leading-zero	invalid	WzAxXQ==
+plus	invalid	WysxXQ==
+fraction	invalid	WzEuXQ==
+exponent	invalid	WzFlK10=
+escape	invalid	WyJceDEyIl0=
+hex	invalid	WyJcdTEyeHoiXQ==
+control	invalid	WyJhAGIiXQ==
+tail	invalid	e30gaWdub3JlZA==
+comment	invalid	Wy8qeCovMV0=
+nan	invalid	W05hTl0=
+wrong-close	invalid	WzF9
+wrong-key	invalid	e2E6MX0=
+prefix	notJSON	cHJlZml4IHsieCI6MX0=
+encoded-string	notJSON	IntcInhcIjoxfSI=
+scalar	notJSON	MTIz

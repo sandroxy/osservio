@@ -6,6 +6,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:1.3.0"
 }
 android.defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+android.testOptions.unitTests.all { systemProperty "osservio.fixtures", rootProject.file("../../testing").absolutePath }
 
 // Keep the inspector's two languages available even in language-split host bundles.
 // The conventional translation files remain the only authoring source. Resource
