@@ -54,10 +54,19 @@ public final class InspectorQueryTest {
     private static LogEvent log(LogLevel level, String category, String message) {
         return LogEvent.restore(ID, 1, 1, level, category, message, false, false);
     }
+    @Test public void sameMillisecondTimelineKeepsCloseAfterMessage() {
+        List<WebSocketEvent> events = Arrays.asList(socket(2, WebSocketEvent.Kind.MESSAGE, 123),
+            socket(1, WebSocketEvent.Kind.OPENED, 123), socket(3, WebSocketEvent.Kind.CLOSED, 123));
+        Collections.sort(events, InspectorQuery::compareTimeline);
+        assertEquals(3, events.get(0).sequence); assertEquals(2, events.get(1).sequence); assertEquals(1, events.get(2).sequence);
+    }
     private static WebSocketEvent socket(long sequence, WebSocketEvent.Kind kind) {
+        return socket(sequence, kind, sequence);
+    }
+    private static WebSocketEvent socket(long sequence, WebSocketEvent.Kind kind, long timestamp) {
         boolean message = kind == WebSocketEvent.Kind.MESSAGE;
         return WebSocketEvent.restore(String.format(java.util.Locale.ROOT, "00000000-0000-0000-0000-%012d", sequence), ID, ID,
-            sequence, sequence, "wss://example.test/ws", WebSocketEvent.Source.HOST, kind, Collections.emptyList(), false, null, null, null,
+            sequence, timestamp, "wss://example.test/ws", WebSocketEvent.Source.HOST, kind, Collections.emptyList(), false, null, null, null,
             message ? WebSocketEvent.Direction.INCOMING : null, message ? WebSocketEvent.Outcome.RECEIVED : null, null,
             message ? WebSocketEvent.PayloadReference.restore(WebSocketEvent.PayloadState.OMITTED, null, null) : null);
     }

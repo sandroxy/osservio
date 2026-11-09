@@ -178,8 +178,10 @@ class NetworkInspectorView extends LinearLayout {
                 total++; if (query().matches(connection, state.timeAnchor)) items.add(new Item(null, connection, null));
             }
         }
-        Collections.sort(items, (left, right) -> left.time() == right.time()
-            ? left.id().compareTo(right.id()) : Long.compare(right.time(), left.time()));
+        Collections.sort(items, (left, right) -> {
+            if (left.event != null && right.event != null) return InspectorQuery.compareTimeline(left.event, right.event);
+            return left.time() == right.time() ? left.id().compareTo(right.id()) : Long.compare(right.time(), left.time());
+        });
         header.setQuery(query(), groups(), items.size(), total);
         header.empty.setText(total > 0 ? R.string.osservio_ui_filtered_empty : isDetailed()
             ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);

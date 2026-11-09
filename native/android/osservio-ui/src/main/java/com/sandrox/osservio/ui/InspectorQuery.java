@@ -81,6 +81,12 @@ final class InspectorQuery {
         try { String host = new URI(url).getHost(); return host == null ? "" : host.toLowerCase(Locale.ROOT); }
         catch (URISyntaxException invalid) { return ""; }
     }
+    /** Preserves capture order for timestamp ties within a session; IDs do not imply cross-session causality. */
+    static int compareTimeline(WebSocketEvent left, WebSocketEvent right) {
+        if (left.timestampMillis != right.timestampMillis) return Long.compare(right.timestampMillis, left.timestampMillis);
+        if (!left.sessionId.equals(right.sessionId)) return left.sessionId.compareTo(right.sessionId);
+        return left.sequence == right.sequence ? left.id.compareTo(right.id) : Long.compare(right.sequence, left.sequence);
+    }
     static String path(String url) {
         try {
             URI uri = new URI(url); if (uri.getHost() == null) return url;
