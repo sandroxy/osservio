@@ -3,10 +3,10 @@ import OsservioCore
 import UIKit
 
 enum RuntimePresentation {
-    static func text(_ key: String) -> String { NSLocalizedString(key, bundle: .module, comment: "") }
+    static func text(_ key: String) -> String { InspectorLocalization.text(key) }
     static func kind(_ event: BreadcrumbEvent) -> String { text("crumb_kind_" + event.kind.rawValue) }
     static func date(_ millis: Int64) -> String {
-        DateFormatter.localizedString(from: Date(timeIntervalSince1970: Double(millis) / 1_000), dateStyle: .medium, timeStyle: .medium)
+        InspectorLocalization.date(millis)
     }
     static func value(_ value: EnvironmentValue, key: EnvironmentKey) -> String {
         let result: String

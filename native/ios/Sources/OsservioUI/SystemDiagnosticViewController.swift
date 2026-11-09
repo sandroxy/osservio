@@ -6,7 +6,7 @@ import UIKit
 @MainActor
 final class SystemDiagnosticViewController: UITableViewController {
     private let diagnostic: SystemDiagnostic
-    private let fields: [(title: String, value: String)]
+    private var fields: [(title: String, value: String)]
     init(_ diagnostic: SystemDiagnostic) {
         self.diagnostic = diagnostic; fields = SystemDiagnosticPresentation.fields(diagnostic)
         super.init(style: .insetGrouped)
@@ -14,12 +14,17 @@ final class SystemDiagnosticViewController: UITableViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.text("diagnostic_title")
+        super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("diagnostic_title")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 64
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
             target: self, action: #selector(copyDiagnostic))
     }
     @objc private func copyDiagnostic() { UIPasteboard.general.string = SystemDiagnosticPresentation.summary(diagnostic) }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated); InspectorTheme.apply(self)
+        title = RuntimePresentation.text("diagnostic_title"); fields = SystemDiagnosticPresentation.fields(diagnostic)
+        navigationItem.rightBarButtonItem?.title = RuntimePresentation.text("archive_copy_summary"); tableView.reloadData()
+    }
     override func numberOfSections(in tableView: UITableView) -> Int { diagnostic.appleSignal != nil || diagnostic.androidExit?.tombstone != nil ? 2 : 1 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         section == 0 ? fields.count : diagnostic.appleSignal == nil ? 1 : 2

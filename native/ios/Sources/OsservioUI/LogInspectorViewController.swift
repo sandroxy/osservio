@@ -2,219 +2,144 @@
 import OsservioCore
 import UIKit
 
-private func copyText(_ key: String) -> String {
-    NSLocalizedString(key, bundle: .module, comment: "")
-}
-
-/// Presents a live log history. Visibility and rendering never change capture state.
+/// A bounded live log feed. Reading, navigation and presentation never change capture.
 @MainActor
-public final class LogInspectorViewController: UITableViewController, UISearchResultsUpdating {
+public final class LogInspectorViewController: UITableViewController {
     private let recorder: LogRecorder
     private let history: any LogHistory
     private let table = InspectorTableView(frame: .zero, style: .plain)
-    private let summary = UILabel()
-    private let levels = UISegmentedControl(items: [copyText("all"), "DEBUG", "INFO", "WARN", "ERROR"])
-    private let search = UISearchController(searchResultsController: nil)
-    private let pauseButton = UIButton(type: .system)
-    private let captureButton = UIButton(type: .system)
+    private let header = InspectorFeedHeader()
     private lazy var refreshLoop = InspectorRefreshLoop { [weak self] in self?.refresh() }
+    private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var latest: LogSnapshot?
-    private var visibleEvents: [LogEvent] = []
-    private var paused = false
-    private var needsRender = true
-    private let timeFormatter: DateFormatter = {
-        let value = DateFormatter()
-        value.dateFormat = "HH:mm:ss.SSS"
-        return value
-    }()
+    private var events: [LogEvent] = []
+    private var anchor: Int64 = 0
+    private var dirty = true
+    private var attemptedRead = false
+    private var stale = false
+    private(set) var query = InspectorQuery()
+    private(set) var paused = false
 
     public init(recorder: LogRecorder, history: any LogHistory) {
-        self.recorder = recorder
-        self.history = history
-        super.init(style: .plain)
+        self.recorder = recorder; self.history = history; super.init(style: .plain)
     }
-
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
-
-    public override func loadView() {
-        super.loadView()
-        tableView = table
-    }
-
+    public override func loadView() { super.loadView(); tableView = table }
     public override func viewDidLoad() {
-        super.viewDidLoad()
-        title = copyText("logs")
-        view.backgroundColor = .systemBackground
-        navigationItem.searchController = search
-        navigationItem.hidesSearchBarWhenScrolling = false
-        search.obscuresBackgroundDuringPresentation = false
-        search.searchBar.placeholder = copyText("search")
-        search.searchResultsUpdater = self
-        definesPresentationContext = true
-
-        summary.font = .preferredFont(forTextStyle: .caption1)
-        summary.adjustsFontForContentSizeCategory = true
-        summary.textColor = .secondaryLabel
-        summary.numberOfLines = 0
-        levels.selectedSegmentIndex = 0
-        levels.addTarget(self, action: #selector(filterChanged), for: .valueChanged)
-        pauseButton.setTitle(copyText("pauseView"), for: .normal)
-        pauseButton.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
-        captureButton.addTarget(self, action: #selector(toggleCapture), for: .touchUpInside)
-        let clear = UIButton(type: .system)
-        clear.setTitle(copyText("clear"), for: .normal)
-        clear.addTarget(self, action: #selector(clearHistory), for: .touchUpInside)
-        let controls = InspectorControls(buttons: [captureButton, pauseButton, clear])
-        let header = UIStackView(arrangedSubviews: [summary, controls, levels])
-        header.axis = .vertical
-        header.spacing = 8
-        header.isLayoutMarginsRelativeArrangement = true
-        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
-        table.tableHeaderView = header
-        table.dataSource = self
-        table.delegate = self
-        table.rowHeight = UITableView.automaticDimension
-        table.estimatedRowHeight = 80
+        super.viewDidLoad(); table.tableHeaderView = header
+        table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 100
         table.keyboardDismissMode = .onDrag
-        table.tableFooterView = UIView()
+        header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
+        header.pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
+        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
+        style.changed()
     }
-
-    public override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        refreshLoop.show(in: view)
+    private func relabel() {
+        InspectorTheme.apply(self); title = InspectorLocalization.text("logs")
+        header.search.placeholder = InspectorLocalization.text("search"); render()
     }
-    public override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        refreshLoop.show(in: view)
-    }
-    public override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        refreshLoop.hide()
-    }
-
+    public override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); refreshLoop.show(in: view) }
+    public override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); refreshLoop.show(in: view) }
+    public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); refreshLoop.hide(); view.endEditing(true) }
     private func refresh() {
-        if !paused, let snapshot = history.snapshot() {
-            if latest?.revision != snapshot.revision { needsRender = true }
-            latest = snapshot
+        guard presentedViewController == nil else { return }
+        if !paused {
+            anchor = Int64(Date().timeIntervalSince1970 * 1_000)
+            attemptedRead = true
+            let snapshot = history.snapshot(), failed = snapshot == nil
+            dirty = dirty || stale != failed; stale = failed
+            if let snapshot { dirty = dirty || latest?.revision != snapshot.revision; latest = snapshot }
         }
-        if needsRender { render() }
-        if let status = recorder.status() {
-            captureButton.setTitle(copyText(status.isRecording ? "stopCapture" : "startCapture"), for: .normal)
-            let state = copyText(status.isRecording ? "capturing" : "stopped")
-            summary.text = String(format: copyText("summary"), state, latest?.events.count ?? 0,
-                                  latest?.evictedCount ?? 0, status.rateLimitedCount)
-        }
-        table.setNeedsLayout()
+        if dirty || query.recentMinutes > 0 { render() } else { updateStatus() }
     }
-
+    private func updateStatus() {
+        let recording = recorder.status()?.isRecording == true
+        header.status.text = InspectorLocalization.text(paused ? "ui_paused" : recording ? "ui_capturing" : "ui_not_capturing")
+        if stale { header.status.text! += " · " + InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window") }
+        header.relabel(paused: paused, query: query); table.setNeedsLayout()
+    }
     private func render() {
-        let query = search.searchBar.text ?? ""
-        let index = levels.selectedSegmentIndex
-        let level = index > 0 ? LogLevel.allCases[index - 1] : nil
-        visibleEvents = (latest?.events ?? []).reversed().filter {
-            (level == nil || $0.level == level) && (query.isEmpty
-                || $0.message.localizedCaseInsensitiveContains(query)
-                || $0.category.localizedCaseInsensitiveContains(query))
-        }
-        table.reloadData()
-        let empty = UILabel()
-        empty.text = copyText(latest?.events.isEmpty == false ? "noMatches" : "empty")
-        empty.textColor = .secondaryLabel
-        empty.font = .preferredFont(forTextStyle: .body)
-        empty.adjustsFontForContentSizeCategory = true
-        empty.textAlignment = .center
-        empty.numberOfLines = 0
-        table.setEmptyState(visibleEvents.isEmpty ? empty : nil)
-        needsRender = false
-    }
-
-    public func updateSearchResults(for searchController: UISearchController) { filterChanged() }
-    @objc private func filterChanged() { needsRender = true; refresh() }
-    @objc private func clearHistory() {
-        history.clear()
-        latest = history.snapshot()
-        needsRender = true
-        refresh()
+        events = (latest?.events ?? []).reversed().filter { query.matches($0, now: anchor) }
+        table.reloadData(); dirty = false
+        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
+        let key = latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty"
+            : recorder.status()?.isRecording == true ? "ui_waiting" : "ui_inactive_empty"
+        table.setEmptyState(events.isEmpty ? InspectorTheme.empty(key) : nil)
+        updateStatus()
     }
     @objc private func togglePause() {
-        paused.toggle()
-        pauseButton.setTitle(copyText(paused ? "resumeView" : "pauseView"), for: .normal)
+        paused.toggle(); dirty = true
+        if !paused { table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false) }
         refresh()
     }
-    @objc private func toggleCapture() {
-        guard let state = recorder.status() else { showBusy(); return }
-        if state.isRecording {
-            if !recorder.stop() { showBusy() }
-        } else {
-            do { try recorder.start() } catch { showBusy() }
+    @objc private func showFilters() {
+        view.endEditing(true)
+        let filters = InspectorFilterViewController(query: query, groups: InspectorFilterOptions.logs(latest?.events ?? [])) { [weak self] query in
+            self?.query = query; self?.render()
         }
-        refresh()
+        present(InspectorNavigationController(rootViewController: filters), animated: true)
     }
-    private func showBusy() {
-        let alert = UIAlertController(title: copyText("busy"), message: nil, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: copyText("ok"), style: .default))
-        present(alert, animated: true)
+    @objc private func showActions() {
+        let active = recorder.status()?.isRecording == true
+        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text(active ? "stopCapture" : "startCapture"), style: .default) { [weak self] _ in self?.toggleCapture() })
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+            guard let self else { return }
+            let status = self.recorder.status()
+            self.inspectorNotice(String(format: InspectorLocalization.text("summary"), InspectorLocalization.text(status?.isRecording == true ? "capturing" : "stopped"),
+                self.latest?.events.count ?? 0, self.latest?.evictedCount ?? 0, status?.rateLimitedCount ?? 0))
+        })
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("clear"), style: .destructive) { [weak self] _ in
+            self?.inspectorConfirm(InspectorLocalization.text("clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
+                guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
+            }
+        })
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
+        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
+        present(menu, animated: true)
     }
-
-    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        if !paused { togglePause() }
+    private func toggleCapture() {
+        guard let status = recorder.status() else { inspectorNotice(InspectorLocalization.text("busy")); return }
+        if status.isRecording { if !recorder.stop() { inspectorNotice(InspectorLocalization.text("busy")) } }
+        else { do { try recorder.start() } catch { inspectorNotice(InspectorLocalization.text("busy")) } }
+        dirty = true; refresh()
     }
-
-    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { visibleEvents.count }
+    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
+    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let event = visibleEvents[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: "log")
-            ?? UITableViewCell(style: .subtitle, reuseIdentifier: "log")
-        cell.textLabel?.text = event.message
-        cell.textLabel?.font = .preferredFont(forTextStyle: .body)
-        cell.textLabel?.adjustsFontForContentSizeCategory = true
-        cell.textLabel?.numberOfLines = 2
-        cell.textLabel?.textColor = event.level == .error ? .systemRed : .label
-        let time = timeFormatter.string(from: Date(timeIntervalSince1970: Double(event.timestampMillis) / 1_000))
-        let marker = event.isTruncated ? " · " + copyText("truncated") : ""
-        cell.detailTextLabel?.text = "\(time) · \(event.level.rawValue.uppercased()) · \(event.category)\(marker)"
-        cell.detailTextLabel?.font = .preferredFont(forTextStyle: .caption1)
-        cell.detailTextLabel?.adjustsFontForContentSizeCategory = true
-        cell.detailTextLabel?.numberOfLines = 0
-        cell.detailTextLabel?.textColor = .secondaryLabel
-        cell.accessoryType = .disclosureIndicator
+        let event = events[indexPath.row]
+        let cell = table.dequeueReusableCell(withIdentifier: "log") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "log")
+        cell.configure(badge: InspectorFilterOptions.label(.level, event.level.rawValue), time: event.timestampMillis,
+            title: event.message, subtitle: event.category + (event.isTruncated ? " · " + InspectorLocalization.text("truncated") : ""),
+            color: event.level == .error ? .systemRed : event.level == .warning ? .systemOrange : InspectorTheme.accent)
         return cell
     }
-
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let detail = LogDetailViewController(event: visibleEvents[indexPath.row])
-        if let navigationController { navigationController.pushViewController(detail, animated: true) }
-        else { present(UINavigationController(rootViewController: detail), animated: true) }
+        table.deselectRow(at: indexPath, animated: true); inspectorPush(LogDetailViewController(event: events[indexPath.row]))
     }
 }
 
 @MainActor
-final class LogDetailViewController: UIViewController {
+final class LogDetailViewController: InspectorDetailViewController {
     private let event: LogEvent
-    init(event: LogEvent) { self.event = event; super.init(nibName: nil, bundle: nil) }
+    init(event: LogEvent) { self.event = event; super.init() }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        title = event.category
-        let text = UITextView()
-        text.isEditable = false
-        text.font = .preferredFont(forTextStyle: .body)
-        text.adjustsFontForContentSizeCategory = true
-        text.backgroundColor = .systemBackground
-        text.textColor = .label
-        text.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
-        text.text = RuntimePresentation.date(event.timestampMillis) + "\n"
-            + HTTPPresentation.text("http_session") + ": " + event.sessionID + "\n"
-            + "\(event.level.rawValue.uppercased()) · #\(event.sequence)\n"
-            + (event.isPrivate ? RuntimePresentation.text("crumb_private") + "\n" : "")
-            + (event.isTruncated ? copyText("truncated") + "\n" : "") + "\n" + event.message
-        view = text
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: copyText("copy"), style: .plain,
-                                                            target: self, action: #selector(copyMessage))
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated); title = event.category
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("copy"), style: .plain, target: self, action: #selector(copyMessage))
+        sections = [Section(title: InspectorLocalization.text("ui_metadata"), rows: [
+            Row(InspectorLocalization.text("ui_level"), InspectorFilterOptions.label(.level, event.level.rawValue)),
+            Row(InspectorLocalization.text("ui_category"), event.category),
+            Row(InspectorLocalization.text("http_time"), InspectorLocalization.date(event.timestampMillis)),
+            Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
+        ]), Section(title: InspectorLocalization.text("ui_read_content"), rows: [
+            Row(String(event.message.prefix(600)), action: { [weak self] in
+                guard let self else { return }; self.read(self.event.category, content: self.event.message, code: false)
+            })
+        ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · "))]
     }
     @objc private func copyMessage() { UIPasteboard.general.string = event.message }
 }

@@ -86,16 +86,16 @@ final class InspectorRefreshTests: XCTestCase {
         defer { dismiss(window) }
         viewer.beginAppearanceTransition(true, animated: false); viewer.endAppearanceTransition()
         try await waitUntil { probe.readCount("log") > 0 }
-        let pause = try XCTUnwrap(button(in: viewer.view, title: RuntimePresentation.text("pauseView")))
+        let pause = try XCTUnwrap(button(in: viewer.view, title: RuntimePresentation.text("ui_pause")))
         try activate(pause)
-        XCTAssertEqual(pause.title(for: .normal), RuntimePresentation.text("resumeView"))
+        XCTAssertEqual(pause.title(for: .normal), RuntimePresentation.text("ui_follow_latest"))
         let frozen = probe.readCount("log")
         NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
         viewer.beginAppearanceTransition(false, animated: false); viewer.endAppearanceTransition()
         viewer.beginAppearanceTransition(true, animated: false); viewer.endAppearanceTransition()
         try await assertStable { probe.readCount("log") == frozen }
-        XCTAssertEqual(pause.title(for: .normal), RuntimePresentation.text("resumeView"))
+        XCTAssertEqual(pause.title(for: .normal), RuntimePresentation.text("ui_follow_latest"))
         try activate(pause)
         XCTAssertGreaterThan(probe.readCount("log"), frozen)
     }

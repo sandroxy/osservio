@@ -3,14 +3,8 @@ import OsservioCore
 
 /// Builds metadata rows without loading message payloads. Payload lookup happens only in detail.
 enum WebSocketPresentation {
-    static func text(_ key: String) -> String { NSLocalizedString(key, bundle: .module, comment: "") }
+    static func text(_ key: String) -> String { InspectorLocalization.text(key) }
     static func kind(_ event: WebSocketEvent) -> String { text("ws_kind_" + event.kind.rawValue) }
-    static func hasIssue(_ event: WebSocketEvent) -> Bool {
-        event.kind == .failed || event.kind == .cancelled || event.kind == .observationLimited
-            || event.outcome == .failed || event.outcome == .rejected || event.outcome == .unobserved
-            || (event.closeCode != nil && event.closeCode != 1000 && event.closeCode != 1001)
-    }
-    static func isMessage(_ event: WebSocketEvent) -> Bool { event.kind == .message || event.kind == .messageResult }
     static func summary(_ event: WebSocketEvent) -> String {
         var parts = [kind(event)]
         if let direction = event.direction { parts.append(text("ws_" + direction.rawValue)) }
@@ -20,8 +14,7 @@ enum WebSocketPresentation {
     }
     static func overview(_ event: WebSocketEvent) -> String {
         func field(_ key: String, _ value: String?) -> String { text(key) + ": " + (value ?? text("http_none")) }
-        let date = DateFormatter.localizedString(from: Date(timeIntervalSince1970: Double(event.timestampMillis) / 1_000),
-                                                dateStyle: .medium, timeStyle: .medium)
+        let date = InspectorLocalization.date(event.timestampMillis)
         let source = event.source == .okHttp ? "OkHttp" : event.source == .urlSession ? "URLSession" : text("ws_host")
         return [event.url, summary(event), field("ws_time", date), field("http_source", source),
                 field("ws_connection", event.connectionID), field("ws_event", event.id),
@@ -47,7 +40,7 @@ enum WebSocketPresentation {
         guard let reference else { return text("ws_no_payload") }
         return payloadDescription(reference) + (reference.blobID.map { "\n\n" + IncidentPayloadPresentation.content(savedPayloads[$0]) } ?? "")
     }
-    private static func payloadDescription(_ reference: WebSocketPayloadReference) -> String {
+    static func payloadDescription(_ reference: WebSocketPayloadReference) -> String {
         text("ws_payload_" + reference.state.rawValue) + "\n" + text("ws_bytes") + ": " + (reference.byteCount.map(String.init) ?? text("http_none"))
     }
 }

@@ -4,10 +4,11 @@ import UIKit
 
 /// Immutable saved evidence; opening it never refreshes attachments with new host observations.
 @MainActor
-final class IncidentSnapshotViewController: UITableViewController, UISearchResultsUpdating {
+final class IncidentSnapshotViewController: UITableViewController {
     private let snapshot: IncidentSnapshot
     private var events: [BreadcrumbEvent]
-    private let search = UISearchController(searchResultsController: nil)
+    private let search = UISearchTextField()
+    private let header = UIStackView()
     private let exportStatus = UILabel()
     private var sharing: IncidentSharePresentation?
     init(snapshot: IncidentSnapshot, exporter: (any IncidentExporter)? = nil) {
@@ -19,43 +20,46 @@ final class IncidentSnapshotViewController: UITableViewController, UISearchResul
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+    override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .insetGrouped) }
     override func viewDidLoad() {
-        super.viewDidLoad(); title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
+        super.viewDidLoad(); InspectorTheme.apply(self); title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
-        search.searchResultsUpdater = self; search.obscuresBackgroundDuringPresentation = false
-        search.searchBar.placeholder = RuntimePresentation.text("crumb_search")
-        if snapshot.breadcrumbs != nil { navigationItem.searchController = search }
-        navigationItem.hidesSearchBarWhenScrolling = false; definesPresentationContext = true
-        let copy = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
+        search.placeholder = RuntimePresentation.text("crumb_search")
+        search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
+        search.autocorrectionType = .no; search.autocapitalizationType = .none; search.returnKeyType = .done
+        search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
+        search.addTarget(self, action: #selector(endSearch), for: .editingDidEndOnExit)
+        header.axis = .vertical; header.spacing = 10; header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20)
+        header.addArrangedSubview(exportStatus); exportStatus.isHidden = true
+        if snapshot.breadcrumbs != nil { header.addArrangedSubview(search) }
+        tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
+        let copy = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain,
             target: self, action: #selector(copySummary))
+        copy.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
         navigationItem.rightBarButtonItems = sharing.map { [$0.button, copy] } ?? [copy]
         exportStatus.font = .preferredFont(forTextStyle: .footnote); exportStatus.adjustsFontForContentSizeCategory = true
         exportStatus.numberOfLines = 0; exportStatus.textColor = .secondaryLabel
     }
-    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); sharing?.cancel() }
-    override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); layoutExportStatus() }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); sharing?.cancel(); view.endEditing(true) }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated); InspectorTheme.apply(self)
+        title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
+        search.placeholder = RuntimePresentation.text("crumb_search")
+        navigationItem.rightBarButtonItems?.last?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
+        sharing?.button.accessibilityLabel = RuntimePresentation.text("incident_share"); tableView.reloadData()
+    }
     private func showExportStatus(_ message: String?) {
-        exportStatus.text = message
-        if message == nil { tableView.tableHeaderView = nil }
-        else {
-            if tableView.tableHeaderView == nil {
-                let header = UIView(); header.addSubview(exportStatus); tableView.tableHeaderView = header
-            }
-            layoutExportStatus(); UIAccessibility.post(notification: .announcement, argument: message)
-        }
+        exportStatus.text = message; exportStatus.isHidden = message == nil
+        tableView.setNeedsLayout()
+        if let message { UIAccessibility.post(notification: .announcement, argument: message) }
     }
-    private func layoutExportStatus() {
-        guard let header = tableView.tableHeaderView else { return }
-        let width = tableView.bounds.width, inset: CGFloat = 20
-        let height = exportStatus.sizeThatFits(CGSize(width: max(0, width - inset * 2), height: .greatestFiniteMagnitude)).height + 24
-        exportStatus.frame = CGRect(x: inset, y: 12, width: max(0, width - inset * 2), height: height - 24)
-        if header.frame.width != width || header.frame.height != height {
-            header.frame = CGRect(x: 0, y: 0, width: width, height: height); tableView.tableHeaderView = header
-        }
-    }
+    @objc private func endSearch() { search.resignFirstResponder() }
     @objc private func copySummary() { UIPasteboard.general.string = IncidentPresentation.summary(snapshot) }
-    func updateSearchResults(for searchController: UISearchController) {
-        let query = searchController.searchBar.text ?? ""
+    @objc private func searchChanged() {
+        guard search.markedTextRange == nil else { return }
+        let query = String((search.text ?? "").prefix(512)); if search.text != query { search.text = query }
         events = (snapshot.breadcrumbs?.events ?? []).reversed().filter {
             query.isEmpty || $0.label.localizedCaseInsensitiveContains(query) || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query)
                 || ($0.message?.localizedCaseInsensitiveContains(query) ?? false)

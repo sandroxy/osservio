@@ -62,6 +62,13 @@ final class InspectorQueryTests: XCTestCase {
         XCTAssertEqual(InspectorQuery.path("https://API.example.test/a%2Fb?q=a%26b"), "/a%2Fb?q=a%26b")
     }
 
+    func testSameMillisecondTimelineKeepsCloseAfterMessage() throws {
+        let open = try socket(sequence: 1, kind: .opened, timestamp: 123)
+        let message = try socket(sequence: 2, kind: .message, timestamp: 123)
+        let close = try socket(sequence: 3, kind: .closed, timestamp: 123)
+        XCTAssertEqual([message, open, close].sorted(by: InspectorQuery.timelineNewestFirst).map(\.sequence), [3, 2, 1])
+    }
+
     func testPreferencesDefaultAndPersistWithoutChangingHostPreferences() throws {
         let suite = "osservio.tests.preferences.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -77,10 +84,10 @@ final class InspectorQueryTests: XCTestCase {
         XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["ja"])
     }
 
-    private func socket(sequence: Int64, kind: WebSocketKind) throws -> WebSocketEvent {
+    private func socket(sequence: Int64, kind: WebSocketKind, timestamp: Int64? = nil) throws -> WebSocketEvent {
         let message = kind == .message
         return try .restore(id: String(format: "00000000-0000-0000-0000-%012lld", sequence), connectionID: id,
-            sessionID: id, sequence: sequence, timestampMillis: sequence, url: "wss://example.test/ws", source: .host,
+            sessionID: id, sequence: sequence, timestampMillis: timestamp ?? sequence, url: "wss://example.test/ws", source: .host,
             kind: kind, headers: [], headersLimited: false, statusCode: nil, closeCode: nil, failure: nil,
             direction: message ? .incoming : nil, outcome: message ? .received : nil, relatedMessageID: nil,
             payload: message ? .restore(state: .omitted, blobID: nil, byteCount: nil) : nil)

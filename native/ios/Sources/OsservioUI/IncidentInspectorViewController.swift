@@ -2,7 +2,7 @@
 import OsservioCore
 import UIKit
 
-/// Saved incident browsing and manual marking. The host owns persistence, histories, and presentation.
+/// Saved evidence is queried on demand. Record-time filters never claim the failure's occurrence time.
 @MainActor
 public final class IncidentInspectorViewController: UITableViewController {
     private let archive: any IncidentArchive
@@ -12,7 +12,13 @@ public final class IncidentInspectorViewController: UITableViewController {
     private let http: (any HTTPHistory)?
     private let webSockets: (any WebSocketHistory)?
     private let exporter: (any IncidentExporter)?
+    private let table = InspectorTableView(frame: .zero, style: .plain)
+    private let header = InspectorFeedHeader()
+    private let markButton = UIButton(type: .system), refreshButton = UIButton(type: .system)
+    private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var snapshots: [IncidentSummary] = []
+    private var filtered: [IncidentSummary] = []
+    private var query = InspectorQuery()
     private var reading = false
     private var generation = 0
     private var updatedAt: Int64?
@@ -23,20 +29,35 @@ public final class IncidentInspectorViewController: UITableViewController {
                 exporter: (any IncidentExporter)? = nil) {
         self.archive = archive; self.environment = environment; self.breadcrumbs = breadcrumbs
         self.logs = logs; self.http = http; self.webSockets = webSockets; self.exporter = exporter
-        super.init(style: .insetGrouped)
+        super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+    public override func loadView() { super.loadView(); tableView = table }
     public override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.text("incident_title")
-        tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
+        super.viewDidLoad(); table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102
+        table.keyboardDismissMode = .onDrag; table.tableHeaderView = header; header.pause.isHidden = true
+        header.extra.addArrangedSubview(InspectorControls(buttons: [markButton, refreshButton]))
+        markButton.backgroundColor = InspectorTheme.tint; markButton.layer.cornerRadius = 10
+        markButton.addTarget(self, action: #selector(markPressed), for: .touchUpInside)
+        refreshButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
+        header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
+        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
+        style.changed()
+    }
+    private func relabel() {
+        InspectorTheme.apply(self); title = InspectorLocalization.text("incident_title")
+        header.search.placeholder = InspectorLocalization.text("ui_problem_search")
+        markButton.setTitle(InspectorLocalization.text("incident_mark"), for: .normal)
+        refreshButton.setTitle(InspectorLocalization.text("incident_refresh"), for: .normal); render()
     }
     public override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); read() }
-    public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); generation += 1; reading = false }
+    public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); generation += 1; reading = false; view.endEditing(true) }
     private func read() {
         guard !reading else { return }
         reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_reading"); tableView.reloadData()
+        notice = RuntimePresentation.text("archive_reading"); render()
         archive.readIncidents { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -49,7 +70,7 @@ public final class IncidentInspectorViewController: UITableViewController {
                     self.justSaved = false
                 case .failure(let error): self.failed(error)
                 }
-                self.tableView.reloadData()
+                self.render()
             }
         }
     }
@@ -57,38 +78,46 @@ public final class IncidentInspectorViewController: UITableViewController {
         notice = PersistencePresentation.error(error)
         if let updatedAt { notice += "\n" + RuntimePresentation.text("runtime_previous") + " · " + RuntimePresentation.date(updatedAt) }
     }
-    public override func numberOfSections(in tableView: UITableView) -> Int { 2 }
-    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : snapshots.count }
-    public override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        if section == 0 { return notice + "\n\n" + PersistencePresentation.status(archive.persistenceStatus(), formatKey: "incident_status") }
-        return (snapshots.isEmpty && updatedAt != nil ? RuntimePresentation.text("incident_empty") + "\n\n" : "") + RuntimePresentation.text("incident_archive_hint")
+    private func render() {
+        filtered = snapshots.filter { query.matches($0, now: updatedAt ?? 0) }
+        header.status.text = notice; header.relabel(paused: false, query: query)
+        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
+        markButton.isEnabled = !reading; refreshButton.isEnabled = !reading
+        table.reloadData()
+        table.setEmptyState(filtered.isEmpty ? InspectorTheme.empty(snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil)
     }
+    @objc private func markPressed() { if !reading { mark() } }
+    @objc private func refreshPressed() { read() }
+    @objc private func showFilters() {
+        let kinds = ["manual", "managedCrash", "nativeCrash", "anr", "lowMemoryTermination", "signalTermination", "otherExit", "crash", "hang"]
+        let groups = [InspectorFilterGroup(.record, values: kinds), InspectorFilterGroup(.source, values: ["manual", "system"])]
+        let filters = InspectorFilterViewController(query: query, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
+        view.endEditing(true); present(InspectorNavigationController(rootViewController: filters), animated: true)
+    }
+    @objc private func showActions() {
+        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+            guard let self else { return }; self.inspectorNotice(PersistencePresentation.status(self.archive.persistenceStatus(), formatKey: "incident_status"))
+        })
+        let clear = UIAlertAction(title: InspectorLocalization.text("incident_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
+        clear.isEnabled = !reading && !snapshots.isEmpty; menu.addAction(clear)
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
+        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
+        present(menu, animated: true)
+    }
+    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { filtered.count }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "incident") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "incident")
-        PersistencePresentation.style(cell); cell.accessoryType = .none; cell.accessibilityTraits = .button
-        let enabled = !reading && !(indexPath.section == 0 && indexPath.row == 2 && snapshots.isEmpty)
-        cell.textLabel?.textColor = enabled ? .label : .secondaryLabel; cell.isUserInteractionEnabled = enabled
-        if indexPath.section == 0 {
-            cell.textLabel?.text = RuntimePresentation.text(["incident_mark", "incident_refresh", "incident_delete_all"][indexPath.row])
-            cell.detailTextLabel?.text = nil
-            cell.textLabel?.textColor = !enabled ? .secondaryLabel : indexPath.row == 2 ? .systemRed : view.tintColor
-        } else {
-            let snapshot = snapshots[indexPath.row]
-            cell.textLabel?.text = snapshot.diagnosticKind.map(SystemDiagnosticPresentation.kind) ?? RuntimePresentation.date(snapshot.timestampMillis)
-            cell.detailTextLabel?.text = IncidentPresentation.listDetail(snapshot)
-            cell.detailTextLabel?.numberOfLines = 3; cell.accessoryType = .disclosureIndicator
-        }
-        if !enabled { cell.accessibilityTraits.insert(.notEnabled) }
+        let snapshot = filtered[indexPath.row]
+        let cell = table.dequeueReusableCell(withIdentifier: "incident") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "incident")
+        cell.configure(badge: InspectorLocalization.text(snapshot.diagnosticKind == nil ? "ui_manual" : "ui_system"), time: snapshot.timestampMillis,
+            title: snapshot.note?.text ?? snapshot.diagnosticKind.map(SystemDiagnosticPresentation.kind) ?? InspectorLocalization.text("incident_manual"),
+            subtitle: IncidentPresentation.timeLabel(snapshot.diagnosticKind) + " · " + InspectorLocalization.date(snapshot.timestampMillis)
+                + "\n" + snapshot.id.prefix(8))
+        cell.isUserInteractionEnabled = !reading
         return cell
     }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        guard !reading else { return }
-        if indexPath.section == 0 {
-            if indexPath.row == 0 { mark() }
-            else if indexPath.row == 1 { read() }
-            else { confirmDeletion(id: nil) }
-        } else { open(id: snapshots[indexPath.row].id) }
+        table.deselectRow(at: indexPath, animated: true); if !reading { open(id: filtered[indexPath.row].id) }
     }
     private func mark() {
         do {
@@ -107,12 +136,12 @@ public final class IncidentInspectorViewController: UITableViewController {
                 httpHistory: http, webSocketHistory: webSockets) { [weak self] in
                 self?.justSaved = true; self?.read()
             }
-            present(UINavigationController(rootViewController: editor), animated: true)
-        } catch { notice = RuntimePresentation.text("incident_mark_failed"); tableView.reloadData() }
+            present(InspectorNavigationController(rootViewController: editor), animated: true)
+        } catch { notice = RuntimePresentation.text("incident_mark_failed"); render() }
     }
     private func open(id: String) {
         reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_reading"); tableView.reloadData()
+        notice = RuntimePresentation.text("archive_reading"); render()
         archive.readIncident(id: id) { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -123,13 +152,13 @@ public final class IncidentInspectorViewController: UITableViewController {
                     else { self.notice = RuntimePresentation.text("incident_missing") }
                 case .failure(let error): self.failed(error)
                 }
-                self.tableView.reloadData()
+                self.render()
             }
         }
     }
     public override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        guard indexPath.section == 1, !reading else { return nil }
-        let id = snapshots[indexPath.row].id
+        guard indexPath.section == 0, !reading else { return nil }
+        let id = filtered[indexPath.row].id
         let action = UIContextualAction(style: .destructive, title: RuntimePresentation.text("incident_delete")) { [weak self] _, _, completed in
             self?.confirmDeletion(id: id); completed(false)
         }
@@ -146,14 +175,14 @@ public final class IncidentInspectorViewController: UITableViewController {
     private func delete(id: String?) {
         guard !reading else { return }
         reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_deleting"); tableView.reloadData()
+        notice = RuntimePresentation.text("archive_deleting"); render()
         let completed: @Sendable (Result<Void, PersistenceError>) -> Void = { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
                 self.reading = false
                 switch result {
                 case .success: self.read()
-                case .failure(let error): self.failed(error); self.tableView.reloadData()
+                case .failure(let error): self.failed(error); self.render()
                 }
             }
         }

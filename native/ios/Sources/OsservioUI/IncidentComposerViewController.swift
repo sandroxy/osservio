@@ -50,7 +50,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.text("incident_mark")
+        super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("incident_mark")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         tableView.keyboardDismissMode = .interactive
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_cancel"), style: .plain, target: self, action: #selector(cancel))

@@ -53,6 +53,13 @@ struct InspectorQuery: Equatable {
             && contains(incident.id, incident.note?.text ?? "", incident.diagnosticKind?.rawValue ?? "manual")
     }
     static func host(_ url: String) -> String { URLComponents(string: url)?.host?.lowercased() ?? "" }
+    /// A timestamp tie must preserve capture order within a session. Session IDs
+    /// provide a stable tie-break only; they do not establish cross-session causality.
+    static func timelineNewestFirst(_ left: WebSocketEvent, _ right: WebSocketEvent) -> Bool {
+        if left.timestampMillis != right.timestampMillis { return left.timestampMillis > right.timestampMillis }
+        if left.sessionID != right.sessionID { return left.sessionID < right.sessionID }
+        return left.sequence == right.sequence ? left.id < right.id : left.sequence > right.sequence
+    }
     static func path(_ url: String) -> String {
         guard let components = URLComponents(string: url), components.host != nil else { return url }
         let path = components.percentEncodedPath.isEmpty ? "/" : components.percentEncodedPath

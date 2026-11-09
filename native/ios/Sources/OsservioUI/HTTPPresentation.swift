@@ -3,7 +3,7 @@ import OsservioCore
 
 /// Text is built only from admitted metadata or an explicit body lookup.
 enum HTTPPresentation {
-    static func text(_ key: String) -> String { NSLocalizedString(key, bundle: .module, comment: "") }
+    static func text(_ key: String) -> String { InspectorLocalization.text(key) }
 
     static func state(_ value: HTTPState) -> String {
         let key: String
@@ -19,10 +19,6 @@ enum HTTPPresentation {
         return text("http_" + key)
     }
 
-    static func isActive(_ event: HTTPEvent) -> Bool { event.state == .pending || event.state == .receiving }
-    static func hasIssue(_ event: HTTPEvent) -> Bool {
-        (event.statusCode ?? 0) >= 400 || (!isActive(event) && event.state != .completed)
-    }
     static func summary(_ event: HTTPEvent) -> String {
         var parts = [state(event.state)]
         if let code = event.statusCode { parts.append(String(code)) }
@@ -38,12 +34,11 @@ enum HTTPPresentation {
         let source: String
         let note: String
         switch event.source {
-        case .host: source = "Host"; note = "http_host_note"
+        case .host: source = text("ws_host"); note = "http_host_note"
         case .okHttp: source = "OkHttp"; note = "http_okhttp_note"
         case .urlSession: source = "URLSession"; note = "http_urlsession_note"
         }
-        let date = DateFormatter.localizedString(from: Date(timeIntervalSince1970: Double(event.timestampMillis) / 1_000),
-                                                dateStyle: .medium, timeStyle: .medium)
+        let date = InspectorLocalization.date(event.timestampMillis)
         return [event.method + " " + event.url, state(event.state),
                 field("final_url", event.responseURL), field("status", event.statusCode.map(String.init)),
                 field("duration", event.durationMillis.map { "\($0) ms" }), field("time", date),
@@ -68,7 +63,7 @@ enum HTTPPresentation {
     static func body(_ reference: HTTPBodyReference, savedPayloads: [String: IncidentPayload]) -> String {
         bodyDescription(reference) + (reference.blobID.map { "\n\n" + IncidentPayloadPresentation.content(savedPayloads[$0]) } ?? "")
     }
-    private static func bodyDescription(_ reference: HTTPBodyReference) -> String {
+    static func bodyDescription(_ reference: HTTPBodyReference) -> String {
         let key = reference.state == .invalidText ? "invalid_text" : reference.state.rawValue
         return text("http_body_" + key) + "\n" + text("http_observed_bytes") + ": \(reference.observedBytes)"
     }

@@ -3,136 +3,124 @@ import OsservioCore
 import UIKit
 
 @MainActor
-final class BreadcrumbInspectorViewController: UITableViewController, UITextFieldDelegate {
+final class BreadcrumbInspectorViewController: UITableViewController {
     private let recorder: BreadcrumbRecorder
     private let history: any BreadcrumbHistory
     private let table = InspectorTableView(frame: .zero, style: .plain)
-    private let search = UITextField()
-    private let summary = UILabel()
-    private let baseline = UIButton(type: .system)
-    private let pause = UIButton(type: .system)
+    private let header = InspectorFeedHeader()
+    private var query = InspectorQuery()
     private var paused = false
-    private lazy var refreshLoop = InspectorRefreshLoop { [weak self] in self?.refresh() }
+    private var anchor: Int64 = 0
+    private lazy var loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
+    private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var latest: BreadcrumbSnapshot?
     private var events: [BreadcrumbEvent] = []
     private var dirty = true
+    private var attemptedRead = false
+    private var stale = false
     init(recorder: BreadcrumbRecorder, history: any BreadcrumbHistory) {
         self.recorder = recorder; self.history = history; super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
-    override func loadView() {
-        super.loadView()
-        tableView = table
-    }
+    override func loadView() { super.loadView(); tableView = table }
     override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        summary.font = .preferredFont(forTextStyle: .caption1)
-        summary.adjustsFontForContentSizeCategory = true; summary.textColor = .secondaryLabel; summary.numberOfLines = 0
-        let explanation = UILabel()
-        explanation.font = .preferredFont(forTextStyle: .caption1); explanation.adjustsFontForContentSizeCategory = true
-        explanation.textColor = .secondaryLabel; explanation.numberOfLines = 0
-        explanation.text = RuntimePresentation.text("crumb_baseline_hint")
-        baseline.addTarget(self, action: #selector(toggleBaseline), for: .touchUpInside)
-        pause.setTitle(RuntimePresentation.text("pauseView"), for: .normal)
-        pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
-        let clear = UIButton(type: .system)
-        clear.setTitle(RuntimePresentation.text("crumb_clear"), for: .normal)
-        clear.addTarget(self, action: #selector(clearHistory), for: .touchUpInside)
-        let controls = InspectorControls(buttons: [baseline, pause, clear])
-        search.placeholder = RuntimePresentation.text("crumb_search")
-        search.borderStyle = .roundedRect; search.clearButtonMode = .whileEditing; search.returnKeyType = .done
-        search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true; search.delegate = self
-        search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
-        let header = UIStackView(arrangedSubviews: [summary, controls, explanation, search])
-        header.axis = .vertical; header.spacing = 8
-        header.isLayoutMarginsRelativeArrangement = true
-        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
-        table.tableHeaderView = header
-        table.dataSource = self; table.delegate = self; table.keyboardDismissMode = .onDrag
-        table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 80; table.tableFooterView = UIView()
+        super.viewDidLoad(); table.tableHeaderView = header
+        table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
+        header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
+        header.pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
+        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
+        style.changed()
     }
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        refreshLoop.show(in: view)
+    private func relabel() {
+        InspectorTheme.apply(self); title = InspectorLocalization.text("ui_current_timeline")
+        header.search.placeholder = InspectorLocalization.text("crumb_search"); render()
     }
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        refreshLoop.show(in: view)
-    }
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        refreshLoop.hide()
-    }
-
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); loop.show(in: view) }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); loop.show(in: view) }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); loop.hide(); view.endEditing(true) }
     private func refresh() {
-        if !paused, let snapshot = history.snapshot() {
-            if latest?.revision != snapshot.revision { dirty = true }; latest = snapshot
+        guard presentedViewController == nil else { return }
+        if !paused {
+            anchor = Int64(Date().timeIntervalSince1970 * 1_000)
+            attemptedRead = true
+            let snapshot = history.snapshot(), failed = snapshot == nil
+            dirty = dirty || stale != failed; stale = failed
+            if let snapshot { dirty = dirty || latest?.revision != snapshot.revision; latest = snapshot }
         }
-        if dirty {
-            let query = search.text ?? ""
-            events = (latest?.events ?? []).reversed().filter { query.isEmpty || $0.label.localizedCaseInsensitiveContains(query)
-                || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query) || ($0.message?.localizedCaseInsensitiveContains(query) ?? false) }
-            table.reloadData(); dirty = false
-            let empty = UILabel()
-            empty.text = RuntimePresentation.text(latest == nil ? "busy" : latest?.events.isEmpty == false ? "ws_no_matches" : "crumb_empty")
-            empty.numberOfLines = 0; empty.textAlignment = .center; empty.textColor = .secondaryLabel
-            empty.font = .preferredFont(forTextStyle: .body); empty.adjustsFontForContentSizeCategory = true
-            table.setEmptyState(events.isEmpty ? empty : nil)
-        }
-        if let status = recorder.captureController.status(), let recording = recorder.status() {
-            baseline.setTitle(RuntimePresentation.text(status.baselineEnabled ? "crumb_disable_baseline" : "crumb_enable_baseline"), for: .normal)
-            summary.text = String(format: RuntimePresentation.text("crumb_summary"), RuntimePresentation.text("http_" + status.mode.rawValue),
-                latest?.events.count ?? 0, latest?.evictedCount ?? 0, recording.rateLimitedCount)
-        }
-        table.setNeedsLayout()
+        if dirty || query.recentMinutes > 0 { render() } else { updateStatus() }
     }
-    @objc private func toggleBaseline() {
-        if let status = recorder.captureController.status(), recorder.captureController.setBaselineEnabled(!status.baselineEnabled) { refresh() }
-        else {
-            let alert = UIAlertController(title: RuntimePresentation.text("busy"), message: nil, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: RuntimePresentation.text("ok"), style: .default)); present(alert, animated: true)
+    private func render() {
+        events = (latest?.events ?? []).reversed().filter { event in
+            query.allows(.kind, event.kind.rawValue) && query.includesTime(event.timestampMillis, now: anchor)
+                && query.contains(event.label, event.message ?? "", RuntimePresentation.kind(event))
         }
+        table.reloadData(); dirty = false
+        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
+        table.setEmptyState(events.isEmpty ? InspectorTheme.empty(latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty" : "crumb_empty") : nil)
+        updateStatus()
     }
-    @objc private func togglePause() { paused.toggle(); pause.setTitle(RuntimePresentation.text(paused ? "resumeView" : "pauseView"), for: .normal); refresh() }
-    @objc private func clearHistory() { history.clear(); latest = history.snapshot(); dirty = true; refresh() }
-    @objc private func searchChanged() { dirty = true; refresh() }
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
-    override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
+    private func updateStatus() {
+        header.status.text = paused ? InspectorLocalization.text("ui_paused")
+            : recorder.captureController.status().map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy")
+        if stale { header.status.text! += " · " + InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window") }
+        header.relabel(paused: paused, query: query); table.setNeedsLayout()
+    }
+    @objc private func togglePause() {
+        paused.toggle(); dirty = true
+        if !paused { table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false) }
+        refresh()
+    }
+    @objc private func showFilters() {
+        let group = InspectorFilterGroup(.kind, values: (latest?.events ?? []).map { $0.kind.rawValue })
+        let filters = InspectorFilterViewController(query: query, groups: [group]) { [weak self] value in self?.query = value; self?.render() }
+        view.endEditing(true); present(InspectorNavigationController(rootViewController: filters), animated: true)
+    }
+    @objc private func showActions() {
+        let enabled = recorder.captureController.status()?.baselineEnabled == true
+        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: InspectorLocalization.text("crumb_baseline_hint"), preferredStyle: .actionSheet)
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text(enabled ? "crumb_disable_baseline" : "crumb_enable_baseline"), style: .default) { [weak self] _ in
+            guard let self else { return }
+            if let status = self.recorder.captureController.status(), self.recorder.captureController.setBaselineEnabled(!status.baselineEnabled) { self.updateStatus() }
+            else { self.inspectorNotice(InspectorLocalization.text("busy")) }
+        })
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+            guard let self else { return }
+            let status = self.recorder.captureController.status(), recording = self.recorder.status()
+            self.inspectorNotice(String(format: InspectorLocalization.text("crumb_summary"),
+                status.map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy"),
+                self.latest?.events.count ?? 0, self.latest?.evictedCount ?? 0, recording?.rateLimitedCount ?? 0))
+        })
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("crumb_clear"), style: .destructive) { [weak self] _ in
+            self?.inspectorConfirm(InspectorLocalization.text("crumb_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
+                guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
+            }
+        })
+        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
+        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
+        present(menu, animated: true)
+    }
+    override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: "crumb") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "crumb")
-        cell.textLabel?.text = RuntimePresentation.kind(event) + " · " + event.label
-        cell.textLabel?.font = .preferredFont(forTextStyle: .body); cell.textLabel?.adjustsFontForContentSizeCategory = true; cell.textLabel?.numberOfLines = 2
-        cell.detailTextLabel?.text = RuntimePresentation.date(event.timestampMillis) + " · #\(event.sequence)" + (event.message.map { "\n" + $0 } ?? "")
-        cell.detailTextLabel?.font = .preferredFont(forTextStyle: .caption1); cell.detailTextLabel?.adjustsFontForContentSizeCategory = true; cell.detailTextLabel?.numberOfLines = 3
-        cell.accessoryType = .disclosureIndicator
+        let cell = table.dequeueReusableCell(withIdentifier: "crumb") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "crumb")
+        cell.configure(badge: RuntimePresentation.kind(event), time: event.timestampMillis, title: event.label, subtitle: event.message ?? "#\(event.sequence)")
         return cell
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        navigationController?.pushViewController(BreadcrumbDetailViewController(event: events[indexPath.row]), animated: true)
+        table.deselectRow(at: indexPath, animated: true); inspectorPush(BreadcrumbDetailViewController(event: events[indexPath.row]))
     }
 }
 
 @MainActor
-final class BreadcrumbDetailViewController: UIViewController {
-    private let event: BreadcrumbEvent
-    init(event: BreadcrumbEvent) { self.event = event; super.init(nibName: nil, bundle: nil) }
+final class BreadcrumbDetailViewController: InspectorContentViewController {
+    init(event: BreadcrumbEvent) {
+        super.init(title: RuntimePresentation.kind(event),
+            content: InspectorLocalization.text("crumb_detail_hint") + "\n\n" + RuntimePresentation.breadcrumb(event), code: false)
+    }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
-    override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.kind(event)
-        let text = UITextView(); text.isEditable = false; text.font = .preferredFont(forTextStyle: .body)
-        text.adjustsFontForContentSizeCategory = true; text.backgroundColor = .systemBackground; text.textColor = .label
-        text.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
-        text.text = RuntimePresentation.text("crumb_detail_hint") + "\n\n" + RuntimePresentation.breadcrumb(event)
-        view = text
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("crumb_copy"), style: .plain, target: self, action: #selector(copyText))
-    }
-    @objc private func copyText() { UIPasteboard.general.string = RuntimePresentation.breadcrumb(event) }
 }
 #endif

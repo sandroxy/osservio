@@ -2,233 +2,102 @@
 import OsservioCore
 import UIKit
 
-/// HTTP metadata is refreshed only while visible. Body lookup is explicit and lazy.
+/// Standalone HTTP viewer with the same queries and lifecycle as the Network destination.
 @MainActor
-public final class HTTPInspectorViewController: UITableViewController, UISearchResultsUpdating {
-    private let recorder: HTTPRecorder
-    private let history: any HTTPHistory
-    private let table = InspectorTableView(frame: .zero, style: .plain)
-    private let summary = UILabel()
-    private let filter = UISegmentedControl(items: [HTTPPresentation.text("http_all"),
-        HTTPPresentation.text("http_issues"), HTTPPresentation.text("http_active")])
-    private let search = UISearchController(searchResultsController: nil)
-    private let capture = UIButton(type: .system)
-    private let pause = UIButton(type: .system)
-    private lazy var refreshLoop = InspectorRefreshLoop { [weak self] in self?.refresh() }
-    private var latest: HTTPSnapshot?
-    private var events: [HTTPEvent] = []
-    private var paused = false
-    private var dirty = true
-
+public final class HTTPInspectorViewController: UITableViewController {
+    private let content: NetworkInspectorContent
     public init(recorder: HTTPRecorder, history: any HTTPHistory) {
-        self.recorder = recorder; self.history = history
-        super.init(style: .plain)
+        content = NetworkInspectorContent(http: (recorder, history)); super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
-
-    public override func loadView() {
-        super.loadView()
-        tableView = table
-    }
-
-    public override func viewDidLoad() {
-        super.viewDidLoad()
-        title = HTTPPresentation.text("network")
-        view.backgroundColor = .systemBackground
-        navigationItem.searchController = search
-        navigationItem.hidesSearchBarWhenScrolling = false
-        search.obscuresBackgroundDuringPresentation = false
-        search.searchBar.placeholder = HTTPPresentation.text("http_search")
-        search.searchResultsUpdater = self
-        definesPresentationContext = true
-        summary.font = .preferredFont(forTextStyle: .caption1)
-        summary.adjustsFontForContentSizeCategory = true
-        summary.textColor = .secondaryLabel
-        summary.numberOfLines = 0
-        capture.addTarget(self, action: #selector(toggleCapture), for: .touchUpInside)
-        pause.setTitle(HTTPPresentation.text("pauseView"), for: .normal)
-        pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
-        let clear = UIButton(type: .system)
-        clear.setTitle(HTTPPresentation.text("http_clear"), for: .normal)
-        clear.addTarget(self, action: #selector(clearHistory), for: .touchUpInside)
-        let controls = InspectorControls(buttons: [capture, pause, clear])
-        filter.selectedSegmentIndex = 0
-        filter.addTarget(self, action: #selector(filterChanged), for: .valueChanged)
-        let header = UIStackView(arrangedSubviews: [summary, controls, filter])
-        header.axis = .vertical; header.spacing = 8
-        header.isLayoutMarginsRelativeArrangement = true
-        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
-        table.tableHeaderView = header
-        table.dataSource = self; table.delegate = self
-        table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 88
-        table.keyboardDismissMode = .onDrag; table.tableFooterView = UIView()
-    }
-
-    public override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        refreshLoop.show(in: view)
-    }
-    public override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        refreshLoop.show(in: view)
-    }
-    public override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        refreshLoop.hide()
-    }
-
-    private func refresh() {
-        recorder.maintenance()
-        if !paused, let snapshot = history.snapshot() {
-            if latest?.revision != snapshot.revision { dirty = true }
-            latest = snapshot
-        }
-        if dirty { render() }
-        if let status = recorder.captureController.status() {
-            capture.setTitle(HTTPPresentation.text(status.mode == .detailed ? "http_stop" : "http_start"), for: .normal)
-            summary.text = String(format: HTTPPresentation.text("http_summary"),
-                                  HTTPPresentation.text("http_" + status.mode.rawValue), latest?.events.count ?? 0,
-                                  latest?.evictedEvents ?? 0, latest?.evictedBodies ?? 0)
-        }
-        table.setNeedsLayout()
-    }
-    private func render() {
-        let query = search.searchBar.text ?? ""
-        events = (latest?.events ?? []).reversed().filter { event in
-            let matchesFilter = filter.selectedSegmentIndex == 0
-                || (filter.selectedSegmentIndex == 1 && HTTPPresentation.hasIssue(event))
-                || (filter.selectedSegmentIndex == 2 && HTTPPresentation.isActive(event))
-            return matchesFilter && (query.isEmpty || event.url.localizedCaseInsensitiveContains(query)
-                || (event.responseURL?.localizedCaseInsensitiveContains(query) ?? false)
-                || event.method.localizedCaseInsensitiveContains(query) || (event.statusCode.map { String($0).contains(query) } ?? false))
-        }
-        table.reloadData()
-        let empty = UILabel()
-        empty.text = HTTPPresentation.text(latest?.events.isEmpty == false ? "http_no_matches" : "http_empty")
-        empty.textColor = .secondaryLabel; empty.numberOfLines = 0; empty.textAlignment = .center
-        empty.font = .preferredFont(forTextStyle: .body); empty.adjustsFontForContentSizeCategory = true
-        table.setEmptyState(events.isEmpty ? empty : nil)
-        dirty = false
-    }
-    public func updateSearchResults(for searchController: UISearchController) { filterChanged() }
-    @objc private func filterChanged() { dirty = true; refresh() }
-    @objc private func togglePause() {
-        paused.toggle()
-        pause.setTitle(HTTPPresentation.text(paused ? "resumeView" : "pauseView"), for: .normal)
-        refresh()
-    }
-    @objc private func clearHistory() { history.clear(); latest = history.snapshot(); dirty = true; refresh() }
-    @objc private func toggleCapture() {
-        guard let status = recorder.captureController.status() else { showBusy(); return }
-        if status.mode == .detailed {
-            if !recorder.captureController.stopDetailed() { showBusy() }
-        } else {
-            do { try recorder.captureController.startDetailed() } catch { showBusy() }
-        }
-        refresh()
-    }
-    private func showBusy() {
-        let alert = UIAlertController(title: HTTPPresentation.text("busy"), message: nil, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: HTTPPresentation.text("ok"), style: .default))
-        present(alert, animated: true)
-    }
-    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
-    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
-    public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let event = events[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: "http")
-            ?? UITableViewCell(style: .subtitle, reuseIdentifier: "http")
-        cell.textLabel?.text = event.method + " " + event.url
-        cell.textLabel?.font = .preferredFont(forTextStyle: .body)
-        cell.textLabel?.adjustsFontForContentSizeCategory = true; cell.textLabel?.numberOfLines = 2
-        cell.textLabel?.textColor = .label
-        cell.detailTextLabel?.text = HTTPPresentation.summary(event)
-        cell.detailTextLabel?.font = .preferredFont(forTextStyle: .caption1)
-        cell.detailTextLabel?.adjustsFontForContentSizeCategory = true; cell.detailTextLabel?.numberOfLines = 0
-        cell.detailTextLabel?.textColor = HTTPPresentation.hasIssue(event) ? .systemRed : .secondaryLabel
-        cell.accessoryType = .disclosureIndicator
-        return cell
-    }
-    public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        let detail = HTTPDetailViewController(event: events[indexPath.row], history: history, recorder: recorder)
-        if let navigationController { navigationController.pushViewController(detail, animated: true) }
-        else { present(UINavigationController(rootViewController: detail), animated: true) }
-    }
+    public override func loadView() { super.loadView(); tableView = content.table }
+    public override func viewDidLoad() { super.viewDidLoad(); content.attach(to: self) }
+    public override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); content.show() }
+    public override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); content.show() }
+    public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); content.hide() }
 }
 
 @MainActor
-final class HTTPDetailViewController: UIViewController {
+final class HTTPDetailViewController: InspectorDetailViewController {
     private var event: HTTPEvent
     private let history: (any HTTPHistory)?
     private let recorder: HTTPRecorder?
     private let savedPayloads: [String: IncidentPayload]?
-    private let text = UITextView()
-    private let section = UISegmentedControl(items: [HTTPPresentation.text("http_overview"),
-        HTTPPresentation.text("http_request_body"), HTTPPresentation.text("http_response_body")])
-    private var notice = ""
-
+    private let selection = InspectorScopeControl(titles: ["", "", ""])
+    private var noticeKey: String?
+    private lazy var copyButton = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyMetadata))
+    private lazy var refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
     init(event: HTTPEvent, history: any HTTPHistory, recorder: HTTPRecorder) {
         self.event = event; self.history = history; self.recorder = recorder; savedPayloads = nil
-        super.init(nibName: nil, bundle: nil)
+        super.init()
     }
     init(event: HTTPEvent, savedPayloads: [String: IncidentPayload]) {
         self.event = event; self.savedPayloads = savedPayloads; history = nil; recorder = nil
-        notice = HTTPPresentation.text("incident_frozen_detail")
-        super.init(nibName: nil, bundle: nil)
+        noticeKey = "incident_frozen_detail"; super.init()
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = event.method
-        view.backgroundColor = .systemBackground
-        section.selectedSegmentIndex = 0
-        section.addTarget(self, action: #selector(render), for: .valueChanged)
-        text.isEditable = false; text.adjustsFontForContentSizeCategory = true
-        text.backgroundColor = .systemBackground; text.textColor = .label
-        text.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
-        let stack = UIStackView(arrangedSubviews: [section, text])
-        stack.axis = .vertical; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-            stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 8),
-            stack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8)
-        ])
-        navigationItem.rightBarButtonItems = [
-            UIBarButtonItem(title: HTTPPresentation.text("http_copy"), style: .plain, target: self, action: #selector(copyText))
-        ]
-        if history != nil {
-            let refresh = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
-            refresh.accessibilityLabel = HTTPPresentation.text("http_refresh"); navigationItem.rightBarButtonItems?.append(refresh)
-        }
+        navigationItem.rightBarButtonItems = history == nil ? [copyButton] : [copyButton, refreshButton]
+        let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
+        tableView.tableHeaderView = header
+        selection.onSelect = { [weak self] _ in self?.render() }
         refresh()
     }
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
     @objc private func refresh() {
-        guard let history else { render(); return }
-        recorder?.maintenance()
-        if let snapshot = history.snapshot() {
-            if let current = snapshot.events.first(where: { $0.id == event.id }) { event = current; notice = "" }
-            else { notice = HTTPPresentation.text("http_missing") }
-        } else { notice = HTTPPresentation.text("http_stale") }
+        if let history {
+            recorder?.maintenance()
+            if let snapshot = history.snapshot() {
+                if let current = snapshot.events.first(where: { $0.id == event.id }) { event = current; noticeKey = nil }
+                else { noticeKey = "http_missing" }
+            } else { noticeKey = "http_stale" }
+        }
         render()
     }
-    @objc private func render() {
-        let body = section.selectedSegmentIndex != 0
-        text.font = body ? UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 15, weight: .regular))
-            : .preferredFont(forTextStyle: .body)
-        let content: String
-        let reference = section.selectedSegmentIndex == 1 ? event.requestBody : event.responseBody
-        if !body { content = HTTPPresentation.overview(event) }
-        else if let savedPayloads { content = HTTPPresentation.body(reference, savedPayloads: savedPayloads) }
-        else if let history { content = HTTPPresentation.body(reference, history: history) }
-        else { content = HTTPPresentation.text("incident_payload_missing") }
-        text.text = (notice.isEmpty ? "" : notice + "\n\n") + content
-        text.setContentOffset(.zero, animated: false)
+    private func render() {
+        title = event.method + " · " + (event.statusCode.map(String.init) ?? HTTPPresentation.state(event.state))
+        selection.setTitles(["ui_overview", "ui_request", "ui_response"].map(InspectorLocalization.text))
+        copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
+        refreshButton.accessibilityLabel = InspectorLocalization.text("http_refresh")
+        func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
+        if selection.selectedIndex == 0 {
+            sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
+                field("ui_state", HTTPPresentation.state(event.state)), field("http_final_url", event.responseURL),
+                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(self.event.method, content: self.event.url) }),
+                field("http_status", event.statusCode.map(String.init)), field("http_duration", event.durationMillis.map { "\($0) ms" }),
+                field("http_failure", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) })
+            ], footer: noticeKey.map(InspectorLocalization.text)),
+            Section(title: InspectorLocalization.text("ui_metadata"), rows: [
+                field("http_time", InspectorLocalization.date(event.timestampMillis)),
+                field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)),
+                field("http_id", event.id), field("http_session", event.sessionID + " · #\(event.sequence)")
+            ], footer: InspectorLocalization.text(event.source == .host ? "http_host_note" : event.source == .okHttp ? "http_okhttp_note" : "http_urlsession_note")
+                + "\n\n" + InspectorLocalization.text("http_result_note"))]
+        } else {
+            let headers = selection.selectedIndex == 1 ? event.requestHeaders : event.responseHeaders
+            let reference = selection.selectedIndex == 1 ? event.requestBody : event.responseBody
+            sections = [Section(title: InspectorLocalization.text("ui_headers"), rows: headers.isEmpty
+                ? [Row(InspectorLocalization.text("http_none"))] : headers.map { fieldHeader in Row(fieldHeader.name, fieldHeader.value) },
+                footer: event.headersLimited ? InspectorLocalization.text("http_headers_limited") : nil),
+                Section(title: InspectorLocalization.text("ui_body"), rows: [
+                    Row(HTTPPresentation.bodyDescription(reference)),
+                    Row(InspectorLocalization.text("ui_open_reader"), action: { [weak self] in self?.openBody() })
+                ], footer: noticeKey.map(InspectorLocalization.text))]
+        }
     }
-    @objc private func copyText() { UIPasteboard.general.string = text.text }
+    private func openBody() {
+        let reference = selection.selectedIndex == 1 ? event.requestBody : event.responseBody
+        let content: String
+        if let savedPayloads { content = HTTPPresentation.body(reference, savedPayloads: savedPayloads) }
+        else if let history { content = HTTPPresentation.body(reference, history: history) }
+        else { content = InspectorLocalization.text("incident_payload_missing") }
+        read(InspectorLocalization.text(selection.selectedIndex == 1 ? "http_request_body" : "http_response_body"),
+            content: (noticeKey.map { InspectorLocalization.text($0) + "\n\n" } ?? "") + content)
+    }
+    @objc private func copyMetadata() { UIPasteboard.general.string = HTTPPresentation.overview(event) }
 }
 #endif

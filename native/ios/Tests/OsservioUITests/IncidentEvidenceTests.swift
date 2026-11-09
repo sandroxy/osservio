@@ -1,12 +1,32 @@
 #if canImport(UIKit)
 import Foundation
 import OsservioCore
+import OsservioStore
 @testable import OsservioUI
 import UIKit
 import XCTest
 
 final class IncidentEvidenceTests: XCTestCase {
     private let id = "12345678-1234-1234-1234-123456789abc"
+    @MainActor
+    func testLiveSectionsDoNotReadBodiesUntilReaderIsOpened() async throws {
+        let bodyID = id + ".response"
+        let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 1, revision: 2, timestampMillis: 123, method: "GET", source: .host,
+            url: "https://example.com/fixture", responseURL: nil, requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 200,
+            state: .completed, failure: nil, durationMillis: 4, requestBody: .restore(state: .omitted, blobID: nil, observedBytes: 0),
+            responseBody: .restore(state: .available, blobID: bodyID, observedBytes: 7))
+        let history = BodyHistory(event: event, body: try HTTPBody.restore(id: bodyID, text: "content"))
+        let recorder = try HTTPRecorder(sink: MemoryHTTPStore(), captureController: CaptureController(), privacy: HTTPPrivacyPolicy())
+        let detail = HTTPDetailViewController(event: event, history: history, recorder: recorder), window = show(detail)
+        defer { window.isHidden = true; window.rootViewController = nil }
+        try activate(detail.view, title: InspectorLocalization.text("ui_response"))
+        XCTAssertEqual(history.reads, 0)
+        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 1))
+        try await settled(XCTUnwrap(detail.navigationController))
+        XCTAssertEqual(history.reads, 1)
+        let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
+        XCTAssertTrue(try XCTUnwrap(find(reader.view, UITextView.self)).text.contains("content"))
+    }
     @MainActor
     func testSavedHTTPNavigationSearchAndContentHaveNoLiveRefresh() async throws {
         let bodyID = id + ".response"
@@ -22,24 +42,30 @@ final class IncidentEvidenceTests: XCTestCase {
         viewer.tableView(viewer.tableView, didSelectRowAt: IndexPath(row: 1, section: 2))
         try await settled(XCTUnwrap(viewer.navigationController))
         let group = try XCTUnwrap(viewer.navigationController?.topViewController as? IncidentEvidenceViewController); group.loadViewIfNeeded()
-        let search = try XCTUnwrap(group.navigationItem.searchController)
+        let search = try XCTUnwrap(find(group.view, UISearchTextField.self))
         XCTAssertEqual(group.tableView(group.tableView, numberOfRowsInSection: 0), 1)
-        search.searchBar.text = "BODY_ONLY_TOKEN"; group.updateSearchResults(for: search)
+        search.text = "BODY_ONLY_TOKEN"; try changed(search, event: .editingChanged)
         XCTAssertEqual(group.tableView(group.tableView, numberOfRowsInSection: 0), 0)
-        search.searchBar.text = "frozen"; group.updateSearchResults(for: search)
+        search.text = "frozen"; try changed(search, event: .editingChanged)
         XCTAssertEqual(group.tableView(group.tableView, numberOfRowsInSection: 0), 1)
         group.tableView(group.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
         try await settled(XCTUnwrap(group.navigationController))
         let detail = try XCTUnwrap(group.navigationController?.topViewController as? HTTPDetailViewController); detail.loadViewIfNeeded()
         XCTAssertEqual(detail.navigationItem.rightBarButtonItems?.count, 1)
-        let section = try XCTUnwrap(find(detail.view, UISegmentedControl.self)), text = try XCTUnwrap(find(detail.view, UITextView.self))
-        section.selectedSegmentIndex = 2; try changed(section)
+        try activate(detail.view, title: InspectorLocalization.text("ui_response"))
+        XCTAssertNil(find(detail.view, UITextView.self), "Selecting a section must not open or read a body")
+        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 1))
+        try await settled(XCTUnwrap(detail.navigationController))
+        let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
+        let text = try XCTUnwrap(find(reader.view, UITextView.self))
         XCTAssertTrue(text.text.contains("BODY_ONLY_TOKEN")); XCTAssertTrue(text.text.contains(HTTPPresentation.text("incident_frozen_detail")))
-        section.selectedSegmentIndex = 0; try changed(section)
-        XCTAssertTrue(text.text.contains(event.id)); XCTAssertFalse(text.text.contains("BODY_ONLY_TOKEN"))
+        detail.navigationController?.popViewController(animated: false)
+        try activate(detail.view, title: InspectorLocalization.text("ui_overview"))
+        let metadata = detail.sections.flatMap(\.rows).map { $0.label + ($0.value ?? "") }.joined(separator: "\n")
+        XCTAssertTrue(metadata.contains(event.id)); XCTAssertFalse(metadata.contains("BODY_ONLY_TOKEN"))
     }
     @MainActor
-    func testSavedSocketDetailKeepsMissingStatesAndAvailableEmptyTextDistinct() throws {
+    func testSavedSocketDetailKeepsMissingStatesAndAvailableEmptyTextDistinct() async throws {
         for state in [IncidentPayloadState.available, .notSelected, .unavailable, .busy, .budgetExceeded] {
             let event = try WebSocketEvent.restore(id: id, connectionID: id, sessionID: id, sequence: 9, timestampMillis: 123,
                 url: "wss://example.com", source: .host, kind: .message, headers: [], headersLimited: false, statusCode: nil, closeCode: nil,
@@ -48,8 +74,12 @@ final class IncidentEvidenceTests: XCTestCase {
             let detail = WebSocketDetailViewController(event: event, savedPayloads: [id: payload]), window = show(detail)
             defer { window.isHidden = true; window.rootViewController = nil }
             XCTAssertEqual(detail.navigationItem.rightBarButtonItems?.count, 1)
-            let section = try XCTUnwrap(find(detail.view, UISegmentedControl.self)), text = try XCTUnwrap(find(detail.view, UITextView.self))
-            section.selectedSegmentIndex = 1; try changed(section)
+            try activate(detail.view, title: InspectorLocalization.text("ws_payload"))
+            XCTAssertNil(find(detail.view, UITextView.self))
+            detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
+            try await settled(XCTUnwrap(detail.navigationController))
+            let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
+            let text = try XCTUnwrap(find(reader.view, UITextView.self))
             XCTAssertTrue(text.text.contains(IncidentPayloadPresentation.content(payload)))
             XCTAssertEqual(text.text.contains(HTTPPresentation.text("http_body_empty")), state == .available)
             XCTAssertTrue(text.text.contains(HTTPPresentation.text("incident_frozen_detail")))
@@ -73,8 +103,8 @@ final class IncidentEvidenceTests: XCTestCase {
         group.tableView(group.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
         try await settled(XCTUnwrap(group.navigationController))
         let detail = try XCTUnwrap(group.navigationController?.topViewController as? LogDetailViewController); detail.loadViewIfNeeded()
-        let text = try XCTUnwrap(detail.view as? UITextView)
-        XCTAssertTrue(text.text.contains(id)); XCTAssertTrue(text.text.contains("#11")); XCTAssertTrue(text.text.contains("[private]"))
+        let metadata = detail.sections.flatMap(\.rows).map { $0.label + ($0.value ?? "") }.joined(separator: "\n")
+        XCTAssertTrue(metadata.contains(id)); XCTAssertTrue(metadata.contains("#11")); XCTAssertTrue(metadata.contains("[private]"))
     }
     @MainActor private func show(_ controller: UIViewController) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -92,15 +122,35 @@ final class IncidentEvidenceTests: XCTestCase {
         }
         XCTFail("Navigation did not finish its transition")
     }
-    @MainActor private func changed(_ control: UIControl) throws {
+    @MainActor private func activate(_ view: UIView, title: String) throws {
+        func buttons(_ view: UIView) -> [UIButton] { (view as? UIButton).map { [$0] } ?? view.subviews.flatMap(buttons) }
+        try changed(XCTUnwrap(buttons(view).first { $0.title(for: .normal) == title }), event: .touchUpInside)
+    }
+    @MainActor private func changed(_ control: UIControl, event: UIControl.Event = .valueChanged) throws {
         var sent = false
         for target in control.allTargets {
             guard let receiver = target.base as? NSObject else { continue }
-            for action in control.actions(forTarget: receiver, forControlEvent: .valueChanged) ?? [] {
+            for action in control.actions(forTarget: receiver, forControlEvent: event) ?? [] {
                 _ = receiver.perform(NSSelectorFromString(action), with: control); sent = true
             }
         }
         XCTAssertTrue(sent)
     }
+}
+
+private final class BodyHistory: HTTPHistory, @unchecked Sendable {
+    private let event: HTTPEvent, bodyValue: HTTPBody
+    private let lock = NSLock()
+    private var count = 0
+    init(event: HTTPEvent, body: HTTPBody) { self.event = event; bodyValue = body }
+    var reads: Int { lock.lock(); defer { lock.unlock() }; return count }
+    func snapshot() -> HTTPSnapshot? {
+        HTTPSnapshot(events: [event], retainedTextBytes: 0, retainedBodyBytes: 7, evictedEvents: 0, evictedBodies: 0, revision: 2)
+    }
+    func body(id: String) -> HTTPBodyLookup {
+        lock.lock(); defer { lock.unlock() }; count += 1
+        return id == bodyValue.id ? .available(bodyValue) : .unavailable
+    }
+    func clear() { XCTFail("Viewing content must not clear history") }
 }
 #endif

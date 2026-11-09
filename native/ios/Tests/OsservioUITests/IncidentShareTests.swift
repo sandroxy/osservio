@@ -11,7 +11,7 @@ final class IncidentShareTests: XCTestCase {
         let viewer = IncidentSnapshotViewController(snapshot: try IncidentSnapshot.capture())
         viewer.loadViewIfNeeded()
         XCTAssertEqual(viewer.navigationItem.rightBarButtonItems?.count, 1)
-        XCTAssertEqual(viewer.navigationItem.rightBarButtonItems?.first?.title, RuntimePresentation.text("archive_copy_summary"))
+        XCTAssertEqual(viewer.navigationItem.rightBarButtonItems?.first?.accessibilityLabel, RuntimePresentation.text("archive_copy_summary"))
     }
 
     @MainActor

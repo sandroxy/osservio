@@ -21,7 +21,7 @@ public final class RuntimeInspectorViewController: UIViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     public override func viewDidLoad() {
-        super.viewDidLoad()
+        super.viewDidLoad(); InspectorTheme.apply(self)
         title = RuntimePresentation.text("runtime_title")
         view.backgroundColor = .systemBackground
         if archive != nil { selection.insertSegment(withTitle: RuntimePresentation.text("archive_title"), at: 2, animated: false) }

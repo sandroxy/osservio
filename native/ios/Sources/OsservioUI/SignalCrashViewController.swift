@@ -36,7 +36,7 @@ final class SignalCrashViewController: UITableViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); title = RuntimePresentation.text(images ? "crash_images" : "crash_frames")
+        super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text(images ? "crash_images" : "crash_frames")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 100
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("crash_copy_all"), style: .plain,
             target: self, action: #selector(copyAll))
@@ -46,6 +46,10 @@ final class SignalCrashViewController: UITableViewController {
         case .apple(let crash, let content): return content == .frames ? crash.frames.count : crash.images.count
         case .android(let trace): return trace.frames.count
         }
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated); InspectorTheme.apply(self); title = RuntimePresentation.text(images ? "crash_images" : "crash_frames")
+        navigationItem.rightBarButtonItem?.title = RuntimePresentation.text("crash_copy_all"); tableView.reloadData()
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         let hint: String

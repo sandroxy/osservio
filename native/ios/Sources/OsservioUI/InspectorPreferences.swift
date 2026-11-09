@@ -31,7 +31,7 @@ enum InspectorLocalization {
     static func text(_ key: String) -> String {
         guard let path = Bundle.module.path(forResource: InspectorPreferences.shared.language.rawValue, ofType: "lproj"),
               let bundle = Bundle(path: path) else { return key }
-        return bundle.localizedString(forKey: key, value: nil, table: nil)
+        return bundle.localizedString(forKey: key, value: nil, table: key.hasPrefix("ui_") ? "Inspector" : nil)
     }
     static func date(_ millis: Int64, timeOnly: Bool = false) -> String {
         let formatter = DateFormatter()
