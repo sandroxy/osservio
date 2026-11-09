@@ -40,8 +40,12 @@ final class InspectorDetailPage extends ScrollView {
         content.addView(InspectorWidgets.button(getContext(), title, run), new LinearLayout.LayoutParams(-1, -2));
     }
     void read(String title, String text, boolean code) {
+        read(title, new InspectorReadContent(text, "", code), code);
+    }
+    void read(String title, InspectorReadContent value) { read(title, value, true); }
+    private void read(String title, InspectorReadContent value, boolean code) {
         if (reader != null) reader.dismiss();
-        InspectorContentReader content = new InspectorContentReader(getContext()); content.display(text, code);
+        InspectorContentReader content = new InspectorContentReader(getContext()); content.display(value, code);
         reader = InspectorDialogs.screen(getContext(), title, content);
         InspectorScreen shown = reader; shown.setOnDismissListener(ignored -> { if (reader == shown) reader = null; }); reader.show();
     }

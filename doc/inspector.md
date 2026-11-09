@@ -37,8 +37,11 @@ the entire WebSocket history, not only the displayed connection.
 Scrolling pauses live updates for reading. Return to latest resumes them.
 Pausing or closing the inspector does not stop capture; records can still be
 evicted from their bounded stores. Hidden lists stop polling. A failed metadata
-read keeps the last available window with an explicit notice. Details preserve
-the opened record; live network details offer an explicit metadata refresh.
+read keeps the last available window with an explicit notice. Network details
+preserve the record selected on entry, without polling or a refresh/retry action.
+Return to the list and reopen a record to inspect its latest retained state.
+Returning from a body reader or restoring a minimized session keeps that same
+detail snapshot. Opening a detail never resends an HTTP request or socket message.
 
 The three Network scopes keep separate search text, filters and scroll positions
 while the inspector remains open. HTTP-only criteria never silently filter the
@@ -88,12 +91,37 @@ separate Overview, Request and Response. WebSocket details separate event
 metadata and payload. Selecting a section displays metadata and content state;
 Open reader performs the explicit body or payload lookup.
 
-The reader holds that one bounded, sanitized content result. It supports text
-selection, explicit copying and literal case-insensitive search, with previous
-and next match navigation. Search indexes at most 200 matches and reports when
-more exist; refine the query to locate other matches. It does not search other
-requests or refresh an open body. Long metadata values can also open the reader.
-Truncated, omitted, missing, busy and empty content remain distinguishable.
+The reader holds that one bounded, sanitized content result. Capture and saved
+inclusion notices appear separately from the payload, including truncated,
+omitted, missing, busy and empty states. Copy all copies the payload text, not
+those explanations. Long metadata values can also open the reader.
+
+Complete JSON objects and arrays in HTTP bodies, WebSocket text and log messages
+open in Structure mode after on-demand background parsing. Tap a nonempty
+object or array row to expand or collapse it. The root stays expanded; empty
+containers and scalar values need no expansion. Indentation, brackets and token
+colors show hierarchy without disclosure arrows or key/value columns. Long
+values and collapsed containers use abbreviated previews. Touch and hold a node
+to copy its complete source value (iOS uses a native context menu). Source mode
+provides the exact captured text with native selection and copying. Display
+formatting never converts numbers, sorts fields or merges duplicate keys.
+
+Literal case-insensitive search covers the entire captured source, including
+collapsed nodes. Previous/next match navigation reveals the containing node and
+its ancestors in Structure mode; Source mode highlights the exact text range.
+For a match inside an abbreviated value, switch to Source to read it in full.
+Search indexes at most 200 matches and reports when more exist. It does not
+search other records or refresh the open payload. Mode, query and expansion
+state survive in-process minimization and restoration.
+
+The structural index admits at most 65,536 UTF-16 code units, 4,096 value nodes
+and 48 nested levels below the root. Each platform has one parse worker and at
+most one queued job; leaving the reader cancels pending work and rejects stale
+completion. Native lists reuse visible rows, and only those rows format previews.
+Malformed, incomplete or over-budget content remains readable as source with
+an explanation; the reader does not repair JSON, strip arbitrary log prefixes
+or decode a JSON string as a second document. These implementation limits are
+resource bounds, not physical-device performance guarantees.
 
 Saved problem details never refresh from current histories. Attached groups
 retain their observation times, source loss counters and body-selection states.

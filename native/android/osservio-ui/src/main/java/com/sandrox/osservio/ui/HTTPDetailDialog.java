@@ -8,32 +8,29 @@ import android.widget.LinearLayout;
 import com.sandrox.osservio.core.HTTPEvent;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.HTTPHistory;
-import com.sandrox.osservio.core.HTTPRecorder;
-import com.sandrox.osservio.core.HTTPSnapshot;
 import com.sandrox.osservio.core.IncidentPayload;
 import java.util.List;
 import java.util.Map;
 
-/** Stable metadata snapshot; body access and live refresh are always explicit. */
+/** Entry-time metadata snapshot; body access is explicit and never refreshes metadata. */
 final class HTTPDetailDialog {
     private final Context context;
     private final HTTPHistory history;
-    private final HTTPRecorder recorder;
     private final Map<String, IncidentPayload> savedPayloads;
-    private HTTPEvent event;
+    private final HTTPEvent event;
     private String notice = "";
     private int section;
     private final FrameLayout body;
     final InspectorScreen dialog;
 
-    HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, HTTPRecorder recorder) {
-        this(context, event, history, recorder, null);
+    HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history) {
+        this(context, event, history, null);
     }
     HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads) {
-        this(context, event, null, null, savedPayloads);
+        this(context, event, null, savedPayloads);
     }
-    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, HTTPRecorder recorder, Map<String, IncidentPayload> savedPayloads) {
-        this.context = context; this.event = event; this.history = history; this.recorder = recorder; this.savedPayloads = savedPayloads;
+    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, Map<String, IncidentPayload> savedPayloads) {
+        this.context = context; this.event = event; this.history = history; this.savedPayloads = savedPayloads;
         if (savedPayloads != null) notice = context.getString(R.string.osservio_incident_frozen_detail);
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         content.addView(InspectorWidgets.segments(context, new String[] {context.getString(R.string.osservio_ui_overview),
@@ -41,13 +38,6 @@ final class HTTPDetailDialog {
             index -> { section = index; render(); }), new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog = InspectorDialogs.screen(context, event.method + " · HTTP", content); render();
-    }
-    private void refresh() {
-        if (history == null) return;
-        recorder.maintenance(); HTTPSnapshot snapshot = history.snapshot();
-        notice = context.getString(snapshot == null ? R.string.osservio_http_stale : R.string.osservio_http_missing);
-        if (snapshot != null) for (HTTPEvent current : snapshot.events) if (current.id.equals(event.id)) { event = current; notice = ""; break; }
-        render();
     }
     private void render() {
         body.removeAllViews();
@@ -78,11 +68,10 @@ final class HTTPDetailDialog {
             HTTPEvent.BodyReference reference = section == 1 ? event.requestBody : event.responseBody;
             page.section(R.string.osservio_ui_body); page.note(HTTPPresentation.bodyDescription(context, reference));
             page.action(R.string.osservio_ui_open_reader, () -> {
-                String text = savedPayloads != null ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
-                page.read(context.getString(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body), text, true);
+                InspectorReadContent text = savedPayloads != null ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
+                page.read(context.getString(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body), new InspectorReadContent(text.text, notice.isEmpty() ? text.notice : notice + "\n" + text.notice, text.allowsJson));
             });
         }
-        if (history != null) page.action(R.string.osservio_http_refresh, this::refresh);
         page.action(R.string.osservio_ui_copy_metadata, () -> {
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", HTTPPresentation.overview(context, event)));

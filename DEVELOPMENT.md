@@ -146,6 +146,10 @@ navigation, query and preference isolation, draft filters, lazy body reads,
 literal content search, short-window/keyboard layouts, delayed environment
 delivery, input preservation, optional attachments and original mark time. A running consumer separately verifies actual event routing
 and navigation; controller tests do not replace visual acceptance.
+JSON reader checks cover shared grammar fixtures, exact source tokens, resource
+limits, parse cancellation, row reuse, search/expansion restoration and retained
+row localization. The same shared grammar cases also run in Android's JVM tests;
+Android UI instrumentation checks native row reuse and reading-state restoration.
 System-diagnostic view tests cover immutable navigation, distinct report/read
 times, historical metadata, exact codes, missing memory, hang duration, and
 copy-text formatting. System clipboard delivery requires an application host.

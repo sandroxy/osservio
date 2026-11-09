@@ -218,7 +218,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
         switch rows[indexPath.row] {
-        case .http(let event): if let http { owner?.inspectorPush(HTTPDetailViewController(event: event, history: http.history, recorder: http.recorder)) }
+        case .http(let event): if let http { owner?.inspectorPush(HTTPDetailViewController(event: event, history: http.history)) }
         case .connection(let connection): if let sockets { owner?.inspectorPush(NetworkInspectorViewController(content: NetworkInspectorContent(sockets: sockets, connectionID: connection.latest.connectionID))) }
         case .event(let event): if let sockets { owner?.inspectorPush(WebSocketDetailViewController(event: event, history: sockets.history)) }
         }

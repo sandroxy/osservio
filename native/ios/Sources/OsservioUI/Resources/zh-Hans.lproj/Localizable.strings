@@ -357,3 +357,16 @@
 "tombstone_relative_pc" = "ELF 相对地址";
 "tombstone_build_id" = "ELF 构建标识";
 "tombstone_frames_hint" = "按最新栈帧在前排列，相对地址保留系统报告的原值。还原函数名需要匹配的 ELF 符号文件；达到记录上限时，后续栈帧可能缺失。";
+
+"json_structure" = "结构";
+"json_raw" = "原文";
+"json_hint" = "轻点对象或数组展开，长按可复制节点。省略内容可切换原文查看。";
+"json_toggle_hint" = "轻点展开或收起，长按可复制节点值";
+"json_copy_hint" = "长按可复制节点值";
+"json_copy_value" = "复制节点值";
+"json_expanded" = "已展开";
+"json_collapsed" = "已收起";
+"json_loading" = "正在解析 JSON…";
+"json_invalid" = "内容不是完整的 JSON 对象或数组，已显示原文。";
+"json_limited" = "内容超出结构视图的处理范围，已显示原文。";
+"json_busy" = "结构视图暂忙，仍可阅读原文。重新进入可再次解析。";

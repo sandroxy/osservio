@@ -9,4 +9,6 @@
     <color name="osservio_error">#FF9CB0</color>
     <color name="osservio_warning">#F1CA85</color>
     <color name="osservio_success">#8BDDAE</color>
+    <color name="osservio_json_number">#98C6FF</color>
+    <color name="osservio_json_literal">#F0B38D</color>
 </resources>

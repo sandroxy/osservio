@@ -8,6 +8,9 @@ import XCTest
 
 final class IncidentEvidenceTests: XCTestCase {
     private let id = "12345678-1234-1234-1234-123456789abc"
+    @MainActor private func labels(_ view: UIView) -> [String] {
+        ((view as? UILabel)?.text.map { [$0] } ?? []) + view.subviews.flatMap(labels)
+    }
     @MainActor
     func testLiveSectionsDoNotReadBodiesUntilReaderIsOpened() async throws {
         let bodyID = id + ".response"
@@ -16,11 +19,11 @@ final class IncidentEvidenceTests: XCTestCase {
             state: .completed, failure: nil, durationMillis: 4, requestBody: .restore(state: .omitted, blobID: nil, observedBytes: 0),
             responseBody: .restore(state: .available, blobID: bodyID, observedBytes: 7))
         let history = BodyHistory(event: event, body: try HTTPBody.restore(id: bodyID, text: "content"))
-        let recorder = try HTTPRecorder(sink: MemoryHTTPStore(), captureController: CaptureController(), privacy: HTTPPrivacyPolicy())
-        let detail = HTTPDetailViewController(event: event, history: history, recorder: recorder), window = show(detail)
+        let detail = HTTPDetailViewController(event: event, history: history), window = show(detail)
         defer { window.isHidden = true; window.rootViewController = nil }
         try activate(detail.view, title: InspectorLocalization.text("ui_response"))
-        XCTAssertEqual(history.reads, 0)
+        XCTAssertEqual(history.reads, 0); XCTAssertEqual(history.snapshots, 0)
+        XCTAssertEqual(detail.inspectorActions?.count, 1)
         detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 1))
         try await settled(XCTUnwrap(detail.navigationController))
         XCTAssertEqual(history.reads, 1)
@@ -58,7 +61,7 @@ final class IncidentEvidenceTests: XCTestCase {
         try await settled(XCTUnwrap(detail.navigationController))
         let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
         let text = try XCTUnwrap(find(reader.view, UITextView.self))
-        XCTAssertTrue(text.text.contains("BODY_ONLY_TOKEN")); XCTAssertTrue(text.text.contains(HTTPPresentation.text("incident_frozen_detail")))
+        XCTAssertEqual(text.text, "BODY_ONLY_TOKEN"); XCTAssertTrue(labels(reader.view).joined(separator: "\n").contains(HTTPPresentation.text("incident_frozen_detail")))
         detail.navigationController?.popViewController(animated: false)
         try activate(detail.view, title: InspectorLocalization.text("ui_overview"))
         let metadata = detail.sections.flatMap(\.rows).map { $0.label + ($0.value ?? "") }.joined(separator: "\n")
@@ -80,9 +83,11 @@ final class IncidentEvidenceTests: XCTestCase {
             try await settled(XCTUnwrap(detail.navigationController))
             let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
             let text = try XCTUnwrap(find(reader.view, UITextView.self))
-            XCTAssertTrue(text.text.contains(IncidentPayloadPresentation.content(payload)))
-            XCTAssertEqual(text.text.contains(HTTPPresentation.text("http_body_empty")), state == .available)
-            XCTAssertTrue(text.text.contains(HTTPPresentation.text("incident_frozen_detail")))
+            XCTAssertEqual(text.text, "", "Status explanations must not become payload text")
+            let notes = labels(reader.view).joined(separator: "\n")
+            XCTAssertTrue(notes.contains(IncidentPayloadPresentation.content(payload)))
+            XCTAssertEqual(notes.contains(HTTPPresentation.text("http_body_empty")), state == .available)
+            XCTAssertTrue(notes.contains(HTTPPresentation.text("incident_frozen_detail")))
         }
     }
     @MainActor
@@ -141,11 +146,13 @@ final class IncidentEvidenceTests: XCTestCase {
 private final class BodyHistory: HTTPHistory, @unchecked Sendable {
     private let event: HTTPEvent, bodyValue: HTTPBody
     private let lock = NSLock()
-    private var count = 0
+    private var count = 0, queries = 0
+    var snapshots: Int { lock.lock(); defer { lock.unlock() }; return queries }
     init(event: HTTPEvent, body: HTTPBody) { self.event = event; bodyValue = body }
     var reads: Int { lock.lock(); defer { lock.unlock() }; return count }
     func snapshot() -> HTTPSnapshot? {
-        HTTPSnapshot(events: [event], retainedTextBytes: 0, retainedBodyBytes: 7, evictedEvents: 0, evictedBodies: 0, revision: 2)
+        lock.lock(); defer { lock.unlock() }; queries += 1
+        return HTTPSnapshot(events: [event], retainedTextBytes: 0, retainedBodyBytes: 7, evictedEvents: 0, evictedBodies: 0, revision: 2)
     }
     func body(id: String) -> HTTPBodyLookup {
         lock.lock(); defer { lock.unlock() }; count += 1

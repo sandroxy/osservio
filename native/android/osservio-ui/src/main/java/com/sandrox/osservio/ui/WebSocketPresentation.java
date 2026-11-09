@@ -107,18 +107,19 @@ final class WebSocketPresentation {
         return context.getString(key) + "\n" + context.getString(R.string.osservio_ws_bytes) + ": "
             + (reference.byteCount == null ? context.getString(R.string.osservio_http_none) : reference.byteCount);
     }
-    static String payload(Context context, WebSocketEvent.PayloadReference reference, Map<String, IncidentPayload> savedPayloads) {
-        return payloadDescription(context, reference) + (reference == null || reference.blobId == null ? "" : "\n\n" + IncidentPayloadPresentation.content(context, savedPayloads.get(reference.blobId)));
+    static InspectorReadContent payload(Context context, WebSocketEvent.PayloadReference reference, Map<String, IncidentPayload> savedPayloads) {
+        String notice = payloadDescription(context, reference);
+        if (reference == null || reference.blobId == null) return InspectorReadContent.unavailable(notice);
+        return InspectorReadContent.saved(context, savedPayloads.get(reference.blobId), notice, reference.state == WebSocketEvent.PayloadState.AVAILABLE);
     }
-    static String payload(Context context, WebSocketEvent.PayloadReference reference, WebSocketHistory history) {
-        String result = payloadDescription(context, reference);
-        if (reference == null) return result;
-        if (reference.blobId == null) return result;
+    static InspectorReadContent payload(Context context, WebSocketEvent.PayloadReference reference, WebSocketHistory history) {
+        String notice = payloadDescription(context, reference);
+        if (reference == null || reference.blobId == null) return InspectorReadContent.unavailable(notice);
         WebSocketHistory.PayloadLookup lookup = history.payload(reference.blobId);
         switch (lookup.state) {
-            case AVAILABLE: return result + "\n\n" + (lookup.payload.text.isEmpty() ? context.getString(R.string.osservio_http_body_empty) : lookup.payload.text);
-            case BUSY: return result + "\n\n" + context.getString(R.string.osservio_http_body_busy);
-            case UNAVAILABLE: return result + "\n\n" + context.getString(R.string.osservio_http_body_unavailable);
+            case AVAILABLE: return new InspectorReadContent(lookup.payload.text, notice + (lookup.payload.text.isEmpty() ? "\n" + context.getString(R.string.osservio_http_body_empty) : ""), reference.state == WebSocketEvent.PayloadState.AVAILABLE);
+            case BUSY: return InspectorReadContent.unavailable(notice + "\n" + context.getString(R.string.osservio_http_body_busy));
+            case UNAVAILABLE: return InspectorReadContent.unavailable(notice + "\n" + context.getString(R.string.osservio_http_body_unavailable));
             default: throw new IllegalArgumentException("Unknown WebSocket payload lookup state");
         }
     }

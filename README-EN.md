@@ -17,6 +17,12 @@ React Native, Uni and Flutter adapters are not implemented.
 - Explicit host logging with levels, static categories, and a choice between
   public text and private text replaced with `[private]`. Public classification
   does not automatically detect or remove sensitive data.
+- Complete JSON log messages and network content support hierarchical expansion,
+  syntax coloring, search, source viewing and copying. Original number tokens and
+  member order are preserved; truncated, invalid or over-budget content remains
+  readable as source. Network details keep their entry-time record. Return to
+  the list and reopen to see the latest retained state; no refresh/retry action
+  is offered in those details.
 - Time-limited capture sessions, per-message and admission-rate limits, and
   in-memory history bounded by both event count and UTF-8 text bytes.
 - An Android View and an iOS UIKit inspector organized into Logs, Network,

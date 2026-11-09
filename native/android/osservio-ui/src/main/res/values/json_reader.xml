@@ -1,0 +1,14 @@
+<resources>
+    <string name="osservio_json_structure">Structure</string>
+    <string name="osservio_json_raw">Source</string>
+    <string name="osservio_json_hint">Tap an object or array to expand it; touch and hold to copy a value. Switch to Source to read abbreviated content.</string>
+    <string name="osservio_json_toggle_hint">Activate to expand or collapse; touch and hold to copy the value</string>
+    <string name="osservio_json_copy_hint">Touch and hold to copy the value</string>
+    <string name="osservio_json_copy_value">Copy value</string>
+    <string name="osservio_json_expanded">Expanded</string>
+    <string name="osservio_json_collapsed">Collapsed</string>
+    <string name="osservio_json_loading">Preparing JSON structure…</string>
+    <string name="osservio_json_invalid">This content is not a complete JSON object or array. Showing the source.</string>
+    <string name="osservio_json_limited">This content exceeds the structure view’s reading limits. Showing the source.</string>
+    <string name="osservio_json_busy">The structure view is busy. You can read the source or reopen this page to try again.</string>
+</resources>

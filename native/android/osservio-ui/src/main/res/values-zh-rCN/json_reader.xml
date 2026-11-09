@@ -1,0 +1,14 @@
+<resources>
+    <string name="osservio_json_structure">结构</string>
+    <string name="osservio_json_raw">原文</string>
+    <string name="osservio_json_hint">轻点对象或数组展开，长按可复制节点。省略内容可切换原文查看。</string>
+    <string name="osservio_json_toggle_hint">轻点展开或收起，长按可复制节点值</string>
+    <string name="osservio_json_copy_hint">长按可复制节点值</string>
+    <string name="osservio_json_copy_value">复制节点值</string>
+    <string name="osservio_json_expanded">已展开</string>
+    <string name="osservio_json_collapsed">已收起</string>
+    <string name="osservio_json_loading">正在解析 JSON…</string>
+    <string name="osservio_json_invalid">内容不是完整的 JSON 对象或数组，已显示原文。</string>
+    <string name="osservio_json_limited">内容超出结构视图的处理范围，已显示原文。</string>
+    <string name="osservio_json_busy">结构视图暂忙，仍可阅读原文。重新进入可再次解析。</string>
+</resources>

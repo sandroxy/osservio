@@ -9,6 +9,9 @@ enum InspectorTheme {
     static let accent = pair(0x5146D8, 0xB4ADFF)
     static let secondary = pair(0x626978, 0xAEB7C7)
     static let tint = pair(0xEEECFF, 0x302C48)
+    static let jsonString = pair(0x26734F, 0x8BDDAE)
+    static let jsonNumber = pair(0x215FAD, 0x98C6FF)
+    static let jsonLiteral = pair(0x934625, 0xF0B38D)
     private static func pair(_ light: UInt32, _ dark: UInt32) -> UIColor {
         UIColor { traits in
             let value = traits.userInterfaceStyle == .dark ? dark : light

@@ -16,7 +16,7 @@ final class LogDetailDialog {
         if (event.isTruncated) page.note(context.getString(R.string.osservio_truncated));
         page.section(R.string.osservio_logs);
         page.field(R.string.osservio_ui_read_content, event.message);
-        page.action(R.string.osservio_ui_open_reader, () -> page.read(event.category, event.message, true));
+        page.action(R.string.osservio_ui_open_reader, () -> page.read(event.category, new InspectorReadContent(event.message, event.isTruncated ? context.getString(R.string.osservio_truncated) : "", !event.isTruncated && !event.isPrivate)));
         return InspectorDialogs.screen(context, event.category, page);
     }
 }

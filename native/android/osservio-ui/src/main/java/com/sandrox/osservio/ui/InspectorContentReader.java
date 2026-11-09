@@ -16,6 +16,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.FrameLayout;
+import android.widget.RadioGroup;
+import java.lang.ref.WeakReference;
 
 /** An explicit, immutable content read. This view never queries live history. */
 final class InspectorContentReader extends LinearLayout {
@@ -27,11 +30,20 @@ final class InspectorContentReader extends LinearLayout {
     private final LinearLayout searching;
     private final Button previous;
     private final Button next;
+    private final RadioGroup mode;
+    private final TextView notice;
+    private final InspectorJsonTreeView tree;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String content = "";
     private InspectorTextSearch matches = new InspectorTextSearch("", "");
     private int selection;
     private boolean searchDirty;
+    private InspectorReadContent value = InspectorReadContent.unavailable("");
+    private InspectorJsonTask parsing;
+    private boolean parsed;
+    private boolean structured = true;
+    private int generation;
+    private int parserNotice;
     private final Runnable searchContent = this::searchContent;
     private void searchContent() {
         matches = new InspectorTextSearch(content, search.getText().toString()); selection = 0; searchDirty = false; highlight(true);
@@ -41,6 +53,10 @@ final class InspectorContentReader extends LinearLayout {
         int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
         controls = new ScrollView(context); controls.addView(header); addView(controls, new LayoutParams(-1, -2));
+        mode = (RadioGroup) InspectorWidgets.segments(context, new String[] {context.getString(R.string.osservio_json_structure), context.getString(R.string.osservio_json_raw)}, 0,
+            selected -> { structured = selected == 0; highlight(true); });
+        mode.setVisibility(GONE); header.addView(mode);
+        notice = InspectorWidgets.caption(context); header.addView(notice);
         LinearLayout actions = new LinearLayout(context);
         Button copy = InspectorWidgets.button(context, R.string.osservio_ui_copy_all, this::copy);
         Button find = InspectorWidgets.button(context, R.string.osservio_ui_search_content, this::toggleSearch);
@@ -60,7 +76,9 @@ final class InspectorContentReader extends LinearLayout {
         navigation.addView(next, new LayoutParams(InspectorTheme.dp(context, 48), -2)); searching.addView(navigation); header.addView(searching);
         text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(0, inset, 0, inset);
         text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new ScrollView(context); scroll.addView(text);
-        addView(scroll, new LayoutParams(-1, 0, 1));
+        tree = new InspectorJsonTreeView(context); tree.setVisibility(GONE);
+        FrameLayout reading = new FrameLayout(context); reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        reading.addView(tree, new FrameLayout.LayoutParams(-1, -1)); addView(reading, new LayoutParams(-1, 0, 1));
     }
     @Override protected void onMeasure(int width, int height) {
         // Keep content reachable with the keyboard or large text in a short viewport.
@@ -72,10 +90,16 @@ final class InspectorContentReader extends LinearLayout {
         super.onMeasure(width, height);
     }
     void display(String value, boolean code) {
-        handler.removeCallbacks(searchContent); content = value;
+        display(new InspectorReadContent(value, "", code), code);
+    }
+    void display(InspectorReadContent value, boolean code) {
+        cancelParsing(); handler.removeCallbacks(searchContent); content = value.text; this.value = value;
+        parsed = false; parserNotice = 0; structured = true; tree.clear(); mode.setVisibility(GONE);
+        ((android.widget.RadioButton) mode.getChildAt(0)).setChecked(true);
         text.setTypeface(code ? Typeface.MONOSPACE : Typeface.DEFAULT);
-        matches = new InspectorTextSearch(value, searching.getVisibility() == VISIBLE ? search.getText().toString() : "");
+        matches = new InspectorTextSearch(content, searching.getVisibility() == VISIBLE ? search.getText().toString() : "");
         selection = 0; highlight(false); scroll.scrollTo(0, 0);
+        if (isAttachedToWindow()) startParsing();
     }
     private void toggleSearch() {
         boolean show = searching.getVisibility() != VISIBLE; searching.setVisibility(show ? VISIBLE : GONE);
@@ -92,9 +116,15 @@ final class InspectorContentReader extends LinearLayout {
         selection = (selection + direction + matches.matches.size()) % matches.matches.size(); highlight(true);
     }
     private void highlight(boolean reveal) {
+        boolean showTree = structured && tree.hasDocument(); tree.setVisibility(showTree ? VISIBLE : GONE); scroll.setVisibility(showTree ? GONE : VISIBLE);
+        String message = value.notice;
+        if (parserNotice != 0) message += (message.isEmpty() ? "" : "\n") + getContext().getString(parserNotice);
+        if (showTree) message += (message.isEmpty() ? "" : "\n") + getContext().getString(R.string.osservio_json_hint);
+        notice.setText(message); notice.setVisibility(message.isEmpty() ? GONE : VISIBLE);
         count.setText(matches.limited ? getContext().getString(R.string.osservio_ui_match_limit, InspectorTextSearch.LIMIT)
             : getContext().getString(R.string.osservio_ui_match_position, matches.matches.isEmpty() ? 0 : selection + 1, matches.matches.size()));
         previous.setEnabled(!matches.matches.isEmpty()); next.setEnabled(!matches.matches.isEmpty());
+        if (showTree) { tree.focus(matches.matches.isEmpty() ? -1 : matches.matches.get(selection)[0], reveal); return; }
         if (matches.matches.isEmpty()) { text.setText(content); return; }
         int[] match = matches.matches.get(selection);
         SpannableString marked = new SpannableString(content);
@@ -108,9 +138,36 @@ final class InspectorContentReader extends LinearLayout {
         ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
         if (clipboard != null) { clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", content)); Toast.makeText(getContext(), R.string.osservio_ui_copied, Toast.LENGTH_SHORT).show(); }
     }
-    @Override protected void onDetachedFromWindow() { handler.removeCallbacksAndMessages(null); super.onDetachedFromWindow(); }
+    private void cancelParsing() { generation++; if (parsing != null) parsing.cancel(); parsing = null; }
+    private void startParsing() {
+        if (parsed || parsing != null || !value.allowsJson || getWindowVisibility() != VISIBLE) return;
+        int first = 0;
+        while (first < Math.min(content.length(), 128) && (content.charAt(first) == ' ' || content.charAt(first) == '\n' || content.charAt(first) == '\r' || content.charAt(first) == '\t')) first++;
+        if (first < Math.min(content.length(), 128) && content.charAt(first) != '{' && content.charAt(first) != '[') { parsed = true; return; }
+        int ticket = ++generation; parserNotice = R.string.osservio_json_loading;
+        WeakReference<InspectorContentReader> owner = new WeakReference<>(this);
+        parsing = InspectorJsonTask.submit(content, (document, failure) -> {
+            InspectorContentReader reader = owner.get();
+            if (reader == null || reader.generation != ticket || !reader.isAttachedToWindow()) return;
+            reader.parsing = null; reader.parsed = true; reader.parserNotice = 0;
+            if (document != null) { reader.tree.display(document); reader.mode.setVisibility(VISIBLE); }
+            else if (failure == InspectorJsonDocument.Failure.INVALID) reader.parserNotice = R.string.osservio_json_invalid;
+            else if (failure == InspectorJsonDocument.Failure.LIMITED) reader.parserNotice = R.string.osservio_json_limited;
+            else if (failure == InspectorJsonDocument.Failure.CANCELLED) { reader.parsed = false; return; }
+            reader.highlight(!reader.matches.matches.isEmpty());
+        });
+        if (parsing == null) parserNotice = R.string.osservio_json_busy;
+        highlight(false);
+    }
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (tree == null) return;
+        if (visibility == VISIBLE && isAttachedToWindow()) startParsing(); else cancelParsing();
+    }
+    @Override protected void onDetachedFromWindow() { cancelParsing(); handler.removeCallbacksAndMessages(null); super.onDetachedFromWindow(); }
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         if (searchDirty && searching.getVisibility() == VISIBLE) handler.post(searchContent);
+        startParsing();
     }
 }

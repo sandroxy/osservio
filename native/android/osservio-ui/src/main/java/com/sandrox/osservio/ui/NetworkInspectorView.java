@@ -246,7 +246,7 @@ class NetworkInspectorView extends LinearLayout {
     private void open(Item item) {
         if (dialog != null) return;
         InspectorWidgets.hideKeyboard(this);
-        if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory, httpRecorder).dialog;
+        if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory).dialog;
         else if (item.event != null) dialog = new WebSocketDetailDialog(getContext(), item.event, socketHistory).dialog;
         else {
             NetworkInspectorView timeline = new NetworkInspectorView(getContext(), null, null, socketRecorder, socketHistory,

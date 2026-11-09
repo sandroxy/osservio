@@ -49,6 +49,9 @@ class InspectorDetailViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true); sections[indexPath.section].rows[indexPath.row].action?()
     }
+    func read(_ title: String, content: InspectorReadContent) {
+        inspectorPush(InspectorContentViewController(title: title, value: content))
+    }
     func read(_ title: String, content: String, code: Bool = true) {
         inspectorPush(InspectorContentViewController(title: title, content: content, code: code))
     }

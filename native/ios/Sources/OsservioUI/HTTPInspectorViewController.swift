@@ -20,49 +20,36 @@ public final class HTTPInspectorViewController: UITableViewController {
 
 @MainActor
 final class HTTPDetailViewController: InspectorDetailViewController {
-    private var event: HTTPEvent
+    private let event: HTTPEvent
     private let history: (any HTTPHistory)?
-    private let recorder: HTTPRecorder?
     private let savedPayloads: [String: IncidentPayload]?
     private let selection = InspectorScopeControl(titles: ["", "", ""])
     private var noticeKey: String?
     private lazy var copyButton = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyMetadata))
-    private lazy var refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
-    init(event: HTTPEvent, history: any HTTPHistory, recorder: HTTPRecorder) {
-        self.event = event; self.history = history; self.recorder = recorder; savedPayloads = nil
+    init(event: HTTPEvent, history: any HTTPHistory) {
+        self.event = event; self.history = history; savedPayloads = nil
         super.init()
     }
     init(event: HTTPEvent, savedPayloads: [String: IncidentPayload]) {
-        self.event = event; self.savedPayloads = savedPayloads; history = nil; recorder = nil
+        self.event = event; self.savedPayloads = savedPayloads; history = nil
         noticeKey = "incident_frozen_detail"; super.init()
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad()
-        inspectorActions = history == nil ? [copyButton] : [copyButton, refreshButton]
+        inspectorActions = [copyButton]
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         tableView.tableHeaderView = header
         selection.onSelect = { [weak self] _ in self?.render() }
-        refresh()
-    }
-    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
-    @objc private func refresh() {
-        if let history {
-            recorder?.maintenance()
-            if let snapshot = history.snapshot() {
-                if let current = snapshot.events.first(where: { $0.id == event.id }) { event = current; noticeKey = nil }
-                else { noticeKey = "http_missing" }
-            } else { noticeKey = "http_stale" }
-        }
         render()
     }
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
     private func render() {
         title = event.method + " · " + (event.statusCode.map(String.init) ?? HTTPPresentation.state(event.state))
         selection.setTitles(["ui_overview", "ui_request", "ui_response"].map(InspectorLocalization.text))
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
-        refreshButton.accessibilityLabel = InspectorLocalization.text("http_refresh")
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         if selection.selectedIndex == 0 {
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
@@ -91,12 +78,13 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     }
     private func openBody() {
         let reference = selection.selectedIndex == 1 ? event.requestBody : event.responseBody
-        let content: String
+        var content: InspectorReadContent
         if let savedPayloads { content = HTTPPresentation.body(reference, savedPayloads: savedPayloads) }
         else if let history { content = HTTPPresentation.body(reference, history: history) }
-        else { content = InspectorLocalization.text("incident_payload_missing") }
+        else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
+        if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
         read(InspectorLocalization.text(selection.selectedIndex == 1 ? "http_request_body" : "http_response_body"),
-            content: (noticeKey.map { InspectorLocalization.text($0) + "\n\n" } ?? "") + content)
+            content: content)
     }
     @objc private func copyMetadata() { UIPasteboard.general.string = HTTPPresentation.overview(event) }
 }

@@ -5,11 +5,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 
 /** A bounded lexical index. Original number tokens, duplicate keys and ordering remain intact. */
 final class InspectorJsonDocument {
     static final int MAX_UNITS = 65_536, MAX_NODES = 4_096, MAX_DEPTH = 48;
+    interface Cancellation { boolean isCancelled(); }
     enum Failure { NOT_JSON, INVALID, LIMITED, CANCELLED }
     enum Kind { OBJECT, ARRAY, STRING, NUMBER, LITERAL }
     static final class ParseFailure extends Exception {
@@ -39,7 +39,7 @@ final class InspectorJsonDocument {
     private InspectorJsonDocument(String source, List<Node> nodes) {
         this.source = source; this.nodes = Collections.unmodifiableList(nodes);
     }
-    static InspectorJsonDocument parse(String source, BooleanSupplier cancelled) throws ParseFailure {
+    static InspectorJsonDocument parse(String source, Cancellation cancelled) throws ParseFailure {
         if (source.length() > MAX_UNITS) throw new ParseFailure(Failure.LIMITED);
         Parser parser = new Parser(source, cancelled); parser.whitespace();
         if (parser.current() != '{' && parser.current() != '[') throw new ParseFailure(Failure.NOT_JSON);
@@ -107,19 +107,19 @@ final class InspectorJsonDocument {
 
     private static final class Parser {
         final String source;
-        final BooleanSupplier cancelled;
+        final Cancellation cancelled;
         final List<Node> nodes = new ArrayList<>();
         int position;
-        Parser(String source, BooleanSupplier cancelled) { this.source = source; this.cancelled = cancelled; }
+        Parser(String source, Cancellation cancelled) { this.source = source; this.cancelled = cancelled; }
         char current() { return position < source.length() ? source.charAt(position) : 0; }
         void step() throws ParseFailure {
             position++;
-            if ((position & 255) == 0 && cancelled.getAsBoolean()) throw new ParseFailure(Failure.CANCELLED);
+            if ((position & 255) == 0 && cancelled.isCancelled()) throw new ParseFailure(Failure.CANCELLED);
         }
         void whitespace() { while (current() == ' ' || current() == '\n' || current() == '\r' || current() == '\t') position++; }
         void take(char value) throws ParseFailure { if (current() != value) throw new ParseFailure(Failure.INVALID); step(); }
         int value(int parent, int keyStart, int keyEnd, int depth) throws ParseFailure {
-            if (cancelled.getAsBoolean()) throw new ParseFailure(Failure.CANCELLED);
+            if (cancelled.isCancelled()) throw new ParseFailure(Failure.CANCELLED);
             if (depth > MAX_DEPTH || nodes.size() >= MAX_NODES) throw new ParseFailure(Failure.LIMITED);
             whitespace(); int start = position; char first = current(); Kind kind;
             if (first == '{') kind = Kind.OBJECT;

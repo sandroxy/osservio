@@ -135,7 +135,8 @@ final class LogDetailViewController: InspectorDetailViewController {
             Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
         ]), Section(title: InspectorLocalization.text("ui_read_content"), rows: [
             Row(String(event.message.prefix(600)), action: { [weak self] in
-                guard let self else { return }; self.read(self.event.category, content: self.event.message, code: false)
+                guard let self else { return }; self.read(self.event.category, content: InspectorReadContent(text: self.event.message,
+                    notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate))
             })
         ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · "))]
     }

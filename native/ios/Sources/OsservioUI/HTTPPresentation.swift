@@ -50,18 +50,20 @@ enum HTTPPresentation {
             .filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
 
-    static func body(_ reference: HTTPBodyReference, history: any HTTPHistory) -> String {
-        var result = bodyDescription(reference)
-        guard let id = reference.blobID else { return result }
+    static func body(_ reference: HTTPBodyReference, history: any HTTPHistory) -> InspectorReadContent {
+        let notice = bodyDescription(reference)
+        guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
         switch history.body(id: id) {
-        case .available(let body): result += "\n\n" + (body.text.isEmpty ? text("http_body_empty") : body.text)
-        case .unavailable: result += "\n\n" + text("http_body_unavailable")
-        case .busy: result += "\n\n" + text("http_body_busy")
+        case .available(let body):
+            return InspectorReadContent(text: body.text, notice: notice + (body.text.isEmpty ? "\n" + text("http_body_empty") : ""), allowsJSON: reference.state == .available)
+        case .unavailable: return InspectorReadContent(notice: notice + "\n" + text("http_body_unavailable"))
+        case .busy: return InspectorReadContent(notice: notice + "\n" + text("http_body_busy"))
         }
-        return result
     }
-    static func body(_ reference: HTTPBodyReference, savedPayloads: [String: IncidentPayload]) -> String {
-        bodyDescription(reference) + (reference.blobID.map { "\n\n" + IncidentPayloadPresentation.content(savedPayloads[$0]) } ?? "")
+    static func body(_ reference: HTTPBodyReference, savedPayloads: [String: IncidentPayload]) -> InspectorReadContent {
+        let notice = bodyDescription(reference)
+        guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
+        return .saved(savedPayloads[id], notice: notice, complete: reference.state == .available)
     }
     static func bodyDescription(_ reference: HTTPBodyReference) -> String {
         let key = reference.state == .invalidText ? "invalid_text" : reference.state.rawValue

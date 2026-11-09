@@ -97,18 +97,20 @@ final class HTTPPresentation {
         return context.getString(key) + "\n" + context.getString(R.string.osservio_http_observed_bytes)
             + ": " + reference.observedBytes;
     }
-    static String body(Context context, HTTPEvent.BodyReference reference, Map<String, IncidentPayload> savedPayloads) {
-        return bodyDescription(context, reference) + (reference.blobId == null ? "" : "\n\n" + IncidentPayloadPresentation.content(context, savedPayloads.get(reference.blobId)));
+    static InspectorReadContent body(Context context, HTTPEvent.BodyReference reference, Map<String, IncidentPayload> savedPayloads) {
+        String notice = bodyDescription(context, reference);
+        if (reference.blobId == null) return InspectorReadContent.unavailable(notice);
+        return InspectorReadContent.saved(context, savedPayloads.get(reference.blobId), notice, reference.state == HTTPEvent.BodyState.AVAILABLE);
     }
-    static String body(Context context, HTTPEvent.BodyReference reference, HTTPHistory history) {
-        String result = bodyDescription(context, reference);
-        if (reference.blobId == null) return result;
+    static InspectorReadContent body(Context context, HTTPEvent.BodyReference reference, HTTPHistory history) {
+        String notice = bodyDescription(context, reference);
+        if (reference.blobId == null) return InspectorReadContent.unavailable(notice);
         HTTPHistory.BodyLookup lookup = history.body(reference.blobId);
         switch (lookup.state) {
             case AVAILABLE:
-                return result + "\n\n" + (lookup.body.text.isEmpty() ? context.getString(R.string.osservio_http_body_empty) : lookup.body.text);
-            case BUSY: return result + "\n\n" + context.getString(R.string.osservio_http_body_busy);
-            case UNAVAILABLE: return result + "\n\n" + context.getString(R.string.osservio_http_body_unavailable);
+                return new InspectorReadContent(lookup.body.text, notice + (lookup.body.text.isEmpty() ? "\n" + context.getString(R.string.osservio_http_body_empty) : ""), reference.state == HTTPEvent.BodyState.AVAILABLE);
+            case BUSY: return InspectorReadContent.unavailable(notice + "\n" + context.getString(R.string.osservio_http_body_busy));
+            case UNAVAILABLE: return InspectorReadContent.unavailable(notice + "\n" + context.getString(R.string.osservio_http_body_unavailable));
             default: throw new IllegalArgumentException("Unknown body lookup state");
         }
     }

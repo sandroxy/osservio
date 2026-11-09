@@ -20,13 +20,12 @@ public final class WebSocketInspectorViewController: UITableViewController {
 
 @MainActor
 final class WebSocketDetailViewController: InspectorDetailViewController {
-    private var event: WebSocketEvent
+    private let event: WebSocketEvent
     private let history: (any WebSocketHistory)?
     private let savedPayloads: [String: IncidentPayload]?
     private let selection = InspectorScopeControl(titles: ["", ""])
     private var noticeKey: String?
     private lazy var copyButton = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyMetadata))
-    private lazy var refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
     init(event: WebSocketEvent, history: any WebSocketHistory) {
         self.event = event; self.history = history; savedPayloads = nil; super.init()
     }
@@ -37,26 +36,16 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad()
-        inspectorActions = history == nil ? [copyButton] : [copyButton, refreshButton]
+        inspectorActions = [copyButton]
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
-        tableView.tableHeaderView = header; selection.onSelect = { [weak self] _ in self?.render() }; refresh()
+        tableView.tableHeaderView = header; selection.onSelect = { [weak self] _ in self?.render() }; render()
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
-    @objc private func refresh() {
-        if let history {
-            if let snapshot = history.snapshot() {
-                if let current = snapshot.events.first(where: { $0.id == event.id }) { event = current; noticeKey = nil }
-                else { noticeKey = "ws_missing" }
-            } else { noticeKey = "http_stale" }
-        }
-        render()
-    }
     private func render() {
         title = WebSocketPresentation.kind(event)
         selection.setTitles(["ui_overview", "ws_payload"].map(InspectorLocalization.text))
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
-        refreshButton.accessibilityLabel = InspectorLocalization.text("http_refresh")
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         if selection.selectedIndex == 0 {
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
@@ -82,11 +71,12 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         }
     }
     private func openPayload() {
-        let content: String
+        var content: InspectorReadContent
         if let savedPayloads { content = WebSocketPresentation.payload(event.payload, savedPayloads: savedPayloads) }
         else if let history { content = WebSocketPresentation.payload(event.payload, history: history) }
-        else { content = InspectorLocalization.text("incident_payload_missing") }
-        read(InspectorLocalization.text("ws_payload"), content: (noticeKey.map { InspectorLocalization.text($0) + "\n\n" } ?? "") + content)
+        else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
+        if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
+        read(InspectorLocalization.text("ws_payload"), content: content)
     }
     @objc private func copyMetadata() { UIPasteboard.general.string = WebSocketPresentation.overview(event) }
 }

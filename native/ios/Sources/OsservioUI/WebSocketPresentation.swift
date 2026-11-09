@@ -25,20 +25,22 @@ enum WebSocketPresentation {
                 event.headersLimited ? text("http_headers_limited") : "", "\n" + text("ws_evidence_note")]
             .filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
-    static func payload(_ reference: WebSocketPayloadReference?, history: any WebSocketHistory) -> String {
-        guard let reference else { return text("ws_no_payload") }
-        var result = payloadDescription(reference)
-        guard let id = reference.blobID else { return result }
+    static func payload(_ reference: WebSocketPayloadReference?, history: any WebSocketHistory) -> InspectorReadContent {
+        guard let reference else { return InspectorReadContent(notice: text("ws_no_payload")) }
+        let notice = payloadDescription(reference)
+        guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
         switch history.payload(id: id) {
-        case .available(let payload): result += "\n\n" + (payload.text.isEmpty ? text("http_body_empty") : payload.text)
-        case .unavailable: result += "\n\n" + text("http_body_unavailable")
-        case .busy: result += "\n\n" + text("http_body_busy")
+        case .available(let payload):
+            return InspectorReadContent(text: payload.text, notice: notice + (payload.text.isEmpty ? "\n" + text("http_body_empty") : ""), allowsJSON: reference.state == .available)
+        case .unavailable: return InspectorReadContent(notice: notice + "\n" + text("http_body_unavailable"))
+        case .busy: return InspectorReadContent(notice: notice + "\n" + text("http_body_busy"))
         }
-        return result
     }
-    static func payload(_ reference: WebSocketPayloadReference?, savedPayloads: [String: IncidentPayload]) -> String {
-        guard let reference else { return text("ws_no_payload") }
-        return payloadDescription(reference) + (reference.blobID.map { "\n\n" + IncidentPayloadPresentation.content(savedPayloads[$0]) } ?? "")
+    static func payload(_ reference: WebSocketPayloadReference?, savedPayloads: [String: IncidentPayload]) -> InspectorReadContent {
+        guard let reference else { return InspectorReadContent(notice: text("ws_no_payload")) }
+        let notice = payloadDescription(reference)
+        guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
+        return .saved(savedPayloads[id], notice: notice, complete: reference.state == .available)
     }
     static func payloadDescription(_ reference: WebSocketPayloadReference) -> String {
         text("ws_payload_" + reference.state.rawValue) + "\n" + text("ws_bytes") + ": " + (reference.byteCount.map(String.init) ?? text("http_none"))
