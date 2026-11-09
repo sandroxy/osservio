@@ -1,13 +1,12 @@
 package com.sandrox.osservio.ui;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import com.sandrox.osservio.core.LogEvent;
 
 /** An immutable log reader can display live or saved evidence without a history dependency. */
 final class LogDetailDialog {
     private LogDetailDialog() { }
-    static AlertDialog create(Context context, LogEvent event) {
+    static InspectorScreen create(Context context, LogEvent event) {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_overview);
         page.field(R.string.osservio_ui_level, event.level.name()); page.field(R.string.osservio_ui_category, event.category);

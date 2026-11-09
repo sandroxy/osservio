@@ -95,4 +95,7 @@
     <string name="osservio_ui_presentation_only">Changes presentation only, not capture or retention.</string>
     <string name="osservio_ui_capture_status">Capture status</string>
     <string name="osservio_ui_app_intro">Environment and runtime information for this host</string>
+    <string name="osservio_ui_minimize">Minimize inspector</string>
+    <string name="osservio_ui_open">Open Osservio</string>
+    <string name="osservio_ui_hide_entry">Hide floating entry</string>
 </resources>

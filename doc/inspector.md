@@ -116,7 +116,17 @@ Standalone log, HTTP, WebSocket, runtime and problem views remain available for
 hosts that own their navigation. Retain providers and stores independently of
 the viewer, and release them according to their own ownership contracts.
 
-On Android, `InspectorView` owns its internal pages and detail dialogs. Attach
+On Android, an application-owned `InspectorSession(application, factory)` provides
+the app-local floating entry and a retained full-screen workspace. Call
+`attach(activity)` from each participating Activity's `onResume`; its factory
+uses the supplied application-backed context and must not capture an Activity.
+The session handles Back, keyboard and system-bar insets. It releases its window
+while minimized or backgrounded, retaining the page hierarchy for restoration.
+Reattaching after Activity recreation preserves that hierarchy without retaining
+the old Activity. It follows one attached Activity; simultaneous display-specific
+workspaces are outside this API. Call `dispose()` when releasing the session.
+
+Hosts that own presentation can still use `InspectorView` directly. Attach
 it with a bounded height and apply the host window's system-bar, display-cutout
 and keyboard insets. Register `setOnCloseListener` for the explicit Close action.
 Forward back navigation to `navigateBack()`; close the host presentation only

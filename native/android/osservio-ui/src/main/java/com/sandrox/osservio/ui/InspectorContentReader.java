@@ -31,9 +31,10 @@ final class InspectorContentReader extends LinearLayout {
     private String content = "";
     private InspectorTextSearch matches = new InspectorTextSearch("", "");
     private int selection;
+    private boolean searchDirty;
     private final Runnable searchContent = this::searchContent;
     private void searchContent() {
-        matches = new InspectorTextSearch(content, search.getText().toString()); selection = 0; highlight(true);
+        matches = new InspectorTextSearch(content, search.getText().toString()); selection = 0; searchDirty = false; highlight(true);
     }
     InspectorContentReader(Context context) {
         super(context); setOrientation(VERTICAL);
@@ -46,7 +47,7 @@ final class InspectorContentReader extends LinearLayout {
         actions.addView(copy, new LayoutParams(0, -2, 1)); actions.addView(find, new LayoutParams(0, -2, 1)); header.addView(actions);
         searching = new LinearLayout(context); searching.setOrientation(VERTICAL); searching.setVisibility(GONE);
         search = InspectorWidgets.search(context, R.string.osservio_ui_search_content, "", value -> {
-            handler.removeCallbacks(searchContent); handler.postDelayed(searchContent, 120);
+            searchDirty = true; handler.removeCallbacks(searchContent); handler.postDelayed(searchContent, 120);
         });
         searching.addView(search, new LayoutParams(-1, -2));
         LinearLayout navigation = new LinearLayout(context); navigation.setGravity(Gravity.CENTER_VERTICAL);
@@ -108,4 +109,8 @@ final class InspectorContentReader extends LinearLayout {
         if (clipboard != null) { clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", content)); Toast.makeText(getContext(), R.string.osservio_ui_copied, Toast.LENGTH_SHORT).show(); }
     }
     @Override protected void onDetachedFromWindow() { handler.removeCallbacksAndMessages(null); super.onDetachedFromWindow(); }
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (searchDirty && searching.getVisibility() == VISIBLE) handler.post(searchContent);
+    }
 }

@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 /** Small native presentation primitives; no history or capture ownership. */
@@ -17,6 +18,16 @@ final class InspectorWidgets {
     interface TextChange { void changed(String value); }
     interface Selection { void selected(int value); }
     private InspectorWidgets() { }
+    static ImageButton icon(Context context, int symbol, int label, Runnable action) {
+        ImageButton button = new ImageButton(context);
+        button.setImageResource(symbol); button.setImageTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.accent(context)));
+        button.setContentDescription(context.getString(label));
+        int size = InspectorTheme.dp(context, 48), inset = InspectorTheme.dp(context, 12);
+        button.setLayoutParams(new LinearLayout.LayoutParams(size, size)); button.setPadding(inset, inset, inset, inset);
+        InspectorTheme.surface(button, true, 24); button.setOnClickListener(ignored -> action.run());
+        if (android.os.Build.VERSION.SDK_INT >= 26) button.setTooltipText(context.getString(label));
+        return button;
+    }
     static void hideKeyboard(View view) {
         View focused = view.findFocus(); if (focused != null) focused.clearFocus();
         view.setFocusableInTouchMode(true); view.requestFocus();

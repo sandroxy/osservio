@@ -1,5 +1,15 @@
 # Third-party notices
 
+## Material Symbols
+
+The optional Android UI module includes a small subset of Google's Material
+Symbols rounded vectors under Apache 2.0, pinned to commit
+`10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7`. The
+[vendor record](native/android/vendor/material-symbols/README.md) identifies each
+source and the resource-name/tint adaptations. The
+[upstream license](native/android/osservio-ui/src/main/resources/META-INF/osservio/material-symbols-LICENSE.txt)
+is included in the UI AAR. No icon font or icon-library runtime is distributed.
+
 ## Epitaph
 
 Android Runtime vendors Epitaph 0.2.0's protobuf wire reader, commit

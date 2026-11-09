@@ -68,6 +68,30 @@ and Light by default, with English and Dark available from App. Register
 `setAppearanceListener` to coordinate host-owned system bars. See
 [host presentation](../../doc/inspector.md#host-presentation) for ownership and insets.
 
+For a floating entry and a resumable full-screen workspace, retain one
+`InspectorSession` in an application-owned composition root:
+
+```java
+InspectorSession inspection = new InspectorSession(application, context ->
+    new InspectorView(context, recorder, history, httpRecorder, httpHistory));
+// In each participating Activity.onResume(), after super.onResume():
+inspection.attach(this);
+// From a host-owned gesture or command:
+boolean available = inspection.showEntry();
+```
+
+Import `com.sandrox.osservio.ui.InspectorSession` and `InspectorView`. The factory
+must use its supplied context and must not capture an Activity. Presentation APIs
+run on the main thread. The entry starts hidden and uses the host's own window;
+no overlay permission is required. `expand()` opens or resumes the workspace;
+`collapse()` returns to the entry; `hideEntry()` hides both surfaces. These calls
+preserve the in-process navigation, filters and drafts. A rejected window token
+makes expansion return false. Reattach after Activity recreation. `dispose()`
+unregisters callbacks and releases presentation state without stopping capture
+or deleting evidence. This session manages its own Back, system bars and insets;
+do not also wrap it in a host dialog. It follows the most recently attached
+Activity and does not provide simultaneous workspaces across displays.
+
 Detaching the view stops its refresh callbacks and leaves capture running until
 stopped or expired. Check `recorder.stop()` when stopping explicitly; false means
 the recorder was busy and the operation must be retried. Clearing `history` is

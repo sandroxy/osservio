@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -35,7 +34,7 @@ final class IncidentSnapshotView extends LinearLayout {
     private final Button delete;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
-    private AlertDialog detail;
+    private InspectorScreen detail;
     private View evidence;
     private IncidentSharePresentation sharing;
     private Button share;
@@ -47,11 +46,10 @@ final class IncidentSnapshotView extends LinearLayout {
         Button copy = button(R.string.osservio_archive_copy_summary); copy.setOnClickListener(view -> copy(IncidentPresentation.summary(context, snapshot)));
         delete = button(R.string.osservio_incident_delete); delete.setOnClickListener(view -> deleteSnapshot.run());
         Button menu = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {
-            detail = new AlertDialog.Builder(context).setTitle(R.string.osservio_ui_actions)
-                .setItems(new String[] {context.getString(R.string.osservio_archive_copy_summary), context.getString(R.string.osservio_incident_delete)}, (dialog, which) -> {
+            detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_archive_copy_summary), context.getString(R.string.osservio_incident_delete)}, (dialog, which) -> {
                     dialog.dismiss(); detail = null; if (which == 0) copy.performClick(); else delete.performClick();
-                }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
-            AlertDialog shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
+                });
+            InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
         });
         menu.setText("⋯"); menu.setTextSize(22); menu.setContentDescription(context.getString(R.string.osservio_ui_actions));
         controls.addView(back, new LayoutParams(0, -2, 1)); controls.addView(menu, new LayoutParams(dp(48), -2));
@@ -145,6 +143,7 @@ final class IncidentSnapshotView extends LinearLayout {
     }
     void dismissDialogs() {
         if (sharing != null) sharing.cancel();
+        if (InspectorNavigation.owns(getContext())) return;
         if (detail != null) detail.dismiss(); if (evidence instanceof IncidentEvidenceView) ((IncidentEvidenceView) evidence).dismissDialogs();
     }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
@@ -190,7 +189,7 @@ final class IncidentSnapshotView extends LinearLayout {
     private void showText(int title, String value) {
         if (detail != null) return;
         InspectorContentReader content = new InspectorContentReader(getContext()); content.display(value, false);
-        AlertDialog dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), content);
+        InspectorScreen dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), content);
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void copy(String value) {

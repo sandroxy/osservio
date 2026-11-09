@@ -1,6 +1,5 @@
 package com.sandrox.osservio.ui;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -35,7 +34,8 @@ final class IncidentComposer {
     private final HTTPHistory httpHistory;
     private final WebSocketHistory webSocketHistory;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final AlertDialog dialog;
+    private final InspectorScreen dialog;
+    private final android.widget.Button saveButton;
     private final CheckBox includeEnvironment;
     private final CheckBox includeBreadcrumbs;
     private final CheckBox includeNote;
@@ -108,8 +108,8 @@ final class IncidentComposer {
         content.addView(label(context.getString(R.string.osservio_incident_note_hint) + "\n" + context.getString(R.string.osservio_incident_note_limit)), params());
         notice = label(""); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); content.addView(notice, params());
         ScrollView scroll = new ScrollView(context); scroll.setFillViewport(true); scroll.addView(content);
-        dialog = new AlertDialog.Builder(context).setTitle(R.string.osservio_incident_mark).setView(scroll)
-            .setNegativeButton(R.string.osservio_archive_cancel, null).setPositiveButton(R.string.osservio_incident_save, null).create();
+        dialog = InspectorDialogs.panel(context, R.string.osservio_incident_mark, scroll);
+        saveButton = dialog.action(R.string.osservio_incident_save, this::save);
         includeEnvironment.setOnCheckedChangeListener((button, checked) -> updateControls());
         includeHTTP.setOnCheckedChangeListener((button, checked) -> updateControls());
         includeWebSockets.setOnCheckedChangeListener((button, checked) -> updateControls());
@@ -139,7 +139,7 @@ final class IncidentComposer {
             if (!checked) editor.clearFocus(); editor.setVisibility(checked ? View.VISIBLE : View.GONE);
         });
         dialog.setOnShowListener(ignored -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> save()); updateControls(); readEnvironment();
+            updateControls(); readEnvironment();
         });
         dialog.setOnDismissListener(ignored -> { generation++; dismissed.run(); });
     }
@@ -167,9 +167,8 @@ final class IncidentComposer {
     }
     private void updateControls() {
         if (!dialog.isShowing()) return;
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(!saving && (!includeEnvironment.isChecked() || !environmentPending));
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(!saving);
-        dialog.setCancelable(!saving); dialog.setCanceledOnTouchOutside(!saving);
+        saveButton.setEnabled(!saving && (!includeEnvironment.isChecked() || !environmentPending));
+        dialog.setCancelable(!saving);
         includeEnvironment.setEnabled(!saving); includeBreadcrumbs.setEnabled(!saving); includeNote.setEnabled(!saving); editor.setEnabled(!saving);
         includeLogs.setEnabled(!saving && mark.logs != null);
         includeHTTP.setEnabled(!saving && mark.http != null); includeWebSockets.setEnabled(!saving && mark.webSockets != null);

@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -56,7 +55,7 @@ class NetworkInspectorView extends LinearLayout {
     private boolean attached;
     private boolean dirty = true;
     private boolean changingScope;
-    private AlertDialog dialog;
+    private InspectorScreen dialog;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) {
@@ -217,14 +216,13 @@ class NetworkInspectorView extends LinearLayout {
         }
         labels.add(getContext().getString(R.string.osservio_ui_capture_details));
         labels.add(getContext().getString(R.string.osservio_ui_network_clear));
-        dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_actions)
-            .setItems(labels.toArray(new String[0]), (ignored, which) -> {
+        dialog = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, labels.toArray(new String[0]), (ignored, which) -> {
                 // Dismiss before replacing the tracked dialog so its callback cannot clear the new one.
                 dismissDialog();
                 if (which < controllers.size()) toggleCapture(controllers.get(which));
                 else if (which == controllers.size()) capacity();
                 else confirmClear();
-            }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
+            });
         watchDialog();
     }
     private void toggleCapture(CaptureController controller) {
@@ -246,16 +244,14 @@ class NetworkInspectorView extends LinearLayout {
                     sockets().size(), state.sockets == null ? 0L : state.sockets.evictedEvents,
                     state.sockets == null ? 0L : state.sockets.evictedPayloads, status.rateLimitedCount)));
         }
-        dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_capture_details)
-            .setMessage(android.text.TextUtils.join("\n\n", lines)).setPositiveButton(R.string.osservio_close, null).show(); watchDialog();
+        dialog = InspectorDialogs.message(getContext(), R.string.osservio_ui_capture_details, android.text.TextUtils.join("\n\n", lines)); watchDialog();
     }
     private void confirmClear() {
-        dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_network_clear).setMessage(R.string.osservio_ui_clear_hint)
-            .setNegativeButton(R.string.osservio_archive_cancel, null).setPositiveButton(R.string.osservio_ui_network_clear, (ignored, which) -> {
+        dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_ui_network_clear, getContext().getString(R.string.osservio_ui_clear_hint), R.string.osservio_ui_network_clear, (ignored, which) -> {
                 if (httpHistory != null && state.scope != 2) { httpHistory.clear(); state.http = httpHistory.snapshot(); }
                 if (socketHistory != null && state.scope != 1) { socketHistory.clear(); state.sockets = socketHistory.snapshot(); connections = InspectorQuery.connections(sockets()); }
                 dirty = true; refresh();
-            }).show(); watchDialog();
+            }); watchDialog();
     }
     private void open(Item item) {
         if (dialog != null) return;
@@ -272,11 +268,11 @@ class NetworkInspectorView extends LinearLayout {
     }
     private void watchDialog() {
         handler.removeCallbacks(tick);
-        AlertDialog watched = dialog;
+        InspectorScreen watched = dialog;
         watched.setOnDismissListener(ignored -> { if (dialog == watched) { dialog = null; schedule(); } });
     }
     private void dismissDialog() {
-        AlertDialog previous = dialog; dialog = null; if (previous != null) previous.dismiss(); schedule();
+        InspectorScreen previous = dialog; dialog = null; if (previous != null) previous.dismiss(); schedule();
     }
     private void setPaused(boolean paused) {
         if (state.paused == paused) return;
@@ -290,7 +286,7 @@ class NetworkInspectorView extends LinearLayout {
     private int dp(int value) { return InspectorTheme.dp(getContext(), value); }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); attached = true; schedule(); }
     @Override protected void onDetachedFromWindow() {
-        saveReadingPosition(); attached = false; handler.removeCallbacks(tick); dismissDialog(); super.onDetachedFromWindow();
+        saveReadingPosition(); attached = false; handler.removeCallbacks(tick); if (!InspectorNavigation.owns(getContext())) dismissDialog(); super.onDetachedFromWindow();
     }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
     @Override protected void onVisibilityChanged(View view, int visibility) { super.onVisibilityChanged(view, visibility); schedule(); }
@@ -298,7 +294,7 @@ class NetworkInspectorView extends LinearLayout {
         if (handler == null || tick == null) return;
         handler.removeCallbacks(tick);
         if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
-        else if ((!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) dismissDialog();
+        else if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) dismissDialog();
     }
     private static final class Item {
         final HTTPEvent http;

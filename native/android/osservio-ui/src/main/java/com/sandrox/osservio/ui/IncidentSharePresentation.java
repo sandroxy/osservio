@@ -1,12 +1,10 @@
 package com.sandrox.osservio.ui;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Application;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -28,7 +26,7 @@ final class IncidentSharePresentation implements Application.ActivityLifecycleCa
     private final Notice notice;
     private final Handler main = new Handler(Looper.getMainLooper());
     private Activity activity;
-    private AlertDialog progress;
+    private InspectorScreen progress;
     private IncidentExporter.Task task;
     private long generation;
 
@@ -42,10 +40,9 @@ final class IncidentSharePresentation implements Application.ActivityLifecycleCa
         if (selected == null || selected.isFinishing() || selected.isDestroyed()) { notice.show(R.string.osservio_incident_export_unavailable); return; }
         activity = selected; activity.getApplication().registerActivityLifecycleCallbacks(this);
         long request = ++generation; button.setEnabled(false); notice.show(0);
-        progress = new AlertDialog.Builder(owner.getContext()).setTitle(R.string.osservio_incident_share)
-            .setMessage(R.string.osservio_incident_export_preparing)
-            .setNegativeButton(R.string.osservio_archive_cancel, (dialog, which) -> cancel()).create();
-        progress.setCanceledOnTouchOutside(false); progress.setOnCancelListener(dialog -> cancel()); progress.show();
+        progress = InspectorDialogs.message(owner.getContext(), R.string.osservio_incident_share,
+            owner.getContext().getString(R.string.osservio_incident_export_preparing));
+        progress.setOnCancelListener(dialog -> cancel());
         WeakReference<IncidentSharePresentation> reference = new WeakReference<>(this); Handler handler = main;
         task = exporter.prepare(snapshot, (file, error) -> handler.post(() -> {
             IncidentSharePresentation presentation = reference.get();
@@ -74,17 +71,12 @@ final class IncidentSharePresentation implements Application.ActivityLifecycleCa
     private void release() {
         boolean preparing = progress != null;
         if (activity != null) { activity.getApplication().unregisterActivityLifecycleCallbacks(this); activity = null; }
-        if (progress != null) { AlertDialog dialog = progress; progress = null; dialog.dismiss(); }
+        if (progress != null) { InspectorScreen dialog = progress; progress = null; dialog.dismiss(); }
         if (preparing) button.setEnabled(true);
     }
     private boolean visible() { return owner.isAttachedToWindow() && owner.isShown() && owner.getWindowVisibility() == View.VISIBLE; }
     private static Activity activity(Context context) {
-        for (int depth = 0; depth < 16; depth++) {
-            if (context instanceof Activity) return (Activity) context;
-            if (!(context instanceof ContextWrapper)) return null;
-            Context base = ((ContextWrapper) context).getBaseContext(); if (base == context) return null; context = base;
-        }
-        return null;
+        return InspectorSession.activity(context);
     }
     private static int message(IncidentExporter.Error error) {
         switch (error) {

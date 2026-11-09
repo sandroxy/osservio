@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,7 +36,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
     private boolean paused;
     private boolean attached;
     private boolean dirty = true;
-    private AlertDialog detail;
+    private InspectorScreen detail;
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
             if (!attached || !isShown() || getWindowVisibility() != VISIBLE || detail != null) return;
@@ -74,7 +73,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
         if (status == null) { busy(); return; }
         String[] labels = {getContext().getString(status.baselineEnabled ? R.string.osservio_crumb_disable_baseline : R.string.osservio_crumb_enable_baseline),
             getContext().getString(R.string.osservio_ui_capture_details), getContext().getString(R.string.osservio_crumb_clear)};
-        detail = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_actions).setItems(labels, (dialog, which) -> {
+        detail = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, labels, (dialog, which) -> {
             dialog.dismiss(); detail = null;
             if (which == 0) {
                 CaptureController.Status current = recorder.captureController.status();
@@ -85,16 +84,13 @@ final class BreadcrumbInspectorView extends LinearLayout {
                 String message = recorded == null ? getContext().getString(R.string.osservio_busy)
                     : getContext().getString(R.string.osservio_crumb_summary, captureLabel(), latest == null ? 0 : latest.events.size(),
                         latest == null ? 0L : latest.evictedCount, recorded.rateLimitedCount);
-                detail = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_capture_details)
-                    .setMessage(message + "\n\n" + getContext().getString(R.string.osservio_crumb_baseline_hint))
-                    .setPositiveButton(R.string.osservio_close, null).show(); watchDialog();
+                detail = InspectorDialogs.message(getContext(), R.string.osservio_ui_capture_details, message + "\n\n" + getContext().getString(R.string.osservio_crumb_baseline_hint)); watchDialog();
             } else {
-                detail = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_crumb_clear).setMessage(R.string.osservio_ui_clear_hint)
-                    .setNegativeButton(R.string.osservio_archive_cancel, null).setPositiveButton(R.string.osservio_crumb_clear, (ignored, value) -> {
+                detail = InspectorDialogs.confirm(getContext(), R.string.osservio_crumb_clear, getContext().getString(R.string.osservio_ui_clear_hint), R.string.osservio_crumb_clear, (ignored, value) -> {
                         history.clear(); latest = history.snapshot(); dirty = true; refreshView();
-                    }).show(); watchDialog();
+                    }); watchDialog();
             }
-        }).setNegativeButton(R.string.osservio_archive_cancel, null).show(); watchDialog();
+        }); watchDialog();
     }
     private void busy() { Toast.makeText(getContext(), R.string.osservio_busy, Toast.LENGTH_SHORT).show(); }
     private String captureLabel() {
@@ -103,14 +99,14 @@ final class BreadcrumbInspectorView extends LinearLayout {
             ? R.string.osservio_ui_detailed : status.mode == CaptureController.Mode.BASELINE ? R.string.osservio_ui_baseline : R.string.osservio_ui_not_capturing);
     }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); attached = true; schedule(); }
-    @Override protected void onDetachedFromWindow() { attached = false; handler.removeCallbacks(refresh); if (detail != null) detail.dismiss(); super.onDetachedFromWindow(); }
+    @Override protected void onDetachedFromWindow() { attached = false; handler.removeCallbacks(refresh); if (!InspectorNavigation.owns(getContext()) && detail != null) detail.dismiss(); super.onDetachedFromWindow(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
     @Override protected void onVisibilityChanged(View view, int visibility) { super.onVisibilityChanged(view, visibility); schedule(); }
     private void schedule() {
         if (handler == null || refresh == null) return;
         handler.removeCallbacks(refresh);
         if (attached && isShown() && getWindowVisibility() == VISIBLE && detail == null) handler.post(refresh);
-        else if ((!attached || !isShown() || getWindowVisibility() != VISIBLE) && detail != null) detail.dismiss();
+        else if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && detail != null) detail.dismiss();
     }
     private void refreshView() {
         if (list == null) return;
@@ -140,7 +136,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
         detail = InspectorDialogs.screen(getContext(), RuntimePresentation.kind(getContext(), event.kind), reader); watchDialog(); detail.show();
     }
     private void watchDialog() {
-        handler.removeCallbacks(refresh); AlertDialog watched = detail;
+        handler.removeCallbacks(refresh); InspectorScreen watched = detail;
         watched.setOnDismissListener(ignored -> { if (detail == watched) { detail = null; schedule(); } });
     }
     private final class Rows extends BaseAdapter {

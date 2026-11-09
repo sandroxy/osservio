@@ -1,6 +1,5 @@
 package com.sandrox.osservio.ui;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -19,7 +18,7 @@ final class WebSocketDetailDialog {
     private String notice = "";
     private int section;
     private final FrameLayout body;
-    final AlertDialog dialog;
+    final InspectorScreen dialog;
     WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history) { this(context, event, history, null); }
     WebSocketDetailDialog(Context context, WebSocketEvent event, Map<String, IncidentPayload> payloads) { this(context, event, null, payloads); }
     private WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history, Map<String, IncidentPayload> payloads) {

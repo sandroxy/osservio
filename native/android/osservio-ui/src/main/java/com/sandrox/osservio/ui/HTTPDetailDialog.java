@@ -1,6 +1,5 @@
 package com.sandrox.osservio.ui;
 
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -25,7 +24,7 @@ final class HTTPDetailDialog {
     private String notice = "";
     private int section;
     private final FrameLayout body;
-    final AlertDialog dialog;
+    final InspectorScreen dialog;
 
     HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, HTTPRecorder recorder) {
         this(context, event, history, recorder, null);

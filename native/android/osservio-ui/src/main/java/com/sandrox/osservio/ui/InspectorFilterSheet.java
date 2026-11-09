@@ -1,6 +1,5 @@
 package com.sandrox.osservio.ui;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,10 +32,10 @@ final class InspectorFilterSheet {
         Choice(Group group, String key, String title) { this.group = group; this.key = key; this.title = title; }
     }
     private InspectorFilterSheet() { }
-    static AlertDialog show(Context context, InspectorQuery original, List<Group> groups, Applied applied) {
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, Applied applied) {
         return show(context, original, groups, R.string.osservio_ui_time, applied);
     }
-    static AlertDialog show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, Applied applied) {
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, Applied applied) {
         InspectorQuery draft = original.copy();
         Group time = new Group(null, context.getString(timeLabel))
             .option("0", context.getString(R.string.osservio_ui_time_all))
@@ -106,16 +105,11 @@ final class InspectorFilterSheet {
             }
             adapter.notifyDataSetChanged();
         });
-        AlertDialog dialog = new AlertDialog.Builder(context).setTitle(R.string.osservio_ui_filters).setView(content)
-            .setNegativeButton(R.string.osservio_archive_cancel, null)
-            .setNeutralButton(R.string.osservio_ui_reset, null)
-            .setPositiveButton(R.string.osservio_ui_apply, (ignored, which) -> applied.apply(draft)).create();
-        dialog.setOnShowListener(ignored -> {
-            dialog.getWindow().setLayout(-1, -1);
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> {
-                draft.values.clear(); draft.recentMinutes = 0; adapter.notifyDataSetChanged();
-            });
-        });
+        InspectorScreen dialog = InspectorDialogs.panel(context, R.string.osservio_ui_filters, content);
+        dialog.action(R.string.osservio_ui_apply, () -> { applied.apply(draft); dialog.dismiss(); });
+        content.addView(InspectorWidgets.button(context, R.string.osservio_ui_reset, () -> {
+            draft.values.clear(); draft.recentMinutes = 0; adapter.notifyDataSetChanged();
+        }), 2, new LinearLayout.LayoutParams(-1, -2));
         filter.changed(""); dialog.show(); return dialog;
     }
 }

@@ -26,10 +26,10 @@ import com.sandrox.osservio.core.WebSocketRecorder;
 import com.sandrox.osservio.core.WebSocketHistory;
 import java.util.Objects;
 
-/** Native inspector with independent language and appearance. Hosts own presentation and outer insets. */
+/** Native inspector with independent language and appearance, a retained page stack, and host-owned outer insets. */
 // Runtime dependencies are explicit; XML inflation is not supported.
 @SuppressLint("ViewConstructor")
-public final class InspectorView extends LinearLayout {
+public final class InspectorView extends FrameLayout {
     /** Lets a presenting host match its window bars to the inspector without changing the host theme. */
     public interface AppearanceListener { void changed(boolean dark); }
     private final LogRecorder logRecorder;
@@ -57,8 +57,11 @@ public final class InspectorView extends LinearLayout {
     private FrameLayout body;
     private TextView title;
     private TextView brand;
-    private Button close;
+    private android.widget.ImageButton close;
+    private final LinearLayout workspace;
+    private final InspectorNavigation navigation;
     private Runnable onClose;
+    private boolean minimizes;
     private AppearanceListener appearanceListener;
     private boolean dark;
     private boolean english;
@@ -95,7 +98,7 @@ public final class InspectorView extends LinearLayout {
                          WebSocketRecorder socketRecorder, WebSocketHistory socketHistory, EnvironmentProvider environment,
                          BreadcrumbRecorder breadcrumbRecorder, BreadcrumbHistory breadcrumbHistory, BreadcrumbArchive breadcrumbArchive,
                          IncidentArchive incidentArchive, IncidentExporter exporter) {
-        super(context);
+        super(new InspectorNavigation.OwnerContext(context));
         this.logRecorder = Objects.requireNonNull(logRecorder, "logRecorder"); this.logHistory = Objects.requireNonNull(logHistory, "logHistory");
         this.httpRecorder = Objects.requireNonNull(httpRecorder, "httpRecorder"); this.httpHistory = Objects.requireNonNull(httpHistory, "httpHistory");
         if ((socketRecorder == null) != (socketHistory == null)) throw new IllegalArgumentException("WebSocket recorder and history must be supplied together");
@@ -104,39 +107,49 @@ public final class InspectorView extends LinearLayout {
         this.socketRecorder = socketRecorder; this.socketHistory = socketHistory; this.environment = environment;
         this.breadcrumbRecorder = breadcrumbRecorder; this.breadcrumbHistory = breadcrumbHistory; this.breadcrumbArchive = breadcrumbArchive;
         this.incidentArchive = incidentArchive; this.exporter = exporter;
-        setOrientation(VERTICAL); rebuild();
+        workspace = new LinearLayout(getContext()); workspace.setOrientation(LinearLayout.VERTICAL);
+        navigation = new InspectorNavigation(getContext(), workspace);
+        ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
+        addView(navigation, new FrameLayout.LayoutParams(-1, -1)); rebuild();
     }
     /** Optional close affordance. The callback belongs to the presenting host. Main thread only. */
-    public void setOnCloseListener(Runnable listener) { onClose = listener; close.setVisibility(listener == null ? GONE : VISIBLE); }
+    public void setOnCloseListener(Runnable listener) { onClose = listener; minimizes = false; navigation.setMinimize(null); updateClose(); }
+    void setOnMinimizeListener(Runnable listener) { onClose = listener; minimizes = true; navigation.setMinimize(listener); updateClose(); }
+    private void updateClose() {
+        close.setImageResource(minimizes ? R.drawable.osservio_minimize : R.drawable.osservio_close);
+        close.setContentDescription(themed.getString(minimizes ? R.string.osservio_ui_minimize : R.string.osservio_close));
+        close.setVisibility(onClose == null ? GONE : VISIBLE);
+    }
+    void disposePresentation() { navigation.dispose(); appearanceListener = null; onClose = null; }
     /** Immediately reports the current inspector appearance, then subsequent appearance changes. */
     public void setAppearanceListener(AppearanceListener listener) {
         appearanceListener = listener; if (listener != null) listener.changed(dark);
     }
     /** Returns true when Back was consumed by an embedded problem or evidence page. Main thread only. */
     public boolean navigateBack() {
-        return pages[selection] instanceof IncidentInspectorView && ((IncidentInspectorView) pages[selection]).navigateBack();
+        return navigation.back() || (pages[selection] instanceof IncidentInspectorView && ((IncidentInspectorView) pages[selection]).navigateBack());
     }
     private void rebuild() {
         for (View page : pages) savePosition(page);
-        removeAllViews();
+        workspace.removeAllViews();
         for (int i = 0; i < pages.length; i++) pages[i] = null;
         dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
         LinearLayout bar = new LinearLayout(themed); bar.setGravity(Gravity.CENTER_VERTICAL);
         int inset = InspectorTheme.dp(themed, 16); bar.setPadding(inset, 0, inset, 0);
-        LinearLayout heading = new LinearLayout(themed); heading.setOrientation(VERTICAL);
+        LinearLayout heading = new LinearLayout(themed); heading.setOrientation(LinearLayout.VERTICAL);
         title = InspectorTheme.text(themed, 22, true); heading.addView(title);
         brand = InspectorWidgets.caption(themed); brand.setText(R.string.osservio_product_name); brand.setPadding(0, 0, 0, InspectorTheme.dp(themed, 6));
-        heading.addView(brand); bar.addView(heading, new LayoutParams(0, -2, 1));
-        close = InspectorWidgets.button(themed, R.string.osservio_close, () -> { if (onClose != null) onClose.run(); });
-        close.setVisibility(onClose == null ? GONE : VISIBLE); bar.addView(close, new LayoutParams(-2, -2));
-        addView(bar, new LayoutParams(-1, -2)); addView(InspectorWidgets.divider(themed));
-        body = new FrameLayout(themed); addView(body, new LayoutParams(-1, 0, 1));
-        addView(InspectorWidgets.divider(themed));
+        heading.addView(brand); bar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
+        close = InspectorWidgets.icon(themed, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> { if (onClose != null) onClose.run(); });
+        updateClose(); bar.addView(close, new LinearLayout.LayoutParams(-2, -2));
+        workspace.addView(bar, new LinearLayout.LayoutParams(-1, -2)); workspace.addView(InspectorWidgets.divider(themed));
+        body = new FrameLayout(themed); workspace.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
+        workspace.addView(InspectorWidgets.divider(themed));
         LinearLayout navigation = new LinearLayout(themed); navigation.setBackgroundColor(InspectorTheme.surface(themed));
         for (int i = 0; i < tabs.length; i++) {
             final int index = i;
-            LinearLayout tab = new LinearLayout(themed); tab.setOrientation(VERTICAL); tab.setGravity(Gravity.CENTER);
+            LinearLayout tab = new LinearLayout(themed); tab.setOrientation(LinearLayout.VERTICAL); tab.setGravity(Gravity.CENTER);
             tab.setPadding(0, InspectorTheme.dp(themed, 9), 0, InspectorTheme.dp(themed, 9));
             tab.setMinimumHeight(InspectorTheme.dp(themed, 64)); tab.setFocusable(true); tab.setContentDescription(themed.getString(labels[i]));
             tab.setOnClickListener(ignored -> select(index)); tab.setBackgroundResource(android.R.drawable.list_selector_background);
@@ -146,12 +159,12 @@ public final class InspectorView extends LinearLayout {
                 }
             });
             ImageView icon = new ImageView(themed); icon.setImageResource(icons[i]); icon.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-            tab.addView(icon, new LayoutParams(InspectorTheme.dp(themed, 22), InspectorTheme.dp(themed, 22)));
+            tab.addView(icon, new LinearLayout.LayoutParams(InspectorTheme.dp(themed, 22), InspectorTheme.dp(themed, 22)));
             TextView label = InspectorTheme.text(themed, 12, false); label.setText(labels[i]); label.setGravity(Gravity.CENTER);
             label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); label.setPadding(0, InspectorTheme.dp(themed, 4), 0, 0);
-            tab.addView(label, new LayoutParams(-1, -2)); tabs[i] = tab; navigation.addView(tab, new LayoutParams(0, -2, 1));
+            tab.addView(label, new LinearLayout.LayoutParams(-1, -2)); tabs[i] = tab; navigation.addView(tab, new LinearLayout.LayoutParams(0, -2, 1));
         }
-        addView(navigation, new LayoutParams(-1, -2)); select(selection);
+        workspace.addView(navigation, new LinearLayout.LayoutParams(-1, -2)); select(selection);
         compactChrome(getHeight());
     }
     private void select(int index) {
@@ -176,7 +189,7 @@ public final class InspectorView extends LinearLayout {
         title.setText(labels[index]);
     }
     private View unavailable() {
-        LinearLayout message = new LinearLayout(themed); message.setOrientation(VERTICAL); message.setGravity(Gravity.CENTER);
+        LinearLayout message = new LinearLayout(themed); message.setOrientation(LinearLayout.VERTICAL); message.setGravity(Gravity.CENTER);
         int inset = InspectorTheme.dp(themed, 32); message.setPadding(inset, inset, inset, inset);
         TextView title = InspectorTheme.text(themed, 18, true); title.setText(R.string.osservio_ui_no_archive); title.setGravity(Gravity.CENTER); message.addView(title);
         TextView hint = InspectorWidgets.caption(themed); hint.setText(R.string.osservio_ui_no_archive_hint); hint.setGravity(Gravity.CENTER); message.addView(hint);

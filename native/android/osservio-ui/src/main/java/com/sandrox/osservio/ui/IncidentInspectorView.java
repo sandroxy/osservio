@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -72,7 +71,7 @@ public final class IncidentInspectorView extends FrameLayout {
     private List<IncidentSummary> snapshots = Collections.emptyList();
     private IncidentSnapshotView selected;
     private IncidentComposer composer;
-    private AlertDialog confirmation;
+    private InspectorScreen confirmation;
     private boolean reading;
     private boolean attempted;
     private boolean justSaved;
@@ -147,16 +146,14 @@ public final class IncidentInspectorView extends FrameLayout {
     }
     private void actions() {
         String[] labels = {getContext().getString(R.string.osservio_incident_status), getContext().getString(R.string.osservio_incident_delete_all)};
-        confirmation = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_actions).setItems(labels, (dialog, which) -> {
+        confirmation = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, labels, (dialog, which) -> {
             dialog.dismiss(); confirmation = null;
             if (which == 0) {
-                confirmation = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_incident_status)
-                    .setMessage(PersistencePresentation.status(getContext(), archive.persistenceStatus(), R.string.osservio_incident_status))
-                    .setPositiveButton(R.string.osservio_close, null).show();
+                confirmation = InspectorDialogs.message(getContext(), R.string.osservio_incident_status, PersistencePresentation.status(getContext(), archive.persistenceStatus(), R.string.osservio_incident_status));
                 confirmation.setOnDismissListener(ignored -> confirmation = null);
             } else confirmDeletion(null);
-        }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
-        AlertDialog menu = confirmation; menu.setOnDismissListener(ignored -> { if (confirmation == menu) confirmation = null; });
+        });
+        InspectorScreen menu = confirmation; menu.setOnDismissListener(ignored -> { if (confirmation == menu) confirmation = null; });
     }
     void saveReadingPosition() {
         state.position = list.getFirstVisiblePosition(); View first = list.getChildAt(0); state.offset = first == null ? 0 : first.getTop();
@@ -183,6 +180,7 @@ public final class IncidentInspectorView extends FrameLayout {
     }
     private void invalidateQueries() { generation++; reading = false; attempted = false; }
     private void dismissDialogs() {
+        if (InspectorNavigation.owns(getContext())) return;
         if (composer != null) composer.dismiss();
         if (confirmation != null) confirmation.dismiss();
         if (selected != null) selected.dismissDialogs();
@@ -255,10 +253,10 @@ public final class IncidentInspectorView extends FrameLayout {
     }
     private void confirmDeletion(String id) {
         if (reading || confirmation != null) return;
-        confirmation = new AlertDialog.Builder(getContext())
-            .setTitle(id == null ? R.string.osservio_incident_delete_all : R.string.osservio_incident_delete)
-            .setMessage(R.string.osservio_incident_delete_confirmation).setNegativeButton(R.string.osservio_archive_cancel, null)
-            .setPositiveButton(R.string.osservio_archive_delete_confirm, (dialog, which) -> delete(id)).create();
+        confirmation = InspectorDialogs.confirm(getContext(),
+            id == null ? R.string.osservio_incident_delete_all : R.string.osservio_incident_delete,
+            getContext().getString(R.string.osservio_incident_delete_confirmation),
+            R.string.osservio_archive_delete_confirm, (dialog, which) -> delete(id));
         confirmation.setOnDismissListener(ignored -> confirmation = null); confirmation.show();
     }
     private void delete(String id) {

@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -36,7 +35,7 @@ final class IncidentEvidenceView extends LinearLayout {
     private final TextView footer;
     private final List<Integer> indices = new ArrayList<>();
     private final Rows rows = new Rows();
-    private AlertDialog detail;
+    private InspectorScreen detail;
     IncidentEvidenceView(Context context, IncidentLogs logs, Runnable back) { this(context, logs, null, null, back); }
     IncidentEvidenceView(Context context, IncidentHTTP http, Runnable back) { this(context, null, http, null, back); }
     IncidentEvidenceView(Context context, IncidentWebSockets sockets, Runnable back) { this(context, null, null, sockets, back); }
@@ -94,7 +93,7 @@ final class IncidentEvidenceView extends LinearLayout {
         else detail = new WebSocketDetailDialog(getContext(), sockets.events.get(index), sockets.payloads).dialog;
         detail.setOnDismissListener(ignored -> detail = null); detail.show();
     }
-    void dismissDialogs() { if (detail != null) detail.dismiss(); }
+    void dismissDialogs() { if (InspectorNavigation.owns(getContext())) return; if (detail != null) detail.dismiss(); }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView caption(String value) {

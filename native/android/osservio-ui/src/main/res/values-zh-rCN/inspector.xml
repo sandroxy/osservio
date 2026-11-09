@@ -94,4 +94,7 @@
     <string name="osservio_ui_presentation_only">仅影响显示，不改变采集与留存。</string>
     <string name="osservio_ui_capture_status">采集状态</string>
     <string name="osservio_ui_app_intro">当前宿主的环境与运行信息</string>
+    <string name="osservio_ui_minimize">收起查看器</string>
+    <string name="osservio_ui_open">打开 Osservio</string>
+    <string name="osservio_ui_hide_entry">隐藏悬浮入口</string>
 </resources>

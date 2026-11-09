@@ -1,6 +1,5 @@
 package com.sandrox.osservio.ui;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -10,7 +9,7 @@ import android.widget.TextView;
 final class InspectorDetailPage extends ScrollView {
     private final LinearLayout content;
     private LinearLayout group;
-    private AlertDialog reader;
+    private InspectorScreen reader;
     InspectorDetailPage(Context context) {
         super(context); setFillViewport(true);
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
@@ -43,7 +42,8 @@ final class InspectorDetailPage extends ScrollView {
     void read(String title, String text, boolean code) {
         if (reader != null) reader.dismiss();
         InspectorContentReader content = new InspectorContentReader(getContext()); content.display(text, code);
-        reader = InspectorDialogs.screen(getContext(), title, content); reader.show();
+        reader = InspectorDialogs.screen(getContext(), title, content);
+        InspectorScreen shown = reader; shown.setOnDismissListener(ignored -> { if (reader == shown) reader = null; }); reader.show();
     }
-    @Override protected void onDetachedFromWindow() { if (reader != null) reader.dismiss(); super.onDetachedFromWindow(); }
+    @Override protected void onDetachedFromWindow() { if (!InspectorNavigation.owns(getContext()) && reader != null) reader.dismiss(); super.onDetachedFromWindow(); }
 }

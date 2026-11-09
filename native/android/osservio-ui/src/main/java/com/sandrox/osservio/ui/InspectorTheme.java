@@ -13,7 +13,7 @@ import android.view.View;
 import android.widget.TextView;
 import java.util.Locale;
 
-/** A scoped context preserves the Activity ancestry needed by dialogs and sharing. */
+/** Overrides only SDK appearance and language; system configuration remains live. */
 final class InspectorTheme {
     private InspectorTheme() { }
     static Context context(Context host) {
@@ -34,7 +34,7 @@ final class InspectorTheme {
         ScopedContext(Context host, boolean dark, boolean english) {
             super(host, dark ? R.style.OsservioInspectorDark : R.style.OsservioInspectorLight);
             this.dark = dark; this.english = english;
-            Configuration configuration = new Configuration(host.getResources().getConfiguration());
+            Configuration configuration = new Configuration();
             configuration.setLocale(english ? Locale.ENGLISH : Locale.SIMPLIFIED_CHINESE);
             configuration.uiMode = (configuration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
                 | (dark ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);

@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -52,7 +51,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
     private boolean attempted;
     private int generation;
     private Long updatedAt;
-    private AlertDialog detail;
+    private InspectorScreen detail;
 
     BreadcrumbArchiveView(Context context, BreadcrumbArchive archive) {
         super(context); this.archive = archive; setOrientation(VERTICAL);
@@ -72,18 +71,15 @@ final class BreadcrumbArchiveView extends LinearLayout {
         header.addView(controls, new LayoutParams(-1, -2));
         delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
         Button actions = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {
-            detail = new AlertDialog.Builder(context).setTitle(R.string.osservio_ui_actions)
-                .setItems(new String[] {context.getString(R.string.osservio_ui_capture_details), delete.getText().toString()}, (dialog, which) -> {
+            detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_ui_capture_details), delete.getText().toString()}, (dialog, which) -> {
                     dialog.dismiss(); detail = null;
                     if (which == 1) confirmDeletion();
                     else {
-                        detail = new AlertDialog.Builder(context).setTitle(R.string.osservio_ui_capture_details)
-                            .setMessage(PersistencePresentation.status(context, archive.persistenceStatus()))
-                            .setPositiveButton(R.string.osservio_close, null).show();
+                        detail = InspectorDialogs.message(context, R.string.osservio_ui_capture_details, PersistencePresentation.status(context, archive.persistenceStatus()));
                         detail.setOnDismissListener(ignored -> detail = null);
                     }
-                }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
-            AlertDialog shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
+                });
+            InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
         });
         actions.setText("⋯"); actions.setTextSize(22); actions.setContentDescription(context.getString(R.string.osservio_ui_actions));
         controls.addView(actions, new LayoutParams(dp(48), -2));
@@ -104,7 +100,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); visibility(); }
     @Override protected void onDetachedFromWindow() {
         generation++; reading = false; attempted = false;
-        if (detail != null) detail.dismiss(); super.onDetachedFromWindow();
+        if (!InspectorNavigation.owns(getContext()) && detail != null) detail.dismiss(); super.onDetachedFromWindow();
     }
     @Override protected void onVisibilityChanged(View changed, int visibility) { super.onVisibilityChanged(changed, visibility); visibility(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); visibility(); }
@@ -165,11 +161,10 @@ final class BreadcrumbArchiveView extends LinearLayout {
     private void confirmDeletion() {
         if (reading || detail != null) return;
         String id = selected == null ? null : selected.run.id;
-        AlertDialog dialog = new AlertDialog.Builder(getContext())
-            .setTitle(id == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run)
-            .setMessage(R.string.osservio_archive_delete_confirmation)
-            .setNegativeButton(R.string.osservio_archive_cancel, null)
-            .setPositiveButton(R.string.osservio_archive_delete_confirm, (ignored, button) -> delete(id)).create();
+        InspectorScreen dialog = InspectorDialogs.confirm(getContext(),
+            id == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run,
+            getContext().getString(R.string.osservio_archive_delete_confirmation),
+            R.string.osservio_archive_delete_confirm, (ignored, button) -> delete(id));
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void delete(String id) {
@@ -204,7 +199,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
         if (detail != null) return;
         String content = RuntimePresentation.breadcrumb(getContext(), event);
         InspectorContentReader reader = new InspectorContentReader(getContext()); reader.display(content, false);
-        AlertDialog dialog = InspectorDialogs.screen(getContext(), RuntimePresentation.kind(getContext(), event.kind), reader);
+        InspectorScreen dialog = InspectorDialogs.screen(getContext(), RuntimePresentation.kind(getContext(), event.kind), reader);
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void copy(String value) {

@@ -16,6 +16,7 @@ public final class InspectorSession: NSObject {
     private var contentWindow: UIWindow?
     private var inspector: InspectorViewController?
     private var suspended = false
+    private var creatingInspector = false
     private var animator: UIViewPropertyAnimator?
     private var animationGeneration: UInt64 = 0
 
@@ -86,6 +87,9 @@ public final class InspectorSession: NSObject {
         }
         if presentation == .expanded {
             if inspector == nil, let makeInspector {
+                guard !creatingInspector else { return }
+                creatingInspector = true
+                defer { creatingInspector = false }
                 let controller = makeInspector(); controller.session = self
                 guard available else { controller.session = nil; return }
                 let window = makeWindow(host: hostWindow)

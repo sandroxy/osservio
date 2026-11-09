@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.view.Gravity;
 import android.view.View;
@@ -27,7 +26,7 @@ final class AppInspectorView extends ScrollView {
     private final LogRecorder logs;
     private final HTTPRecorder http;
     private final WebSocketRecorder sockets;
-    private AlertDialog dialog;
+    private InspectorScreen dialog;
     AppInspectorView(Context context, EnvironmentProvider environment, BreadcrumbRecorder recorder, BreadcrumbHistory history,
                      BreadcrumbArchive archive, LogRecorder logs, HTTPRecorder http, WebSocketRecorder sockets, State state) {
         super(context); this.state = state; this.logs = logs; this.http = http; this.sockets = sockets;
@@ -79,12 +78,12 @@ final class AppInspectorView extends ScrollView {
         String[] choices = appearance ? new String[] {context.getString(R.string.osservio_ui_light), context.getString(R.string.osservio_ui_dark)}
             : new String[] {context.getString(R.string.osservio_ui_chinese), context.getString(R.string.osservio_ui_english)};
         int selected = (appearance ? InspectorPreferences.dark(context) : InspectorPreferences.english(context)) ? 1 : 0;
-        dialog = new AlertDialog.Builder(context).setTitle(appearance ? R.string.osservio_ui_appearance : R.string.osservio_ui_language)
-            .setSingleChoiceItems(choices, selected, (selection, which) -> {
-                selection.dismiss();
+        dialog = InspectorDialogs.choices(context, appearance ? R.string.osservio_ui_appearance : R.string.osservio_ui_language,
+            choices, selected, false, (selection, which) -> {
                 if (appearance) InspectorPreferences.setDark(context, which == 1);
                 else InspectorPreferences.setEnglish(context, which == 1);
-            }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
+            });
+        clearOnDismiss();
     }
     private void captureStatus() {
         Context context = getContext();
@@ -110,11 +109,14 @@ final class AppInspectorView extends ScrollView {
             ? R.string.osservio_ui_baseline : R.string.osservio_ui_not_capturing);
     }
     private void open(int title, View view) {
-        dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), view); dialog.show();
+        dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), view); clearOnDismiss(); dialog.show();
+    }
+    private void clearOnDismiss() {
+        InspectorScreen shown = dialog; shown.setOnDismissListener(ignored -> { if (dialog == shown) dialog = null; });
     }
     void saveReadingPosition() { state.scrollY = getScrollY(); }
-    @Override protected void onDetachedFromWindow() { saveReadingPosition(); if (dialog != null) dialog.dismiss(); super.onDetachedFromWindow(); }
+    @Override protected void onDetachedFromWindow() { saveReadingPosition(); if (!InspectorNavigation.owns(getContext()) && dialog != null) dialog.dismiss(); super.onDetachedFromWindow(); }
     @Override protected void onVisibilityChanged(View changedView, int visibility) {
-        super.onVisibilityChanged(changedView, visibility); if (!isShown() && dialog != null) dialog.dismiss();
+        super.onVisibilityChanged(changedView, visibility); if (!InspectorNavigation.owns(getContext()) && !isShown() && dialog != null) dialog.dismiss();
     }
 }

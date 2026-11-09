@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -44,7 +43,7 @@ public final class LogInspectorView extends LinearLayout {
     private final Rows rows = new Rows();
     private boolean attached;
     private boolean dirty = true;
-    private AlertDialog dialog;
+    private InspectorScreen dialog;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) { refresh(); handler.postDelayed(this, 500); }
@@ -120,11 +119,11 @@ public final class LogInspectorView extends LinearLayout {
         if (status == null) { busy(); return; }
         String[] items = {getContext().getString(status.isRecording ? R.string.osservio_stop : R.string.osservio_start),
             getContext().getString(R.string.osservio_ui_capture_details), getContext().getString(R.string.osservio_clear)};
-        dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_actions).setItems(items, (ignored, which) -> {
+        dialog = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, items, (ignored, which) -> {
             if (which == 0) toggleCapture();
             else if (which == 1) capacity();
             else confirmClear();
-        }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
+        });
         watchDialog();
     }
     private void capacity() {
@@ -133,15 +132,13 @@ public final class LogInspectorView extends LinearLayout {
         String content = getContext().getString(R.string.osservio_summary,
             getContext().getString(status.isRecording ? R.string.osservio_capturing : R.string.osservio_stopped),
             retained().size(), state.snapshot == null ? 0L : state.snapshot.evictedCount, status.rateLimitedCount);
-        dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_ui_capture_details).setMessage(content)
-            .setPositiveButton(R.string.osservio_close, null).show();
+        dialog = InspectorDialogs.message(getContext(), R.string.osservio_ui_capture_details, content);
         watchDialog();
     }
     private void confirmClear() {
-        dialog = new AlertDialog.Builder(getContext()).setTitle(R.string.osservio_clear).setMessage(R.string.osservio_ui_clear_hint)
-            .setNegativeButton(R.string.osservio_archive_cancel, null).setPositiveButton(R.string.osservio_clear, (ignored, which) -> {
+        dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_clear, getContext().getString(R.string.osservio_ui_clear_hint), R.string.osservio_clear, (ignored, which) -> {
                 history.clear(); state.snapshot = history.snapshot(); dirty = true; refresh();
-            }).show();
+            });
         watchDialog();
     }
     private void toggleCapture() {
@@ -158,7 +155,7 @@ public final class LogInspectorView extends LinearLayout {
     }
     private void busy() { Toast.makeText(getContext(), R.string.osservio_busy, Toast.LENGTH_SHORT).show(); }
     private void watchDialog() {
-        handler.removeCallbacks(tick); AlertDialog watched = dialog;
+        handler.removeCallbacks(tick); InspectorScreen watched = dialog;
         watched.setOnDismissListener(ignored -> { if (dialog == watched) { dialog = null; schedule(); } });
     }
     void saveReadingPosition() {
@@ -168,7 +165,7 @@ public final class LogInspectorView extends LinearLayout {
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); attached = true; schedule(); }
     @Override protected void onDetachedFromWindow() {
         saveReadingPosition(); attached = false; handler.removeCallbacks(tick);
-        if (dialog != null) { dialog.dismiss(); dialog = null; } super.onDetachedFromWindow();
+        if (!InspectorNavigation.owns(getContext()) && dialog != null) { dialog.dismiss(); dialog = null; } super.onDetachedFromWindow();
     }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
     @Override protected void onVisibilityChanged(View changedView, int visibility) { super.onVisibilityChanged(changedView, visibility); schedule(); }
@@ -176,7 +173,7 @@ public final class LogInspectorView extends LinearLayout {
         if (handler == null || tick == null) return;
         handler.removeCallbacks(tick);
         if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
-        else if ((!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) { dialog.dismiss(); dialog = null; }
+        else if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) { dialog.dismiss(); dialog = null; }
     }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return events.size(); }

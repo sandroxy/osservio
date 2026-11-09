@@ -7,6 +7,19 @@ import XCTest
 
 final class InspectorSessionTests: XCTestCase {
     @MainActor
+    func testFactoryCanRevealEntryWithoutReenteringConstruction() throws {
+        let sources = try Sources(), host = hostWindow()
+        var session: InspectorSession!
+        var creations = 0
+        session = InspectorSession(window: host) {
+            creations += 1; XCTAssertTrue(session.showEntry()); return sources.makeInspector()
+        }
+        defer { session.dispose(); host.isHidden = true; host.rootViewController = nil; _ = sources.capture.stopAll() }
+        XCTAssertTrue(session.expand()); XCTAssertEqual(creations, 1)
+        XCTAssertEqual(session.presentation, .expanded)
+    }
+
+    @MainActor
     func testReleasingOwnerRestoresHostAndReleasesRetainedHierarchy() async throws {
         let sources = try Sources(), host = hostWindow()
         defer { host.isHidden = true; host.rootViewController = nil; _ = sources.capture.stopAll() }
