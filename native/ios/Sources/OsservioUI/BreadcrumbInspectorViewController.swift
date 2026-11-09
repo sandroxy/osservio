@@ -3,7 +3,7 @@ import OsservioCore
 import UIKit
 
 @MainActor
-final class BreadcrumbInspectorViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+final class BreadcrumbInspectorViewController: UITableViewController, UITextFieldDelegate {
     private let recorder: BreadcrumbRecorder
     private let history: any BreadcrumbHistory
     private let table = InspectorTableView(frame: .zero, style: .plain)
@@ -17,10 +17,14 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
     private var events: [BreadcrumbEvent] = []
     private var dirty = true
     init(recorder: BreadcrumbRecorder, history: any BreadcrumbHistory) {
-        self.recorder = recorder; self.history = history; super.init(nibName: nil, bundle: nil)
+        self.recorder = recorder; self.history = history; super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+    override func loadView() {
+        super.loadView()
+        tableView = table
+    }
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -47,12 +51,6 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
         header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
         table.tableHeaderView = header
-        table.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(table)
-        NSLayoutConstraint.activate([
-            table.topAnchor.constraint(equalTo: view.topAnchor), table.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            table.leadingAnchor.constraint(equalTo: view.leadingAnchor), table.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-        ])
         table.dataSource = self; table.delegate = self; table.keyboardDismissMode = .onDrag
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 80; table.tableFooterView = UIView()
     }
@@ -102,9 +100,9 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
     @objc private func clearHistory() { history.clear(); latest = history.snapshot(); dirty = true; refresh() }
     @objc private func searchChanged() { dirty = true; refresh() }
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "crumb") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "crumb")
         cell.textLabel?.text = RuntimePresentation.kind(event) + " · " + event.label
@@ -114,7 +112,7 @@ final class BreadcrumbInspectorViewController: UIViewController, UITableViewData
         cell.accessoryType = .disclosureIndicator
         return cell
     }
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         navigationController?.pushViewController(BreadcrumbDetailViewController(event: events[indexPath.row]), animated: true)
     }

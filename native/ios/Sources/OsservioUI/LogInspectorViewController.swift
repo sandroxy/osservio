@@ -8,8 +8,7 @@ private func copyText(_ key: String) -> String {
 
 /// Presents a live log history. Visibility and rendering never change capture state.
 @MainActor
-public final class LogInspectorViewController: UIViewController, UITableViewDataSource,
-    UITableViewDelegate, UISearchResultsUpdating {
+public final class LogInspectorViewController: UITableViewController, UISearchResultsUpdating {
     private let recorder: LogRecorder
     private let history: any LogHistory
     private let table = InspectorTableView(frame: .zero, style: .plain)
@@ -32,11 +31,16 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
     public init(recorder: LogRecorder, history: any LogHistory) {
         self.recorder = recorder
         self.history = history
-        super.init(nibName: nil, bundle: nil)
+        super.init(style: .plain)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+
+    public override func loadView() {
+        super.loadView()
+        tableView = table
+    }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -68,14 +72,6 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
         header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
         table.tableHeaderView = header
-        table.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(table)
-        NSLayoutConstraint.activate([
-            table.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            table.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            table.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            table.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
-        ])
         table.dataSource = self
         table.delegate = self
         table.rowHeight = UITableView.automaticDimension
@@ -161,12 +157,12 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
         present(alert, animated: true)
     }
 
-    public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         if !paused { togglePause() }
     }
 
-    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { visibleEvents.count }
-    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { visibleEvents.count }
+    public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = visibleEvents[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "log")
             ?? UITableViewCell(style: .subtitle, reuseIdentifier: "log")
@@ -186,7 +182,7 @@ public final class LogInspectorViewController: UIViewController, UITableViewData
         return cell
     }
 
-    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let detail = LogDetailViewController(event: visibleEvents[indexPath.row])
         if let navigationController { navigationController.pushViewController(detail, animated: true) }

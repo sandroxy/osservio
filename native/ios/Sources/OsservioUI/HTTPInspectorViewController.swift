@@ -4,8 +4,7 @@ import UIKit
 
 /// HTTP metadata is refreshed only while visible. Body lookup is explicit and lazy.
 @MainActor
-public final class HTTPInspectorViewController: UIViewController, UITableViewDataSource,
-    UITableViewDelegate, UISearchResultsUpdating {
+public final class HTTPInspectorViewController: UITableViewController, UISearchResultsUpdating {
     private let recorder: HTTPRecorder
     private let history: any HTTPHistory
     private let table = InspectorTableView(frame: .zero, style: .plain)
@@ -23,10 +22,15 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
 
     public init(recorder: HTTPRecorder, history: any HTTPHistory) {
         self.recorder = recorder; self.history = history
-        super.init(nibName: nil, bundle: nil)
+        super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+
+    public override func loadView() {
+        super.loadView()
+        tableView = table
+    }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -56,14 +60,6 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
         header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
         table.tableHeaderView = header
-        table.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(table)
-        NSLayoutConstraint.activate([
-            table.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            table.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            table.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            table.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
-        ])
         table.dataSource = self; table.delegate = self
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 88
         table.keyboardDismissMode = .onDrag; table.tableFooterView = UIView()
@@ -137,9 +133,9 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
         alert.addAction(UIAlertAction(title: HTTPPresentation.text("ok"), style: .default))
         present(alert, animated: true)
     }
-    public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
-    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
-    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
+    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
+    public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "http")
             ?? UITableViewCell(style: .subtitle, reuseIdentifier: "http")
@@ -154,7 +150,7 @@ public final class HTTPInspectorViewController: UIViewController, UITableViewDat
         cell.accessoryType = .disclosureIndicator
         return cell
     }
-    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let detail = HTTPDetailViewController(event: events[indexPath.row], history: history, recorder: recorder)
         if let navigationController { navigationController.pushViewController(detail, animated: true) }

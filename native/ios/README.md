@@ -73,8 +73,9 @@ The live lists keep their summaries, capture controls and filters in the
 scrolling content so short windows and large text do not collapse the history
 area. Scroll back to the top to reach these controls. Accessibility text sizes
 use vertically arranged actions; empty-state text follows the controls instead
-of appearing behind them. Scrolling still pauses the displayed history without
-stopping capture.
+of appearing behind them. UIKit table controllers adjust the scrollable area
+when the software keyboard appears or disappears. Dragging dismisses the keyboard
+and pauses the displayed history without stopping capture.
 
 Use `.privateText(value)` for text that must not enter history. `.publicText`
 is explicit permission to record that text, not an automatic secret scrubber.

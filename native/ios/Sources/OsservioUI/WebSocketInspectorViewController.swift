@@ -4,8 +4,7 @@ import UIKit
 
 /// Connection groups and their event timelines refresh only while visible; payload lookup is explicit.
 @MainActor
-public final class WebSocketInspectorViewController: UIViewController, UITableViewDataSource,
-    UITableViewDelegate, UISearchResultsUpdating {
+public final class WebSocketInspectorViewController: UITableViewController, UISearchResultsUpdating {
     private let recorder: WebSocketRecorder
     private let history: any WebSocketHistory
     private let connectionID: String?
@@ -25,15 +24,20 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
 
     public init(recorder: WebSocketRecorder, history: any WebSocketHistory) {
         self.recorder = recorder; self.history = history; connectionID = nil
-        super.init(nibName: nil, bundle: nil)
+        super.init(style: .plain)
     }
     private init(recorder: WebSocketRecorder, history: any WebSocketHistory, connectionID: String) {
         self.connectionID = connectionID
         self.recorder = recorder; self.history = history
-        super.init(nibName: nil, bundle: nil)
+        super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+
+    public override func loadView() {
+        super.loadView()
+        tableView = table
+    }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -63,14 +67,6 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
         header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
         table.tableHeaderView = header
-        table.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(table)
-        NSLayoutConstraint.activate([
-            table.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            table.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            table.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            table.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
-        ])
         table.dataSource = self; table.delegate = self
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 88
         table.keyboardDismissMode = .onDrag; table.tableFooterView = UIView()
@@ -151,9 +147,9 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
         alert.addAction(UIAlertAction(title: WebSocketPresentation.text("ok"), style: .default))
         present(alert, animated: true)
     }
-    public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
-    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
-    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { togglePause() } }
+    public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
+    public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "websocket")
             ?? UITableViewCell(style: .subtitle, reuseIdentifier: "websocket")
@@ -170,7 +166,7 @@ public final class WebSocketInspectorViewController: UIViewController, UITableVi
         cell.accessoryType = .disclosureIndicator
         return cell
     }
-    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let event = events[indexPath.row]
         let detail: UIViewController = connectionID == nil
