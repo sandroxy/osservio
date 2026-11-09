@@ -16,6 +16,14 @@ details. They are not separate top-level destinations. A missing optional
 provider or archive is shown as unconfigured; opening a page does not initialize
 a collector or enable persistence.
 
+The full-screen workspace separates Back from Minimize. Search and filtering
+share a row; capture/reading status and icon actions form a separate row.
+Protocol scopes use a single-choice segmented control. Language and appearance
+open dedicated settings pages. Short contextual actions use panels; filters and
+problem forms use editing panels with explicit Apply or Save. Destructive actions
+retain confirmation. Platform alerts and system share interfaces keep their own
+native dismissal behavior.
+
 ## Reading and filtering
 
 Live lists show their current capture state, pause control, search, filters and
@@ -125,6 +133,10 @@ while minimized or backgrounded, retaining the page hierarchy for restoration.
 Reattaching after Activity recreation preserves that hierarchy without retaining
 the old Activity. It follows one attached Activity; simultaneous display-specific
 workspaces are outside this API. Call `dispose()` when releasing the session.
+Dragging the entry docks it to an edge within the host's safe area, including
+keyboard avoidance. Its dock position persists independently of ordinary reading
+content. Entry and page motion is short and non-repeating; disabled system
+animations, power saving and severe thermal pressure disable SDK transitions.
 
 Hosts that own presentation can still use `InspectorView` directly. Attach
 it with a bounded height and apply the host window's system-bar, display-cutout

@@ -8,7 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -51,7 +50,6 @@ class NetworkInspectorView extends LinearLayout {
     private final Rows rows = new Rows();
     private final ListView list;
     private final InspectorFeedHeader header;
-    private final List<Button> scopeButtons = new ArrayList<>();
     private boolean attached;
     private boolean dirty = true;
     private boolean changingScope;
@@ -81,17 +79,10 @@ class NetworkInspectorView extends LinearLayout {
             query().text, value -> { if (!changingScope) { query().text = value; dirty = true; refresh(); } },
             () -> setPaused(!state.paused), this::filters, this::actions);
         if (connectionID == null && httpHistory != null && socketHistory != null) {
-            LinearLayout scopes = new LinearLayout(context); scopes.setPadding(0, dp(8), 0, dp(8));
             String[] labels = {context.getString(R.string.osservio_ui_all), "HTTP", "WebSocket"};
-            for (int i = 0; i < labels.length; i++) {
-                final int scope = i;
-                Button button = InspectorWidgets.button(context, R.string.osservio_ui_all, () -> selectScope(scope));
-                button.setText(labels[i]); InspectorWidgets.chip(button, i == state.scope);
-                LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(0, -2, 1);
-                if (i > 0) layout.leftMargin = dp(6);
-                scopes.addView(button, layout); scopeButtons.add(button);
-            }
-            header.addView(scopes, 0, new LayoutParams(-1, -2));
+            View scopes = InspectorWidgets.segments(context, labels, state.scope, this::selectScope);
+            LayoutParams scopeLayout = new LayoutParams(-1, -2); scopeLayout.bottomMargin = dp(12);
+            header.addView(scopes, 0, scopeLayout);
         }
         if (connectionID != null) {
             android.widget.TextView explanation = InspectorWidgets.caption(context);
@@ -125,7 +116,6 @@ class NetworkInspectorView extends LinearLayout {
         if (scope == state.scope) return;
         saveReadingPosition(); state.scope = scope;
         changingScope = true; header.search.setText(query().text); changingScope = false;
-        for (int i = 0; i < scopeButtons.size(); i++) InspectorWidgets.chip(scopeButtons.get(i), i == scope);
         dirty = true; refresh(); list.setSelectionFromTop(state.positions[scope], state.offsets[scope]);
     }
     private void refresh() {

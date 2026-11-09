@@ -79,27 +79,25 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     }
     @objc private func showActions() {
         let enabled = recorder.captureController.status()?.baselineEnabled == true
-        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: InspectorLocalization.text("crumb_baseline_hint"), preferredStyle: .actionSheet)
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text(enabled ? "crumb_disable_baseline" : "crumb_enable_baseline"), style: .default) { [weak self] _ in
+        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: InspectorLocalization.text("crumb_baseline_hint"))
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text(enabled ? "crumb_disable_baseline" : "crumb_enable_baseline"), style: .default) { [weak self] _ in
             guard let self else { return }
             if let status = self.recorder.captureController.status(), self.recorder.captureController.setBaselineEnabled(!status.baselineEnabled) { self.updateStatus() }
             else { self.inspectorNotice(InspectorLocalization.text("busy")) }
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
             guard let self else { return }
             let status = self.recorder.captureController.status(), recording = self.recorder.status()
             self.inspectorNotice(String(format: InspectorLocalization.text("crumb_summary"),
                 status.map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy"),
                 self.latest?.events.count ?? 0, self.latest?.evictedCount ?? 0, recording?.rateLimitedCount ?? 0))
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("crumb_clear"), style: .destructive) { [weak self] _ in
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("crumb_clear"), style: .destructive) { [weak self] _ in
             self?.inspectorConfirm(InspectorLocalization.text("crumb_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
                 guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
             }
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
-        present(menu, animated: true)
+        inspectorPresent(menu)
     }
     override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }

@@ -95,15 +95,13 @@ public final class IncidentInspectorViewController: UITableViewController {
         view.endEditing(true); inspectorPresent(filters)
     }
     @objc private func showActions() {
-        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
             guard let self else { return }; self.inspectorNotice(PersistencePresentation.status(self.archive.persistenceStatus(), formatKey: "incident_status"))
         })
-        let clear = UIAlertAction(title: InspectorLocalization.text("incident_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
+        var clear = InspectorActionPanel.Action(title: InspectorLocalization.text("incident_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
         clear.isEnabled = !reading && !snapshots.isEmpty; menu.addAction(clear)
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
-        present(menu, animated: true)
+        inspectorPresent(menu)
     }
     public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { filtered.count }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

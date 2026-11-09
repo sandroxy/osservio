@@ -32,7 +32,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
         title = InspectorLocalization.text("ui_filters")
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("archive_cancel"), style: .plain, target: self, action: #selector(cancel))
+        navigationItem.leftBarButtonItem = inspectorDismissItem(target: self, action: #selector(cancel))
         inspectorPrimaryAction = UIBarButtonItem(title: InspectorLocalization.text("ui_apply"), style: .done, target: self, action: #selector(save))
         search.placeholder = InspectorLocalization.text("ui_filter_options"); search.delegate = self
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true

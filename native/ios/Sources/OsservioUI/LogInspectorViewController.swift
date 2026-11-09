@@ -83,22 +83,20 @@ public final class LogInspectorViewController: UITableViewController {
     }
     @objc private func showActions() {
         let active = recorder.status()?.isRecording == true
-        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text(active ? "stopCapture" : "startCapture"), style: .default) { [weak self] _ in self?.toggleCapture() })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text(active ? "stopCapture" : "startCapture"), style: .default) { [weak self] _ in self?.toggleCapture() })
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
             guard let self else { return }
             let status = self.recorder.status()
             self.inspectorNotice(String(format: InspectorLocalization.text("summary"), InspectorLocalization.text(status?.isRecording == true ? "capturing" : "stopped"),
                 self.latest?.events.count ?? 0, self.latest?.evictedCount ?? 0, status?.rateLimitedCount ?? 0))
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("clear"), style: .destructive) { [weak self] _ in
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("clear"), style: .destructive) { [weak self] _ in
             self?.inspectorConfirm(InspectorLocalization.text("clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
                 guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
             }
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
-        present(menu, animated: true)
+        inspectorPresent(menu)
     }
     private func toggleCapture() {
         guard let status = recorder.status() else { inspectorNotice(InspectorLocalization.text("busy")); return }

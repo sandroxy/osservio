@@ -161,12 +161,12 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         owner?.inspectorPresent(filters)
     }
     @objc private func showActions() {
-        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)
+        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
         for (label, controller) in controllers {
             let title = (controllers.count > 1 ? label + " · " : "") + InspectorLocalization.text(controller.status()?.mode == .detailed ? "http_stop" : "http_start")
-            menu.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in self?.toggleCapture(controller) })
+            menu.addAction(InspectorActionPanel.Action(title: title, style: .default) { [weak self] _ in self?.toggleCapture(controller) })
         }
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
             guard let self else { return }
             var parts: [String] = []
             if let value = self.latestHTTP, let status = self.http?.recorder.captureController.status() {
@@ -177,7 +177,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             }
             self.owner?.inspectorNotice(parts.isEmpty ? InspectorLocalization.text("busy") : parts.joined(separator: "\n\n"))
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("ui_network_clear"), style: .destructive) { [weak self] _ in
+        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_network_clear"), style: .destructive) { [weak self] _ in
             self?.owner?.inspectorConfirm(InspectorLocalization.text("ui_network_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
                 guard let self else { return }
                 if self.scope != 2 { self.http?.history.clear(); self.latestHTTP = self.http?.history.snapshot() }
@@ -185,9 +185,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
                 self.render()
             }
         })
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        menu.popoverPresentationController?.sourceView = header.actions; menu.popoverPresentationController?.sourceRect = header.actions.bounds
-        owner?.present(menu, animated: true)
+        owner?.inspectorPresent(menu)
     }
     private func toggleCapture(_ controller: CaptureController) {
         guard let status = controller.status() else { owner?.inspectorNotice(InspectorLocalization.text("busy")); return }

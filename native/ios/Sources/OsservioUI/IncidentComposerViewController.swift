@@ -53,7 +53,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("incident_mark")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         tableView.keyboardDismissMode = .interactive
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_cancel"), style: .plain, target: self, action: #selector(cancel))
+        navigationItem.leftBarButtonItem = inspectorDismissItem(target: self, action: #selector(cancel))
         inspectorPrimaryAction = UIBarButtonItem(title: RuntimePresentation.text("incident_save"), style: .done, target: self, action: #selector(save))
         includeEnvironment.isOn = true; includeBreadcrumbs.isOn = true; includeNote.isOn = false
         includeEnvironment.accessibilityLabel = RuntimePresentation.text("incident_include_environment")

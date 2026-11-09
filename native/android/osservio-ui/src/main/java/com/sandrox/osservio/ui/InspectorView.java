@@ -136,23 +136,25 @@ public final class InspectorView extends FrameLayout {
         dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
         LinearLayout bar = new LinearLayout(themed); bar.setGravity(Gravity.CENTER_VERTICAL);
-        int inset = InspectorTheme.dp(themed, 16); bar.setPadding(inset, 0, inset, 0);
+        int inset = InspectorTheme.dp(themed, 16); bar.setPadding(inset, InspectorTheme.dp(themed, 8), inset, InspectorTheme.dp(themed, 8));
         LinearLayout heading = new LinearLayout(themed); heading.setOrientation(LinearLayout.VERTICAL);
         title = InspectorTheme.text(themed, 22, true); heading.addView(title);
         brand = InspectorWidgets.caption(themed); brand.setText(R.string.osservio_product_name); brand.setPadding(0, 0, 0, InspectorTheme.dp(themed, 6));
         heading.addView(brand); bar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         close = InspectorWidgets.icon(themed, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> { if (onClose != null) onClose.run(); });
         updateClose(); bar.addView(close, new LinearLayout.LayoutParams(-2, -2));
-        workspace.addView(bar, new LinearLayout.LayoutParams(-1, -2)); workspace.addView(InspectorWidgets.divider(themed));
+        workspace.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(themed); workspace.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
-        workspace.addView(InspectorWidgets.divider(themed));
-        LinearLayout navigation = new LinearLayout(themed); navigation.setBackgroundColor(InspectorTheme.surface(themed));
+        LinearLayout navigation = new LinearLayout(themed);
+        navigation.setBackground(InspectorTheme.shape(themed, InspectorTheme.surface(themed), 32, false));
+        int spacing = InspectorTheme.dp(themed, 4); navigation.setPadding(spacing, spacing, spacing, spacing);
+        navigation.setElevation(InspectorTheme.dp(themed, 3));
         for (int i = 0; i < tabs.length; i++) {
             final int index = i;
             LinearLayout tab = new LinearLayout(themed); tab.setOrientation(LinearLayout.VERTICAL); tab.setGravity(Gravity.CENTER);
             tab.setPadding(0, InspectorTheme.dp(themed, 9), 0, InspectorTheme.dp(themed, 9));
             tab.setMinimumHeight(InspectorTheme.dp(themed, 64)); tab.setFocusable(true); tab.setContentDescription(themed.getString(labels[i]));
-            tab.setOnClickListener(ignored -> select(index)); tab.setBackgroundResource(android.R.drawable.list_selector_background);
+            tab.setOnClickListener(ignored -> select(index));
             tab.setAccessibilityDelegate(new View.AccessibilityDelegate() {
                 @Override public void onInitializeAccessibilityNodeInfo(View host, android.view.accessibility.AccessibilityNodeInfo info) {
                     super.onInitializeAccessibilityNodeInfo(host, info); info.setClassName(Button.class.getName());
@@ -164,7 +166,9 @@ public final class InspectorView extends FrameLayout {
             label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); label.setPadding(0, InspectorTheme.dp(themed, 4), 0, 0);
             tab.addView(label, new LinearLayout.LayoutParams(-1, -2)); tabs[i] = tab; navigation.addView(tab, new LinearLayout.LayoutParams(0, -2, 1));
         }
-        workspace.addView(navigation, new LinearLayout.LayoutParams(-1, -2)); select(selection);
+        LinearLayout.LayoutParams navigationLayout = new LinearLayout.LayoutParams(-1, -2);
+        navigationLayout.setMargins(inset, InspectorTheme.dp(themed, 8), inset, InspectorTheme.dp(themed, 10));
+        workspace.addView(navigation, navigationLayout); select(selection);
         compactChrome(getHeight());
     }
     private void select(int index) {
@@ -185,6 +189,8 @@ public final class InspectorView extends FrameLayout {
             int color = i == index ? InspectorTheme.accent(themed) : InspectorTheme.secondary(themed);
             tabs[i].setSelected(i == index); ((ImageView) tabs[i].getChildAt(0)).setImageTintList(ColorStateList.valueOf(color));
             ((TextView) tabs[i].getChildAt(1)).setTextColor(color);
+            tabs[i].setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(InspectorTheme.color(themed, R.color.osservio_separator)),
+                InspectorTheme.shape(themed, i == index ? InspectorTheme.color(themed, R.color.osservio_tint) : android.graphics.Color.TRANSPARENT, 27, false), null));
         }
         title.setText(labels[index]);
     }

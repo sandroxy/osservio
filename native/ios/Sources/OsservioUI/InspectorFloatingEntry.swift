@@ -29,11 +29,6 @@ final class InspectorEntryViewController: UIViewController {
         dock.trailing = UserDefaults.standard.string(forKey: "osservio.ui.entrySide") != "leading"
         view.addSubview(entry); entry.addTarget(self, action: #selector(open), for: .touchUpInside)
         entry.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(drag(_:))))
-        entry.accessibilityCustomActions = [
-            UIAccessibilityCustomAction(name: InspectorLocalization.text("ui_dock_leading"), target: self, selector: #selector(dockLeading)),
-            UIAccessibilityCustomAction(name: InspectorLocalization.text("ui_dock_trailing"), target: self, selector: #selector(dockTrailing)),
-            UIAccessibilityCustomAction(name: InspectorLocalization.text("ui_hide_entry"), target: self, selector: #selector(hide))
-        ]
         NotificationCenter.default.addObserver(self, selector: #selector(keyboard(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardHidden), name: UIResponder.keyboardWillHideNotification, object: nil)
         style.changed()
@@ -58,8 +53,11 @@ final class InspectorEntryViewController: UIViewController {
         entry.accessibilityLabel = InspectorLocalization.text("ui_open_inspector")
         entry.accessibilityHint = InspectorLocalization.text("ui_entry_hint")
         entry.refreshAppearance()
-        let keys = ["ui_dock_leading", "ui_dock_trailing", "ui_hide_entry"]
-        for (action, key) in zip(entry.accessibilityCustomActions ?? [], keys) { action.name = InspectorLocalization.text(key) }
+        entry.accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: InspectorLocalization.text("ui_dock_leading"), target: self, selector: #selector(dockLeading)),
+            UIAccessibilityCustomAction(name: InspectorLocalization.text("ui_dock_trailing"), target: self, selector: #selector(dockTrailing)),
+            UIAccessibilityCustomAction(name: InspectorLocalization.text("ui_hide_entry"), target: self, selector: #selector(hide))
+        ]
     }
     @objc private func open() { onOpen?() }
     @objc private func hide() -> Bool { onHide?(); return true }

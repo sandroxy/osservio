@@ -26,6 +26,12 @@ React Native, Uni and Flutter adapters are not implemented.
   are independent of the host. See [the native inspector guide](doc/inspector.md).
 - Independent capture and presentation lifetimes: closing the inspector does
   not stop capture, and stopping capture does not clear history.
+- An app-local floating entry on both platforms, initially hidden until the host
+  reveals it. Minimize from SDK detail, filter or editing screens and resume the
+  same full-screen session without applying or saving drafts. The entry supports
+  dragging and edge docking. Reading state lasts for the in-process session;
+  disposing it or restarting the process discards ordinary inspection content.
+  Hidden views stop refreshing, and no cross-app overlay permission is required.
 - HTTP observation with request states, privacy policy, and independent body
   budgets, with optional integration for host-owned OkHttp clients and URLSession
   data requests. Late responses cannot recreate cleared or evicted records.

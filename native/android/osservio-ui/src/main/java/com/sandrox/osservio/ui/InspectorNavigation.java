@@ -30,7 +30,7 @@ final class InspectorNavigation extends FrameLayout {
         if (disposing || screens.contains(screen)) return;
         InspectorWidgets.hideKeyboard(this);
         screens.add(screen); addView(screen.view, new LayoutParams(-1, -1));
-        reconcile(); screen.didShow();
+        reconcile(); screen.didShow(); screen.animateEntry();
     }
     void remove(InspectorScreen screen) {
         int index = screens.indexOf(screen);

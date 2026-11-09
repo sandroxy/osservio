@@ -19,6 +19,8 @@ final class InspectorScreen implements DialogInterface {
     final boolean panel;
     private final InspectorNavigation navigation;
     private final LinearLayout bar;
+    private final LinearLayout card;
+    private final View content;
     private final ImageButton minimize;
     private Dialog fallback;
     private boolean showing;
@@ -28,10 +30,10 @@ final class InspectorScreen implements DialogInterface {
     private OnCancelListener cancelled;
 
     InspectorScreen(Context context, String title, View content, boolean panel) {
-        this.panel = panel; navigation = InspectorNavigation.from(context);
+        this.panel = panel; this.content = content; navigation = InspectorNavigation.from(context);
         view = new FrameLayout(context);
         view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context));
-        LinearLayout card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL);
+        card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL); card.setClipToOutline(true);
         card.setBackground(InspectorTheme.shape(context, InspectorTheme.canvas(context), panel ? 24 : 0, false));
         view.addView(card, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
         if (panel) {
@@ -54,9 +56,25 @@ final class InspectorScreen implements DialogInterface {
         card.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         card.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
     }
+    void compact() {
+        FrameLayout.LayoutParams cardLayout = (FrameLayout.LayoutParams) card.getLayoutParams();
+        cardLayout.height = -2; card.setLayoutParams(cardLayout);
+        content.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+    }
+    void animateEntry() {
+        long duration = InspectorFloatingEntry.motionDuration(view.getContext());
+        if (duration == 0) return;
+        card.setAlpha(0); card.setTranslationY(InspectorTheme.dp(view.getContext(), panel ? 24 : 8));
+        card.animate().alpha(1).translationY(0).setDuration(duration).start();
+    }
     Button action(int label, Runnable operation) {
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
-        bar.addView(action, bar.getChildCount() - 1, new LinearLayout.LayoutParams(-2, -2)); return action;
+        if (view.getResources().getConfiguration().fontScale >= 1.5f) {
+            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
+            layout.setMargins(InspectorTheme.dp(view.getContext(), 16), 0, InspectorTheme.dp(view.getContext(), 16), 0);
+            card.addView(action, 1, layout);
+        } else bar.addView(action, bar.getChildCount() - 1, new LinearLayout.LayoutParams(-2, -2));
+        return action;
     }
     void updateMinimize() { minimize.setVisibility(navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); }
     void show() {
@@ -92,5 +110,8 @@ final class InspectorScreen implements DialogInterface {
     void setOnShowListener(OnShowListener listener) { appeared = listener; }
     void setOnCancelListener(OnCancelListener listener) { cancelled = listener; }
     void didShow() { showing = true; if (appeared != null) appeared.onShow(this); }
-    void didDismiss() { if (!showing) return; showing = false; if (dismissed != null) dismissed.onDismiss(this); }
+    void didDismiss() {
+        card.animate().cancel(); card.setAlpha(1); card.setTranslationY(0);
+        if (!showing) return; showing = false; if (dismissed != null) dismissed.onDismiss(this);
+    }
 }

@@ -75,20 +75,7 @@ final class AppInspectorViewController: UITableViewController {
             default: if let archive { inspectorPush(BreadcrumbArchiveViewController(archive: archive)) }
             }
         } else if indexPath.section == 1 {
-            let language = indexPath.row == 0
-            let menu = UIAlertController(title: InspectorLocalization.text(language ? "ui_language" : "ui_appearance"),
-                message: InspectorLocalization.text("ui_presentation_only"), preferredStyle: .actionSheet)
-            let keys = language ? ["ui_chinese", "ui_english"] : ["ui_light", "ui_dark"]
-            for (index, key) in keys.enumerated() {
-                menu.addAction(UIAlertAction(title: InspectorLocalization.text(key), style: .default) { _ in
-                    if language { InspectorPreferences.shared.language = index == 0 ? .chinese : .english }
-                    else { InspectorPreferences.shared.appearance = index == 0 ? .light : .dark }
-                })
-            }
-            menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-            menu.popoverPresentationController?.sourceView = tableView.cellForRow(at: indexPath)
-            menu.popoverPresentationController?.sourceRect = tableView.cellForRow(at: indexPath)?.bounds ?? .zero
-            present(menu, animated: true)
+            inspectorPush(InspectorPreferenceViewController(language: indexPath.row == 0))
         }
     }
 }

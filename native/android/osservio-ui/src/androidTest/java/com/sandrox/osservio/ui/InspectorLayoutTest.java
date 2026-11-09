@@ -48,12 +48,20 @@ public final class InspectorLayoutTest {
                 assertTrue(label, list.getHeight() >= dp(context, 48));
                 assertEquals(label, 1, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
                 List<Button> buttons = new ArrayList<>(); collect(viewer, Button.class, buttons);
-                assertEquals(label, 3, buttons.size());
+                assertEquals(label, 1, buttons.size());
                 for (Button button : buttons) {
                     assertTrue(label, button.getHeight() >= dp(context, 48));
                     assertNotNull(label, button.getLayout());
                     for (int line = 0; line < button.getLineCount(); line++) assertEquals(label, 0, button.getLayout().getEllipsisCount(line));
                     assertTrue(label, button.getHeight() >= button.getLayout().getHeight() + button.getCompoundPaddingTop() + button.getCompoundPaddingBottom());
+                }
+                List<android.widget.ImageButton> icons = new ArrayList<>(); collect(viewer, android.widget.ImageButton.class, icons);
+                assertEquals(label, 2, icons.size());
+                for (android.widget.ImageButton icon : icons) {
+                    assertTrue(label, icon.getWidth() >= dp(context, 48));
+                    assertTrue(label, icon.getHeight() >= dp(context, 48));
+                    assertNotNull(label, icon.getContentDescription());
+                    assertTrue(label, icon.getContentDescription().length() > 0);
                 }
                 list.setSelectionFromTop(list.getHeaderViewsCount(), 0); layout(viewer, width, height);
                 View row = list.getChildAt(list.getHeaderViewsCount() - list.getFirstVisiblePosition());

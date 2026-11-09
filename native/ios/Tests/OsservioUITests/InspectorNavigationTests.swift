@@ -26,7 +26,7 @@ final class InspectorNavigationTests: XCTestCase {
         window.makeKeyAndVisible(); window.layoutIfNeeded()
         XCTAssertEqual(root.viewControllers?.count, 4)
         for navigation in root.viewControllers?.compactMap({ $0 as? UINavigationController }) ?? [] {
-            XCTAssertEqual(navigation.topViewController?.navigationItem.leftBarButtonItem?.title, "关闭")
+            XCTAssertEqual(navigation.topViewController?.navigationItem.leftBarButtonItem?.accessibilityLabel, "关闭")
         }
         XCTAssertEqual(root.overrideUserInterfaceStyle, .light)
         XCTAssertEqual(root.viewControllers?.last?.tabBarItem.title, "应用")
@@ -102,7 +102,14 @@ final class InspectorNavigationTests: XCTestCase {
 
     @MainActor private func descendants(_ view: UIView) -> [UIView] { [view] + view.subviews.flatMap { descendants($0) } }
     @MainActor private func tap(_ view: UIView, title: String) throws {
-        let button = try XCTUnwrap(descendants(view).compactMap { $0 as? UIButton }.first { $0.title(for: .normal) == title })
+        for segment in descendants(view).compactMap({ $0 as? UISegmentedControl }) where !segment.isHidden {
+            if let index = (0..<segment.numberOfSegments).first(where: { segment.titleForSegment(at: $0) == title }) {
+                segment.selectedSegmentIndex = index; try activate(segment, event: .valueChanged); return
+            }
+        }
+        let button = try XCTUnwrap(descendants(view).compactMap { $0 as? UIButton }.first {
+            $0.accessibilityLabel == title || $0.title(for: .normal) == title
+        })
         try activate(button, event: .touchUpInside)
     }
     @MainActor private func activate(_ control: UIControl, event: UIControl.Event) throws {

@@ -143,7 +143,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
             WindowManager.LayoutParams attributes = nativeWindow.getAttributes();
             attributes.token = activity.getWindow().getDecorView().getWindowToken(); nativeWindow.setAttributes(attributes);
             nativeWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            nativeWindow.setWindowAnimations(0);
+            nativeWindow.setWindowAnimations(InspectorFloatingEntry.motionDuration(context) == 0 ? 0 : R.style.OsservioWindowMotion);
         }
         inspector.setOnApplyWindowInsetsListener((root, insets) -> { InspectorDialogs.applyInsets(root, insets); return insets; });
         inspector.setAppearanceListener(dark -> {

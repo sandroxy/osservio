@@ -25,22 +25,48 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         search.returnKeyType = .done; search.delegate = self
         search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
-        actions.setImage(UIImage(systemName: "ellipsis"), for: .normal)
-        let controls = InspectorControls(buttons: [pause, filters, actions])
-        for button in [pause, filters] {
-            button.backgroundColor = InspectorTheme.tint; button.layer.cornerRadius = 10
+        for button in [pause, filters, actions] {
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            button.setContentHuggingPriority(.required, for: .horizontal)
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
-        [status, extra, search, controls, criteria, count].forEach(addArrangedSubview)
+        let searchRow = UIStackView(arrangedSubviews: [search, filters]); searchRow.spacing = 8
+        let controls = UIStackView(arrangedSubviews: [status, pause, actions]); controls.spacing = 8; controls.alignment = .center
+        status.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        [extra, searchRow, controls, criteria, count].forEach(addArrangedSubview)
         relabel(paused: false, query: InspectorQuery())
     }
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
     func relabel(paused: Bool, query: InspectorQuery) {
-        pause.setTitle(InspectorLocalization.text(paused ? "ui_follow_latest" : "ui_pause"), for: .normal)
+        configure(pause, symbol: paused ? "play.fill" : "pause.fill", selected: paused)
+        pause.accessibilityLabel = InspectorLocalization.text(paused ? "ui_follow_latest" : "ui_pause")
+        configure(actions, symbol: "ellipsis")
         actions.accessibilityLabel = InspectorLocalization.text("ui_actions")
-        filters.setTitle(InspectorLocalization.text("ui_filters") + (query.activeCount > 0 ? " · \(query.activeCount)" : ""), for: .normal)
+        configure(filters, symbol: "line.3.horizontal.decrease", selected: query.activeCount > 0,
+                  title: query.activeCount > 0 ? String(query.activeCount) : nil)
+        filters.accessibilityLabel = InspectorLocalization.text("ui_filters")
+        filters.accessibilityValue = query.activeCount > 0 ? InspectorFilterOptions.summary(query) : nil
         criteria.text = InspectorFilterOptions.summary(query)
         criteria.isHidden = query.activeCount == 0
+    }
+    private func configure(_ button: UIButton, symbol: String, selected: Bool = false, title: String? = nil) {
+        guard #available(iOS 15, *) else {
+            button.setImage(UIImage(systemName: symbol), for: .normal); button.setTitle(title, for: .normal)
+            button.tintColor = InspectorTheme.accent; button.backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.surface
+            button.layer.cornerRadius = 22; button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
+            return
+        }
+        var configuration = UIButton.Configuration.plain()
+        configuration.image = UIImage(systemName: symbol)
+        configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+        configuration.title = title; configuration.imagePadding = 5
+        configuration.baseForegroundColor = InspectorTheme.accent
+        configuration.background.backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.surface
+        configuration.cornerStyle = .capsule
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+        button.configuration = configuration
     }
     @objc private func searchChanged() {
         guard search.markedTextRange == nil else { return }

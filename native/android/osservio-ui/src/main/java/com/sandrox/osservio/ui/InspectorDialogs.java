@@ -18,11 +18,12 @@ final class InspectorDialogs {
         return new InspectorScreen(context, context.getString(title), content, true);
     }
     static InspectorScreen message(Context context, int title, String message) {
-        InspectorScreen screen = panel(context, title, messageView(context, message)); screen.show(); return screen;
+        InspectorScreen screen = panel(context, title, messageView(context, message)); screen.compact(); screen.show(); return screen;
     }
     static InspectorScreen confirm(Context context, int title, String message, int confirm,
                                    android.content.DialogInterface.OnClickListener action) {
         InspectorScreen screen = panel(context, title, messageView(context, message));
+        screen.compact();
         screen.action(confirm, () -> { screen.dismiss(); action.onClick(screen, android.content.DialogInterface.BUTTON_POSITIVE); });
         screen.show(); return screen;
     }
@@ -31,11 +32,23 @@ final class InspectorDialogs {
     }
     static InspectorScreen choices(Context context, int title, String[] labels, int selected, boolean panel,
                                    android.content.DialogInterface.OnClickListener chosen) {
-        android.widget.ListView list = new android.widget.ListView(context); list.setDividerHeight(0);
+        android.widget.ListView list = new android.widget.ListView(context);
+        int inset = InspectorTheme.dp(context, 16); list.setPadding(inset, InspectorTheme.dp(context, 8), inset, inset);
+        list.setClipToPadding(false); list.setDivider(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        list.setDividerHeight(InspectorTheme.dp(context, 6));
         list.setAdapter(new android.widget.ArrayAdapter<>(context, selected < 0 ? android.R.layout.simple_list_item_1
-            : android.R.layout.simple_list_item_single_choice, labels));
+            : android.R.layout.simple_list_item_single_choice, labels) {
+            @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
+                TextView row = (TextView) super.getView(position, recycled, parent);
+                row.setTextColor(InspectorTheme.primary(context)); row.setTextSize(16); row.setSingleLine(false);
+                row.setMinHeight(InspectorTheme.dp(context, 56)); row.setPadding(inset, inset, inset, inset);
+                row.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 16, false));
+                return row;
+            }
+        });
         if (selected >= 0) { list.setChoiceMode(android.widget.ListView.CHOICE_MODE_SINGLE); list.setItemChecked(selected, true); }
         InspectorScreen screen = new InspectorScreen(context, context.getString(title), list, panel);
+        if (panel) screen.compact();
         list.setOnItemClickListener((parent, view, index, id) -> { screen.dismiss(); chosen.onClick(screen, index); });
         screen.show(); return screen;
     }

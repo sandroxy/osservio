@@ -1,4 +1,8 @@
 <resources>
+    <style name="OsservioWindowMotion">
+        <item name="android:windowEnterAnimation">@anim/osservio_window_enter</item>
+        <item name="android:windowExitAnimation">@null</item>
+    </style>
     <style name="OsservioScreenLight" parent="OsservioInspectorDialogLight">
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowNoTitle">true</item>

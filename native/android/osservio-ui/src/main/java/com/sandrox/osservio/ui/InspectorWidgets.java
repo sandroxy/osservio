@@ -24,7 +24,9 @@ final class InspectorWidgets {
         button.setContentDescription(context.getString(label));
         int size = InspectorTheme.dp(context, 48), inset = InspectorTheme.dp(context, 12);
         button.setLayoutParams(new LinearLayout.LayoutParams(size, size)); button.setPadding(inset, inset, inset, inset);
-        InspectorTheme.surface(button, true, 24); button.setOnClickListener(ignored -> action.run());
+        button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
+            InspectorTheme.color(context, R.color.osservio_tint)), InspectorTheme.shape(context, InspectorTheme.surface(context), 24, false), null));
+        button.setOnClickListener(ignored -> action.run());
         if (android.os.Build.VERSION.SDK_INT >= 26) button.setTooltipText(context.getString(label));
         return button;
     }
@@ -46,7 +48,11 @@ final class InspectorWidgets {
         search.setHint(hint); search.setContentDescription(context.getString(hint));
         search.setFilters(new InputFilter[] {new InputFilter.LengthFilter(512)});
         search.setMinHeight(InspectorTheme.dp(context, 48)); search.setPadding(InspectorTheme.dp(context, 14), 0, InspectorTheme.dp(context, 14), 0);
-        InspectorTheme.surface(search, false, 12); search.setText(value);
+        search.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 16, false)); search.setText(value);
+        android.graphics.drawable.Drawable symbol = context.getDrawable(R.drawable.osservio_search);
+        if (symbol != null) symbol.setTint(InspectorTheme.secondary(context));
+        search.setCompoundDrawablesRelativeWithIntrinsicBounds(symbol, null, null, null);
+        search.setCompoundDrawablePadding(InspectorTheme.dp(context, 8));
         search.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
@@ -60,20 +66,32 @@ final class InspectorWidgets {
         text.setPadding(0, InspectorTheme.dp(context, 8), 0, InspectorTheme.dp(context, 8)); return text;
     }
     static View segments(Context context, String[] labels, int selected, Selection changed) {
-        LinearLayout bar = new LinearLayout(context); int inset = InspectorTheme.dp(context, 12);
-        bar.setPadding(inset, InspectorTheme.dp(context, 8), inset, InspectorTheme.dp(context, 8));
-        Button[] buttons = new Button[labels.length];
+        android.widget.RadioGroup bar = new android.widget.RadioGroup(context);
+        boolean large = context.getResources().getConfiguration().fontScale >= 1.5f;
+        bar.setOrientation(large ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        int inset = InspectorTheme.dp(context, 4); bar.setPadding(inset, inset, inset, inset);
+        bar.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false));
         for (int i = 0; i < labels.length; i++) {
-            final int index = i;
-            Button button = button(context, R.string.osservio_ui_all, () -> {
-                for (int j = 0; j < buttons.length; j++) chip(buttons[j], j == index);
-                changed.selected(index);
-            });
-            button.setText(labels[i]); chip(button, i == selected); buttons[i] = button;
-            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(0, -2, 1);
-            if (i > 0) layout.leftMargin = InspectorTheme.dp(context, 6);
+            android.widget.RadioButton button = new android.widget.RadioButton(context);
+            button.setId(View.generateViewId()); button.setTag(i); button.setButtonDrawable(null);
+            button.setText(labels[i]); button.setTextSize(14); button.setGravity(Gravity.CENTER); button.setAllCaps(false);
+            button.setMinHeight(InspectorTheme.dp(context, 44)); button.setPadding(inset * 2, inset, inset * 2, inset);
+            int[][] states = {new int[] {android.R.attr.state_checked}, new int[0]};
+            button.setTextColor(new android.content.res.ColorStateList(states,
+                new int[] {InspectorTheme.accent(context), InspectorTheme.secondary(context)}));
+            android.graphics.drawable.StateListDrawable fill = new android.graphics.drawable.StateListDrawable();
+            fill.addState(states[0], InspectorTheme.shape(context, InspectorTheme.surface(context), 16, false));
+            fill.addState(states[1], new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
+                InspectorTheme.color(context, R.color.osservio_separator)), fill, null));
+            android.widget.RadioGroup.LayoutParams layout = new android.widget.RadioGroup.LayoutParams(large ? -1 : 0, -2, large ? 0 : 1);
             bar.addView(button, layout);
+            if (i == selected) button.setChecked(true);
         }
+        bar.setOnCheckedChangeListener((group, id) -> {
+            View selectedView = group.findViewById(id);
+            if (selectedView != null) changed.selected((Integer) selectedView.getTag());
+        });
         return bar;
     }
     static View divider(Context context) {
@@ -97,17 +115,22 @@ final class InspectorWidgets {
         private final TextView metadata;
         EventRow(Context context) {
             super(context); setOrientation(VERTICAL);
-            int inset = InspectorTheme.dp(context, 16); setPadding(inset, inset, inset, inset);
+            int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 4), inset, InspectorTheme.dp(context, 4));
+            LinearLayout card = new LinearLayout(context); card.setOrientation(VERTICAL); card.setPadding(inset, inset, inset, inset);
+            card.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 18, false));
+            card.setDuplicateParentStateEnabled(true);
+            addView(card, new LayoutParams(-1, -2));
             LinearLayout top = new LinearLayout(context); top.setGravity(Gravity.CENTER_VERTICAL);
             badge = InspectorTheme.text(context, 12, true); time = InspectorTheme.text(context, 11, false);
             time.setTextColor(InspectorTheme.secondary(context)); time.setGravity(Gravity.END);
             top.addView(badge, new LayoutParams(0, -2, 1)); top.addView(time, new LayoutParams(0, -2, 1));
-            addView(top, new LayoutParams(-1, -2));
+            card.addView(top, new LayoutParams(-1, -2));
             title = InspectorTheme.text(context, 15, true); title.setMaxLines(3); title.setEllipsize(android.text.TextUtils.TruncateAt.END);
             title.setPadding(0, InspectorTheme.dp(context, 7), 0, InspectorTheme.dp(context, 5));
-            addView(title, new LayoutParams(-1, -2));
+            card.addView(title, new LayoutParams(-1, -2));
             metadata = InspectorTheme.text(context, 12, false); metadata.setTextColor(InspectorTheme.secondary(context));
-            addView(metadata, new LayoutParams(-1, -2));
+            metadata.setMaxLines(3); metadata.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            card.addView(metadata, new LayoutParams(-1, -2));
             setBackgroundResource(android.R.drawable.list_selector_background);
         }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {

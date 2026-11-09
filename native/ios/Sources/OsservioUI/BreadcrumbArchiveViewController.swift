@@ -101,12 +101,10 @@ final class BreadcrumbArchiveViewController: UITableViewController {
         return configuration
     }
     @objc private func showActions() {
-        let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: PersistencePresentation.status(archive.persistenceStatus()), preferredStyle: .actionSheet)
-        let clear = UIAlertAction(title: InspectorLocalization.text("archive_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
+        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: PersistencePresentation.status(archive.persistenceStatus()))
+        var clear = InspectorActionPanel.Action(title: InspectorLocalization.text("archive_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
         clear.isEnabled = !reading && !runs.isEmpty; menu.addAction(clear)
-        menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        menu.popoverPresentationController?.barButtonItem = inspectorPrimaryAction
-        present(menu, animated: true)
+        inspectorPresent(menu)
     }
     private func confirmDeletion(id: String?) {
         guard !reading else { return }

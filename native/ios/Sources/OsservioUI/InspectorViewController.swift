@@ -58,7 +58,7 @@ public final class InspectorViewController: UITabBarController {
             let navigation = InspectorNavigationController(rootViewController: section.0)
             navigation.tabBarItem = UITabBarItem(title: InspectorLocalization.text(section.1), image: UIImage(systemName: section.2), tag: index)
             section.0.navigationItem.leftBarButtonItem = session == nil
-                ? UIBarButtonItem(title: InspectorLocalization.text("ui_close"), style: .plain, target: self, action: #selector(closeInspector)) : nil
+                ? inspectorDismissItem(target: self, action: #selector(closeInspector), label: "ui_close") : nil
             section.0.navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
             return navigation
         }
@@ -75,7 +75,7 @@ public final class InspectorViewController: UITabBarController {
         for (index, section) in sections.enumerated() {
             viewControllers?[index].tabBarItem.title = InspectorLocalization.text(section.1)
             section.0.navigationItem.leftBarButtonItem = session == nil
-                ? UIBarButtonItem(title: InspectorLocalization.text("ui_close"), style: .plain, target: self, action: #selector(closeInspector)) : nil
+                ? inspectorDismissItem(target: self, action: #selector(closeInspector), label: "ui_close") : nil
             section.0.navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
         }
     }
