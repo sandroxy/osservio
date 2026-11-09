@@ -6,6 +6,12 @@ import UIKit
 @MainActor
 public final class InspectorViewController: UITabBarController {
     private var sections: [(UIViewController, String, String)] = []
+    weak var session: InspectorSession? {
+        didSet {
+            for navigation in viewControllers?.compactMap({ $0 as? InspectorNavigationController }) ?? [] { navigation.session = session }
+            if isViewLoaded { relabel() }
+        }
+    }
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
 
     public convenience init(logRecorder: LogRecorder, logHistory: any LogHistory,
@@ -51,7 +57,8 @@ public final class InspectorViewController: UITabBarController {
         viewControllers = sections.enumerated().map { index, section in
             let navigation = InspectorNavigationController(rootViewController: section.0)
             navigation.tabBarItem = UITabBarItem(title: InspectorLocalization.text(section.1), image: UIImage(systemName: section.2), tag: index)
-            section.0.navigationItem.leftBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_close"), style: .plain, target: self, action: #selector(closeInspector))
+            section.0.navigationItem.leftBarButtonItem = session == nil
+                ? UIBarButtonItem(title: InspectorLocalization.text("ui_close"), style: .plain, target: self, action: #selector(closeInspector)) : nil
             section.0.navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
             return navigation
         }
@@ -67,10 +74,13 @@ public final class InspectorViewController: UITabBarController {
         tabBar.tintColor = InspectorTheme.accent
         for (index, section) in sections.enumerated() {
             viewControllers?[index].tabBarItem.title = InspectorLocalization.text(section.1)
-            section.0.navigationItem.leftBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_close"), style: .plain, target: self, action: #selector(closeInspector))
+            section.0.navigationItem.leftBarButtonItem = session == nil
+                ? UIBarButtonItem(title: InspectorLocalization.text("ui_close"), style: .plain, target: self, action: #selector(closeInspector)) : nil
             section.0.navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
         }
     }
-    @objc private func closeInspector() { dismiss(animated: true) }
+    @objc private func closeInspector() {
+        if let session { session.collapse() } else { dismiss(animated: true) }
+    }
 }
 #endif

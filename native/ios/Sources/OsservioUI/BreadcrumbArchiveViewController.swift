@@ -16,8 +16,8 @@ final class BreadcrumbArchiveViewController: UITableViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self); tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 76
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), style: .plain, target: self, action: #selector(showActions))
-        navigationItem.rightBarButtonItem?.accessibilityLabel = InspectorLocalization.text("ui_actions")
+        inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), style: .plain, target: self, action: #selector(showActions))
+        inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("ui_actions")
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); InspectorTheme.apply(self); title = InspectorLocalization.text("ui_saved_runs"); read() }
     override func viewWillDisappear(_ animated: Bool) {
@@ -105,7 +105,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
         let clear = UIAlertAction(title: InspectorLocalization.text("archive_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
         clear.isEnabled = !reading && !runs.isEmpty; menu.addAction(clear)
         menu.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        menu.popoverPresentationController?.barButtonItem = navigationItem.rightBarButtonItem
+        menu.popoverPresentationController?.barButtonItem = inspectorPrimaryAction
         present(menu, animated: true)
     }
     private func confirmDeletion(id: String?) {
@@ -155,12 +155,12 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
         let header = UIStackView(arrangedSubviews: [search]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copySummary))
+        inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copySummary))
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
         title = RuntimePresentation.text("archive_title"); search.placeholder = RuntimePresentation.text("crumb_search")
-        navigationItem.rightBarButtonItem?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
+        inspectorPrimaryAction?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
         searchChanged()
     }
     override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .plain) }

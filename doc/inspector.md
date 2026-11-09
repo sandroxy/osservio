@@ -126,10 +126,27 @@ bars, restoring their previous appearance on dismissal. It does not change the
 host theme or window flags. Standalone views use their supplied context's
 configuration; the combined inspector supplies its own scoped configuration.
 
-On iOS, present `InspectorViewController` directly. It owns a native navigation
-controller per destination and a Close action. Its view hierarchy applies the
-inspector's appearance without changing the host window. Custom containers must
-forward appearance transitions. Standalone controllers need host-provided
-navigation and an appropriate dismissal entry. See the
+On iOS, retain an `InspectorSession(window:makeInspector:)` per host window.
+Its app-local entry starts hidden; the host chooses when to call `showEntry()`.
+The entry can be dragged to either edge and remembers its normalized position.
+It passes touches outside the entry through to the host and does not become the
+key window. Tapping it expands a full-screen workspace in the same scene.
+Minimize remains available in SDK navigation pages, readers and editing panels.
+The session restores host keyboard focus when collapsing and suspends polling
+before its short exit animation. Reduce Motion, Low Power Mode and elevated
+thermal state reduce motion; Reduce Transparency uses an opaque entry.
+
+`collapse()` shows the entry, while `hideEntry()` hides both surfaces. Both retain
+the in-process tab, navigation, query, reading position and unfinished filter or
+problem draft. They never apply a filter or save a problem. A single retained
+hierarchy reuses the existing content limits; it does not create a new history
+or keep ordinary diagnostics across process restarts. `dispose()` releases the
+hierarchy independently of capture and evidence; scene disconnection disposes it
+automatically. All session operations are main-actor only. Revealing or expanding
+a disposed session or one whose host window has gone returns false.
+
+Hosts that own presentation can still present `InspectorViewController` directly
+with its Close action. Custom containers must forward appearance transitions.
+Standalone controllers need host-provided navigation and dismissal. See the
 [Android](../native/android/README.md) and [iOS](../native/ios/README.md) integration
 guides for source dependencies and collector setup.

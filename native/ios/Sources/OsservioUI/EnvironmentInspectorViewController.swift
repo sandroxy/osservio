@@ -38,9 +38,9 @@ final class EnvironmentInspectorViewController: InspectorDetailViewController {
     }
     private func render() {
         title = InspectorLocalization.text("runtime_environment")
-        navigationItem.rightBarButtonItem = refreshButton; refreshButton.tintColor = InspectorTheme.accent
-        navigationItem.rightBarButtonItem?.accessibilityLabel = InspectorLocalization.text("http_refresh")
-        navigationItem.rightBarButtonItem?.isEnabled = !reading
+        inspectorPrimaryAction = refreshButton; refreshButton.tintColor = InspectorTheme.accent
+        inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("http_refresh")
+        inspectorPrimaryAction?.isEnabled = !reading
         sections = [Section(title: InspectorLocalization.text("ui_snapshot_time"), rows: [
             Row(snapshot.map { InspectorLocalization.date($0.timestampMillis) } ?? InspectorLocalization.text("runtime_unavailable"))
         ], footer: InspectorLocalization.text(noticeKey))]

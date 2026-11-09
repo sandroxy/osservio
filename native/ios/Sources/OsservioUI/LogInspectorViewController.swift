@@ -79,7 +79,7 @@ public final class LogInspectorViewController: UITableViewController {
         let filters = InspectorFilterViewController(query: query, groups: InspectorFilterOptions.logs(latest?.events ?? [])) { [weak self] query in
             self?.query = query; self?.render()
         }
-        present(InspectorNavigationController(rootViewController: filters), animated: true)
+        inspectorPresent(filters)
     }
     @objc private func showActions() {
         let active = recorder.status()?.isRecording == true
@@ -129,7 +129,7 @@ final class LogDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); title = event.category
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("copy"), style: .plain, target: self, action: #selector(copyMessage))
+        inspectorPrimaryAction = UIBarButtonItem(title: InspectorLocalization.text("copy"), style: .plain, target: self, action: #selector(copyMessage))
         sections = [Section(title: InspectorLocalization.text("ui_metadata"), rows: [
             Row(InspectorLocalization.text("ui_level"), InspectorFilterOptions.label(.level, event.level.rawValue)),
             Row(InspectorLocalization.text("ui_category"), event.category),

@@ -24,7 +24,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     deinit { work?.cancel(); NotificationCenter.default.removeObserver(self) }
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_copy_all"), style: .plain, target: self, action: #selector(copyContent))
+        inspectorPrimaryAction = UIBarButtonItem(title: InspectorLocalization.text("ui_copy_all"), style: .plain, target: self, action: #selector(copyContent))
         search.placeholder = InspectorLocalization.text("ui_search_content"); search.delegate = self
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
         search.autocorrectionType = .no; search.autocapitalizationType = .none; search.returnKeyType = .done
@@ -66,7 +66,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); view.endEditing(true); work?.cancel() }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
-        navigationItem.rightBarButtonItem?.title = InspectorLocalization.text("ui_copy_all")
+        inspectorPrimaryAction?.title = InspectorLocalization.text("ui_copy_all")
         search.placeholder = InspectorLocalization.text("ui_search_content")
         previous.setTitle(InspectorLocalization.text("ui_previous_match"), for: .normal)
         nextButton.setTitle(InspectorLocalization.text("ui_next_match"), for: .normal); render()

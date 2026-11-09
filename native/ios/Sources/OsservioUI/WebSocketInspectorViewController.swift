@@ -37,7 +37,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad()
-        navigationItem.rightBarButtonItems = history == nil ? [copyButton] : [copyButton, refreshButton]
+        inspectorActions = history == nil ? [copyButton] : [copyButton, refreshButton]
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         tableView.tableHeaderView = header; selection.onSelect = { [weak self] _ in self?.render() }; refresh()

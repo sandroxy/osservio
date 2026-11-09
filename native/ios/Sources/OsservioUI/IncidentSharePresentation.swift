@@ -24,6 +24,7 @@ final class IncidentSharePresentation: NSObject {
         super.init()
         NotificationCenter.default.addObserver(self, selector: #selector(cancel), name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(sceneDeactivated(_:)), name: UIScene.willDeactivateNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(presentationHidden(_:)), name: InspectorSession.willCollapse, object: nil)
     }
     deinit { task?.cancel(); NotificationCenter.default.removeObserver(self) }
 
@@ -64,8 +65,12 @@ final class IncidentSharePresentation: NSObject {
         guard let scene = notification.object as? UIScene, scene === owner?.viewIfLoaded?.window?.windowScene else { return }
         cancel()
     }
+    @objc private func presentationHidden(_ notification: Notification) {
+        guard let window = notification.object as? UIWindow, window === owner?.viewIfLoaded?.window else { return }
+        cancel()
+    }
     private func visible() -> Bool {
-        guard let owner, let window = owner.viewIfLoaded?.window,
+        guard let owner, let window = owner.viewIfLoaded?.window, !window.isHidden,
               owner.navigationController == nil || owner.navigationController?.topViewController === owner else { return false }
         if let scene = window.windowScene { return scene.activationState == .foregroundActive }
         return UIApplication.shared.applicationState == .active

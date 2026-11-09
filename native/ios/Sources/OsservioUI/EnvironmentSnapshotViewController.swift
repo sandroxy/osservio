@@ -11,7 +11,7 @@ final class EnvironmentSnapshotViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); title = InspectorLocalization.text("runtime_environment")
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("runtime_copy_environment"), style: .plain, target: self, action: #selector(copySnapshot))
+        inspectorPrimaryAction = UIBarButtonItem(title: InspectorLocalization.text("runtime_copy_environment"), style: .plain, target: self, action: #selector(copySnapshot))
         sections = [Section(title: InspectorLocalization.text("ui_snapshot_time"), rows: [
             Row(InspectorLocalization.date(snapshot.timestampMillis) + " · " + snapshot.platform.rawValue)
         ], footer: InspectorLocalization.text("incident_snapshot_hint"))] + EnvironmentPresentation.sections(snapshot)

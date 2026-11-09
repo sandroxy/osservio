@@ -75,7 +75,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     @objc private func showFilters() {
         let group = InspectorFilterGroup(.kind, values: (latest?.events ?? []).map { $0.kind.rawValue })
         let filters = InspectorFilterViewController(query: query, groups: [group]) { [weak self] value in self?.query = value; self?.render() }
-        view.endEditing(true); present(InspectorNavigationController(rootViewController: filters), animated: true)
+        view.endEditing(true); inspectorPresent(filters)
     }
     @objc private func showActions() {
         let enabled = recorder.captureController.status()?.baselineEnabled == true

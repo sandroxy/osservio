@@ -92,7 +92,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         let kinds = ["manual", "managedCrash", "nativeCrash", "anr", "lowMemoryTermination", "signalTermination", "otherExit", "crash", "hang"]
         let groups = [InspectorFilterGroup(.record, values: kinds), InspectorFilterGroup(.source, values: ["manual", "system"])]
         let filters = InspectorFilterViewController(query: query, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
-        view.endEditing(true); present(InspectorNavigationController(rootViewController: filters), animated: true)
+        view.endEditing(true); inspectorPresent(filters)
     }
     @objc private func showActions() {
         let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)
@@ -136,7 +136,7 @@ public final class IncidentInspectorViewController: UITableViewController {
                 httpHistory: http, webSocketHistory: webSockets) { [weak self] in
                 self?.justSaved = true; self?.read()
             }
-            present(InspectorNavigationController(rootViewController: editor), animated: true)
+            inspectorPresent(editor)
         } catch { notice = RuntimePresentation.text("incident_mark_failed"); render() }
     }
     private func open(id: String) {

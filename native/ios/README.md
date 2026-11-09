@@ -103,10 +103,29 @@ preserves native task cancellation. The wrapper does not invalidate the session,
 replace its delegate, install a URL protocol, or modify requests.
 
 Only requests submitted through these methods are observed. The default policy
-omits bodies and sensitive URL/header content. On the main actor, present
-`InspectorViewController(logRecorder: recorder, logHistory: history,
-httpRecorder: http, httpHistory: requests)` directly for Logs, Network, Problems
-and App, with a Close control. Optional capabilities remain explicitly
+omits bodies and sensitive URL/header content. On the main actor, retain one
+`InspectorSession` for each host window to provide the floating entry and
+full-screen Logs, Network, Problems and App workspace:
+
+```swift
+let inspection = InspectorSession(window: hostWindow) {
+    InspectorViewController(logRecorder: recorder, logHistory: history,
+                            httpRecorder: http, httpHistory: requests)
+}
+// Call from the host's chosen reveal gesture. The initial entry is hidden.
+inspection.showEntry()
+```
+
+`expand()` opens or resumes the workspace; `collapse()` returns to the host with
+the entry visible. `hideEntry()` hides both surfaces while preserving this
+in-process session. None of these operations changes capture. `dispose()` releases
+the UI and makes subsequent reveal/open calls return false. Keep the factory
+independent of the host controller to avoid a host-owned retain cycle. The session
+does not retain its host window and disposes when that window's scene disconnects.
+It creates the full inspector only on first expansion. Call its APIs on the main
+actor. See [presentation and state](../../doc/inspector.md#host-presentation).
+
+Optional capabilities remain explicitly
 unconfigured until their providers are supplied. The combined inspector
 defaults to Simplified Chinese and Light, with independent English and Dark
 preferences in App. See [the native inspector guide](../../doc/inspector.md). For network-only inspection, embed

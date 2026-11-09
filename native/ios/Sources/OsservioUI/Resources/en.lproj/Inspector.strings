@@ -96,3 +96,9 @@
 "ui_close" = "Close";
 "ui_request_url" = "Request URL";
 "ui_reading" = "Reading records";
+"ui_open_inspector" = "Open Osservio";
+"ui_entry_hint" = "Drag to move. Tap to resume your inspector.";
+"ui_minimize" = "Minimize inspector";
+"ui_hide_entry" = "Hide floating entry";
+"ui_dock_leading" = "Move to the left edge";
+"ui_dock_trailing" = "Move to the right edge";

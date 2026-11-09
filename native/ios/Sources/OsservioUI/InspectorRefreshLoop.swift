@@ -9,6 +9,7 @@ final class InspectorRefreshLoop: NSObject {
     private let refresh: () -> Void
     private var visible = false
     private var applicationSuspended = false
+    private var presentationSuspended = false
     private var timer: Timer?
     private var generation: UInt64 = 0
 
@@ -16,6 +17,8 @@ final class InspectorRefreshLoop: NSObject {
         self.refresh = refresh
         super.init()
         let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(presentationHidden(_:)), name: InspectorSession.willCollapse, object: nil)
+        center.addObserver(self, selector: #selector(presentationShown(_:)), name: InspectorSession.willExpand, object: nil)
         for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
             center.addObserver(self, selector: #selector(applicationDeactivated), name: name, object: nil)
         }
@@ -36,11 +39,11 @@ final class InspectorRefreshLoop: NSObject {
         reconcile()
     }
     func hide() {
-        visible = false; view = nil; suspendedScene = nil
+        visible = false; view = nil; suspendedScene = nil; presentationSuspended = false
         stopTimer()
     }
     private var mayRefresh: Bool {
-        guard visible, !applicationSuspended, let window = view?.window, !window.isHidden else { return false }
+        guard visible, !applicationSuspended, !presentationSuspended, let window = view?.window, !window.isHidden else { return false }
         if let scene = window.windowScene {
             return scene !== suspendedScene && scene.activationState == .foregroundActive
         }
@@ -85,7 +88,16 @@ final class InspectorRefreshLoop: NSObject {
     }
     @objc private func windowVisibilityChanged(_ notification: Notification) {
         guard let window = notification.object as? UIWindow, window === view?.window else { return }
+        if !window.isHidden { presentationSuspended = false }
         reconcile()
+    }
+    @objc private func presentationHidden(_ notification: Notification) {
+        guard let window = notification.object as? UIWindow, window === view?.window else { return }
+        presentationSuspended = true; stopTimer()
+    }
+    @objc private func presentationShown(_ notification: Notification) {
+        guard let window = notification.object as? UIWindow, window === view?.window else { return }
+        presentationSuspended = false; reconcile()
     }
 }
 #endif

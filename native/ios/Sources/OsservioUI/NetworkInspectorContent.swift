@@ -158,7 +158,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         let filters = InspectorFilterViewController(query: query, groups: groups) { [weak self] value in
             guard let self else { return }; self.queries[self.scope] = value; self.render()
         }
-        owner?.present(InspectorNavigationController(rootViewController: filters), animated: true)
+        owner?.inspectorPresent(filters)
     }
     @objc private func showActions() {
         let menu = UIAlertController(title: InspectorLocalization.text("ui_actions"), message: nil, preferredStyle: .actionSheet)

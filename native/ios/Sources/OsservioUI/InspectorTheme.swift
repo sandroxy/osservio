@@ -52,11 +52,26 @@ final class InspectorStyleObserver: NSObject {
 
 @MainActor
 final class InspectorNavigationController: UINavigationController, UINavigationControllerDelegate {
+    weak var session: InspectorSession? {
+        didSet { for controller in viewControllers { installSessionAction(on: controller) } }
+    }
     private lazy var style = InspectorStyleObserver { [weak self] in self?.updateStyle() }
     override func viewDidLoad() { super.viewDidLoad(); delegate = self; style.changed() }
     func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
+        installSessionAction(on: viewController)
         tintItems(viewController)
     }
+    private func installSessionAction(on controller: UIViewController) {
+        let actions = controller.inspectorActions
+        controller.inspectorActions = actions
+    }
+    func minimizeItem() -> UIBarButtonItem {
+        let item = UIBarButtonItem(image: UIImage(systemName: "arrow.down.right.and.arrow.up.left"), style: .plain, target: self, action: #selector(minimize))
+        item.accessibilityIdentifier = "Osservio.Minimize"
+        item.accessibilityLabel = InspectorLocalization.text("ui_minimize")
+        return item
+    }
+    @objc private func minimize() { session?.collapse() }
     private func tintItems(_ controller: UIViewController) {
         let items = (controller.navigationItem.leftBarButtonItems ?? []) + (controller.navigationItem.rightBarButtonItems ?? [])
         for item in items { item.tintColor = InspectorTheme.accent }
@@ -71,6 +86,7 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         navigationBar.compactAppearance = appearance; navigationBar.tintColor = InspectorTheme.accent
         navigationBar.prefersLargeTitles = false
         for controller in viewControllers {
+            installSessionAction(on: controller)
             tintItems(controller)
         }
     }
@@ -78,11 +94,44 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
 
 @MainActor
 extension UIViewController {
+    var inspectorSession: InspectorSession? {
+        (navigationController as? InspectorNavigationController)?.session
+            ?? (self as? InspectorViewController)?.session
+            ?? (self as? InspectorNavigationController)?.session
+    }
+    /// Page-owned actions remain separate from the session's stable minimize affordance.
+    var inspectorActions: [UIBarButtonItem]? {
+        get { navigationItem.rightBarButtonItems?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } }
+        set {
+            let items = newValue?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } ?? []
+            let result: [UIBarButtonItem]
+            if let navigation = navigationController as? InspectorNavigationController, navigation.session != nil {
+                let minimize = navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "Osservio.Minimize" }
+                    ?? navigation.minimizeItem()
+                minimize.accessibilityLabel = InspectorLocalization.text("ui_minimize")
+                result = [minimize] + items
+            } else { result = items }
+            let existing = navigationItem.rightBarButtonItems ?? []
+            if existing.count != result.count || !zip(existing, result).allSatisfy({ $0 === $1 }) {
+                navigationItem.rightBarButtonItems = result.isEmpty ? nil : result
+            }
+        }
+    }
+    var inspectorPrimaryAction: UIBarButtonItem? {
+        get { inspectorActions?.first }
+        set { inspectorActions = newValue.map { [$0] } }
+    }
+    func inspectorPresent(_ controller: UIViewController) {
+        view.endEditing(true)
+        let navigation = InspectorNavigationController(rootViewController: controller)
+        navigation.session = inspectorSession
+        present(navigation, animated: true)
+    }
     func inspectorPush(_ controller: UIViewController) {
         view.endEditing(true)
         navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
         if let navigationController { navigationController.pushViewController(controller, animated: true) }
-        else { present(InspectorNavigationController(rootViewController: controller), animated: true) }
+        else { inspectorPresent(controller) }
     }
     func inspectorNotice(_ message: String, title: String? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)

@@ -96,3 +96,9 @@
 "ui_close" = "关闭";
 "ui_request_url" = "请求地址";
 "ui_reading" = "正在读取记录";
+"ui_open_inspector" = "打开 Osservio";
+"ui_entry_hint" = "拖动可移动位置，轻点可继续查看。";
+"ui_minimize" = "收起查看器";
+"ui_hide_entry" = "隐藏悬浮入口";
+"ui_dock_leading" = "移到左侧";
+"ui_dock_trailing" = "移到右侧";

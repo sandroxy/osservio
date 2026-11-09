@@ -55,7 +55,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         case .webSockets: groups = InspectorFilterOptions.timeline()
         }
         let filters = InspectorFilterViewController(query: query, groups: groups) { [weak self] value in self?.query = value; self?.render() }
-        view.endEditing(true); present(InspectorNavigationController(rootViewController: filters), animated: true)
+        view.endEditing(true); inspectorPresent(filters)
     }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { indices.count }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

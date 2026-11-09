@@ -54,7 +54,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         tableView.keyboardDismissMode = .interactive
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_cancel"), style: .plain, target: self, action: #selector(cancel))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("incident_save"), style: .done, target: self, action: #selector(save))
+        inspectorPrimaryAction = UIBarButtonItem(title: RuntimePresentation.text("incident_save"), style: .done, target: self, action: #selector(save))
         includeEnvironment.isOn = true; includeBreadcrumbs.isOn = true; includeNote.isOn = false
         includeEnvironment.accessibilityLabel = RuntimePresentation.text("incident_include_environment")
         includeBreadcrumbs.accessibilityLabel = RuntimePresentation.text("incident_include_breadcrumbs")
@@ -149,7 +149,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
             + "\n" + RuntimePresentation.text("incident_body_choice_hint")
     }
     private func updateControls() {
-        navigationItem.rightBarButtonItem?.isEnabled = !saving && (!includeEnvironment.isOn || !environmentPending)
+        inspectorPrimaryAction?.isEnabled = !saving && (!includeEnvironment.isOn || !environmentPending)
         navigationItem.leftBarButtonItem?.isEnabled = !saving
         for control in controls { control.isEnabled = !saving }
         includeLogs.isEnabled = !saving && mark.logs != nil

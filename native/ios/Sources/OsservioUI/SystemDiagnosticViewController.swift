@@ -16,14 +16,14 @@ final class SystemDiagnosticViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("diagnostic_title")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 64
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
+        inspectorPrimaryAction = UIBarButtonItem(title: RuntimePresentation.text("archive_copy_summary"), style: .plain,
             target: self, action: #selector(copyDiagnostic))
     }
     @objc private func copyDiagnostic() { UIPasteboard.general.string = SystemDiagnosticPresentation.summary(diagnostic) }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
         title = RuntimePresentation.text("diagnostic_title"); fields = SystemDiagnosticPresentation.fields(diagnostic)
-        navigationItem.rightBarButtonItem?.title = RuntimePresentation.text("archive_copy_summary"); tableView.reloadData()
+        inspectorPrimaryAction?.title = RuntimePresentation.text("archive_copy_summary"); tableView.reloadData()
     }
     override func numberOfSections(in tableView: UITableView) -> Int { diagnostic.appleSignal != nil || diagnostic.androidExit?.tombstone != nil ? 2 : 1 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {

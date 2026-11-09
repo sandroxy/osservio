@@ -6,6 +6,27 @@ import XCTest
 
 final class InspectorRefreshTests: XCTestCase {
     @MainActor
+    func testMinimizeStopsBeforeWindowHidesAndInterruptedResumeStartsOnlyOnce() async throws {
+        let window = show(UIViewController()), foreign = UIWindow()
+        defer { dismiss(window) }
+        var count = 0
+        let loop = InspectorRefreshLoop { count += 1 }
+        loop.show(in: window.rootViewController!.view)
+        NotificationCenter.default.post(name: InspectorSession.willCollapse, object: foreign)
+        try await waitUntil { count > 1 }
+        NotificationCenter.default.post(name: InspectorSession.willCollapse, object: window)
+        XCTAssertFalse(window.isHidden, "Polling stops at the start of the exit animation")
+        let suspended = count
+        NotificationCenter.default.post(name: InspectorSession.willExpand, object: foreign)
+        try await assertStable { count == suspended }
+        NotificationCenter.default.post(name: InspectorSession.willExpand, object: window)
+        XCTAssertEqual(count, suspended + 1)
+        NotificationCenter.default.post(name: InspectorSession.willExpand, object: window)
+        XCTAssertEqual(count, suspended + 1)
+        loop.hide()
+    }
+
+    @MainActor
     func testApplicationInterruptionStopsPollingAndActivationResumesOnce() async throws {
         let window = show(UIViewController())
         defer { dismiss(window) }

@@ -38,7 +38,7 @@ final class IncidentSnapshotViewController: UITableViewController {
         let copy = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain,
             target: self, action: #selector(copySummary))
         copy.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
-        navigationItem.rightBarButtonItems = sharing.map { [$0.button, copy] } ?? [copy]
+        inspectorActions = sharing.map { [$0.button, copy] } ?? [copy]
         exportStatus.font = .preferredFont(forTextStyle: .footnote); exportStatus.adjustsFontForContentSizeCategory = true
         exportStatus.numberOfLines = 0; exportStatus.textColor = .secondaryLabel
     }
@@ -47,7 +47,7 @@ final class IncidentSnapshotViewController: UITableViewController {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
         title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
         search.placeholder = RuntimePresentation.text("crumb_search")
-        navigationItem.rightBarButtonItems?.last?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
+        inspectorActions?.last?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
         sharing?.button.accessibilityLabel = RuntimePresentation.text("incident_share"); tableView.reloadData()
     }
     private func showExportStatus(_ message: String?) {

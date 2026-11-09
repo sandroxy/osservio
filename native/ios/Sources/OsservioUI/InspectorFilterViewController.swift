@@ -33,7 +33,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         super.viewDidLoad(); InspectorTheme.apply(self)
         title = InspectorLocalization.text("ui_filters")
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("archive_cancel"), style: .plain, target: self, action: #selector(cancel))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_apply"), style: .done, target: self, action: #selector(save))
+        inspectorPrimaryAction = UIBarButtonItem(title: InspectorLocalization.text("ui_apply"), style: .done, target: self, action: #selector(save))
         search.placeholder = InspectorLocalization.text("ui_filter_options"); search.delegate = self
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
         search.autocorrectionType = .no; search.autocapitalizationType = .none; search.returnKeyType = .done
