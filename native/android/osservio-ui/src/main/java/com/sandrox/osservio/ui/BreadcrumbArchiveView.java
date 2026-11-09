@@ -55,7 +55,8 @@ final class BreadcrumbArchiveView extends LinearLayout {
     private AlertDialog detail;
 
     BreadcrumbArchiveView(Context context, BreadcrumbArchive archive) {
-        super(context); this.archive = archive; setOrientation(VERTICAL); setPadding(dp(16), dp(8), dp(16), 0);
+        super(context); this.archive = archive; setOrientation(VERTICAL);
+        LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(dp(16), 0, dp(16), 0);
         LinearLayout controls = new LinearLayout(context);
         refresh = button(R.string.osservio_archive_refresh); refresh.setOnClickListener(view -> { selected = null; read(); });
         back = button(R.string.osservio_archive_back); back.setOnClickListener(view -> {
@@ -68,23 +69,35 @@ final class BreadcrumbArchiveView extends LinearLayout {
             if (selected != null) copy(PersistencePresentation.run(getContext(), selected.run));
         });
         for (Button button : new Button[] {back, refresh, copy}) controls.addView(button, new LayoutParams(0, -2, 1));
-        addView(controls, new LayoutParams(-1, -2));
+        header.addView(controls, new LayoutParams(-1, -2));
         delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
-        addView(delete, new LayoutParams(-1, -2));
-        notice = caption(); addView(notice, new LayoutParams(-1, -2));
-        summary = caption(); summary.setTextIsSelectable(true); addView(summary, new LayoutParams(-1, -2));
-        search = new EditText(context); search.setHint(R.string.osservio_crumb_search); search.setSingleLine(true); search.setMinHeight(dp(48));
-        search.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence text, int start, int before, int count) { filter(); }
-            @Override public void afterTextChanged(Editable text) { }
+        Button actions = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {
+            detail = new AlertDialog.Builder(context).setTitle(R.string.osservio_ui_actions)
+                .setItems(new String[] {context.getString(R.string.osservio_ui_capture_details), delete.getText().toString()}, (dialog, which) -> {
+                    dialog.dismiss(); detail = null;
+                    if (which == 1) confirmDeletion();
+                    else {
+                        detail = new AlertDialog.Builder(context).setTitle(R.string.osservio_ui_capture_details)
+                            .setMessage(PersistencePresentation.status(context, archive.persistenceStatus()))
+                            .setPositiveButton(R.string.osservio_close, null).show();
+                        detail.setOnDismissListener(ignored -> detail = null);
+                    }
+                }).setNegativeButton(R.string.osservio_archive_cancel, null).show();
+            AlertDialog shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
         });
-        addView(search, new LayoutParams(-1, -2));
-        empty = caption(); empty.setPadding(0, dp(24), 0, dp(24)); addView(empty, new LayoutParams(-1, -2));
-        list = new ListView(context); list.setAdapter(rows); list.setEmptyView(empty);
+        actions.setText("⋯"); actions.setTextSize(22); actions.setContentDescription(context.getString(R.string.osservio_ui_actions));
+        controls.addView(actions, new LayoutParams(dp(48), -2));
+        notice = caption(); header.addView(notice, new LayoutParams(-1, -2));
+        summary = caption(); summary.setTextIsSelectable(true); header.addView(summary, new LayoutParams(-1, -2));
+        search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> filter());
+        header.addView(search, new LayoutParams(-1, -2));
+        empty = caption(); empty.setPadding(0, dp(24), 0, dp(24)); header.addView(empty, new LayoutParams(-1, -2));
+        list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
+        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
         list.setOnItemClickListener((parent, view, position, id) -> {
-            if (reading) return;
-            if (selected == null) open(runs.get(position)); else showDetail(events.get(position));
+            int index = position - list.getHeaderViewsCount();
+            if (reading || index < 0 || index >= rows.getCount()) return;
+            if (selected == null) open(runs.get(index)); else showDetail(events.get(index));
         });
         addView(list, new LayoutParams(-1, 0, 1)); render();
     }
@@ -119,7 +132,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
             else {
                 view.runs = value; view.updatedAt = System.currentTimeMillis();
                 view.notice.setText(view.getContext().getString(R.string.osservio_runtime_pair,
-                    view.getContext().getString(R.string.osservio_archive_loaded), RuntimePresentation.date(view.updatedAt)));
+                    view.getContext().getString(R.string.osservio_archive_loaded), RuntimePresentation.date(view.getContext(), view.updatedAt)));
             }
             view.render();
         }));
@@ -138,7 +151,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
     }
     private void failed(PersistenceStatus.Error error) {
         String message = PersistencePresentation.error(getContext(), error);
-        if (updatedAt != null) message += "\n" + getContext().getString(R.string.osservio_runtime_previous) + " · " + RuntimePresentation.date(updatedAt);
+        if (updatedAt != null) message += "\n" + getContext().getString(R.string.osservio_runtime_previous) + " · " + RuntimePresentation.date(getContext(), updatedAt);
         notice.setText(message);
     }
     private void render() {
@@ -146,8 +159,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
         delete.setEnabled(!reading); delete.setText(selected == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run);
         back.setVisibility(selected == null ? GONE : VISIBLE); copy.setVisibility(selected == null ? GONE : VISIBLE);
         refresh.setVisibility(selected == null ? VISIBLE : GONE); search.setVisibility(selected == null ? GONE : VISIBLE);
-        summary.setText(selected == null ? PersistencePresentation.status(getContext(), archive.persistenceStatus())
-            + "\n" + getContext().getString(R.string.osservio_archive_hint) : PersistencePresentation.run(getContext(), selected.run));
+        summary.setText(selected == null ? getContext().getString(R.string.osservio_archive_hint) : PersistencePresentation.run(getContext(), selected.run));
         filter();
     }
     private void confirmDeletion() {
@@ -185,46 +197,40 @@ final class BreadcrumbArchiveView extends LinearLayout {
         }
         empty.setText(selected == null ? reading ? R.string.osservio_archive_reading : updatedAt == null
             ? R.string.osservio_archive_hint : R.string.osservio_archive_empty : R.string.osservio_ws_no_matches);
+        empty.setVisibility(rows.getCount() == 0 ? VISIBLE : GONE);
         rows.notifyDataSetChanged();
     }
     private void showDetail(BreadcrumbEvent event) {
         if (detail != null) return;
         String content = RuntimePresentation.breadcrumb(getContext(), event);
-        TextView text = new TextView(getContext()); text.setTextAppearance(android.R.style.TextAppearance_Material_Body1);
-        text.setTextIsSelectable(true); text.setPadding(dp(16), dp(16), dp(16), dp(16)); text.setText(content);
-        ScrollView scroll = new ScrollView(getContext()); scroll.addView(text);
-        AlertDialog dialog = new AlertDialog.Builder(getContext()).setTitle(RuntimePresentation.kind(getContext(), event.kind))
-            .setView(scroll).setNegativeButton(R.string.osservio_close, null).setPositiveButton(R.string.osservio_crumb_copy, null).create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> copy(content)));
+        InspectorContentReader reader = new InspectorContentReader(getContext()); reader.display(content, false);
+        AlertDialog dialog = InspectorDialogs.screen(getContext(), RuntimePresentation.kind(getContext(), event.kind), reader);
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void copy(String value) {
         ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
         if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", value));
     }
-    private Button button(int label) { Button button = new Button(getContext()); button.setText(label); button.setAllCaps(false); button.setMinHeight(dp(48)); return button; }
-    private TextView caption() { TextView text = new TextView(getContext()); text.setTextAppearance(android.R.style.TextAppearance_Material_Caption); return text; }
+    private Button button(int label) { return InspectorWidgets.button(getContext(), label, () -> { }); }
+    private TextView caption() { return InspectorWidgets.caption(getContext()); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return selected == null ? runs.size() : events.size(); }
         @Override public Object getItem(int position) { return selected == null ? runs.get(position) : events.get(position); }
         @Override public long getItemId(int position) { return position; }
         @Override public View getView(int position, View recycled, ViewGroup parent) {
-            LinearLayout row;
-            if (recycled instanceof LinearLayout) row = (LinearLayout) recycled;
-            else {
-                row = new LinearLayout(getContext()); row.setOrientation(VERTICAL); row.setPadding(dp(4), dp(12), dp(4), dp(12));
-                TextView title = new TextView(getContext()); title.setTextAppearance(android.R.style.TextAppearance_Material_Body1); title.setMaxLines(2);
-                TextView subtitle = caption(); subtitle.setMaxLines(3);
-                row.addView(title, new LayoutParams(-1, -2)); row.addView(subtitle, new LayoutParams(-1, -2));
+            InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
+            if (selected == null) {
+                RetainedRun run = runs.get(position);
+                row.bind(getContext().getString(run.isCurrent ? R.string.osservio_archive_current : R.string.osservio_archive_previous_run),
+                    RuntimePresentation.date(getContext(), run.recordingStartedAtMillis), PersistencePresentation.counts(getContext(), run),
+                    run.lastRecordedAtMillis, InspectorTheme.accent(getContext()));
+            } else {
+                BreadcrumbEvent event = events.get(position);
+                row.bind(RuntimePresentation.kind(getContext(), event.kind), event.label, event.message == null ? "#" + event.sequence : event.message,
+                    event.timestampMillis, InspectorTheme.accent(getContext()));
             }
-            String title, subtitle;
-            if (selected == null) { RetainedRun run = runs.get(position); title = PersistencePresentation.title(getContext(), run); subtitle = PersistencePresentation.counts(getContext(), run); }
-            else {
-                BreadcrumbEvent event = events.get(position); title = RuntimePresentation.kind(getContext(), event.kind) + " · " + event.label;
-                subtitle = RuntimePresentation.date(event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + event.message);
-            }
-            ((TextView) row.getChildAt(0)).setText(title); ((TextView) row.getChildAt(1)).setText(subtitle); return row;
+            return row;
         }
     }
 }

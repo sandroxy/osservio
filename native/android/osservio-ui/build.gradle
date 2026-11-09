@@ -6,3 +6,48 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:1.3.0"
 }
 android.defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+// Keep the inspector's two languages available even in language-split host bundles.
+// The conventional translation files remain the only authoring source. Resource
+// references in this generated table also keep translations through shrinking.
+def inspectorTranslations = layout.buildDirectory.dir("generated/inspector-translations")
+def generateInspectorTranslations = tasks.register("generateInspectorTranslations") {
+    inputs.files(fileTree("src/main/res/values") { include "*.xml" })
+    inputs.files(fileTree("src/main/res/values-zh-rCN") { include "*.xml" })
+    outputs.dir(inspectorTranslations)
+    doLast {
+        def factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+        def builder = factory.newDocumentBuilder()
+        def strings = { String directory ->
+            def result = new TreeMap<String, org.w3c.dom.Element>()
+            fileTree(directory).matching { include "*.xml" }.files.sort().each { source ->
+                def nodes = builder.parse(source).getElementsByTagName("string")
+                for (int i = 0; i < nodes.length; i++) {
+                    def node = nodes.item(i)
+                    if (node.getAttribute("translatable") != "false") result[node.getAttribute("name")] = node
+                }
+            }
+            result
+        }
+        def english = strings("src/main/res/values")
+        def chinese = strings("src/main/res/values-zh-rCN")
+        if (english.keySet() != chinese.keySet()) throw new GradleException(
+            "Inspector translation keys differ: missing=${english.keySet() - chinese.keySet()}, extra=${chinese.keySet() - english.keySet()}")
+        def document = builder.newDocument()
+        def root = document.createElement("resources"); document.appendChild(root)
+        def pairs = document.createElement("array")
+        pairs.setAttribute("name", "osservio_chinese_translations"); root.appendChild(pairs)
+        chinese.each { name, translated ->
+            def key = document.createElement("item"); key.setTextContent("@string/" + name); pairs.appendChild(key)
+            def value = document.createElement("item"); pairs.appendChild(value)
+            for (int i = 0; i < translated.childNodes.length; i++) value.appendChild(document.importNode(translated.childNodes.item(i), true))
+        }
+        def output = inspectorTranslations.get().file("values/inspector_translations.xml").asFile
+        output.parentFile.mkdirs()
+        def transformer = javax.xml.transform.TransformerFactory.newInstance().newTransformer()
+        transformer.transform(new javax.xml.transform.dom.DOMSource(document), new javax.xml.transform.stream.StreamResult(output))
+    }
+}
+android.sourceSets.main.res.srcDir(inspectorTranslations)
+tasks.named("preBuild").configure { dependsOn(generateInspectorTranslations) }

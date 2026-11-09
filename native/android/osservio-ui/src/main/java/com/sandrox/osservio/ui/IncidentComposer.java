@@ -64,7 +64,7 @@ final class IncidentComposer {
         this.context = context; this.mark = mark; this.archive = archive; this.provider = provider; this.saved = saved;
         this.httpHistory = httpHistory; this.webSocketHistory = webSocketHistory;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(16));
-        content.addView(label(context.getString(R.string.osservio_incident_frozen_time) + " · " + RuntimePresentation.date(mark.timestampMillis)), params());
+        content.addView(label(context.getString(R.string.osservio_incident_frozen_time) + " · " + RuntimePresentation.date(context, mark.timestampMillis)), params());
         content.addView(label(context.getString(R.string.osservio_incident_mark_hint)), params());
         includeEnvironment = option(R.string.osservio_incident_include_environment, true); content.addView(includeEnvironment, params());
         environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); content.addView(environmentStatus, params());
@@ -162,7 +162,7 @@ final class IncidentComposer {
     }
     private void environmentReceived() {
         environmentStatus.setText(environment == null ? context.getString(R.string.osservio_incident_environment_failed)
-            : RuntimePresentation.date(environment.timestampMillis));
+            : RuntimePresentation.date(context, environment.timestampMillis));
         updateControls();
     }
     private void updateControls() {

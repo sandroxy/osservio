@@ -36,7 +36,7 @@ final class SystemDiagnosticPresentation {
         field(text, context, R.string.osservio_diagnostic_kind, kind(context, diagnostic.kind));
         SystemDiagnostic.AndroidExit exit = diagnostic.androidExit;
         if (exit != null) {
-            field(text, context, R.string.osservio_diagnostic_exit_time, RuntimePresentation.date(diagnostic.intervalStartMillis));
+            field(text, context, R.string.osservio_diagnostic_exit_time, RuntimePresentation.date(context, diagnostic.intervalStartMillis));
             field(text, context, R.string.osservio_diagnostic_reason, Integer.toString(exit.reasonCode));
             field(text, context, R.string.osservio_diagnostic_status, Integer.toString(exit.status));
             field(text, context, R.string.osservio_env_process_id, Integer.toString(exit.processID));
@@ -56,8 +56,8 @@ final class SystemDiagnosticPresentation {
         }
         SystemDiagnostic.MetricKit metric = diagnostic.metricKit;
         if (metric != null) {
-            field(text, context, R.string.osservio_diagnostic_interval_start, RuntimePresentation.date(diagnostic.intervalStartMillis));
-            field(text, context, R.string.osservio_diagnostic_interval_end, RuntimePresentation.date(diagnostic.intervalEndMillis));
+            field(text, context, R.string.osservio_diagnostic_interval_start, RuntimePresentation.date(context, diagnostic.intervalStartMillis));
+            field(text, context, R.string.osservio_diagnostic_interval_end, RuntimePresentation.date(context, diagnostic.intervalEndMillis));
             for (SystemDiagnostic.MetadataKey key : SystemDiagnostic.MetadataKey.values()) {
                 SystemDiagnostic.Text value = metric.metadata.get(key);
                 field(text, context, metadataLabel(key), value == null ? null
@@ -73,7 +73,7 @@ final class SystemDiagnosticPresentation {
         }
         AppleSignalCrash signal = diagnostic.appleSignal;
         if (signal != null) {
-            field(text, context, R.string.osservio_crash_time, RuntimePresentation.date(signal.timestampMillis));
+            field(text, context, R.string.osservio_crash_time, RuntimePresentation.date(context, signal.timestampMillis));
             field(text, context, R.string.osservio_crash_report_id, signal.reportID);
             field(text, context, R.string.osservio_diagnostic_signal, signal.signal.wireName);
             field(text, context, R.string.osservio_crash_code, signal.code);

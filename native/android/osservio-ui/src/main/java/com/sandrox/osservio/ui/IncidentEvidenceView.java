@@ -29,7 +29,10 @@ final class IncidentEvidenceView extends LinearLayout {
     private final IncidentLogs logs;
     private final IncidentHTTP http;
     private final IncidentWebSockets sockets;
+    private InspectorQuery query = new InspectorQuery();
     private final EditText search;
+    private final Button filters;
+    private final TextView criteria;
     private final TextView footer;
     private final List<Integer> indices = new ArrayList<>();
     private final Rows rows = new Rows();
@@ -39,53 +42,53 @@ final class IncidentEvidenceView extends LinearLayout {
     IncidentEvidenceView(Context context, IncidentWebSockets sockets, Runnable back) { this(context, null, null, sockets, back); }
     private IncidentEvidenceView(Context context, IncidentLogs logs, IncidentHTTP http, IncidentWebSockets sockets, Runnable back) {
         super(context); this.logs = logs; this.http = http; this.sockets = sockets; setOrientation(VERTICAL);
-        Button goBack = new Button(context); goBack.setText(R.string.osservio_incident_manual); goBack.setAllCaps(false); goBack.setMinHeight(dp(48));
-        goBack.setOnClickListener(view -> back.run()); addView(goBack, new LayoutParams(-1, -2));
-        search = new EditText(context); search.setSingleLine(true); search.setHint(R.string.osservio_incident_evidence_search); search.setMinHeight(dp(48));
-        addView(search, new LayoutParams(-1, -2));
-        ListView list = new ListView(context);
+        Button goBack = InspectorWidgets.button(context, R.string.osservio_ui_back, back); addView(goBack, new LayoutParams(-1, -2));
+        LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(dp(16), 0, dp(16), 0);
+        search = InspectorWidgets.search(context, R.string.osservio_incident_evidence_search, "", value -> { query.text = value; filter(); });
+        header.addView(search, new LayoutParams(-1, -2));
+        filters = InspectorWidgets.button(context, R.string.osservio_ui_filters, () -> {
+            detail = InspectorFilterSheet.show(context, query, groups(), value -> { query = value; filter(); });
+            detail.setOnDismissListener(ignored -> detail = null);
+        });
+        header.addView(filters, new LayoutParams(-2, -2)); criteria = caption(""); header.addView(criteria, new LayoutParams(-1, -2));
+        ListView list = new ListView(context); list.setItemsCanFocus(true);
+        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
         String title = logs != null ? context.getString(R.string.osservio_logs) : http != null ? "HTTP" : context.getString(R.string.osservio_ws_title);
         String info = logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
             : http != null ? IncidentPresentation.window(context, http.observedAtMillis, http.events.size(), http.omittedEventCount, http.sourceEvictedEvents, http.sourceEvictedBodies)
             : IncidentPresentation.window(context, sockets.observedAtMillis, sockets.events.size(), sockets.omittedEventCount, sockets.sourceEvictedEvents, sockets.sourceEvictedPayloads);
-        list.addHeaderView(caption(title + "\n" + info), null, false); footer = caption(""); list.addFooterView(footer, null, false);
+        header.addView(caption(title + "\n" + info), new LayoutParams(-1, -2)); list.addHeaderView(header, null, false); footer = caption(""); list.addFooterView(footer, null, false);
         list.setAdapter(rows); list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < indices.size()) show(indices.get(index));
         });
         addView(list, new LayoutParams(-1, 0, 1));
-        search.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence text, int start, int before, int count) { filter(); }
-            @Override public void afterTextChanged(Editable text) { }
-        });
         filter();
     }
     private int count() { return logs != null ? logs.events.size() : http != null ? http.events.size() : sockets.events.size(); }
+    private List<InspectorFilterSheet.Group> groups() {
+        if (logs != null) return InspectorFilterOptions.logs(getContext(), logs.events);
+        if (http != null) return InspectorFilterOptions.network(getContext(), http.events, java.util.Collections.emptyList(), 1, query);
+        return InspectorFilterOptions.timeline(getContext());
+    }
     private void filter() {
-        indices.clear(); String query = search.getText().toString().toLowerCase(Locale.ROOT);
-        for (int index = count() - 1; index >= 0; index--) if (query.isEmpty() || searchText(index).toLowerCase(Locale.ROOT).contains(query)) indices.add(index);
+        if (footer == null) return;
+        indices.clear();
+        for (int i = count() - 1; i >= 0; i--) {
+            boolean matches = logs != null ? query.matches(logs.events.get(i), logs.observedAtMillis)
+                : http != null ? query.matches(http.events.get(i), http.observedAtMillis) : query.matches(sockets.events.get(i), sockets.observedAtMillis);
+            if (matches) indices.add(i);
+        }
+        filters.setText(query.activeCount() == 0 ? getContext().getString(R.string.osservio_ui_filters)
+            : getContext().getString(R.string.osservio_ui_filter_count, query.activeCount())); InspectorWidgets.chip(filters, query.activeCount() > 0);
+        criteria.setText(InspectorFilterOptions.summary(getContext(), query, groups())); criteria.setVisibility(query.activeCount() > 0 ? VISIBLE : GONE);
         footer.setText(indices.isEmpty() ? getContext().getString(R.string.osservio_incident_empty_detail,
-            getContext().getString(query.isEmpty() ? R.string.osservio_incident_evidence_empty : R.string.osservio_ws_no_matches),
+            getContext().getString(query.text.isEmpty() && query.activeCount() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty),
             getContext().getString(R.string.osservio_incident_frozen_detail)) : getContext().getString(R.string.osservio_incident_frozen_detail));
         rows.notifyDataSetChanged();
     }
-    private String title(int index) {
-        if (logs != null) { LogEvent event = logs.events.get(index); return event.level.name() + " · " + event.category; }
-        if (http != null) { HTTPEvent event = http.events.get(index); return event.method + " " + event.url; }
-        return WebSocketPresentation.summary(getContext(), sockets.events.get(index));
-    }
-    private String subtitle(int index) {
-        if (logs != null) { LogEvent event = logs.events.get(index); return RuntimePresentation.date(event.timestampMillis) + " · #" + event.sequence + "\n" + event.message; }
-        if (http != null) { HTTPEvent event = http.events.get(index); return HTTPPresentation.summary(getContext(), event) + "\n" + RuntimePresentation.date(event.timestampMillis); }
-        WebSocketEvent event = sockets.events.get(index); return event.url + "\n" + RuntimePresentation.date(event.timestampMillis) + "\n" + event.connectionId;
-    }
-    private String searchText(int index) {
-        if (logs != null) return title(index) + " " + logs.events.get(index).message;
-        if (http != null) return title(index);
-        WebSocketEvent event = sockets.events.get(index); return title(index) + " " + event.url + " " + event.connectionId;
-    }
     private void show(int index) {
         if (detail != null) return;
+        InspectorWidgets.hideKeyboard(this);
         if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index));
         else if (http != null) detail = new HTTPDetailDialog(getContext(), http.events.get(index), http.payloads).dialog;
         else detail = new WebSocketDetailDialog(getContext(), sockets.events.get(index), sockets.payloads).dialog;
@@ -95,7 +98,7 @@ final class IncidentEvidenceView extends LinearLayout {
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView caption(String value) {
-        TextView text = new TextView(getContext()); text.setTextAppearance(android.R.style.TextAppearance_Material_Caption);
+        TextView text = InspectorWidgets.caption(getContext());
         text.setText(value); text.setPadding(0, dp(8), 0, dp(8)); return text;
     }
     private final class Rows extends BaseAdapter {
@@ -103,15 +106,20 @@ final class IncidentEvidenceView extends LinearLayout {
         @Override public Object getItem(int position) { return indices.get(position); }
         @Override public long getItemId(int position) { return indices.get(position); }
         @Override public View getView(int position, View recycled, ViewGroup parent) {
-            LinearLayout row;
-            if (recycled instanceof LinearLayout) row = (LinearLayout) recycled;
-            else {
-                row = new LinearLayout(getContext()); row.setOrientation(VERTICAL); row.setPadding(dp(4), dp(12), dp(4), dp(12));
-                TextView title = new TextView(getContext()); title.setTextAppearance(android.R.style.TextAppearance_Material_Body1); title.setMaxLines(2);
-                TextView subtitle = caption(""); subtitle.setMaxLines(3);
-                row.addView(title, new LayoutParams(-1, -2)); row.addView(subtitle, new LayoutParams(-1, -2));
+            InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
+            int index = indices.get(position); Context context = getContext();
+            if (logs != null) {
+                LogEvent event = logs.events.get(index);
+                row.bind(event.level.name(), event.message, event.category, event.timestampMillis, InspectorTheme.accent(context));
+            } else if (http != null) {
+                HTTPEvent event = http.events.get(index);
+                row.bind(event.method + (event.statusCode == null ? "" : " · " + event.statusCode), InspectorQuery.path(event.url),
+                    InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(context, event), event.timestampMillis, InspectorTheme.accent(context));
+            } else {
+                WebSocketEvent event = sockets.events.get(index);
+                row.bind("WebSocket", WebSocketPresentation.summary(context, event), event.url + " · " + event.connectionId, event.timestampMillis, InspectorTheme.accent(context));
             }
-            int index = indices.get(position); ((TextView) row.getChildAt(0)).setText(title(index)); ((TextView) row.getChildAt(1)).setText(subtitle(index)); return row;
+            return row;
         }
     }
 }

@@ -7,12 +7,12 @@ import com.sandrox.osservio.core.RetainedRun;
 final class PersistencePresentation {
     private PersistencePresentation() { }
     static String title(Context context, RetainedRun run) {
-        return RuntimePresentation.date(run.recordingStartedAtMillis) + " · " + context.getString(run.isCurrent ? R.string.osservio_archive_current : R.string.osservio_archive_previous_run);
+        return RuntimePresentation.date(context, run.recordingStartedAtMillis) + " · " + context.getString(run.isCurrent ? R.string.osservio_archive_current : R.string.osservio_archive_previous_run);
     }
     static String counts(Context context, RetainedRun run) { return context.getString(R.string.osservio_archive_counts, run.eventCount, run.evictedEvents); }
     static String run(Context context, RetainedRun run) {
         return title(context, run) + "\n" + counts(context, run) + "\n" + context.getString(R.string.osservio_archive_run_info,
-            run.platform.name(), Long.toString(run.processId), RuntimePresentation.date(run.lastRecordedAtMillis), run.id);
+            run.platform.name(), Long.toString(run.processId), RuntimePresentation.date(context, run.lastRecordedAtMillis), run.id);
     }
     static String status(Context context, PersistenceStatus status) {
         return status(context, status, R.string.osservio_archive_status);

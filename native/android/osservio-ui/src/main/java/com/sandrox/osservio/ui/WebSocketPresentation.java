@@ -5,8 +5,6 @@ import com.sandrox.osservio.core.WebSocketEvent;
 import com.sandrox.osservio.core.WebSocketHistory;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.IncidentPayload;
-import java.text.DateFormat;
-import java.util.Date;
 import java.util.Map;
 
 /** Metadata rows never load payloads. Content lookup is explicit in the detail view. */
@@ -63,7 +61,7 @@ final class WebSocketPresentation {
     }
     static String overview(Context context, WebSocketEvent event) {
         StringBuilder text = new StringBuilder(event.url).append("\n\n").append(summary(context, event));
-        field(text, context, R.string.osservio_ws_time, DateFormat.getDateTimeInstance().format(new Date(event.timestampMillis)));
+        field(text, context, R.string.osservio_ws_time, RuntimePresentation.date(context, event.timestampMillis));
         field(text, context, R.string.osservio_http_source, event.source == WebSocketEvent.Source.OKHTTP ? "OkHttp"
             : event.source == WebSocketEvent.Source.URL_SESSION ? "URLSession" : context.getString(R.string.osservio_ws_host));
         field(text, context, R.string.osservio_ws_connection, event.connectionId);
@@ -79,7 +77,7 @@ final class WebSocketPresentation {
         if (event.headersLimited) text.append("\n\n").append(context.getString(R.string.osservio_http_headers_limited));
         return text.append("\n\n").append(context.getString(R.string.osservio_ws_evidence_note)).toString();
     }
-    private static String failure(Context context, WebSocketEvent.Failure failure) {
+    static String failure(Context context, WebSocketEvent.Failure failure) {
         int key;
         switch (failure) {
             case TRANSPORT: key = R.string.osservio_http_transport; break;
@@ -95,7 +93,7 @@ final class WebSocketPresentation {
         text.append("\n\n").append(context.getString(key)).append(": ")
             .append(value == null ? context.getString(R.string.osservio_http_none) : value);
     }
-    private static String payloadDescription(Context context, WebSocketEvent.PayloadReference reference) {
+    static String payloadDescription(Context context, WebSocketEvent.PayloadReference reference) {
         if (reference == null) return context.getString(R.string.osservio_ws_no_payload);
         int key;
         switch (reference.state) {

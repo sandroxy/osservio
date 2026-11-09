@@ -5,8 +5,6 @@ import com.sandrox.osservio.core.HTTPEvent;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.IncidentPayload;
-import java.text.DateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +42,7 @@ final class HTTPPresentation {
         field(text, context, R.string.osservio_http_final_url, event.responseURL);
         field(text, context, R.string.osservio_http_status, event.statusCode);
         field(text, context, R.string.osservio_http_duration, event.durationMillis == null ? null : event.durationMillis + " ms");
-        field(text, context, R.string.osservio_http_time, DateFormat.getDateTimeInstance().format(new Date(event.timestampMillis)));
+        field(text, context, R.string.osservio_http_time, RuntimePresentation.date(context, event.timestampMillis));
         String source;
         int note;
         switch (event.source) {
@@ -63,7 +61,7 @@ final class HTTPPresentation {
         return text.append("\n\n").append(context.getString(note)).append("\n\n")
             .append(context.getString(R.string.osservio_http_result_note)).toString();
     }
-    private static String failure(Context context, HTTPEvent.Failure failure) {
+    static String failure(Context context, HTTPEvent.Failure failure) {
         int key;
         switch (failure) {
             case TRANSPORT: key = R.string.osservio_http_transport; break;
@@ -84,7 +82,7 @@ final class HTTPPresentation {
         if (headers.isEmpty()) text.append(context.getString(R.string.osservio_http_none));
         for (HTTPHeader header : headers) text.append(header.name).append(": ").append(header.value).append('\n');
     }
-    private static String bodyDescription(Context context, HTTPEvent.BodyReference reference) {
+    static String bodyDescription(Context context, HTTPEvent.BodyReference reference) {
         int key;
         switch (reference.state) {
             case PENDING: key = R.string.osservio_http_body_pending; break;

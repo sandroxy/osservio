@@ -9,7 +9,10 @@ import java.util.Date;
 
 final class RuntimePresentation {
     private RuntimePresentation() { }
-    static String date(long millis) { return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM).format(new Date(millis)); }
+    static String date(Context context, long millis) {
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM,
+            InspectorPreferences.english(context) ? java.util.Locale.ENGLISH : java.util.Locale.SIMPLIFIED_CHINESE).format(new Date(millis));
+    }
     static String value(Context context, EnvironmentSnapshot.Value value, EnvironmentSnapshot.Key key) {
         String result;
         switch (value.fact.type) {
@@ -28,7 +31,7 @@ final class RuntimePresentation {
     }
     static String environment(Context context, EnvironmentSnapshot snapshot) {
         StringBuilder text = new StringBuilder(context.getString(R.string.osservio_runtime_environment));
-        text.append(" · ").append(snapshot.platform).append('\n').append(date(snapshot.timestampMillis));
+        text.append(" · ").append(snapshot.platform).append('\n').append(date(context, snapshot.timestampMillis));
         for (EnvironmentSnapshot.Key key : EnvironmentSnapshot.Key.values()) {
             text.append('\n').append(context.getString(keyLabel(key))).append(": ").append(value(context, snapshot.values.get(key), key));
         }
@@ -36,7 +39,7 @@ final class RuntimePresentation {
     }
     static String breadcrumb(Context context, BreadcrumbEvent event) {
         StringBuilder text = new StringBuilder(kind(context, event.kind));
-        text.append('\n').append(date(event.timestampMillis)).append("\nID: ").append(event.id);
+        text.append('\n').append(date(context, event.timestampMillis)).append("\nID: ").append(event.id);
         field(text, context, R.string.osservio_crumb_session, event.sessionId);
         field(text, context, R.string.osservio_crumb_sequence, event.sequence);
         field(text, context, R.string.osservio_crumb_elapsed, event.sessionElapsedMillis == null
