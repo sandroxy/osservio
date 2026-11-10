@@ -55,25 +55,31 @@ final class InspectorFilterSheet {
             .option("30", context.getString(R.string.osservio_ui_time_30))
             .option("60", context.getString(R.string.osservio_ui_time_60))
             .option("1440", context.getString(R.string.osservio_ui_time_1440));
-        List<Group> sections = new ArrayList<>(groups); sections.add(time);
-        for (Group group : groups) {
-            Set<String> selected = draft.values.get(group.field);
-            if (selected != null) for (String value : selected) if (!group.options.containsKey(value)) group.option(value, value);
-        }
+        List<Group> sections = available(groups, draft); sections.add(time);
         List<Choice> choices = new ArrayList<>();
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, 0);
         ListView list = new ListView(context); list.setDividerHeight(0);
+        InspectorFilterConditions conditions = payload ? new InspectorFilterConditions(context, draft, () -> {
+            // Checkmarks are rebound without rebuilding focused editors.
+            for (int index = 0; index < list.getChildCount(); index++) {
+                View child = list.getChildAt(index);
+                int position = list.getFirstVisiblePosition() + index - list.getHeaderViewsCount();
+                if (child instanceof CheckedTextView && position >= 0 && position < choices.size()) bind((CheckedTextView) child, choices.get(position), draft);
+            }
+        }) : null;
+        final boolean durationEnabled = hasHTTP && conditions != null;
         BaseAdapter adapter = new BaseAdapter() {
             @Override public int getCount() { return choices.size(); }
             @Override public Choice getItem(int position) { return choices.get(position); }
             @Override public long getItemId(int position) { return position; }
-            @Override public int getViewTypeCount() { return 2; }
-            @Override public int getItemViewType(int position) { return getItem(position).key == null ? 0 : 1; }
+            @Override public int getViewTypeCount() { return 3; }
+            @Override public int getItemViewType(int position) { return getItem(position).group == null ? 2 : getItem(position).key == null ? 0 : 1; }
             @Override public boolean isEnabled(int position) { return getItem(position).key != null; }
             @Override public boolean areAllItemsEnabled() { return false; }
             @Override public View getView(int position, View recycled, ViewGroup parent) {
                 Choice choice = getItem(position);
+                if (choice.group == null) return conditions.durationView;
                 if (choice.key == null) {
                     TextView label = recycled instanceof TextView ? (TextView) recycled : InspectorTheme.text(context, 12, true);
                     label.setText(choice.title); label.setTextColor(InspectorTheme.secondary(context));
@@ -83,15 +89,16 @@ final class InspectorFilterSheet {
                     : (CheckedTextView) android.view.LayoutInflater.from(context).inflate(android.R.layout.simple_list_item_multiple_choice, parent, false);
                 row.setText(choice.title); row.setTextColor(InspectorTheme.primary(context)); row.setTextSize(15);
                 row.setMinHeight(InspectorTheme.dp(context, 48)); row.setSingleLine(false);
-                Set<String> selection = draft.values.get(choice.group.field);
-                row.setChecked(choice.group.field == null ? Integer.toString(draft.recentMinutes).equals(choice.key)
-                    : choice.key.equals(ALL) ? selection == null || selection.isEmpty() : selection != null && selection.contains(choice.key));
+                bind(row, choice, draft);
                 return row;
             }
         };
         InspectorWidgets.TextChange filter = value -> {
             choices.clear(); String query = value.toLowerCase(Locale.ROOT);
-            for (Group group : sections) {
+            int lastHTTP = -1;
+            for (int index = 0; index < sections.size(); index++) if (isHTTP(sections.get(index).field)) lastHTTP = index;
+            for (int index = 0; index < sections.size(); index++) {
+                Group group = sections.get(index);
                 List<Choice> matches = new ArrayList<>();
                 if (group.field != null && query.isEmpty()) matches.add(new Choice(group, ALL, context.getString(R.string.osservio_ui_all)));
                 for (Map.Entry<String, String> entry : group.options.entrySet()) {
@@ -99,6 +106,7 @@ final class InspectorFilterSheet {
                         || group.title.toLowerCase(Locale.ROOT).contains(query)) matches.add(new Choice(group, entry.getKey(), entry.getValue()));
                 }
                 if (!matches.isEmpty()) { choices.add(new Choice(group, null, group.title)); choices.addAll(matches); }
+                if (durationEnabled && query.isEmpty() && (index == lastHTTP || lastHTTP < 0 && index == sections.size() - 2)) choices.add(new Choice(null, null, ""));
             }
             adapter.notifyDataSetChanged();
         };
@@ -106,12 +114,7 @@ final class InspectorFilterSheet {
         header.addView(InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", filter), new LinearLayout.LayoutParams(-1, -2));
         TextView hint = InspectorWidgets.caption(context); hint.setText(network ? R.string.osservio_ui_network_filter_hint : R.string.osservio_ui_filter_hint);
         header.addView(hint, new LinearLayout.LayoutParams(-1, -2));
-        Conditions conditions = payload ? new Conditions(context, draft, hasHTTP, adapter::notifyDataSetChanged) : null;
-        if (conditions != null) {
-            header.addView(InspectorWidgets.button(context, R.string.osservio_ui_content_conditions,
-                () -> conditions.view.setVisibility(conditions.view.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE)), new LinearLayout.LayoutParams(-1, -2));
-            header.addView(conditions.view, new LinearLayout.LayoutParams(-1, -2));
-        }
+        if (conditions != null) header.addView(conditions.view, new LinearLayout.LayoutParams(-1, -2));
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         content.addView(list, new LinearLayout.LayoutParams(-1, 0, 1)); list.setAdapter(adapter);
         list.setOnItemClickListener((parent, view, position, id) -> {
@@ -140,50 +143,23 @@ final class InspectorFilterSheet {
         });
         filter.changed(""); dialog.show(); return dialog;
     }
-    private static final class Conditions {
-        final LinearLayout view;
-        final android.widget.EditText exclude, path, value, duration;
-        private final InspectorQuery draft;
-        private boolean syncing;
-        Conditions(Context context, InspectorQuery draft, boolean hasHTTP, Runnable changed) {
-            this.draft = draft; view = new LinearLayout(context); view.setOrientation(LinearLayout.VERTICAL);
-            TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_field_hint); view.addView(hint);
-            exclude = input(context, R.string.osservio_ui_exclude, 512); path = input(context, R.string.osservio_ui_field_path, 256);
-            value = input(context, R.string.osservio_ui_field_value, 512); duration = input(context, R.string.osservio_ui_duration, 19);
-            duration.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-            for (android.widget.EditText field : new android.widget.EditText[] {exclude, path, value, duration}) {
-                if (field != duration || hasHTTP) view.addView(field, new LinearLayout.LayoutParams(-1, -2));
-                field.addTextChangedListener(new android.text.TextWatcher() {
-                    @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
-                    @Override public void onTextChanged(CharSequence text, int start, int before, int count) { }
-                    @Override public void afterTextChanged(android.text.Editable text) {
-                        if (syncing || android.view.inputmethod.BaseInputConnection.getComposingSpanStart(text) >= 0) return;
-                        read(); changed.run();
-                    }
-                });
-            }
-            sync(); view.setVisibility(draft.fieldPath.isEmpty() && draft.excludedText.isEmpty() && draft.minimumDurationMillis == 0 ? View.GONE : View.VISIBLE);
+    static List<Group> available(List<Group> groups, InspectorQuery draft) {
+        List<Group> result = new ArrayList<>();
+        for (Group original : groups) {
+            Group group = new Group(original.field, original.title); group.options.putAll(original.options);
+            Set<String> selected = draft.values.get(group.field);
+            if (selected != null) for (String value : new java.util.TreeSet<>(selected)) if (!group.options.containsKey(value)) group.option(value, value);
+            if (!group.options.isEmpty()) result.add(group);
         }
-        private android.widget.EditText input(Context context, int hint, int limit) {
-            android.widget.EditText field = InspectorWidgets.search(context, hint, "", ignored -> { });
-            field.setCompoundDrawables(null, null, null, null);
-            field.setFilters(new android.text.InputFilter[] {new android.text.InputFilter.LengthFilter(limit)}); return field;
-        }
-        void sync() {
-            syncing = true; exclude.setText(draft.excludedText); path.setText(draft.fieldPath); value.setText(draft.fieldValue);
-            duration.setText(draft.minimumDurationMillis == 0 ? "" : Long.toString(draft.minimumDurationMillis)); syncing = false;
-        }
-        private void read() {
-            draft.excludedText = exclude.getText().toString(); draft.fieldPath = path.getText().toString(); draft.fieldValue = value.getText().toString();
-            long millis = 0; try { if (duration.length() > 0) millis = Long.parseLong(duration.getText().toString()); } catch (NumberFormatException invalid) { /* Validated on Apply. */ }
-            if (millis > 0) draft.select(InspectorQuery.Field.TRANSPORT, "http"); draft.minimumDurationMillis = Math.max(0, millis);
-        }
-        boolean valid() {
-            read();
-            if (!draft.fieldPath.isEmpty() && InspectorJsonField.components(draft.fieldPath) == null) return false;
-            try { return duration.length() == 0 || Long.parseLong(duration.getText().toString()) >= 0; }
-            catch (NumberFormatException invalid) { return false; }
-        }
+        return result;
     }
-
+    private static boolean isHTTP(InspectorQuery.Field field) {
+        return field == InspectorQuery.Field.METHOD || field == InspectorQuery.Field.STATE || field == InspectorQuery.Field.STATUS || field == InspectorQuery.Field.CONTENT;
+    }
+    private static void bind(CheckedTextView row, Choice choice, InspectorQuery draft) {
+        if (choice.group == null || choice.key == null) return;
+        Set<String> selection = draft.values.get(choice.group.field);
+        row.setChecked(choice.group.field == null ? Integer.toString(draft.recentMinutes).equals(choice.key)
+            : choice.key.equals(ALL) ? selection == null || selection.isEmpty() : selection != null && selection.contains(choice.key));
+    }
 }

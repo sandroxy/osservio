@@ -41,10 +41,13 @@ final class InspectorDebugControl: NSObject {
         guard signature != lastPresentation else { return }; lastPresentation = signature
         for button in buttons {
             button.setImage(UIImage(systemName: "ladybug"), for: .normal)
-            button.backgroundColor = InspectorTheme.surface
+            if #available(iOS 26.0, *) { button.backgroundColor = .clear }
+            else { button.backgroundColor = InspectorTheme.surface }
             button.tintColor = enabled ? InspectorTheme.accent : InspectorTheme.secondary
             button.layer.cornerRadius = 22
-            button.isEnabled = !busy; button.isSelected = enabled
+            button.isEnabled = !busy
+            // Selection remains accessible without adding UIKit’s selected background.
+            button.isSelected = false
             button.accessibilityTraits = enabled ? [.button, .selected] : .button
             button.accessibilityLabel = label; button.accessibilityValue = value
             button.accessibilityHint = InspectorLocalization.text("ui_debug_hint")

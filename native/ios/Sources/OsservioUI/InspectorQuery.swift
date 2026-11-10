@@ -91,7 +91,6 @@ struct InspectorQuery: Equatable {
     }
     func matches(_ incident: IncidentSummary, now: Int64) -> Bool {
         allows(.record, incident.diagnosticKind?.rawValue ?? "manual")
-            && allows(.source, incident.diagnosticKind == nil ? "manual" : "system")
             && includesTime(incident.timestampMillis, now: now)
             && contains(incident.id, incident.note?.text ?? "", incident.diagnosticKind?.rawValue ?? "manual")
     }

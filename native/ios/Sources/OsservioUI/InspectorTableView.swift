@@ -73,4 +73,13 @@ final class InspectorControls: UIStackView {
         }
     }
 }
+/// The primary inline action keeps a capsule shape at every supported text size.
+@MainActor
+final class InspectorCapsuleButton: UIButton {
+    override func layoutSubviews() { super.layoutSubviews(); layer.cornerRadius = bounds.height / 2 }
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        return CGSize(width: size.width + 32, height: max(48, size.height + 20))
+    }
+}
 #endif

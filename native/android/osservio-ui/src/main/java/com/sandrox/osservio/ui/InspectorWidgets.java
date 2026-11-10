@@ -49,6 +49,17 @@ final class InspectorWidgets {
         });
         button.setOnClickListener(ignored -> action.run()); return button;
     }
+    static void primaryAction(Button button) {
+        Context context = button.getContext(); button.setTextSize(15);
+        int horizontal = InspectorTheme.dp(context, 20), vertical = InspectorTheme.dp(context, 12);
+        button.setPadding(horizontal, vertical, horizontal, vertical);
+        InspectorAppearance.style(button, () -> {
+            button.setBackgroundTintList(null); button.setTextColor(InspectorTheme.accent(context));
+            button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
+                InspectorTheme.color(context, R.color.osservio_separator)),
+                InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 1000, false), null));
+        });
+    }
     static EditText search(Context context, int hint, String value, TextChange changed) {
         EditText search = new EditText(context); search.setSingleLine(true); search.setTextSize(15);
         InspectorAppearance.style(search, () -> styleSearch(search, hint));

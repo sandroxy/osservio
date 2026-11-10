@@ -14,7 +14,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private let exporter: (any IncidentExporter)?
     private let table = InspectorTableView(frame: .zero, style: .plain)
     private let header = InspectorFeedHeader(compact: true, actionLabel: "incident_delete_all")
-    private let markButton = UIButton(type: .system), retryButton = UIButton(type: .system)
+    private let markButton = InspectorCapsuleButton(type: .system), retryButton = UIButton(type: .system)
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var snapshots: [IncidentSummary] = []
     private var filtered: [IncidentSummary] = []
@@ -43,7 +43,8 @@ public final class IncidentInspectorViewController: UITableViewController {
         retryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         NotificationCenter.default.addObserver(self, selector: #selector(foreground), name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(foreground), name: InspectorSession.willExpand, object: nil)
-        markButton.backgroundColor = InspectorTheme.tint; markButton.layer.cornerRadius = 10
+        markButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
+        markButton.titleLabel?.adjustsFontForContentSizeCategory = true; markButton.titleLabel?.numberOfLines = 0
         markButton.addTarget(self, action: #selector(markPressed), for: .touchUpInside)
         retryButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
         header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
@@ -55,6 +56,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private func relabel() {
         InspectorTheme.apply(self); title = InspectorLocalization.text("incident_title")
         header.search.placeholder = InspectorLocalization.text("ui_problem_search")
+        markButton.backgroundColor = InspectorTheme.tint
         markButton.setTitle("  " + InspectorLocalization.text("ui_record_problem"), for: .normal)
         markButton.setImage(UIImage(systemName: "plus"), for: .normal)
         retryButton.setTitle(InspectorLocalization.text("ui_retry"), for: .normal); render()
@@ -98,7 +100,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     @objc private func refreshPressed() { read() }
     @objc private func showFilters() {
         let kinds = snapshots.map { $0.diagnosticKind?.rawValue ?? "manual" }.sorted()
-        let groups = [InspectorFilterGroup(.record, values: kinds), InspectorFilterGroup(.source, values: ["manual", "system"])]
+        let groups = [InspectorFilterGroup(.record, values: kinds)]
         let filters = InspectorFilterViewController(query: query, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
     }

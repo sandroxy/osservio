@@ -68,11 +68,11 @@ final class InspectorNavigationTests: XCTestCase {
         root.loadViewIfNeeded()
         let navigation = try XCTUnwrap(root.viewControllers?.first as? InspectorNavigationController)
         let button = try XCTUnwrap(navigation.topViewController?.navigationItem.leftBarButtonItem?.customView as? UIButton)
-        XCTAssertFalse(button.isSelected)
+        XCTAssertFalse(button.accessibilityTraits.contains(.selected))
         try activate(button, event: .touchUpInside)
         XCTAssertTrue(capture.status()?.debugEnabled == true)
         for tab in root.viewControllers?.compactMap({ $0 as? UINavigationController }) ?? [] {
-            XCTAssertTrue((tab.viewControllers.first?.navigationItem.leftBarButtonItem?.customView as? UIButton)?.isSelected == true)
+            XCTAssertTrue((tab.viewControllers.first?.navigationItem.leftBarButtonItem?.customView as? UIButton)?.accessibilityTraits.contains(.selected) == true)
         }
         XCTAssertEqual(logger.record(.info, category: "test", message: .publicText("kept")), .recorded)
         let reader = InspectorContentViewController(title: "test", content: "kept", code: false)
@@ -94,7 +94,7 @@ final class InspectorNavigationTests: XCTestCase {
         try activate(button, event: .touchUpInside)
         XCTAssertEqual(first.status()?.sessionID, identity)
         XCTAssertTrue(second.status()?.debugEnabled == true)
-        XCTAssertTrue(button.isSelected)
+        XCTAssertTrue(button.accessibilityTraits.contains(.selected))
     }
 
     @MainActor
@@ -117,6 +117,43 @@ final class InspectorNavigationTests: XCTestCase {
         abandoned.loadViewIfNeeded()
         let cancel = try XCTUnwrap(abandoned.navigationItem.leftBarButtonItem)
         _ = (cancel.target as? NSObject)?.perform(try XCTUnwrap(cancel.action))
+    }
+
+    @MainActor
+    func testEmptyFilterGroupsDisappearButEvictedSelectionsRemainRemovable() throws {
+        let empty = InspectorFilterGroup(.state, values: [])
+        var query = InspectorQuery(); query.text = "keep search"; query.values[.host] = ["expired.test"]
+        var applied: InspectorQuery?
+        let filters = InspectorFilterViewController(query: query, groups: [empty, InspectorFilterGroup(.host, values: [])]) { applied = $0 }
+        filters.loadViewIfNeeded()
+        XCTAssertEqual(filters.numberOfSections(in: filters.tableView), 2)
+        XCTAssertEqual(filters.tableView(filters.tableView, numberOfRowsInSection: 0), 2)
+        XCTAssertEqual(filters.tableView(filters.tableView, cellForRowAt: IndexPath(row: 1, section: 0)).textLabel?.text, "expired.test")
+        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+        let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
+        _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
+        XCTAssertTrue(applied?.values[.host]?.isEmpty == true); XCTAssertEqual(applied?.text, "keep search")
+        XCTAssertTrue(empty.options.isEmpty)
+    }
+
+    @MainActor
+    func testContentDraftSurvivesExpansionAndProtocolSwitchClearsOnlyHTTPConditions() throws {
+        var query = InspectorQuery(); query.text = "main search"; query.excludedText = "heartbeat"
+        var applied: InspectorQuery?
+        let filters = InspectorFilterViewController(query: query, groups: [InspectorFilterGroup(.transport, values: ["http", "webSocket"]),
+            InspectorFilterGroup(.method, values: ["GET"])], payload: true) { applied = $0 }
+        filters.loadViewIfNeeded()
+        let editor = try XCTUnwrap(descendants(filters.view).compactMap { $0 as? InspectorFilterConditions }.first)
+        editor.path.text = "/data/id"; editor.value.text = "42"; try activate(editor.path, event: .editingChanged)
+        editor.duration.text = "100"; try activate(editor.duration, event: .editingChanged)
+        XCTAssertEqual(editor.path.text, "/data/id")
+        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 2, section: 0))
+        XCTAssertEqual(editor.duration.text, ""); XCTAssertEqual(editor.path.text, "/data/id")
+        let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
+        _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
+        XCTAssertEqual(applied?.values[.transport], ["webSocket"]); XCTAssertEqual(applied?.minimumDurationMillis, 0)
+        XCTAssertEqual(applied?.fieldValue, "42"); XCTAssertEqual(applied?.excludedText, "heartbeat"); XCTAssertEqual(applied?.text, "main search")
+        XCTAssertEqual(query.activeCount, 1)
     }
 
     @MainActor

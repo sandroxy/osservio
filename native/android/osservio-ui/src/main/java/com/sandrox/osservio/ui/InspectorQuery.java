@@ -112,7 +112,6 @@ final class InspectorQuery {
     }
     boolean matches(IncidentSummary incident, long now) {
         return allows(Field.RECORD, incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name())
-            && allows(Field.SOURCE, incident.diagnosticKind == null ? "manual" : "system")
             && includesTime(incident.timestampMillis, now)
             && contains(incident.id, incident.note == null ? null : incident.note.text,
                 incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name());

@@ -128,7 +128,6 @@
 
 "ui_connection" = "Socket 连接";
 
-"ui_content_conditions" = "正文条件";
 
 "ui_exclude" = "排除文本";
 
@@ -170,3 +169,8 @@
 "ui_record_problem" = "记录问题";
 
 "ui_retry" = "重试";
+
+"ui_content_filters" = "内容筛选";
+"ui_json_field" = "JSON 字段匹配";
+"ui_not_set" = "未设置";
+"ui_http_timing" = "HTTP 耗时";

@@ -105,7 +105,7 @@ public final class IncidentInspectorView extends FrameLayout {
         header = new InspectorFeedHeader(context, R.string.osservio_ui_problem_search, state.query.text,
             value -> { state.query.text = value; render(); }, () -> { }, this::filters, () -> confirmDeletion(null), true, R.string.osservio_incident_delete_all);
         header.onQueryChange = query -> { state.query = query; render(); };
-        mark = InspectorWidgets.button(context, R.string.osservio_ui_record_problem, this::mark); InspectorWidgets.chip(mark, true);
+        mark = InspectorWidgets.button(context, R.string.osservio_ui_record_problem, this::mark); InspectorWidgets.primaryAction(mark);
         android.graphics.drawable.Drawable plus = context.getDrawable(R.drawable.osservio_add);
         if (plus != null) plus.setTint(InspectorTheme.accent(context));
         mark.setCompoundDrawablesRelativeWithIntrinsicBounds(plus, null, null, null);
@@ -132,8 +132,6 @@ public final class IncidentInspectorView extends FrameLayout {
             else types.option(snapshot.diagnosticKind.name(), SystemDiagnosticPresentation.kind(getContext(), snapshot.diagnosticKind));
         }
         groups.add(types);
-        groups.add(InspectorFilterOptions.group(getContext(), InspectorQuery.Field.SOURCE, R.string.osservio_ui_source)
-            .option("manual", getContext().getString(R.string.osservio_ui_manual)).option("system", getContext().getString(R.string.osservio_ui_system)));
         return groups;
     }
     private void filters() {

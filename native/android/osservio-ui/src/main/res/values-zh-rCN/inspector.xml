@@ -118,7 +118,6 @@
     <string name="osservio_ui_baseline_off">基础诊断关闭</string>
     <string name="osservio_ui_transport">网络类型</string>
     <string name="osservio_ui_connection">Socket 连接</string>
-    <string name="osservio_ui_content_conditions">正文条件</string>
     <string name="osservio_ui_exclude">排除文本</string>
     <string name="osservio_ui_field_path">JSON 字段路径，如 /data/id</string>
     <string name="osservio_ui_field_value">字段值（精确匹配，可留空）</string>
@@ -140,4 +139,8 @@
     <string name="osservio_ui_record_problem">记录问题</string>
     <string name="osservio_ui_retry">重试</string>
     <string name="osservio_ui_filter_token">%1$s ×</string>
+    <string name="osservio_ui_content_filters">内容筛选</string>
+    <string name="osservio_ui_json_field">JSON 字段匹配</string>
+    <string name="osservio_ui_not_set">未设置</string>
+    <string name="osservio_ui_http_timing">HTTP 耗时</string>
 </resources>
