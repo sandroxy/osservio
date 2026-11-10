@@ -73,7 +73,13 @@ final class InspectorFilterConditions {
     }
     private EditText input(int hint, int limit) {
         EditText field = InspectorWidgets.search(context, hint, "", ignored -> { });
-        field.setCompoundDrawables(null, null, null, null);
+        InspectorAppearance.style(field, () -> {
+            field.setTextColor(InspectorTheme.primary(context)); field.setHintTextColor(InspectorTheme.secondary(context));
+            field.setHint(context.getString(hint)); field.setContentDescription(context.getString(hint));
+            field.setCompoundDrawables(null, null, null, null);
+            field.setBackground(InspectorTheme.shape(context, InspectorTheme.canvas(context), 12, true));
+        });
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2); layout.topMargin = InspectorTheme.dp(context, 6); field.setLayoutParams(layout);
         field.setFilters(new android.text.InputFilter[] {new android.text.InputFilter.LengthFilter(limit)}); return field;
     }
     void sync() {
