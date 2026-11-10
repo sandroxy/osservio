@@ -11,18 +11,17 @@ final class InspectorDetailPage extends ScrollView {
     private LinearLayout group;
     private InspectorScreen reader;
     InspectorDetailPage(Context context) {
-        super(context); setFillViewport(true);
+        super(context); setFillViewport(true); setVerticalScrollBarEnabled(false);
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, inset); addView(content);
     }
     void section(int title) { section(() -> getContext().getString(title)); }
     void section(String title) { section(() -> title); }
     private void section(InspectorAppearance.Value<String> title) {
-        TextView label = InspectorWidgets.caption(getContext()); InspectorAppearance.text(label, title);
-        InspectorAppearance.style(label, () -> label.setTextColor(InspectorTheme.accent(getContext())));
+        TextView label = InspectorWidgets.sectionLabel(getContext()); InspectorAppearance.text(label, title);
         content.addView(label, new LinearLayout.LayoutParams(-1, -2));
         group = new LinearLayout(getContext()); group.setOrientation(LinearLayout.VERTICAL); LinearLayout surface = group;
-        InspectorAppearance.style(surface, () -> InspectorTheme.surface(surface, false, 12));
+        InspectorAppearance.style(surface, () -> InspectorTheme.surface(surface, false, 20)); surface.setClipToOutline(true);
         content.addView(group, new LinearLayout.LayoutParams(-1, -2));
     }
     void field(int title, Object value) { field(title, () -> value); }
@@ -31,15 +30,19 @@ final class InspectorDetailPage extends ScrollView {
     private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) { field(title, value, null); }
     private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value, Runnable action) {
         if (group == null) section(R.string.osservio_ui_metadata);
-        Context context = getContext(); int inset = InspectorTheme.dp(context, 12);
-        LinearLayout row = new LinearLayout(context); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(inset, inset, inset, inset);
+        Context context = getContext(); int inset = InspectorTheme.dp(context, 16);
+        LinearLayout row = new LinearLayout(context); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(inset, InspectorTheme.dp(context, 12), inset, InspectorTheme.dp(context, 12));
         if (group.getChildCount() > 0) group.addView(InspectorWidgets.divider(context));
-        TextView label = InspectorWidgets.caption(context); InspectorAppearance.text(label, title); label.setPadding(0, 0, 0, InspectorTheme.dp(context, 4)); row.addView(label);
-        TextView text = InspectorTheme.text(context, 15, false); InspectorAppearance.text(text, () -> { Object result = value.get(); return result == null ? context.getString(R.string.osservio_http_none) : result.toString(); });
+        TextView label = InspectorWidgets.caption(context); label.setTextSize(12); InspectorAppearance.text(label, title); label.setPadding(0, 0, 0, InspectorTheme.dp(context, 4)); row.addView(label);
+        TextView text = InspectorTheme.text(context, 16, false); InspectorAppearance.text(text, () -> { Object result = value.get(); return result == null ? context.getString(R.string.osservio_http_none) : result.toString(); });
         text.setTextIsSelectable(action == null); row.addView(text); group.addView(row);
         if (action != null) {
             text.setMaxLines(3); row.setFocusable(true); row.setOnClickListener(ignored -> action.run());
             row.setBackgroundResource(android.R.drawable.list_selector_background);
+            InspectorAppearance.style(label, () -> {
+                label.setTextColor(InspectorTheme.secondary(context));
+                label.setCompoundDrawablesRelative(null, null, InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)), null);
+            });
         }
 
     }
@@ -50,12 +53,22 @@ final class InspectorDetailPage extends ScrollView {
         section(title); LinearLayout target = group;
         boolean[] expanded = {false};
         android.widget.Button toggle = InspectorWidgets.button(getContext(), show, () -> { });
+        toggle.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+        toggle.setPadding(InspectorTheme.dp(getContext(), 16), InspectorTheme.dp(getContext(), 12), InspectorTheme.dp(getContext(), 16), InspectorTheme.dp(getContext(), 12));
+        InspectorAppearance.style(toggle, () -> {
+            toggle.setTextColor(InspectorTheme.primary(getContext()));
+            android.graphics.drawable.RotateDrawable arrow = new android.graphics.drawable.RotateDrawable();
+            arrow.setDrawable(InspectorWidgets.symbol(getContext(), R.drawable.osservio_expand, 18, InspectorTheme.secondary(getContext())));
+            arrow.setFromDegrees(0); arrow.setToDegrees(180); int edge = InspectorTheme.dp(getContext(), 18); arrow.setBounds(0, 0, edge, edge);
+            arrow.setLevel(expanded[0] ? 10000 : 0); toggle.setCompoundDrawablesRelative(null, null, arrow, null);
+        });
         target.addView(toggle, new LinearLayout.LayoutParams(-1, -2));
         appendFields.run();
         for (int index = 1; index < target.getChildCount(); index++) target.getChildAt(index).setVisibility(GONE);
         InspectorAppearance.text(toggle, () -> getContext().getString(expanded[0] ? hide : show));
         toggle.setOnClickListener(ignored -> {
             expanded[0] = !expanded[0]; toggle.setText(expanded[0] ? hide : show);
+            toggle.getCompoundDrawablesRelative()[2].setLevel(expanded[0] ? 10000 : 0);
             for (int index = 1; index < target.getChildCount(); index++) target.getChildAt(index).setVisibility(expanded[0] ? VISIBLE : GONE);
         });
     }
@@ -63,6 +76,7 @@ final class InspectorDetailPage extends ScrollView {
     void note(int message) { note(() -> getContext().getString(message)); }
     void note(InspectorAppearance.Value<String> message) {
         TextView note = InspectorWidgets.caption(getContext());
+        note.setTextSize(12); int inset = InspectorTheme.dp(getContext(), 16); note.setPadding(inset, InspectorTheme.dp(getContext(), 8), inset, 0);
         InspectorAppearance.text(note, () -> { String value = message.get(); note.setVisibility(value.isEmpty() ? GONE : VISIBLE); return value; });
         content.addView(note);
     }

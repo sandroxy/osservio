@@ -63,7 +63,7 @@ final class IncidentComposer {
                      HTTPHistory httpHistory, WebSocketHistory webSocketHistory, Runnable saved, Runnable dismissed) {
         this.context = context; this.mark = mark; this.archive = archive; this.provider = provider; this.saved = saved;
         this.httpHistory = httpHistory; this.webSocketHistory = webSocketHistory;
-        LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(20), dp(8), dp(20), dp(16));
+        LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(16), dp(8), dp(16), dp(16));
         content.addView(label(context.getString(R.string.osservio_incident_frozen_time) + " · " + RuntimePresentation.date(context, mark.timestampMillis)), params());
         content.addView(label(context.getString(R.string.osservio_incident_mark_hint)), params());
         includeEnvironment = option(R.string.osservio_incident_include_environment, true); content.addView(includeEnvironment, params());
@@ -87,6 +87,8 @@ final class IncidentComposer {
             ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); content.addView(socketPayloadsStatus, params());
         includeNote = option(R.string.osservio_incident_include_note, false); content.addView(includeNote, params());
         editor = new EditText(context); editor.setHint(R.string.osservio_incident_note); editor.setMinLines(3); editor.setMaxLines(6);
+        InspectorTheme.typography(editor, 16, false); editor.setPadding(dp(16), dp(12), dp(16), dp(12));
+        InspectorAppearance.style(editor, () -> { editor.setTextColor(InspectorTheme.primary(context)); editor.setHintTextColor(InspectorTheme.secondary(context)); InspectorTheme.surface(editor, false, 20); });
         editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         editor.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI); editor.setVisibility(View.GONE);
         editor.setFilters(new InputFilter[] {(source, start, end, destination, replacedStart, replacedEnd) -> {
@@ -215,11 +217,18 @@ final class IncidentComposer {
         return true;
     }
     private CheckBox option(int label, boolean checked) {
-        CheckBox option = new CheckBox(context); option.setText(label); option.setChecked(checked); option.setMinHeight(dp(48)); return option;
+        CheckBox option = new CheckBox(context); option.setText(label); option.setChecked(checked); option.setMinHeight(dp(52));
+        InspectorTheme.typography(option, 16, false); option.setButtonDrawable(null); option.setPadding(dp(16), dp(13), dp(16), dp(13)); option.setCompoundDrawablePadding(dp(12));
+        InspectorAppearance.style(option, () -> {
+            option.setTextColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[0]},
+                new int[] {InspectorTheme.secondary(context), InspectorTheme.primary(context)}));
+            option.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, InspectorWidgets.checkmark(context), null);
+            InspectorTheme.surface(option, true, 20);
+        }); return option;
     }
     private TextView label(String value) {
-        TextView text = new TextView(context); text.setTextAppearance(android.R.style.TextAppearance_Material_Caption);
-        text.setText(value); text.setPadding(0, dp(6), 0, dp(6)); return text;
+        TextView text = InspectorWidgets.caption(context); text.setTextSize(12);
+        text.setText(value); text.setPadding(dp(16), dp(8), dp(16), dp(12)); return text;
     }
     private LinearLayout.LayoutParams params() { return new LinearLayout.LayoutParams(-1, -2); }
     private int dp(int value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }

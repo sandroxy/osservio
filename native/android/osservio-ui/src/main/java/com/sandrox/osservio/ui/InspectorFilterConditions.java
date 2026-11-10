@@ -19,8 +19,9 @@ final class InspectorFilterConditions {
     InspectorFilterConditions(Context context, InspectorQuery draft, Runnable changed) {
         this.context = context; this.draft = draft;
         view = column(); durationView = column();
-        TextView heading = InspectorWidgets.caption(context); heading.setText(R.string.osservio_ui_content_filters); view.addView(heading);
+        TextView heading = InspectorWidgets.sectionLabel(context); heading.setText(R.string.osservio_ui_content_filters); view.addView(heading);
         LinearLayout card = column(); card.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 20, false));
+        card.setClipToOutline(true);
         view.addView(card);
         exclude = input(R.string.osservio_ui_exclude, 512); path = input(R.string.osservio_ui_field_path, 256);
         value = input(R.string.osservio_ui_field_value, 512); duration = input(R.string.osservio_ui_duration, 19);
@@ -31,10 +32,9 @@ final class InspectorFilterConditions {
         excludeEditor.setVisibility(draft.excludedText.isEmpty() ? View.GONE : View.VISIBLE);
         fieldEditor.setVisibility(draft.fieldPath.isEmpty() && draft.fieldValue.isEmpty() ? View.GONE : View.VISIBLE);
         excludeSummary = row(card, R.string.osservio_ui_exclude, excludeEditor);
-        View line = new View(context); line.setBackgroundColor(InspectorTheme.color(context, R.color.osservio_separator));
-        card.addView(line, new LinearLayout.LayoutParams(-1, InspectorTheme.dp(context, 1)));
+        card.addView(InspectorWidgets.divider(context));
         fieldSummary = row(card, R.string.osservio_ui_json_field, fieldEditor);
-        TextView timing = InspectorWidgets.caption(context); timing.setText(R.string.osservio_ui_http_timing);
+        TextView timing = InspectorWidgets.sectionLabel(context); timing.setText(R.string.osservio_ui_http_timing);
         durationView.addView(timing); durationView.addView(duration, new LinearLayout.LayoutParams(-1, -2));
         for (EditText field : new EditText[] {exclude, path, value, duration}) {
             field.addTextChangedListener(new TextWatcher() {
@@ -53,15 +53,17 @@ final class InspectorFilterConditions {
         LinearLayout result = column(); int inset = InspectorTheme.dp(context, 12); result.setPadding(inset, 0, inset, inset); return result;
     }
     private TextView row(LinearLayout card, int label, LinearLayout editor) {
-        LinearLayout row = column(); int inset = InspectorTheme.dp(context, 16); row.setPadding(inset, inset, inset, inset);
-        TextView title = InspectorTheme.text(context, 15, false); title.setText(label);
+        LinearLayout row = column(); int inset = InspectorTheme.dp(context, 16); row.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
+        row.setMinimumHeight(InspectorTheme.dp(context, 56));
+        TextView title = InspectorTheme.text(context, 16, false); title.setText(label);
         android.graphics.drawable.Drawable arrow = context.getDrawable(R.drawable.osservio_expand);
         if (arrow != null) arrow.setTint(InspectorTheme.secondary(context));
         android.graphics.drawable.RotateDrawable chevron = new android.graphics.drawable.RotateDrawable();
         chevron.setDrawable(arrow); chevron.setFromDegrees(0); chevron.setToDegrees(180);
         chevron.setLevel(editor.getVisibility() == View.VISIBLE ? 10000 : 0);
         title.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, chevron, null);
-        TextView summary = InspectorTheme.text(context, 13, false); summary.setTextColor(InspectorTheme.secondary(context)); summary.setMaxLines(2);
+        TextView summary = InspectorTheme.text(context, 12, false); summary.setTextColor(InspectorTheme.secondary(context)); summary.setMaxLines(2);
+        summary.setPadding(0, InspectorTheme.dp(context, 4), 0, 0);
         row.addView(title); row.addView(summary); row.setFocusable(true);
         row.setBackgroundResource(android.R.drawable.list_selector_background);
         row.setOnClickListener(ignored -> {

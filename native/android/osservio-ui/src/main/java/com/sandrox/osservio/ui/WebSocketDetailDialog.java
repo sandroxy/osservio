@@ -24,7 +24,9 @@ final class WebSocketDetailDialog {
     private WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history, Map<String, IncidentPayload> payloads) {
         this.context = context; this.event = event; this.history = history; this.savedPayloads = payloads;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
-        content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams tabs = new LinearLayout.LayoutParams(-1, -2);
+        int inset = InspectorTheme.dp(context, 16); tabs.setMargins(inset, InspectorTheme.dp(context, 4), inset, 0);
+        content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog = InspectorDialogs.screen(context, "WebSocket", content); render();
     }

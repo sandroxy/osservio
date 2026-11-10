@@ -181,7 +181,9 @@ public final class InspectorView extends FrameLayout {
             ImageView icon = new ImageView(themed); icon.setImageResource(icons[i]); icon.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             tab.addView(icon, new LinearLayout.LayoutParams(InspectorTheme.dp(themed, 22), InspectorTheme.dp(themed, 22)));
             TextView label = InspectorTheme.text(themed, 11, false); label.setText(labels[i]); label.setGravity(Gravity.CENTER);
-            label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); label.setPadding(0, InspectorTheme.dp(themed, 3), 0, 0);
+            label.setMaxLines(1); label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            label.setPadding(InspectorTheme.dp(themed, 4), InspectorTheme.dp(themed, 3), InspectorTheme.dp(themed, 4), 0);
             tab.addView(label, new LinearLayout.LayoutParams(-1, -2)); tabs[i] = tab; navigation.addView(tab, new LinearLayout.LayoutParams(0, -2, 1));
         }
         LinearLayout.LayoutParams navigationLayout = new LinearLayout.LayoutParams(-1, -2);

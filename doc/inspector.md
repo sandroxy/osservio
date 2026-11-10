@@ -187,6 +187,12 @@ scrollable with the keyboard visible; the reader keeps search controls and text
 in separate scrollable areas. Platform navigation, focus, keyboard and screen
 reader behavior still require acceptance in the integrating host.
 
+Android uses shared typography, grouped selection rows and metadata surfaces
+across the inspector. Icon buttons retain 48 dp touch targets independently of
+their visible circular surfaces. Navigation titles reserve space for actions;
+long titles and content can wrap with larger text. Rendering uses native views
+and drawables, without continuously sampling or blurring the host behind them.
+
 ## Host presentation
 
 Use the combined inspector when supplying the full diagnostic workflow.
@@ -200,6 +206,9 @@ the app-local floating entry and a retained full-screen workspace. Call
 uses the supplied application-backed context and must not capture an Activity.
 The session handles Back, keyboard and system-bar insets. It releases its window
 while minimized or backgrounded, retaining the page hierarchy for restoration.
+While its app subwindow is visible, it also scopes the host system bars' icon
+contrast to the inspector appearance. Dismissal restores the previous contrast
+unless the host has changed those flags independently.
 Reattaching after Activity recreation preserves that hierarchy without retaining
 the old Activity. It follows one attached Activity; simultaneous display-specific
 workspaces are outside this API. Call `dispose()` when releasing the session.

@@ -75,7 +75,7 @@ final class InspectorContentReader extends LinearLayout {
         next.setContentDescription(context.getString(R.string.osservio_ui_next_match));
         navigation.addView(previous, new LayoutParams(InspectorTheme.dp(context, 48), -2));
         navigation.addView(next, new LayoutParams(InspectorTheme.dp(context, 48), -2)); searching.addView(navigation); header.addView(searching);
-        text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(0, inset, 0, inset);
+        text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(inset, inset, inset, inset);
         text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new ScrollView(context); scroll.addView(text);
         tree = new InspectorJsonTreeView(context); tree.setVisibility(GONE);
         InspectorAppearance.content(this, () -> {
@@ -83,14 +83,17 @@ final class InspectorContentReader extends LinearLayout {
             next.setContentDescription(context.getString(R.string.osservio_ui_next_match));
             highlight(false);
         });
-        FrameLayout reading = new FrameLayout(context); reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        FrameLayout reading = new FrameLayout(context);
+        InspectorAppearance.style(reading, () -> InspectorTheme.surface(reading, false, 20)); reading.setClipToOutline(true);
+        reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         reading.addView(tree, new FrameLayout.LayoutParams(-1, -1)); addView(reading, new LayoutParams(-1, 0, 1));
     }
     @Override protected void onMeasure(int width, int height) {
         // Keep content reachable with the keyboard or large text in a short viewport.
-        int available = MeasureSpec.getSize(height);
+        int available = Math.max(0, MeasureSpec.getSize(height) - getPaddingTop() - getPaddingBottom());
         if (MeasureSpec.getMode(height) != MeasureSpec.UNSPECIFIED && available > 0) {
-            controls.measure(width, MeasureSpec.makeMeasureSpec(available / 2, MeasureSpec.AT_MOST));
+            int contentWidth = getChildMeasureSpec(width, getPaddingLeft() + getPaddingRight(), LayoutParams.MATCH_PARENT);
+            controls.measure(contentWidth, MeasureSpec.makeMeasureSpec(available / 2, MeasureSpec.AT_MOST));
             controls.getLayoutParams().height = controls.getMeasuredHeight();
         }
         super.onMeasure(width, height);

@@ -51,7 +51,7 @@ final class IncidentEvidenceView extends LinearLayout {
         });
         header.addView(filters, new LayoutParams(-2, -2)); criteria = caption(""); header.addView(criteria, new LayoutParams(-1, -2));
         ListView list = new ListView(context); list.setItemsCanFocus(true);
-        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
+        list.setDivider(null); list.setDividerHeight(0);
         InspectorAppearance.Value<String> title = () -> logs != null ? context.getString(R.string.osservio_logs) : http != null ? "HTTP" : context.getString(R.string.osservio_ws_title);
         InspectorAppearance.Value<String> info = () -> logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
             : http != null ? IncidentPresentation.window(context, http.observedAtMillis, http.events.size(), http.omittedEventCount, http.sourceEvictedEvents, http.sourceEvictedBodies)
@@ -62,7 +62,7 @@ final class IncidentEvidenceView extends LinearLayout {
         });
         addView(list, new LayoutParams(-1, 0, 1));
         InspectorAppearance.content(this, () -> {
-            list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
+            list.setDivider(null);
             filter();
         });
         filter();

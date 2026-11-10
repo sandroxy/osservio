@@ -37,26 +37,29 @@ final class InspectorFeedHeader extends LinearLayout {
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
                         Runnable togglePause, Runnable showFilters, Runnable actions, boolean compact, int actionLabel) {
         super(context); this.compact = compact; setOrientation(VERTICAL);
-        int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 12), inset, 0);
+        int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 4), inset, 0);
         LinearLayout searchRow = new LinearLayout(context); searchRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
         search = InspectorWidgets.search(context, searchHint, text, changed);
         searchRow.addView(search, new LayoutParams(0, -2, 1));
         filters = InspectorWidgets.button(context, R.string.osservio_ui_filters, showFilters);
         filters.setContentDescription(context.getString(R.string.osservio_ui_filters));
-        android.graphics.drawable.Drawable symbol = context.getDrawable(R.drawable.osservio_filter);
-        if (symbol != null) symbol.setTint(InspectorTheme.accent(context));
-        filters.setCompoundDrawablesRelativeWithIntrinsicBounds(symbol, null, null, null);
+        filters.setCompoundDrawablesRelative(InspectorWidgets.symbol(context, R.drawable.osservio_filter, 20, InspectorTheme.accent(context)), null, null, null);
         filters.setCompoundDrawablePadding(InspectorTheme.dp(context, 4));
         filters.setMinimumWidth(InspectorTheme.dp(context, 48));
         LayoutParams filterLayout = new LayoutParams(-2, -2); filterLayout.leftMargin = InspectorTheme.dp(context, 8);
         searchRow.addView(filters, filterLayout); addView(searchRow, new LayoutParams(-1, -2));
         LinearLayout bar = new LinearLayout(context); bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        bar.setPadding(0, InspectorTheme.dp(context, 8), 0, 0);
+        bar.setPadding(InspectorTheme.dp(context, 4), 0, 0, 0);
         status = InspectorWidgets.caption(context); InspectorAppearance.style(status, () -> status.setTextColor(InspectorTheme.accent(context)));
         pause = InspectorWidgets.icon(context, R.drawable.osservio_pause, R.string.osservio_ui_pause, togglePause);
         ImageButton menu = InspectorWidgets.icon(context, compact ? R.drawable.osservio_trash : R.drawable.osservio_more,
             compact ? actionLabel : R.string.osservio_ui_actions, actions);
         this.actions = menu;
+        InspectorAppearance.style(menu, () -> {
+            menu.setImageTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.secondary(context)));
+            menu.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
+                InspectorTheme.color(context, R.color.osservio_tint)), null, InspectorTheme.shape(context, android.graphics.Color.WHITE, 24, false)));
+        });
         latest = InspectorWidgets.button(context, R.string.osservio_ui_follow_latest, togglePause);
         latest.setMaxWidth(InspectorTheme.dp(context, 100)); latest.setVisibility(GONE);
         results = InspectorWidgets.caption(context);
@@ -78,9 +81,7 @@ final class InspectorFeedHeader extends LinearLayout {
     }
     void setQuery(InspectorQuery query, List<InspectorFilterSheet.Group> groups, int visible, int total) {
         filters.setContentDescription(getContext().getString(R.string.osservio_ui_filters));
-        android.graphics.drawable.Drawable symbol = getContext().getDrawable(R.drawable.osservio_filter);
-        if (symbol != null) symbol.setTint(InspectorTheme.accent(getContext()));
-        filters.setCompoundDrawablesRelativeWithIntrinsicBounds(symbol, null, null, null);
+        filters.setCompoundDrawablesRelative(InspectorWidgets.symbol(getContext(), R.drawable.osservio_filter, 20, InspectorTheme.accent(getContext())), null, null, null);
         filters.setText(query.activeCount() == 0 ? "" : Integer.toString(query.activeCount()));
         InspectorWidgets.chip(filters, query.activeCount() > 0);
         criteria.setText(InspectorFilterOptions.summary(getContext(), query, groups));

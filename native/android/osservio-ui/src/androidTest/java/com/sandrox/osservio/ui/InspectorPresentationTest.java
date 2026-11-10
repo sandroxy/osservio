@@ -17,6 +17,20 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public final class InspectorPresentationTest {
+    @Test public void scopedThemePreservesHostFontScaling() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            android.content.res.Configuration configuration = new android.content.res.Configuration(); configuration.fontScale = 2;
+            Context configured = base.createConfigurationContext(configuration);
+            assertEquals("Host override", 2f, configured.getResources().getConfiguration().fontScale, 0.01f);
+            assertEquals("Localized resources", 2f, new InspectorResources(configured.getResources(), true).getConfiguration().fontScale, 0.01f);
+            Context large = InspectorTheme.context(configured);
+            assertEquals("Scoped theme", 2f, large.getResources().getConfiguration().fontScale, 0.01f);
+            TextView label = InspectorTheme.text(large, 16, false);
+            assertTrue("Large text must grow in pixels, not only report a changed configuration", label.getTextSize() >
+                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 24, large.getResources().getDisplayMetrics()));
+        });
+    }
     @Test public void baselineSettingsLeaveDebugSessionRunning() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());

@@ -23,6 +23,7 @@ final class AppInspectorView extends ScrollView {
     static final class State { int scrollY; }
     private final State state;
     private final LinearLayout content;
+    private LinearLayout group;
     private final LogRecorder logs;
     private final HTTPRecorder http;
     private final WebSocketRecorder sockets;
@@ -31,10 +32,10 @@ final class AppInspectorView extends ScrollView {
     AppInspectorView(Context context, EnvironmentProvider environment, BreadcrumbRecorder recorder, BreadcrumbHistory history,
                      BreadcrumbArchive archive, LogRecorder logs, HTTPRecorder http, WebSocketRecorder sockets, State state) {
         super(context); this.state = state; this.logs = logs; this.http = http; this.sockets = sockets; this.breadcrumbs = recorder;
-        setFillViewport(true); setBackgroundColor(InspectorTheme.canvas(context));
+        setFillViewport(true); setVerticalScrollBarEnabled(false); setBackgroundColor(InspectorTheme.canvas(context));
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, inset); addView(content);
-        TextView intro = InspectorWidgets.caption(context); intro.setText(R.string.osservio_ui_app_intro); content.addView(intro);
+        TextView intro = InspectorWidgets.caption(context); intro.setText(R.string.osservio_ui_app_intro); intro.setPadding(inset, InspectorTheme.dp(context, 8), inset, 0); content.addView(intro);
         section(R.string.osservio_ui_environment);
         row(R.string.osservio_ui_app_device, environment == null ? context.getString(R.string.osservio_ui_not_configured) : "",
             environment == null ? null : () -> open(R.string.osservio_ui_app_device, new EnvironmentInspectorView(context, environment)));
@@ -48,31 +49,39 @@ final class AppInspectorView extends ScrollView {
         row(R.string.osservio_ui_appearance, context.getString(InspectorPreferences.dark(context)
             ? R.string.osservio_ui_dark : R.string.osservio_ui_light), () -> choose(true));
         row(R.string.osservio_ui_capture_settings, "", this::captureStatus);
-        TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_preferences_hint); content.addView(hint);
+        TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_preferences_hint); hint.setPadding(inset, InspectorTheme.dp(context, 8), inset, 0); content.addView(hint);
         post(() -> scrollTo(0, state.scrollY));
     }
     private void section(int title) {
-        TextView text = InspectorWidgets.caption(getContext()); text.setText(title); text.setTextColor(InspectorTheme.accent(getContext()));
-        text.setPadding(0, InspectorTheme.dp(getContext(), 24), 0, InspectorTheme.dp(getContext(), 8)); content.addView(text);
+        TextView text = InspectorWidgets.sectionLabel(getContext()); text.setText(title); content.addView(text);
+        group = new LinearLayout(getContext()); group.setOrientation(LinearLayout.VERTICAL);
+        InspectorTheme.surface(group, false, 20); group.setClipToOutline(true); content.addView(group, new LinearLayout.LayoutParams(-1, -2));
     }
     private void row(int title, String value, Runnable action) {
         Context context = getContext(); int inset = InspectorTheme.dp(context, 16);
-        LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(inset, inset, inset, inset);
+        LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(inset, InspectorTheme.dp(context, 14), inset, InspectorTheme.dp(context, 14)); row.setMinimumHeight(InspectorTheme.dp(context, 52));
         LinearLayout labels = new LinearLayout(context); labels.setOrientation(LinearLayout.VERTICAL);
-        TextView name = InspectorTheme.text(context, 16, true); name.setText(title); labels.addView(name);
-        if (!value.isEmpty()) {
-            TextView detail = InspectorWidgets.caption(context); detail.setText(value); detail.setPadding(0, InspectorTheme.dp(context, 4), 0, 0);
-            labels.addView(detail);
-        }
+        TextView name = InspectorTheme.text(context, 16, false); name.setText(title); labels.addView(name);
         row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+        if (!value.isEmpty()) {
+            TextView detail = InspectorWidgets.caption(context); detail.setText(value); detail.setTextSize(14);
+            if (getResources().getConfiguration().fontScale >= 1.5f) {
+                detail.setPadding(0, InspectorTheme.dp(context, 4), 0, 0); labels.addView(detail);
+            } else {
+                detail.setPadding(InspectorTheme.dp(context, 12), 0, InspectorTheme.dp(context, 8), 0);
+                detail.setMaxWidth(InspectorTheme.dp(context, 150)); row.addView(detail);
+            }
+        }
         if (action != null) {
-            TextView arrow = InspectorTheme.text(context, 22, false); arrow.setText("›"); arrow.setTextColor(InspectorTheme.secondary(context));
+            android.widget.ImageView arrow = new android.widget.ImageView(context);
+            arrow.setImageDrawable(InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)));
             arrow.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); row.addView(arrow);
             row.setOnClickListener(ignored -> action.run()); row.setFocusable(true);
+            row.setBackgroundResource(android.R.drawable.list_selector_background);
         }
-        InspectorTheme.surface(row, action != null, 12);
-        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2); layout.bottomMargin = InspectorTheme.dp(context, 6);
-        content.addView(row, layout);
+        if (group.getChildCount() > 0) group.addView(InspectorWidgets.divider(context));
+        group.addView(row, new LinearLayout.LayoutParams(-1, -2));
     }
     private void choose(boolean appearance) {
         Context context = getContext();

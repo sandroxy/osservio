@@ -30,16 +30,16 @@ final class InspectorCaptureSettingsView extends ScrollView {
         }
     };
     InspectorCaptureSettingsView(Context context, CaptureController baseline, int[] labels, CaptureController... supplied) {
-        super(context); this.baseline = baseline; setFillViewport(true);
+        super(context); this.baseline = baseline; setFillViewport(true); setVerticalScrollBarEnabled(false);
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, inset, inset, inset); addView(content);
         baselineSwitch = new Switch(context); InspectorAppearance.text(baselineSwitch, R.string.osservio_ui_baseline_capture);
-        InspectorAppearance.style(baselineSwitch, () -> { baselineSwitch.setTextColor(InspectorTheme.primary(context)); InspectorTheme.surface(baselineSwitch, false, 20); });
-        baselineSwitch.setTextSize(16);
+        InspectorAppearance.style(baselineSwitch, () -> InspectorWidgets.styleSwitch(baselineSwitch));
         baselineSwitch.setMinHeight(InspectorTheme.dp(context, 56)); baselineSwitch.setPadding(inset, inset, inset, inset);
         baselineSwitch.setVisibility(baseline == null ? GONE : VISIBLE); content.addView(baselineSwitch);
         if (baseline != null) {
-            TextView hint = InspectorWidgets.caption(context); InspectorAppearance.text(hint, R.string.osservio_crumb_baseline_hint); content.addView(hint);
+            TextView hint = InspectorWidgets.caption(context); hint.setTextSize(12); hint.setPadding(inset, InspectorTheme.dp(context, 8), inset, 0);
+            InspectorAppearance.text(hint, R.string.osservio_crumb_baseline_hint); content.addView(hint);
         }
         baselineSwitch.setOnCheckedChangeListener((button, enabled) -> {
             if (updating) return;
@@ -51,9 +51,11 @@ final class InspectorCaptureSettingsView extends ScrollView {
             if (supplied[index] != null && !controllers.contains(supplied[index])) { controllers.add(supplied[index]); names.add(labels[index]); }
         }
         for (int index = 0; index < controllers.size(); index++) {
-            TextView title = InspectorTheme.text(context, 16, true); int label = names.get(index);
+            TextView title = InspectorWidgets.sectionLabel(context); int label = names.get(index);
             InspectorAppearance.text(title, () -> controllers.size() == 1 ? "Osservio" : context.getString(label)); content.addView(title);
-            TextView value = InspectorWidgets.caption(context); content.addView(value); values.add(value);
+            TextView value = InspectorTheme.text(context, 15, false); value.setPadding(inset, inset, inset, inset);
+            InspectorAppearance.style(value, () -> { value.setTextColor(InspectorTheme.primary(context)); InspectorTheme.surface(value, false, 20); });
+            content.addView(value); values.add(value);
         }
         InspectorAppearance.content(this, this::update); update();
     }

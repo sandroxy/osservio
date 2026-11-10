@@ -49,8 +49,8 @@ final class BreadcrumbInspectorView extends LinearLayout {
             () -> setPaused(false), this::filters, this::actions, true, R.string.osservio_crumb_clear);
         header.onQueryChange = value -> { query = value; dirty = true; refreshView(); };
         list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
-        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
-        list.setDividerHeight(InspectorTheme.dp(context, 1));
+        list.setDivider(null);
+        list.setDividerHeight(0);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < events.size()) showDetail(events.get(index));
         });
@@ -65,7 +65,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
         InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.canvas(context)));
         InspectorAppearance.content(this, () -> {
             header.search.setHint(R.string.osservio_crumb_search);
-            list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
+            list.setDivider(null);
             dirty = true; if (detail == null) refreshView();
         });
     }

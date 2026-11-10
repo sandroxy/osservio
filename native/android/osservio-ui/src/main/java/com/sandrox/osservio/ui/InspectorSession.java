@@ -37,6 +37,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     private InspectorFloatingEntry entry;
     private Dialog window;
     private final InspectorEntryTransition transition = new InspectorEntryTransition();
+    private final InspectorSystemBars systemBars = new InspectorSystemBars();
     private final android.graphics.Rect entryBounds = new android.graphics.Rect();
     private final View.OnAttachStateChangeListener attachment = new View.OnAttachStateChangeListener() {
         @Override public void onViewAttachedToWindow(View view) { reconcile(); }
@@ -128,7 +129,8 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
             }
             Window nativeWindow = window.getWindow();
             if (nativeWindow != null) {
-                nativeWindow.setLayout(-1, -1); InspectorDialogs.configureWindow(nativeWindow, InspectorPreferences.dark(context));
+                nativeWindow.setLayout(-1, -1); InspectorDialogs.configureWindow(nativeWindow, InspectorPreferences.dark(inspector.getContext()));
+                systemBars.apply(activity.getWindow(), InspectorPreferences.dark(inspector.getContext()));
                 inspector.requestApplyInsets();
                 if (opening && nativeWindow.getDecorView() instanceof ViewGroup) {
                     transition.run((ViewGroup) nativeWindow.getDecorView(), entryBounds, true, null, () -> { });
@@ -154,7 +156,8 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         entry.attach((ViewGroup) activity.getWindow().getDecorView());
     }
     private void createWindow(Activity activity) {
-        window = new Dialog(InspectorTheme.context(context), InspectorPreferences.dark(context) ? R.style.OsservioScreenDark : R.style.OsservioScreenLight) {
+        Context presentationContext = inspector.getContext();
+        window = new Dialog(InspectorTheme.context(presentationContext), InspectorPreferences.dark(presentationContext) ? R.style.OsservioScreenDark : R.style.OsservioScreenLight) {
             // Dialog's platform back dispatcher also forwards here on API 33+.
             @SuppressWarnings("deprecation")
             @Override public void onBackPressed() { if (!inspector.navigateBack()) collapse(); }
@@ -173,6 +176,8 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         inspector.setOnApplyWindowInsetsListener((root, insets) -> { InspectorDialogs.applyInsets(root, insets); return insets; });
         inspector.setAppearanceListener(dark -> {
             if (window != null && window.getWindow() != null) InspectorDialogs.configureWindow(window.getWindow(), dark);
+            Activity host = owner.get();
+            if (host != null && window != null && window.isShowing()) systemBars.apply(host.getWindow(), dark);
         });
     }
     private void detachSurfaces() {
@@ -180,6 +185,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         detachContentWindow();
     }
     private void detachContentWindow() {
+        systemBars.restore();
         transition.cancel();
         if (window != null) {
             InspectorWidgets.hideKeyboard(inspector); inspector.setVisibility(View.GONE);

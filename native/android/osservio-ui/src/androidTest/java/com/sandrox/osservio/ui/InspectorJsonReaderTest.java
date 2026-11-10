@@ -16,6 +16,20 @@ import static org.junit.Assert.*;
 /** Row geometry and immutable reads; actual taps and retained windows are consumer tests. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorJsonReaderTest {
+    @Test public void wrappedNoticesLeaveReaderActionsFullyVisible() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = context();
+            InspectorContentReader reader = new InspectorContentReader(context);
+            reader.display(new InspectorReadContent("{}", "轻点对象或数组展开，长按可复制节点。省略内容可切换原文查看。", false), true);
+            android.widget.ScrollView controls = (android.widget.ScrollView) reader.getChildAt(0);
+            for (int width : new int[] {390, 320, 390}) {
+                int pixels = InspectorTheme.dp(context, width), height = InspectorTheme.dp(context, 600);
+                reader.measure(View.MeasureSpec.makeMeasureSpec(pixels, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+                reader.layout(0, 0, pixels, height);
+                assertTrue("A wrapped notice must not hide actions in a full-height reader", controls.getChildAt(0).getHeight() <= controls.getHeight());
+            }
+        });
+    }
     @Test public void fullRowExpansionSearchAndLargeArraysReuseNativeRows() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = context();

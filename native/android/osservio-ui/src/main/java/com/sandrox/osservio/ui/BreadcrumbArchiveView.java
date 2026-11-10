@@ -70,7 +70,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
         controls.addView(back); controls.addView(refresh, new LayoutParams(0, -2, 1)); controls.addView(copy);
         header.addView(controls, new LayoutParams(-1, -2));
         delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
-        Button actions = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {
+        android.widget.ImageButton actions = InspectorWidgets.icon(context, R.drawable.osservio_more, R.string.osservio_ui_actions, () -> {
             detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_ui_capture_details), delete.getText().toString()}, (dialog, which) -> {
                     dialog.dismiss(); detail = null;
                     if (which == 1) confirmDeletion();
@@ -81,7 +81,6 @@ final class BreadcrumbArchiveView extends LinearLayout {
                 });
             InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
         });
-        actions.setText("⋯"); actions.setTextSize(22); actions.setContentDescription(context.getString(R.string.osservio_ui_actions));
         controls.addView(actions, new LayoutParams(dp(48), -2));
         notice = caption(); header.addView(notice, new LayoutParams(-1, -2));
         summary = caption(); summary.setTextIsSelectable(true); header.addView(summary, new LayoutParams(-1, -2));
@@ -89,7 +88,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
         header.addView(search, new LayoutParams(-1, -2));
         empty = caption(); empty.setPadding(0, dp(24), 0, dp(24)); header.addView(empty, new LayoutParams(-1, -2));
         list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
-        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
+        list.setDivider(null); list.setDividerHeight(0);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
             if (reading || index < 0 || index >= rows.getCount()) return;

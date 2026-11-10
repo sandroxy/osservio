@@ -45,13 +45,12 @@ final class IncidentSnapshotView extends LinearLayout {
         back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, () -> { }); back.setOnClickListener(view -> goBack.run());
         android.widget.ImageButton copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> { }); copy.setOnClickListener(view -> copy(IncidentPresentation.summary(context, snapshot)));
         delete = button(R.string.osservio_incident_delete); delete.setOnClickListener(view -> deleteSnapshot.run());
-        Button menu = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {
+        android.widget.ImageButton menu = InspectorWidgets.icon(context, R.drawable.osservio_more, R.string.osservio_ui_actions, () -> {
             detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_incident_delete)}, (dialog, which) -> {
                     dialog.dismiss(); detail = null; delete.performClick();
                 });
             InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
         });
-        InspectorAppearance.text(menu, () -> "⋯"); menu.setTextSize(22); menu.setContentDescription(context.getString(R.string.osservio_ui_actions));
         back.setVisibility(InspectorNavigation.owns(context) ? GONE : VISIBLE); controls.addView(back);
         View spacer = new View(context); controls.addView(spacer, new LayoutParams(0, 1, 1)); controls.addView(copy);
         controls.addView(menu, new LayoutParams(dp(48), -2));
@@ -118,7 +117,7 @@ final class IncidentSnapshotView extends LinearLayout {
         header.addView(caption(() -> IncidentPresentation.counts(context, snapshot.breadcrumbs)), new LayoutParams(-1, -2));
         header.addView(search, new LayoutParams(-1, -2));
         list.addHeaderView(header, null, false);
-        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
+        list.setDivider(null); list.setDividerHeight(0);
         footer = caption(""); list.addFooterView(footer, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
@@ -136,7 +135,7 @@ final class IncidentSnapshotView extends LinearLayout {
         InspectorAppearance.content(this, () -> {
             menu.setContentDescription(context.getString(R.string.osservio_ui_actions));
             if (snapshot.note != null) note.setContentDescription(context.getString(R.string.osservio_incident_note) + ": " + IncidentPresentation.note(context, snapshot.note));
-            list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
+            list.setDivider(null);
             filter();
         });
         filter();
@@ -209,7 +208,10 @@ final class IncidentSnapshotView extends LinearLayout {
     }
     private Button button(int label) {
         Button button = InspectorWidgets.button(getContext(), label, () -> { }); button.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
-        InspectorAppearance.style(button, () -> { button.setTextColor(InspectorTheme.primary(getContext())); InspectorTheme.surface(button, true, 10); }); button.setPadding(dp(12), dp(8), dp(12), dp(8)); return button;
+        InspectorAppearance.style(button, () -> {
+            button.setTextColor(InspectorTheme.primary(getContext())); InspectorTheme.surface(button, true, 20);
+            button.setCompoundDrawablesRelative(null, null, InspectorWidgets.symbol(getContext(), R.drawable.osservio_forward, 16, InspectorTheme.secondary(getContext())), null);
+        }); button.setPadding(dp(16), dp(13), dp(16), dp(13)); return button;
     }
     private TextView caption(String value) { return caption(() -> value); }
     private TextView caption(InspectorAppearance.Value<String> value) {

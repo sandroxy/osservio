@@ -70,8 +70,7 @@ public final class LogInspectorView extends LinearLayout {
             InspectorQuery query = state.query.copy(); query.text = value; apply(query);
         }, this::followLatest, this::filters, this::confirmClear, true);
         header.onQueryChange = this::apply;
-        list = new ListView(context); list.setDivider(new android.graphics.drawable.ColorDrawable(
-            InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(InspectorTheme.dp(context, 1));
+        list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();

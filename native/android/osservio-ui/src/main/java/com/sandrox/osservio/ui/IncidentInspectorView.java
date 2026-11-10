@@ -114,7 +114,7 @@ public final class IncidentInspectorView extends FrameLayout {
         notice = header.status; notice.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         empty = header.empty; actions = header.actions;
         list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
-        list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
+        list.setDivider(null); list.setDividerHeight(0);
         TextView hint = caption(); hint.setText(R.string.osservio_incident_archive_hint); hint.setPadding(dp(16), dp(16), dp(16), dp(16));
         list.addFooterView(hint, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {

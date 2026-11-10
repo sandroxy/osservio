@@ -127,12 +127,40 @@ final class InspectorWidgets {
         row.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 13), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 13));
         InspectorAppearance.style(row, () -> {
             row.setTextColor(InspectorTheme.primary(context));
-            android.graphics.drawable.StateListDrawable check = new android.graphics.drawable.StateListDrawable();
-            check.addState(new int[] {android.R.attr.state_checked}, symbol(context, R.drawable.osservio_check, 22, InspectorTheme.accent(context)));
-            check.addState(new int[0], new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
-            row.setCheckMarkDrawable(check);
+            row.setCheckMarkDrawable(checkmark(context));
         });
         return row;
+    }
+    static android.graphics.drawable.Drawable checkmark(Context context) {
+        android.graphics.drawable.StateListDrawable check = new android.graphics.drawable.StateListDrawable();
+        check.addState(new int[] {android.R.attr.state_checked}, symbol(context, R.drawable.osservio_check, 22, InspectorTheme.accent(context)));
+        // TextView measures the current state before forwarding the checkbox state.
+        // Both states need intrinsic size or an initially unchecked mark gets zero bounds.
+        android.graphics.drawable.GradientDrawable empty = new android.graphics.drawable.GradientDrawable();
+        empty.setColor(android.graphics.Color.TRANSPARENT); empty.setSize(InspectorTheme.dp(context, 22), InspectorTheme.dp(context, 22));
+        check.addState(new int[0], empty); return check;
+    }
+    static void styleSwitch(android.widget.Switch control) {
+        Context context = control.getContext(); InspectorTheme.typography(control, 16, false);
+        control.setTextColor(InspectorTheme.primary(context)); control.setSplitTrack(false);
+        control.setSwitchPadding(InspectorTheme.dp(context, 16)); control.setSwitchMinWidth(InspectorTheme.dp(context, 50));
+        control.setThumbTintList(null); control.setTrackTintList(null);
+        android.graphics.drawable.GradientDrawable thumb = InspectorTheme.shape(context, android.graphics.Color.WHITE, 15, false);
+        thumb.setSize(InspectorTheme.dp(context, 26), InspectorTheme.dp(context, 26));
+        control.setThumbDrawable(new android.graphics.drawable.InsetDrawable(thumb, InspectorTheme.dp(context, 2)));
+        android.graphics.drawable.StateListDrawable track = new android.graphics.drawable.StateListDrawable();
+        for (boolean checked : new boolean[] {true, false}) {
+            android.graphics.drawable.GradientDrawable fill = new android.graphics.drawable.GradientDrawable() {
+                @Override public boolean getPadding(android.graphics.Rect padding) {
+                    int inset = InspectorTheme.dp(context, 2); padding.set(inset, inset, inset, inset); return true;
+                }
+            };
+            fill.setColor(InspectorTheme.color(context, checked ? R.color.osservio_accent : R.color.osservio_separator));
+            fill.setCornerRadius(InspectorTheme.dp(context, 16));
+            fill.setSize(InspectorTheme.dp(context, 50), InspectorTheme.dp(context, 30));
+            track.addState(checked ? new int[] {android.R.attr.state_checked} : new int[0], fill);
+        }
+        control.setTrackDrawable(track); InspectorTheme.surface(control, false, 20);
     }
     static View segments(Context context, int[] labels, int selected, Selection changed) {
         String[] text = new String[labels.length];
@@ -143,8 +171,7 @@ final class InspectorWidgets {
     }
     static View segments(Context context, String[] labels, int selected, Selection changed) {
         android.widget.RadioGroup bar = new android.widget.RadioGroup(context);
-        boolean large = context.getResources().getConfiguration().fontScale >= 1.5f;
-        bar.setOrientation(large ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
         int inset = InspectorTheme.dp(context, 4); bar.setPadding(inset, inset, inset, inset);
         InspectorAppearance.style(bar, () -> bar.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false)));
         for (int i = 0; i < labels.length; i++) {
@@ -162,7 +189,7 @@ final class InspectorWidgets {
             button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
                 InspectorTheme.color(context, R.color.osservio_separator)), fill, null));
             });
-            android.widget.RadioGroup.LayoutParams layout = new android.widget.RadioGroup.LayoutParams(large ? -1 : 0, -2, large ? 0 : 1);
+            android.widget.RadioGroup.LayoutParams layout = new android.widget.RadioGroup.LayoutParams(0, -2, 1);
             bar.addView(button, layout);
             if (i == selected) button.setChecked(true);
         }

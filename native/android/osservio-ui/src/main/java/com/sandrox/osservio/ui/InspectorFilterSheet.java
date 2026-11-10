@@ -59,7 +59,9 @@ final class InspectorFilterSheet {
         List<Choice> choices = new ArrayList<>();
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, 0);
-        ListView list = new ListView(context); list.setDividerHeight(0);
+        ListView list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
+        list.setVerticalScrollBarEnabled(false); list.setSelector(android.R.color.transparent);
+        list.setPadding(0, 0, 0, inset); list.setClipToPadding(false);
         InspectorFilterConditions conditions = payload ? new InspectorFilterConditions(context, draft, () -> {
             // Checkmarks are rebound without rebuilding focused editors.
             for (int index = 0; index < list.getChildCount(); index++) {
@@ -81,14 +83,16 @@ final class InspectorFilterSheet {
                 Choice choice = getItem(position);
                 if (choice.group == null) return conditions.durationView;
                 if (choice.key == null) {
-                    TextView label = recycled instanceof TextView ? (TextView) recycled : InspectorTheme.text(context, 12, true);
+                    TextView label = recycled instanceof TextView ? (TextView) recycled : InspectorWidgets.sectionLabel(context);
                     label.setText(choice.title); label.setTextColor(InspectorTheme.secondary(context));
-                    label.setPadding(0, inset, 0, inset / 2); return label;
+                    return label;
                 }
                 CheckedTextView row = recycled instanceof CheckedTextView ? (CheckedTextView) recycled
-                    : (CheckedTextView) android.view.LayoutInflater.from(context).inflate(android.R.layout.simple_list_item_multiple_choice, parent, false);
-                row.setText(choice.title); row.setTextColor(InspectorTheme.primary(context)); row.setTextSize(15);
-                row.setMinHeight(InspectorTheme.dp(context, 48)); row.setSingleLine(false);
+                    : InspectorWidgets.choice(context);
+                row.setText(choice.title);
+                boolean first = position == 0 || getItem(position - 1).key == null;
+                boolean last = position + 1 == choices.size() || getItem(position + 1).key == null;
+                InspectorWidgets.groupedRow(row, first, last);
                 bind(row, choice, draft);
                 return row;
             }
@@ -113,6 +117,7 @@ final class InspectorFilterSheet {
         LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL);
         header.addView(InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", filter), new LinearLayout.LayoutParams(-1, -2));
         TextView hint = InspectorWidgets.caption(context); hint.setText(network ? R.string.osservio_ui_network_filter_hint : R.string.osservio_ui_filter_hint);
+        hint.setTextSize(12); hint.setPadding(inset, InspectorTheme.dp(context, 6), inset, 0);
         header.addView(hint, new LinearLayout.LayoutParams(-1, -2));
         if (conditions != null) header.addView(conditions.view, new LinearLayout.LayoutParams(-1, -2));
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true);

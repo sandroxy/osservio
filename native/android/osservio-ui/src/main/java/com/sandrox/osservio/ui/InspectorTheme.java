@@ -45,6 +45,12 @@ final class InspectorTheme {
             super(host, dark ? R.style.OsservioInspectorDark : R.style.OsservioInspectorLight);
             this.dark = dark; this.english = english;
             Configuration configuration = new Configuration();
+            // Nested configuration contexts replace inherited overrides. Carry the
+            // host's explicit sizing choices without pinning ordinary system values.
+            Configuration inherited = host.getResources().getConfiguration();
+            Configuration application = host.getApplicationContext().getResources().getConfiguration();
+            if (inherited.fontScale != application.fontScale) configuration.fontScale = inherited.fontScale;
+            if (inherited.densityDpi != application.densityDpi) configuration.densityDpi = inherited.densityDpi;
             configuration.setLocale(english ? Locale.ENGLISH : Locale.SIMPLIFIED_CHINESE);
             configuration.uiMode = (configuration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
                 | (dark ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);

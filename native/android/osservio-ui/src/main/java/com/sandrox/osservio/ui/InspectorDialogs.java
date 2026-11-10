@@ -37,15 +37,14 @@ final class InspectorDialogs {
                                    android.content.DialogInterface.OnClickListener chosen) {
         android.widget.ListView list = new android.widget.ListView(context);
         int inset = InspectorTheme.dp(context, 16); list.setPadding(inset, InspectorTheme.dp(context, 8), inset, inset);
-        list.setClipToPadding(false); list.setDivider(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
-        list.setDividerHeight(InspectorTheme.dp(context, 6));
-        list.setAdapter(new android.widget.ArrayAdapter<>(context, selected < 0 ? android.R.layout.simple_list_item_1
-            : android.R.layout.simple_list_item_single_choice, labels) {
+        list.setClipToPadding(false); list.setDivider(null); list.setDividerHeight(0);
+        list.setSelector(android.R.color.transparent); list.setVerticalScrollBarEnabled(false);
+        list.setAdapter(new android.widget.ArrayAdapter<String>(context, 0, labels) {
             @Override public View getView(int position, View recycled, android.view.ViewGroup parent) {
-                TextView row = (TextView) super.getView(position, recycled, parent);
-                row.setTextColor(InspectorTheme.primary(context)); row.setTextSize(16); row.setSingleLine(false);
-                row.setMinHeight(InspectorTheme.dp(context, 56)); row.setPadding(inset, inset, inset, inset);
-                row.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 16, false));
+                android.widget.CheckedTextView row = recycled instanceof android.widget.CheckedTextView
+                    ? (android.widget.CheckedTextView) recycled : InspectorWidgets.choice(context);
+                row.setText(labels[position]); row.setChecked(position == selected);
+                InspectorWidgets.groupedRow(row, position == 0, position + 1 == labels.length);
                 return row;
             }
         });
