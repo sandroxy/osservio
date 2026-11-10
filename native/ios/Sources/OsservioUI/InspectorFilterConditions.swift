@@ -49,10 +49,10 @@ final class InspectorFilterConditions: UIStackView {
         NSLayoutConstraint.activate([labels.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 16),
             labels.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -44),
             labels.topAnchor.constraint(equalTo: button.topAnchor, constant: 12), labels.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -12)])
-        let arrow = UIImageView(image: UIImage(systemName: "chevron.down")); arrow.tintColor = InspectorTheme.secondary
+        let arrow = UIImageView(image: UIImage(systemName: "chevron.down")); arrow.contentMode = .scaleAspectFit; arrow.tintColor = InspectorTheme.secondary
         arrow.translatesAutoresizingMaskIntoConstraints = false; arrow.tag = 1; button.addSubview(arrow)
         NSLayoutConstraint.activate([arrow.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -16),
-            arrow.centerYAnchor.constraint(equalTo: button.centerYAnchor), arrow.widthAnchor.constraint(equalToConstant: 12), arrow.heightAnchor.constraint(equalToConstant: 8)])
+            arrow.centerYAnchor.constraint(equalTo: button.centerYAnchor), arrow.widthAnchor.constraint(equalToConstant: 16), arrow.heightAnchor.constraint(equalToConstant: 20)])
         editor.axis = .vertical; editor.spacing = 10; editor.isLayoutMarginsRelativeArrangement = true
         editor.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16)
         card.addArrangedSubview(button); card.addArrangedSubview(editor)

@@ -17,7 +17,7 @@ final class BreadcrumbDetailViewController: InspectorDetailViewController {
         let copy = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copySnapshot))
         copy.accessibilityLabel = InspectorLocalization.text("ui_copy_all"); inspectorPrimaryAction = copy
         var overview = [Row(InspectorLocalization.text("ui_event_type"), RuntimePresentation.kind(event)),
-            Row(InspectorLocalization.text("http_time"), RuntimePresentation.date(event.timestampMillis)),
+            Row(InspectorLocalization.text("ui_event_time"), RuntimePresentation.date(event.timestampMillis)),
             Row(InspectorLocalization.text("crumb_label"), event.label),
             Row(InspectorLocalization.text("crumb_elapsed"), event.sessionElapsedMillis.map { "\($0) ms" } ?? InspectorLocalization.text("runtime_unavailable"))]
         if let value = event.value { overview.append(Row(InspectorLocalization.text("crumb_value"), String(value))) }

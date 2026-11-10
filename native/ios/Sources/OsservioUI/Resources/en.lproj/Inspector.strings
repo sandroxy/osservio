@@ -182,3 +182,4 @@
 "ui_technical_details" = "Technical details";
 "ui_capture_settings" = "Capture settings";
 "ui_baseline_capture" = "Baseline capture";
+"ui_event_time" = "Observed at";

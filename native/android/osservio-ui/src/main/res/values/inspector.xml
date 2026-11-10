@@ -151,4 +151,5 @@
     <string name="osservio_ui_technical_details">Technical details</string>
     <string name="osservio_ui_capture_settings">Capture settings</string>
     <string name="osservio_ui_baseline_capture">Baseline capture</string>
+    <string name="osservio_ui_event_time">Observed at</string>
 </resources>

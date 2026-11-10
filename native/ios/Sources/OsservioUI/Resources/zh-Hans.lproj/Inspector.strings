@@ -182,3 +182,4 @@
 "ui_technical_details" = "技术信息";
 "ui_capture_settings" = "采集设置";
 "ui_baseline_capture" = "基础采集";
+"ui_event_time" = "发生时间";

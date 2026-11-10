@@ -12,7 +12,7 @@ final class BreadcrumbDetailDialog {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_overview);
         page.field(R.string.osservio_ui_event_type, () -> RuntimePresentation.kind(context, event.kind));
-        page.field(R.string.osservio_http_time, () -> RuntimePresentation.date(context, event.timestampMillis));
+        page.field(R.string.osservio_ui_event_time, () -> RuntimePresentation.date(context, event.timestampMillis));
         page.field(R.string.osservio_crumb_label, event.label);
         page.field(R.string.osservio_crumb_elapsed, () -> event.sessionElapsedMillis == null ? context.getString(R.string.osservio_runtime_unavailable) : event.sessionElapsedMillis + " ms");
         if (event.value != null) page.field(R.string.osservio_crumb_value, event.value);
