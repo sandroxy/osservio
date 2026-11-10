@@ -70,12 +70,15 @@ final class InspectorTheme {
     }
     static void surface(View view, boolean interactive, int radius) {
         Context context = view.getContext();
-        GradientDrawable fill = shape(context, surface(context), radius, true);
+        GradientDrawable fill = shape(context, surface(context), radius, false);
         view.setBackground(interactive ? new RippleDrawable(ColorStateList.valueOf(color(context, R.color.osservio_tint)), fill, null) : fill);
     }
+    static void typography(TextView text, int size, boolean strong) {
+        text.setTextSize(size); text.setIncludeFontPadding(false);
+        text.setTypeface(Typeface.create(strong ? "sans-serif-medium" : "sans-serif", Typeface.NORMAL));
+    }
     static TextView text(Context context, int size, boolean strong) {
-        TextView text = new TextView(context); text.setTextSize(size); InspectorAppearance.style(text, () -> text.setTextColor(primary(context)));
-        if (strong) text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        text.setFontFeatureSettings("tnum"); return text;
+        TextView text = new TextView(context); typography(text, size, strong);
+        InspectorAppearance.style(text, () -> text.setTextColor(primary(context))); return text;
     }
 }

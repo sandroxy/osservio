@@ -1,9 +1,9 @@
 <resources>
     <color name="osservio_canvas">#F5F6FA</color>
     <color name="osservio_surface">#FFFFFF</color>
-    <color name="osservio_primary">#182238</color>
-    <color name="osservio_secondary">#637087</color>
-    <color name="osservio_separator">#E4E7EF</color>
+    <color name="osservio_primary">#20212A</color>
+    <color name="osservio_secondary">#696C7A</color>
+    <color name="osservio_separator">#E7E8EF</color>
     <color name="osservio_accent">#5146D8</color>
     <color name="osservio_tint">#ECEAFD</color>
     <color name="osservio_error">#B82D47</color>

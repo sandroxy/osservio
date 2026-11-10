@@ -27,6 +27,34 @@ public final class InspectorLayoutTest {
     @Test public void socketsRemainReachableInCompactAndLargeTextLayouts() { check("websocket"); }
     @Test public void breadcrumbsRemainReachableInCompactAndLargeTextLayouts() { check("breadcrumb"); }
 
+    @Test public void toolbarKeepsActionsReachableBesideLongLocalizedTitles() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            for (float scale : new float[] {1, 2}) for (int width : new int[] {320, 568}) {
+                Configuration configuration = new Configuration(base.getResources().getConfiguration()); configuration.fontScale = scale;
+                Context context = new ContextThemeWrapper(base.createConfigurationContext(configuration), R.style.OsservioInspectorLight);
+                InspectorToolbar toolbar = new InspectorToolbar(context);
+                toolbar.title.setText("WebSocket connection · Message details");
+                int[] clicks = {0};
+                toolbar.leading.addView(InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, () -> clicks[0]++));
+                toolbar.trailing.addView(InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, () -> clicks[0]++));
+                toolbar.trailing.addView(InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> clicks[0]++));
+                toolbar.measure(View.MeasureSpec.makeMeasureSpec(dp(context, width), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                toolbar.layout(0, 0, toolbar.getMeasuredWidth(), toolbar.getMeasuredHeight());
+                assertTrue(toolbar.title.getLeft() >= toolbar.leading.getRight());
+                assertTrue(toolbar.title.getRight() <= toolbar.trailing.getLeft());
+                assertTrue(toolbar.trailing.getRight() <= toolbar.getWidth());
+                assertTrue(toolbar.title.getHeight() >= toolbar.title.getLayout().getHeight());
+                List<android.widget.ImageButton> buttons = new ArrayList<>(); collect(toolbar, android.widget.ImageButton.class, buttons);
+                for (android.widget.ImageButton button : buttons) {
+                    assertTrue(button.getWidth() >= dp(context, 48)); assertTrue(button.getHeight() >= dp(context, 48)); button.performClick();
+                }
+                assertEquals(3, clicks[0]);
+            }
+        });
+    }
+
     private void check(String kind) {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();

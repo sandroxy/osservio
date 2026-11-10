@@ -21,7 +21,7 @@ final class InspectorScreen implements DialogInterface {
     final FrameLayout view;
     final boolean panel;
     private final InspectorNavigation navigation;
-    private final LinearLayout bar;
+    private final InspectorToolbar bar;
     private final LinearLayout card;
     private final View content;
     private final ImageButton minimize;
@@ -56,16 +56,14 @@ final class InspectorScreen implements DialogInterface {
             handle = new InspectorSheetHandle(context, card, this::cancel);
             card.addView(handle, new LinearLayout.LayoutParams(-1, InspectorTheme.dp(context, 40)));
         }
-        bar = new LinearLayout(context); bar.setGravity(Gravity.CENTER_VERTICAL);
-        int inset = InspectorTheme.dp(context, 8); bar.setPadding(inset, inset, inset, inset);
+        bar = new InspectorToolbar(context);
         back = InspectorWidgets.icon(context, panel ? R.drawable.osservio_close : R.drawable.osservio_back,
             panel ? R.string.osservio_archive_cancel : R.string.osservio_ui_back, this::cancel);
-        back.setVisibility(panel ? View.GONE : View.VISIBLE); bar.addView(back);
-        heading = InspectorTheme.text(context, 19, true); heading.setText(title); heading.setMaxLines(2);
-        heading.setPadding(inset, 0, inset, 0); bar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
+        back.setVisibility(panel ? View.GONE : View.VISIBLE); bar.leading.addView(back);
+        heading = bar.title; heading.setText(title);
         minimize = InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize,
             () -> { if (navigation != null) navigation.minimize(); });
-        bar.addView(minimize); updateMinimize();
+        bar.trailing.addView(minimize); updateMinimize();
         card.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         card.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
     }
@@ -86,21 +84,20 @@ final class InspectorScreen implements DialogInterface {
             LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
             layout.setMargins(InspectorTheme.dp(view.getContext(), 16), 0, InspectorTheme.dp(view.getContext(), 16), 0);
             card.addView(action, card.indexOfChild(bar) + 1, layout);
-        } else bar.addView(action, bar.getChildCount() - 1, new LinearLayout.LayoutParams(-2, -2));
+        } else bar.trailing.addView(action, Math.max(0, bar.trailing.getChildCount() - 1), new LinearLayout.LayoutParams(-2, -2));
         return action;
     }
     void leadingAction(int label, Runnable operation) {
         back.setVisibility(View.GONE);
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
-        bar.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
-        heading.setGravity(Gravity.CENTER);
+        bar.leading.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
     }
     boolean coversTabs() { return panel || modal; }
     void fullScreenTask() { modal = true; }
     void showCancel() { back.setVisibility(View.VISIBLE); }
     ImageButton iconAction(int icon, int label, Runnable operation) {
         ImageButton action = InspectorWidgets.icon(view.getContext(), icon, label, operation);
-        bar.addView(action, bar.getChildCount() - 1); return action;
+        bar.trailing.addView(action, Math.max(0, bar.trailing.getChildCount() - 1)); return action;
     }
     void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); }
     void show() {
