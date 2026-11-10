@@ -33,7 +33,7 @@ enum InspectorJSONField {
             case .object:
                 let children = node.children.filter { child in
                     guard let range = document.nodes[child].key else { return false }
-                    return decode(document.source.substring(with: range)) == part
+                    return decode(document.source.substring(with: range)).map { $0.utf16.elementsEqual(part.utf16) } == true
                 }
                 guard children.count <= 1 else { return .unavailable }
                 guard let child = children.first else { return .no }; index = child
@@ -47,7 +47,7 @@ enum InspectorJSONField {
         let node = document.nodes[index], original = document.original(index)
         if node.kind == .object || node.kind == .array { return .no }
         guard let scalar = node.kind == .string ? decode(original) : original else { return .unavailable }
-        return scalar == value ? .yes : .no
+        return scalar.utf16.elementsEqual(value.utf16) ? .yes : .no
     }
     private static func decode(_ token: String) -> String? {
         try? JSONSerialization.jsonObject(with: Data(token.utf8), options: .fragmentsAllowed) as? String

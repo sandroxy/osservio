@@ -41,13 +41,14 @@ public final class InspectorLayoutTest {
                 EditText search = first(viewer, EditText.class);
                 ListView list = first(viewer, ListView.class);
                 assertNotNull(search); assertNotNull(list);
-                // A public search edit refreshes the detached fixture without starting its timer.
-                search.setText("no-match"); search.setText("");
+                if (kind.equals("breadcrumb")) { search.setText("no-match"); search.setText(""); }
+                // Pure layout uses an injected retained snapshot; attached search is covered by consumer tests.
                 layout(viewer, width, height);
                 String label = kind + " scale=" + scale + " width=" + size[0] + " height=" + size[1];
                 assertTrue(label, list.getHeight() >= dp(context, 48));
-                assertEquals(label, 1, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
+                assertEquals(label, kind.equals("websocket") ? 2 : 1, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
                 List<Button> buttons = new ArrayList<>(); collect(viewer, Button.class, buttons);
+                buttons.removeAll(hidden(buttons));
                 assertEquals(label, 1, buttons.size());
                 for (Button button : buttons) {
                     assertTrue(label, button.getHeight() >= dp(context, 48));
@@ -56,7 +57,8 @@ public final class InspectorLayoutTest {
                     assertTrue(label, button.getHeight() >= button.getLayout().getHeight() + button.getCompoundPaddingTop() + button.getCompoundPaddingBottom());
                 }
                 List<android.widget.ImageButton> icons = new ArrayList<>(); collect(viewer, android.widget.ImageButton.class, icons);
-                assertEquals(label, 2, icons.size());
+                icons.removeAll(hidden(icons));
+                assertEquals(label, kind.equals("breadcrumb") ? 2 : 1, icons.size());
                 for (android.widget.ImageButton icon : icons) {
                     assertTrue(label, icon.getWidth() >= dp(context, 48));
                     assertTrue(label, icon.getHeight() >= dp(context, 48));
@@ -66,10 +68,6 @@ public final class InspectorLayoutTest {
                 list.setSelectionFromTop(list.getHeaderViewsCount(), 0); layout(viewer, width, height);
                 View row = list.getChildAt(list.getHeaderViewsCount() - list.getFirstVisiblePosition());
                 assertNotNull(label, row); assertTrue(label, row.getBottom() > 0 && row.getTop() < list.getHeight());
-                search.setText("no-match"); layout(viewer, width, height);
-                assertEquals(label, 0, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
-                assertEquals(label, View.VISIBLE, list.getVisibility());
-                assertTrue(label, list.getHeight() >= dp(context, 48));
                 assertFalse(label, list.getAdapter().isEnabled(0));
                 // A header click has no data row, even if dispatched directly by a host.
                 list.performItemClick(null, 0, 0);
@@ -84,20 +82,23 @@ public final class InspectorLayoutTest {
             case "log": {
                 MemoryLogStore store = new MemoryLogStore(); LogRecorder recorder = new LogRecorder(store, capture);
                 assertEquals(LogRecorder.Result.RECORDED, recorder.record(LogLevel.INFO, "layout", LogMessage.publicText("Synthetic layout evidence")));
-                return new LogInspectorView(context, recorder, store);
+                LogInspectorView.State state = new LogInspectorView.State(); state.snapshot = store.snapshot();
+                return new LogInspectorView(context, recorder, store, state);
             }
             case "http": {
                 MemoryHTTPStore store = new MemoryHTTPStore(); HTTPRecorder recorder = new HTTPRecorder(store, capture, new HTTPPrivacyPolicy());
                 HTTPRecorder.Token token = recorder.begin("GET", "https://example.com", Collections.emptyList()).token;
                 assertNotNull(token); assertEquals(HTTPRecorder.Result.RECORDED, recorder.receiveResponse(token, 200, Collections.emptyList(), false));
                 assertEquals(HTTPRecorder.Result.RECORDED, recorder.finish(token, HTTPEvent.State.COMPLETED, null, true, true));
-                return new HTTPInspectorView(context, recorder, store);
+                NetworkInspectorView.State state = new NetworkInspectorView.State(); state.http = store.snapshot();
+                return new NetworkInspectorView(context, recorder, store, null, null, state);
             }
             case "websocket": {
                 MemoryWebSocketStore store = new MemoryWebSocketStore(); WebSocketRecorder recorder = new WebSocketRecorder(store, capture, new WebSocketPrivacyPolicy());
                 WebSocketRecorder.Token token = recorder.begin("wss://example.com", Collections.emptyList(), WebSocketEvent.Source.HOST).token;
                 assertNotNull(token); assertEquals(WebSocketRecorder.Result.RECORDED, recorder.lifecycle(token, WebSocketEvent.Kind.CLOSED, Collections.emptyList(), null, 1000, null));
-                return new WebSocketInspectorView(context, recorder, store);
+                NetworkInspectorView.State state = new NetworkInspectorView.State(); state.sockets = store.snapshot();
+                return new NetworkInspectorView(context, null, null, recorder, store, state);
             }
             default: {
                 MemoryBreadcrumbStore store = new MemoryBreadcrumbStore(); BreadcrumbRecorder recorder = new BreadcrumbRecorder(store, capture);
@@ -105,6 +106,9 @@ public final class InspectorLayoutTest {
                 return new BreadcrumbInspectorView(context, recorder, store);
             }
         }
+    }
+    private static <T extends View> List<T> hidden(List<T> views) {
+        List<T> result = new ArrayList<>(); for (T view : views) if (view.getVisibility() != View.VISIBLE) result.add(view); return result;
     }
     private static void layout(View view, int width, int height) {
         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));

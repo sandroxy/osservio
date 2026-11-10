@@ -70,7 +70,14 @@ final class IncidentEvidenceView extends LinearLayout {
     private int count() { return logs != null ? logs.events.size() : http != null ? http.events.size() : sockets.events.size(); }
     private List<InspectorFilterSheet.Group> groups() {
         if (logs != null) return InspectorFilterOptions.logs(getContext(), logs.events);
-        if (http != null) return InspectorFilterOptions.network(getContext(), http.events, java.util.Collections.emptyList(), 1, query);
+        if (http != null) {
+            List<InspectorFilterSheet.Group> groups = InspectorFilterOptions.network(getContext(), http.events, java.util.Collections.emptyList(), query);
+            java.util.Iterator<InspectorFilterSheet.Group> iterator = groups.iterator();
+            while (iterator.hasNext()) { InspectorQuery.Field field = iterator.next().field;
+                if (field == InspectorQuery.Field.TRANSPORT || field == InspectorQuery.Field.DIRECTION || field == InspectorQuery.Field.KIND || field == InspectorQuery.Field.CONNECTION) iterator.remove();
+            }
+            return groups;
+        }
         return InspectorFilterOptions.timeline(getContext());
     }
     private void filter() {

@@ -20,6 +20,7 @@ public final class WebSocketInspectorViewController: UITableViewController {
 
 @MainActor
 final class WebSocketDetailViewController: InspectorDetailViewController {
+    var showConnection: (() -> Void)?
     private let event: WebSocketEvent
     private let history: (any WebSocketHistory)?
     private let savedPayloads: [String: IncidentPayload]?
@@ -57,7 +58,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
             ], footer: noticeKey.map(InspectorLocalization.text)),
             Section(title: InspectorLocalization.text("ui_metadata"), rows: [
                 field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)),
-                field("ws_connection", event.connectionID), field("ws_event", event.id), field("ws_related", event.relatedMessageID),
+                Row(InspectorLocalization.text(showConnection == nil ? "ws_connection" : "ui_connection_context"), event.connectionID, action: showConnection), field("ws_event", event.id), field("ws_related", event.relatedMessageID),
                 field("http_session", event.sessionID + " · #\(event.sequence)")
             ], footer: InspectorLocalization.text("ws_evidence_note")),
             Section(title: InspectorLocalization.text("ws_headers"), rows: event.headers.isEmpty

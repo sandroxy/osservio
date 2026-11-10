@@ -35,8 +35,20 @@ final class InspectorFilterSheet {
     static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, Applied applied) {
         return show(context, original, groups, R.string.osservio_ui_time, applied);
     }
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, boolean payload, Applied applied) {
+        return show(context, original, groups, R.string.osservio_ui_time, payload, applied);
+    }
     static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, Applied applied) {
+        return show(context, original, groups, timeLabel, false, applied);
+    }
+    private static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, boolean payload, Applied applied) {
         InspectorQuery draft = original.copy();
+        boolean network = false, hasHTTP = false;
+        for (Group group : groups) {
+            if (group.field == InspectorQuery.Field.TRANSPORT || group.field == InspectorQuery.Field.DIRECTION) network = true;
+            if (group.field == InspectorQuery.Field.METHOD) hasHTTP = true;
+        }
+        final boolean networkQuery = network;
         Group time = new Group(null, context.getString(timeLabel))
             .option("0", context.getString(R.string.osservio_ui_time_all))
             .option("5", context.getString(R.string.osservio_ui_time_5))
@@ -90,13 +102,23 @@ final class InspectorFilterSheet {
             }
             adapter.notifyDataSetChanged();
         };
-        content.addView(InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", filter), new LinearLayout.LayoutParams(-1, -2));
-        TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_filter_hint);
-        content.addView(hint, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL);
+        header.addView(InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", filter), new LinearLayout.LayoutParams(-1, -2));
+        TextView hint = InspectorWidgets.caption(context); hint.setText(network ? R.string.osservio_ui_network_filter_hint : R.string.osservio_ui_filter_hint);
+        header.addView(hint, new LinearLayout.LayoutParams(-1, -2));
+        Conditions conditions = payload ? new Conditions(context, draft, hasHTTP, adapter::notifyDataSetChanged) : null;
+        if (conditions != null) {
+            header.addView(InspectorWidgets.button(context, R.string.osservio_ui_content_conditions,
+                () -> conditions.view.setVisibility(conditions.view.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE)), new LinearLayout.LayoutParams(-1, -2));
+            header.addView(conditions.view, new LinearLayout.LayoutParams(-1, -2));
+        }
+        list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         content.addView(list, new LinearLayout.LayoutParams(-1, 0, 1)); list.setAdapter(adapter);
         list.setOnItemClickListener((parent, view, position, id) -> {
-            Choice choice = choices.get(position); if (choice.key == null) return;
+            int index = position - list.getHeaderViewsCount(); if (index < 0 || index >= choices.size()) return;
+            Choice choice = choices.get(index); if (choice.key == null) return;
             if (choice.group.field == null) draft.recentMinutes = Integer.parseInt(choice.key);
+            else if (networkQuery) { draft.select(choice.group.field, choice.key.equals(ALL) ? null : choice.key); if (conditions != null) conditions.sync(); }
             else {
                 Set<String> selection = draft.values.get(choice.group.field);
                 if (selection == null) { selection = new HashSet<>(); draft.values.put(choice.group.field, selection); }
@@ -106,11 +128,62 @@ final class InspectorFilterSheet {
             adapter.notifyDataSetChanged();
         });
         InspectorScreen dialog = InspectorDialogs.panel(context, R.string.osservio_ui_filters, content);
-        dialog.showCancel();
-        dialog.action(R.string.osservio_ui_apply, () -> { applied.apply(draft); dialog.dismiss(); });
-        content.addView(InspectorWidgets.button(context, R.string.osservio_ui_reset, () -> {
-            draft.values.clear(); draft.recentMinutes = 0; adapter.notifyDataSetChanged();
-        }), 2, new LinearLayout.LayoutParams(-1, -2));
+        dialog.leadingAction(R.string.osservio_ui_reset, () -> {
+            draft.resetFilters(); if (conditions != null) conditions.sync(); adapter.notifyDataSetChanged();
+        });
+        dialog.action(R.string.osservio_ui_apply, () -> {
+            InspectorWidgets.hideKeyboard(content);
+            if (conditions != null && !conditions.valid()) {
+                android.widget.Toast.makeText(context, R.string.osservio_ui_field_invalid, android.widget.Toast.LENGTH_LONG).show(); return;
+            }
+            applied.apply(draft); dialog.dismiss();
+        });
         filter.changed(""); dialog.show(); return dialog;
     }
+    private static final class Conditions {
+        final LinearLayout view;
+        final android.widget.EditText exclude, path, value, duration;
+        private final InspectorQuery draft;
+        private boolean syncing;
+        Conditions(Context context, InspectorQuery draft, boolean hasHTTP, Runnable changed) {
+            this.draft = draft; view = new LinearLayout(context); view.setOrientation(LinearLayout.VERTICAL);
+            TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_field_hint); view.addView(hint);
+            exclude = input(context, R.string.osservio_ui_exclude, 512); path = input(context, R.string.osservio_ui_field_path, 256);
+            value = input(context, R.string.osservio_ui_field_value, 512); duration = input(context, R.string.osservio_ui_duration, 19);
+            duration.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            for (android.widget.EditText field : new android.widget.EditText[] {exclude, path, value, duration}) {
+                if (field != duration || hasHTTP) view.addView(field, new LinearLayout.LayoutParams(-1, -2));
+                field.addTextChangedListener(new android.text.TextWatcher() {
+                    @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
+                    @Override public void onTextChanged(CharSequence text, int start, int before, int count) { }
+                    @Override public void afterTextChanged(android.text.Editable text) {
+                        if (syncing || android.view.inputmethod.BaseInputConnection.getComposingSpanStart(text) >= 0) return;
+                        read(); changed.run();
+                    }
+                });
+            }
+            sync(); view.setVisibility(draft.fieldPath.isEmpty() && draft.excludedText.isEmpty() && draft.minimumDurationMillis == 0 ? View.GONE : View.VISIBLE);
+        }
+        private android.widget.EditText input(Context context, int hint, int limit) {
+            android.widget.EditText field = InspectorWidgets.search(context, hint, "", ignored -> { });
+            field.setCompoundDrawables(null, null, null, null);
+            field.setFilters(new android.text.InputFilter[] {new android.text.InputFilter.LengthFilter(limit)}); return field;
+        }
+        void sync() {
+            syncing = true; exclude.setText(draft.excludedText); path.setText(draft.fieldPath); value.setText(draft.fieldValue);
+            duration.setText(draft.minimumDurationMillis == 0 ? "" : Long.toString(draft.minimumDurationMillis)); syncing = false;
+        }
+        private void read() {
+            draft.excludedText = exclude.getText().toString(); draft.fieldPath = path.getText().toString(); draft.fieldValue = value.getText().toString();
+            long millis = 0; try { if (duration.length() > 0) millis = Long.parseLong(duration.getText().toString()); } catch (NumberFormatException invalid) { /* Validated on Apply. */ }
+            if (millis > 0) draft.select(InspectorQuery.Field.TRANSPORT, "http"); draft.minimumDurationMillis = Math.max(0, millis);
+        }
+        boolean valid() {
+            read();
+            if (!draft.fieldPath.isEmpty() && InspectorJsonField.components(draft.fieldPath) == null) return false;
+            try { return duration.length() == 0 || Long.parseLong(duration.getText().toString()) >= 0; }
+            catch (NumberFormatException invalid) { return false; }
+        }
+    }
+
 }

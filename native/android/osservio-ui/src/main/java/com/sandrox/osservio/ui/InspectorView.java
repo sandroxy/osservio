@@ -30,6 +30,10 @@ import java.util.Objects;
 // Runtime dependencies are explicit; XML inflation is not supported.
 @SuppressLint("ViewConstructor")
 public final class InspectorView extends FrameLayout {
+    @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+        InspectorKeyboardDismissal.outside(this, event); return super.dispatchTouchEvent(event);
+    }
+
     /** Lets a presenting host match its window bars to the inspector without changing the host theme. */
     public interface AppearanceListener { void changed(boolean dark); }
     private final LogRecorder logRecorder;

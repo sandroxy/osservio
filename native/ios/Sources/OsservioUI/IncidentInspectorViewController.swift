@@ -13,8 +13,8 @@ public final class IncidentInspectorViewController: UITableViewController {
     private let webSockets: (any WebSocketHistory)?
     private let exporter: (any IncidentExporter)?
     private let table = InspectorTableView(frame: .zero, style: .plain)
-    private let header = InspectorFeedHeader()
-    private let markButton = UIButton(type: .system), refreshButton = UIButton(type: .system)
+    private let header = InspectorFeedHeader(compact: true, actionLabel: "incident_delete_all")
+    private let markButton = UIButton(type: .system), retryButton = UIButton(type: .system)
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var snapshots: [IncidentSummary] = []
     private var filtered: [IncidentSummary] = []
@@ -24,6 +24,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private var updatedAt: Int64?
     private var notice = RuntimePresentation.text("incident_archive_hint")
     private var justSaved = false
+    private var retryNeeded = false
     public init(archive: any IncidentArchive, environment: any EnvironmentProvider, breadcrumbs: any BreadcrumbHistory,
                 logs: (any LogHistory)? = nil, http: (any HTTPHistory)? = nil, webSockets: (any WebSocketHistory)? = nil,
                 exporter: (any IncidentExporter)? = nil) {
@@ -37,10 +38,15 @@ public final class IncidentInspectorViewController: UITableViewController {
     public override func viewDidLoad() {
         super.viewDidLoad(); table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102
         table.keyboardDismissMode = .onDrag; table.tableHeaderView = header; header.pause.isHidden = true
-        header.extra.addArrangedSubview(InspectorControls(buttons: [markButton, refreshButton]))
+        header.extra.addArrangedSubview(markButton); header.extra.addArrangedSubview(retryButton)
+        markButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        retryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        NotificationCenter.default.addObserver(self, selector: #selector(foreground), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(foreground), name: InspectorSession.willExpand, object: nil)
         markButton.backgroundColor = InspectorTheme.tint; markButton.layer.cornerRadius = 10
         markButton.addTarget(self, action: #selector(markPressed), for: .touchUpInside)
-        refreshButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
+        retryButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
+        header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
         header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
@@ -49,14 +55,15 @@ public final class IncidentInspectorViewController: UITableViewController {
     private func relabel() {
         InspectorTheme.apply(self); title = InspectorLocalization.text("incident_title")
         header.search.placeholder = InspectorLocalization.text("ui_problem_search")
-        markButton.setTitle(InspectorLocalization.text("incident_mark"), for: .normal)
-        refreshButton.setTitle(InspectorLocalization.text("incident_refresh"), for: .normal); render()
+        markButton.setTitle("  " + InspectorLocalization.text("ui_record_problem"), for: .normal)
+        markButton.setImage(UIImage(systemName: "plus"), for: .normal)
+        retryButton.setTitle(InspectorLocalization.text("ui_retry"), for: .normal); render()
     }
     public override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); read() }
     public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); generation += 1; reading = false; view.endEditing(true) }
     private func read() {
         guard !reading else { return }
-        reading = true; generation += 1; let request = generation
+        reading = true; retryNeeded = false; generation += 1; let request = generation
         notice = RuntimePresentation.text("archive_reading"); render()
         archive.readIncidents { [weak self] result in
             Task { @MainActor [weak self] in
@@ -65,8 +72,7 @@ public final class IncidentInspectorViewController: UITableViewController {
                 switch result {
                 case .success(let snapshots):
                     self.snapshots = snapshots; self.updatedAt = Int64(Date().timeIntervalSince1970 * 1_000)
-                    self.notice = (self.justSaved ? RuntimePresentation.text("incident_saved") + "\n" : "")
-                        + RuntimePresentation.text("archive_loaded") + " · " + RuntimePresentation.date(self.updatedAt!)
+                    self.notice = self.justSaved ? RuntimePresentation.text("incident_saved") : ""
                     self.justSaved = false
                 case .failure(let error): self.failed(error)
                 }
@@ -75,6 +81,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         }
     }
     private func failed(_ error: PersistenceError) {
+        retryNeeded = true
         notice = PersistencePresentation.error(error)
         if let updatedAt { notice += "\n" + RuntimePresentation.text("runtime_previous") + " · " + RuntimePresentation.date(updatedAt) }
     }
@@ -82,27 +89,25 @@ public final class IncidentInspectorViewController: UITableViewController {
         filtered = snapshots.filter { query.matches($0, now: updatedAt ?? 0) }
         header.status.text = notice; header.relabel(paused: false, query: query)
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
-        markButton.isEnabled = !reading; refreshButton.isEnabled = !reading
+        markButton.isEnabled = !reading; retryButton.isEnabled = !reading; retryButton.isHidden = !retryNeeded
+        header.actions.isEnabled = !reading && !snapshots.isEmpty
         table.reloadData()
         table.setEmptyState(filtered.isEmpty ? InspectorTheme.empty(snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil)
     }
     @objc private func markPressed() { if !reading { mark() } }
     @objc private func refreshPressed() { read() }
     @objc private func showFilters() {
-        let kinds = ["manual", "managedCrash", "nativeCrash", "anr", "lowMemoryTermination", "signalTermination", "otherExit", "crash", "hang"]
+        let kinds = snapshots.map { $0.diagnosticKind?.rawValue ?? "manual" }.sorted()
         let groups = [InspectorFilterGroup(.record, values: kinds), InspectorFilterGroup(.source, values: ["manual", "system"])]
         let filters = InspectorFilterViewController(query: query, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
     }
-    @objc private func showActions() {
-        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
-            guard let self else { return }; self.inspectorNotice(PersistencePresentation.status(self.archive.persistenceStatus(), formatKey: "incident_status"))
-        })
-        var clear = InspectorActionPanel.Action(title: InspectorLocalization.text("incident_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
-        clear.isEnabled = !reading && !snapshots.isEmpty; menu.addAction(clear)
-        inspectorPresent(menu)
+    @objc private func showActions() { confirmDeletion(id: nil) }
+    @objc private func foreground() {
+        guard isViewLoaded, view.window?.isHidden == false, navigationController?.visibleViewController === self, presentedViewController == nil else { return }
+        read()
     }
+    deinit { NotificationCenter.default.removeObserver(self) }
     public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { filtered.count }
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let snapshot = filtered[indexPath.row]
@@ -138,7 +143,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         } catch { notice = RuntimePresentation.text("incident_mark_failed"); render() }
     }
     private func open(id: String) {
-        reading = true; generation += 1; let request = generation
+        reading = true; retryNeeded = false; generation += 1; let request = generation
         notice = RuntimePresentation.text("archive_reading"); render()
         archive.readIncident(id: id) { [weak self] result in
             Task { @MainActor [weak self] in

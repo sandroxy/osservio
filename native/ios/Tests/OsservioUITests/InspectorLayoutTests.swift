@@ -33,12 +33,12 @@ final class InspectorLayoutTests: XCTestCase {
                     let row = table.rectForRow(at: IndexPath(row: 0, section: 0))
                     XCTAssertTrue(row.intersects(table.bounds), label)
                     let header = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? InspectorFeedHeader }.first)
-                    for button in [header.pause, header.filters, header.actions] {
+                    for button in [header.pause, header.filters, header.actions] where !button.isHidden {
                         XCTAssertFalse((button.accessibilityLabel ?? "").isEmpty, label)
                         XCTAssertGreaterThanOrEqual(button.bounds.width, 44, label)
                         XCTAssertGreaterThanOrEqual(button.bounds.height, 44, label)
                     }
-                    let buttons = descendants(viewer.view).compactMap { $0 as? UIButton }.filter { $0.title(for: .normal) != nil }
+                    let buttons = descendants(viewer.view).compactMap { $0 as? UIButton }.filter { !$0.isHidden && $0.title(for: .normal) != nil }
                     for button in buttons {
                         XCTAssertGreaterThanOrEqual(button.bounds.height, 44, label)
                         let title = try XCTUnwrap(button.titleLabel)

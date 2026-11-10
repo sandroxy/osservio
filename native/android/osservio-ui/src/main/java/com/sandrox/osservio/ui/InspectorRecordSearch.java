@@ -71,15 +71,15 @@ final class InspectorRecordSearch {
             if (!query.excludedText.isEmpty() && record.contains(query.excludedText)) continue;
             if (metadata && query.fieldPath.isEmpty() && query.excludedText.isEmpty()) { result.keys.add(record.key()); continue; }
             if (spent >= unitLimit) { result.limited = true; continue; }
-            boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false;
+            boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = false;
             for (Payload payload : payloads(record, http, sockets)) {
                 if (cancelled.isCancelled()) return null;
                 String text = payload.text;
-                if (text == null) { result.unavailable++; continue; }
+                if (text == null) { result.unavailable++; exclusionUnknown = true; continue; }
                 int count = text.length();
-                if (count > InspectorJsonDocument.MAX_UNITS || count > unitLimit - spent) { result.limited = true; continue; }
+                if (count > InspectorJsonDocument.MAX_UNITS || count > unitLimit - spent) { result.limited = true; exclusionUnknown = true; continue; }
                 spent += count;
-                if (payload.truncated) result.truncated++;
+                if (payload.truncated) { result.truncated++; exclusionUnknown = true; }
                 if (!query.excludedText.isEmpty() && InspectorQuery.hasText(text, query.excludedText)) { excluded = true; break; }
                 boolean fieldMatches = true;
                 if (!query.fieldPath.isEmpty()) {
@@ -95,7 +95,7 @@ final class InspectorRecordSearch {
                     if (!result.previews.containsKey(record.key())) result.previews.put(record.key(), preview(text, query.text));
                 }
             }
-            if (matched && !excluded) result.keys.add(record.key()); else result.previews.remove(record.key());
+            if (matched && !excluded && (query.excludedText.isEmpty() || !exclusionUnknown)) result.keys.add(record.key()); else result.previews.remove(record.key());
         }
         return cancelled.isCancelled() ? null : result;
     }

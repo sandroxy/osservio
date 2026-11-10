@@ -19,7 +19,7 @@ final class InspectorDebugControl {
         this.context = context;
         for (CaptureController controller : supplied) if (controller != null && !controllers.contains(controller)) controllers.add(controller);
         button = InspectorWidgets.icon(context, R.drawable.osservio_debug, R.string.osservio_ui_debug_enable, this::toggle);
-        refresh();
+        InspectorAppearance.style(button, () -> { lastPresentation = null; refresh(); });
     }
     void refresh() {
         int enabled = 0; boolean busy = false, expired = false; long remaining = Long.MAX_VALUE;
@@ -40,9 +40,9 @@ final class InspectorDebugControl {
         if (presentation.equals(lastPresentation)) return;
         lastPresentation = presentation;
         button.setEnabled(!busy); button.setSelected(on);
-        button.setImageResource(on ? R.drawable.osservio_debug_on : R.drawable.osservio_debug);
-        button.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, on ? R.color.osservio_accent : R.color.osservio_tint), 24, false));
-        button.setImageTintList(ColorStateList.valueOf(on ? InspectorTheme.surface(context) : InspectorTheme.accent(context)));
+        button.setImageResource(R.drawable.osservio_debug);
+        button.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 24, false));
+        button.setImageTintList(ColorStateList.valueOf(on ? InspectorTheme.accent(context) : InspectorTheme.secondary(context)));
         button.setContentDescription(label);
         if (Build.VERSION.SDK_INT >= 30) button.setStateDescription(value);
         else button.setContentDescription(label + " · " + value);

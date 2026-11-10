@@ -107,8 +107,8 @@ final class InspectorRefreshTests: XCTestCase {
         defer { dismiss(window) }
         viewer.beginAppearanceTransition(true, animated: false); viewer.endAppearanceTransition()
         try await waitUntil { probe.readCount("log") > 0 }
-        let pause = try XCTUnwrap(button(in: viewer.view, title: RuntimePresentation.text("ui_pause")))
-        try activate(pause)
+        viewer.scrollViewWillBeginDragging(viewer.tableView)
+        let pause = try XCTUnwrap(button(in: viewer.view, title: RuntimePresentation.text("ui_follow_latest")))
         XCTAssertEqual(pause.accessibilityLabel, RuntimePresentation.text("ui_follow_latest"))
         let frozen = probe.readCount("log")
         NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)

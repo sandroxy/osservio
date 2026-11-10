@@ -13,30 +13,27 @@ struct InspectorFilterGroup {
 }
 
 enum InspectorFilterOptions {
-    static let httpStates: [HTTPState] = [.pending, .receiving, .completed, .failed, .cancelled, .closedEarly, .captureEnded]
     static let socketKinds: [WebSocketKind] = [.connecting, .attached, .opened, .message, .messageResult, .closeRequested,
         .closing, .closed, .failed, .cancelled, .cancelRequested, .observationEnded, .observationLimited]
     static func logs(_ events: [LogEvent]) -> [InspectorFilterGroup] {
         [InspectorFilterGroup(.level, values: LogLevel.allCases.map(\.rawValue)),
          InspectorFilterGroup(.category, values: events.map(\.category).sorted())]
     }
-    static func network(_ events: [HTTPEvent], connections: [InspectorConnection], scope: Int, query: InspectorQuery) -> [InspectorFilterGroup] {
-        let urls = (scope == 2 ? [] : events.map(\.url)) + (scope == 1 ? [] : connections.map { $0.latest.url })
-        let sources = (scope == 2 ? [] : events.map { $0.source.rawValue }) + (scope == 1 ? [] : connections.map { $0.latest.source.rawValue })
-        var result = [InspectorFilterGroup(.host, values: urls.map(InspectorQuery.host).sorted())]
-        if Set(sources).count > 1 || !(query.values[.source]?.isEmpty ?? true) {
-            result.append(InspectorFilterGroup(.source, values: sources.sorted()))
-        }
-        if scope == 1 {
-            result += [InspectorFilterGroup(.method, values: events.map(\.method).sorted()),
-                       InspectorFilterGroup(.content, values: InspectorHTTPContent.categories),
-                       InspectorFilterGroup(.state, values: httpStates.map(\.rawValue)),
-                       InspectorFilterGroup(.status, values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"])]
-        } else if scope == 2 {
-            result.append(InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_connection_state"),
-                values: socketKinds.filter { $0 != .message && $0 != .messageResult }.map(\.rawValue) + ["unknown"]))
-        }
-        return result
+    static func network(_ events: [HTTPEvent], sockets: [WebSocketEvent], query: InspectorQuery,
+                        includeHTTP: Bool = true, includeSockets: Bool = true) -> [InspectorFilterGroup] {
+        var result = [InspectorFilterGroup(.transport, values: (includeHTTP ? ["http"] : []) + (includeSockets ? ["webSocket"] : [])),
+            InspectorFilterGroup(.host, values: (events.map(\.url) + sockets.map(\.url)).map(InspectorQuery.host).sorted())]
+        let sources = Set(events.map { $0.source.rawValue } + sockets.map { $0.source.rawValue })
+        if sources.count > 1 || !(query.values[.source]?.isEmpty ?? true) { result.append(InspectorFilterGroup(.source, values: sources.sorted())) }
+        result += [InspectorFilterGroup(.method, title: InspectorLocalization.text("ui_http_method"), values: events.map(\.method).sorted()),
+            InspectorFilterGroup(.status, title: InspectorLocalization.text("ui_http_status"), values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"]),
+            InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_http_state"), values: events.map { $0.state.rawValue }.sorted()),
+            InspectorFilterGroup(.content, title: InspectorLocalization.text("ui_http_content"), values: events.map { InspectorHTTPContent.category($0.responseHeaders) }.sorted()),
+            InspectorFilterGroup(.direction, title: InspectorLocalization.text("ui_socket_direction"), values: ["incoming", "outgoing", "none"]),
+            InspectorFilterGroup(.kind, title: InspectorLocalization.text("ui_socket_kind"), values: sockets.map { $0.kind.rawValue }.sorted()),
+            InspectorFilterGroup(.connection, values: sockets.map(\.connectionID).sorted())]
+        return result.filter { (includeHTTP || !InspectorQuery.httpFields.contains($0.field)) &&
+            (includeSockets || !InspectorQuery.socketFields.contains($0.field)) }
     }
     static func timeline() -> [InspectorFilterGroup] {
         [InspectorFilterGroup(.direction, values: ["incoming", "outgoing", "none"]),
@@ -45,6 +42,7 @@ enum InspectorFilterOptions {
     static func label(_ field: InspectorQuery.Field, _ value: String) -> String {
         if value.isEmpty || value == "unknown" { return InspectorLocalization.text("ui_unknown") }
         switch field {
+        case .transport: return value == "http" ? "HTTP" : "WebSocket"
         case .content: return InspectorLocalization.text("ui_content_" + value)
         case .level: return value == "warning" ? "WARN" : value.uppercased()
         case .state:
@@ -71,6 +69,9 @@ enum InspectorFilterOptions {
             return InspectorLocalization.text("ui_" + field.rawValue) + ": " + labels.joined(separator: ", ") + (values.count > 2 ? " +\(values.count - 2)" : "")
         }
         if query.recentMinutes > 0 { parts.append(InspectorLocalization.text("ui_time_\(query.recentMinutes)")) }
+        if !query.excludedText.isEmpty { parts.append(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText) }
+        if !query.fieldPath.isEmpty { parts.append(query.fieldPath + " = " + query.fieldValue) }
+        if query.minimumDurationMillis > 0 { parts.append("HTTP ≥ \(query.minimumDurationMillis) ms") }
         return parts.isEmpty ? InspectorLocalization.text("ui_no_filters") : parts.joined(separator: " · ")
     }
 }

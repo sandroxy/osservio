@@ -17,7 +17,7 @@ final class InspectorDebugControl: NSObject {
         super.init()
     }
     func item() -> UIBarButtonItem {
-        let button = UIButton(type: .system)
+        let button = UIButton(type: .custom)
         button.widthAnchor.constraint(equalToConstant: 44).isActive = true
         button.heightAnchor.constraint(equalToConstant: 44).isActive = true
         button.accessibilityIdentifier = "Osservio.Debug"
@@ -40,9 +40,9 @@ final class InspectorDebugControl: NSObject {
         let signature = value + label + InspectorPreferences.shared.appearance.rawValue
         guard signature != lastPresentation else { return }; lastPresentation = signature
         for button in buttons {
-            button.setImage(UIImage(systemName: enabled ? "ladybug.fill" : "ladybug"), for: .normal)
-            button.backgroundColor = enabled ? InspectorTheme.accent : InspectorTheme.tint
-            button.tintColor = enabled ? InspectorTheme.surface : InspectorTheme.accent
+            button.setImage(UIImage(systemName: "ladybug"), for: .normal)
+            button.backgroundColor = InspectorTheme.surface
+            button.tintColor = enabled ? InspectorTheme.accent : InspectorTheme.secondary
             button.layer.cornerRadius = 22
             button.isEnabled = !busy; button.isSelected = enabled
             button.accessibilityTraits = enabled ? [.button, .selected] : .button

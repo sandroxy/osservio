@@ -7,30 +7,32 @@ recorders, histories, environment provider and optional archives.
 | Destination | Contents |
 | --- | --- |
 | Logs | Live log records, search, level/category filters and individual details |
-| Network | All, HTTP and WebSocket scopes; HTTP exchanges and WebSocket connections |
+| Network | HTTP exchanges and Socket observations in one searchable feed |
 | Problems | Saved manual snapshots and recovered system reports, with immutable evidence |
 | App | App/device facts, the current breadcrumb timeline, saved runs, inspector preferences and capture status |
 
-WebSocket connections open an observation timeline, then individual event
-details. They are not separate top-level destinations. A missing optional
-provider or archive is shown as unconfigured; opening a page does not initialize
-a collector or enable persistence.
+Socket messages are searchable across retained connections. An individual message
+opens its evidence details, with a link to records from that connection. A missing
+optional provider or archive is shown as unconfigured; opening a page does not
+initialize a collector or enable persistence.
 
-The full-screen workspace separates Back from Minimize. Search and filtering
-share a row; capture/reading status and icon actions form a separate row.
-Protocol scopes use a single-choice segmented control. Language and appearance
-open dedicated settings pages. Short contextual actions use panels; filters and
-problem forms use a retained full-screen editing page with explicit Save.
-Filters use a temporary sheet with Cancel and Apply. Destructive actions
-retain confirmation. Platform alerts and system share interfaces keep their own
-native dismissal behavior.
+The full-screen workspace separates Back from Minimize. Search and its filter
+button share one row. Removable criteria and a compact result summary keep the
+active query visible; the trash action clears the destination with confirmation.
+Language and appearance open dedicated settings pages. Filters use a temporary
+sheet with Reset and Apply: Reset edits the draft, and only Apply changes the
+active query. Swipe the handle, tap outside, or use the platform's dismissal
+mechanism to discard it. Problem composition uses a retained full-screen page
+with explicit Save. Platform alerts and system share interfaces keep their native
+behavior. Tapping outside an SDK input dismisses its keyboard without consuming
+the target control's action; host application inputs are unaffected.
 
 ## Debug control and navigation
 
 A bug button at the top left of each root destination controls the same debug
 state. It is absent from child pages; Back occupies that position instead.
-A filled icon and selected background indicate enabled debugging, with localized
-action and state descriptions. List status and App capture status expose an
+Only the bug glyph changes color; its neutral container stays the same. Localized
+action and state descriptions, together with App capture status, expose an
 optional auto-off countdown and expiry. Busy controls are not treated as off.
 The host chooses the initial state and optional deadline through
 [`CaptureController`](logging.md); UI choices are process-local and do not change
@@ -45,81 +47,75 @@ Both platforms keep the tab bar available for ordinary read-only details. Each
 tab retains its own navigation stack, while covered lists and readers suspend
 polling and pending parsing. Temporary panels and full-screen editing tasks cover
 the tab bar. More panels dismiss by native swipe/backdrop or an accessible dismiss
-action; Android also provides a draggable handle. Filters retain explicit Cancel
-because their changes are provisional. Copy and Back use icons with contextual
+action; Android also provides a draggable handle. Filter drafts remain provisional
+until Apply. Copy and Back use icons with contextual
 accessibility labels; Apply and Save retain their primary-action text.
 
 ## Reading and filtering
 
-Live lists show their current capture state, pause control, search, filters and
-result count. These controls scroll with the list so that short windows and
-large text retain space for records. More actions contains capacity information
-and confirmed clearing of the relevant live history.
-In Network, All clears both supplied histories, HTTP clears requests, and
-WebSocket clears socket observations. Clearing from a connection timeline affects
-the entire WebSocket history, not only the displayed connection.
+Logs and Network show search, filters, result counts and a direct trash action.
+They have no permanent play/pause or More controls. Controls scroll with the feed
+so short windows and large text retain reading space. Capacity eviction and rate
+limits appear as loss notices when relevant. Clearing affects the destination's
+entire live history, including hidden records, independently of filters. Network
+clears both supplied histories. Connection-only pages do not offer clearing.
+Problems deletes saved evidence with a separate confirmation.
 
-Scrolling pauses live updates for reading. Return to latest resumes them.
-Pausing or closing the inspector does not stop capture; records can still be
-evicted from their bounded stores. Hidden lists stop polling. A failed metadata
-read keeps the last available window with an explicit notice. Network details
-preserve the record selected on entry, without polling or a refresh/retry action.
-Return to the list and reopen a record to inspect its latest retained state.
-Returning from a body reader or restoring a minimized session keeps that same
-detail snapshot. Opening a detail never resends an HTTP request or socket message.
+Scrolling freezes the reading window while capture continues. Back to latest,
+or ending a scroll at the top, resumes updates. Bounded stores may still evict
+content while a reader is paused. Hidden lists stop polling and cancel content
+search. Failed metadata reads keep the previous window with an explicit notice.
+Network details preserve the selected entry-time record, without a refresh action.
+Return to the list and reopen for the latest retained state. Opening any detail
+never resends a request or a Socket message.
 
-The three Network scopes keep separate search text, filters and scroll positions
-while the inspector remains open. HTTP-only criteria never silently filter the
-All or WebSocket scope. Switching tabs or changing the inspector language or
-appearance preserves the current list queries and pause state.
+Network has one search and one filter draft. Type, host, time and protocol-specific
+criteria are edited together. Selecting an HTTP-specific condition chooses HTTP
+and removes Socket-only conditions, and vice versa. All clears protocol-specific
+criteria while preserving common text, host and time conditions. Switching tabs,
+minimizing, or changing language and appearance preserves the query and reading
+position. Reset clears filters and content conditions while retaining the main
+search text.
 
 | View | Filter dimensions |
 | --- | --- |
-| Logs | Level, category, time |
-| Network: All | Host, source when relevant, time |
-| Network: HTTP | Host, source when relevant, method, response type, observed state, HTTP status class, time |
-| Network: WebSocket | Host, source when relevant, last observed connection state, time |
-| WebSocket timeline | Event type, direction or connection events, time |
-| Problems | Record type, manual/system source, record time |
-| Current breadcrumbs | Event type, time |
+| Logs | Level, host-supplied category, time, text exclusion and optional JSON field |
+| Network, common | HTTP/Socket type, host, source when relevant, time, content search and exclusion, optional JSON field |
+| HTTP | Method, status class, observed transport state, response type, minimum observed duration |
+| Socket | Message direction, observed record kind and connection ID |
+| Problems | Observed problem kind, manual/system source, record time and note/identifier search |
 
-Select any number of values within a dimension: they are joined with **OR**.
-Different dimensions and the search text are joined with **AND**. For example,
-WARN or ERROR in category `checkout` means `(WARN OR ERROR) AND checkout`.
-All, or no selected values, removes that dimension's restriction. Time is a
-single choice: any time, last 5 minutes, last 30 minutes, last hour or last day.
-Changes in the filter sheet remain a draft until Apply. Cancel, swipe dismissal and explicit inspector collapse
-discard them. Reset filters resets that draft without clearing the list's search text.
-Searching the sheet narrows its options, not the records themselves.
+Values within a field are alternatives; fields intersect. Categories, hosts,
+connections and observed record kinds come from retained records; selected values
+remain editable even after their examples disappear. A category is an exact
+host-defined identifier, not a runtime or content-format classification. The SDK
+does not recognize sample hosts or interpret application protocols. Framework log
+provenance awaits the corresponding adapters.
 
-Category, host and method choices come from the retained metadata. An active
-choice remains visible even after its records leave that window. Source is
-offered when multiple sources are present or a source filter is already active.
-Search and filtering never recover uncaptured or evicted evidence.
+HTTP response types use retained response Content-Type metadata only. Missing,
+malformed or conflicting values remain Unknown. No URL suffix or body shape is
+used to infer Fetch/XHR, an API call, or a business result. A completed 503 can
+match Completed and 5xx simultaneously; it is not a transport failure. Socket
+send admission, send completion, incoming messages and lifecycle events remain
+distinct observations. They do not prove peer receipt or current connection state.
 
-Response type is available in the HTTP scope: JSON, text/XML, images, audio/video,
-other and unknown. It uses retained response `Content-Type` metadata only, without
-reading bodies. Missing, malformed or conflicting header values remain unknown.
-A JSON request, URL suffix or transport source does not establish the response
-type or make a request an “API” call. The three primary scopes describe native
-interaction types; browser-specific Fetch/XHR classifications are not inferred.
-
-An HTTP status class and an observed request state are independent. A completed
-503 response can match both Completed and 5xx; it is not a transport failure.
-No status received differs from a non-success response. WebSocket connection
-state is the last retained lifecycle observation. Missing lifecycle evidence is
-Unknown, and message results do not establish whether a socket is still open.
-
-Time uses the record's wall-clock timestamp. Connection lists use the first
-retained observation, which is not necessarily the original connection start.
-A paused view keeps its time-window anchor fixed. Problems uses the snapshot's
-record/mark time, or the recovery record time for system evidence. The underlying
-failure time or reporting interval remains separate in the saved detail.
+Time uses each observation's wall-clock timestamp. A paused window keeps its time
+anchor fixed. Problems filters use record/recovery time; historical failure time
+remains separate in saved details. Problems refreshes on appearance, foregrounding,
+save and deletion, with Retry available after a read failure, rather than polling
+the archive or providing a permanent refresh control.
 
 ## Details and content
 
-Lists search log text or network metadata, never network bodies. HTTP details
-separate Overview, Request and Response. WebSocket details separate event
+Live list searches include retained sanitized log content, HTTP request/response
+bodies and Socket payloads. Matches can show a short content excerpt. Search is
+literal and case-insensitive; optional JSON Pointer conditions match an explicitly
+specified scalar exactly without guessing its business meaning. A partial-coverage
+notice distinguishes missing, truncated or budget-limited content from a complete
+no-match result. Search does not collect additional content or create a persistent
+body index. See [query semantics and limits](inspector-query.md).
+
+HTTP details separate Overview, Request and Response. WebSocket details separate event
 metadata and payload. Selecting a section displays metadata and content state;
 Open reader performs the explicit body or payload lookup.
 

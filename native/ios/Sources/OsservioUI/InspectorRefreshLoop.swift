@@ -7,6 +7,7 @@ final class InspectorRefreshLoop: NSObject {
     private weak var view: UIView?
     private weak var suspendedScene: UIScene?
     private let refresh: () -> Void
+    var suspended: (() -> Void)?
     private var visible = false
     private var applicationSuspended = false
     private var presentationSuspended = false
@@ -66,6 +67,7 @@ final class InspectorRefreshLoop: NSObject {
     private func stopTimer() {
         generation &+= 1
         timer?.invalidate(); timer = nil
+        suspended?()
     }
     @objc private func applicationDeactivated() {
         // "Will" notifications precede the state transition. Stop immediately instead of rereading the old state.

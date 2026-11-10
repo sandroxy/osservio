@@ -50,3 +50,7 @@ Missing, omitted, busy, truncated and uninspectable content, and exhausted query
 budgets, must be reported as incomplete coverage. A result count is not a claim
 about all historical application activity. Resource limits are safeguards, not
 physical-device performance measurements.
+
+An exclusion condition requires complete searchable content. A record with missing
+or truncated content is not returned as proof that the excluded text is absent;
+the partial-coverage notice remains visible.

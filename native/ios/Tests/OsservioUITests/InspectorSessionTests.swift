@@ -90,7 +90,7 @@ final class InspectorSessionTests: XCTestCase {
     }
 
     @MainActor
-    func testTransientFilterHasCancelAndApplyWithoutSessionMinimize() throws {
+    func testTransientFilterHasResetAndApplyWithoutSessionMinimize() throws {
         let sources = try Sources(), host = hostWindow()
         let session = InspectorSession(window: host) { sources.makeInspector() }
         defer { session.dispose(); host.isHidden = true; host.rootViewController = nil; _ = sources.capture.stopAll() }
@@ -99,7 +99,7 @@ final class InspectorSessionTests: XCTestCase {
         let navigation = InspectorNavigationController(rootViewController: filter)
         navigation.transientPanel = true; navigation.session = session
         navigation.loadViewIfNeeded(); filter.loadViewIfNeeded()
-        XCTAssertEqual(filter.navigationItem.leftBarButtonItem?.accessibilityLabel, InspectorLocalization.text("archive_cancel"))
+        XCTAssertEqual(filter.navigationItem.leftBarButtonItem?.title, InspectorLocalization.text("ui_reset"))
         XCTAssertEqual(filter.inspectorPrimaryAction?.title, InspectorLocalization.text("ui_apply"))
         XCTAssertFalse(filter.navigationItem.rightBarButtonItems?.contains { $0.accessibilityIdentifier == "Osservio.Minimize" } ?? false)
         XCTAssertFalse(applied)

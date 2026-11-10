@@ -52,7 +52,9 @@ final class InspectorRecordSearchTests: XCTestCase {
         let records = [InspectorSearchRecord.socket(event)]
         var query = InspectorQuery(); query.text = "example.test"
         XCTAssertEqual(search(records, query, history)?.keys.count, 1); XCTAssertEqual(history.reads, 0)
-        query.text = "present"
+        query.text = "example.test"; query.excludedText = "secret"
+        XCTAssertTrue(search(records, query, history)?.keys.isEmpty == true, "Missing content cannot prove absence")
+        query.excludedText = ""; query.text = "present"
         let result = try XCTUnwrap(search(records, query, history)); XCTAssertTrue(result.keys.isEmpty); XCTAssertEqual(result.unavailable, 1)
     }
     func testRecentConnectionUsesLatestActivity() throws {

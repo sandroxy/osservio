@@ -24,39 +24,43 @@ final class InspectorFilterOptions {
         groups.add(strings(context, InspectorQuery.Field.CATEGORY, R.string.osservio_ui_category, categories));
         return groups;
     }
-    static List<InspectorFilterSheet.Group> network(Context context, List<HTTPEvent> http, List<InspectorQuery.Connection> sockets, int scope, InspectorQuery query) {
+    static List<InspectorFilterSheet.Group> network(Context context, List<HTTPEvent> http, List<WebSocketEvent> sockets, InspectorQuery query) {
+        return network(context, http, sockets, query, true, true);
+    }
+    static List<InspectorFilterSheet.Group> network(Context context, List<HTTPEvent> http, List<WebSocketEvent> sockets, InspectorQuery query,
+                                                   boolean includeHTTP, boolean includeSockets) {
         List<InspectorFilterSheet.Group> groups = new ArrayList<>();
-        Set<String> hosts = new TreeSet<>(), sources = new TreeSet<>();
-        if (scope != 2) for (HTTPEvent event : http) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); }
-        if (scope != 1) for (InspectorQuery.Connection connection : sockets) {
-            hosts.add(InspectorQuery.host(connection.latest.url)); sources.add(connection.latest.source.name());
-        }
+        InspectorFilterSheet.Group transport = group(context, InspectorQuery.Field.TRANSPORT, R.string.osservio_ui_transport);
+        if (includeHTTP) transport.option("http", "HTTP"); if (includeSockets) transport.option("webSocket", "WebSocket"); groups.add(transport);
+        Set<String> hosts = new TreeSet<>(), sources = new TreeSet<>(), methods = new TreeSet<>(), connections = new TreeSet<>();
+        Set<HTTPEvent.State> states = new TreeSet<>(); Set<WebSocketEvent.Kind> kinds = new TreeSet<>(); Set<String> contents = new TreeSet<>();
+        for (HTTPEvent event : http) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); methods.add(event.method); states.add(event.state); contents.add(InspectorHTTPContent.category(event.responseHeaders)); }
+        for (WebSocketEvent event : sockets) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); connections.add(event.connectionId); kinds.add(event.kind); }
         groups.add(strings(context, InspectorQuery.Field.HOST, R.string.osservio_ui_host, hosts));
         if (sources.size() > 1 || (query.values.containsKey(InspectorQuery.Field.SOURCE) && !query.values.get(InspectorQuery.Field.SOURCE).isEmpty())) {
             InspectorFilterSheet.Group source = group(context, InspectorQuery.Field.SOURCE, R.string.osservio_ui_source);
             for (String key : sources) source.option(key, source(context, key)); groups.add(source);
         }
-        if (scope == 1) {
-            InspectorFilterSheet.Group content = group(context, InspectorQuery.Field.CONTENT, R.string.osservio_ui_content);
-            int[] labels = {R.string.osservio_ui_content_json, R.string.osservio_ui_content_text, R.string.osservio_ui_content_image,
-                R.string.osservio_ui_content_media, R.string.osservio_ui_content_other, R.string.osservio_ui_content_unknown};
-            for (int i = 0; i < labels.length; i++) content.option(InspectorHTTPContent.CATEGORIES[i], context.getString(labels[i]));
-            groups.add(content);
-            Set<String> methods = new TreeSet<>(); for (HTTPEvent event : http) methods.add(event.method);
-            groups.add(strings(context, InspectorQuery.Field.METHOD, R.string.osservio_ui_method, methods));
-            InspectorFilterSheet.Group states = group(context, InspectorQuery.Field.STATE, R.string.osservio_ui_state);
-            for (HTTPEvent.State state : HTTPEvent.State.values()) states.option(state.name(), HTTPPresentation.state(context, state));
-            groups.add(states);
-            InspectorFilterSheet.Group codes = group(context, InspectorQuery.Field.STATUS, R.string.osservio_ui_status);
+        if (includeHTTP) {
+            groups.add(strings(context, InspectorQuery.Field.METHOD, R.string.osservio_ui_http_method, methods));
+            InspectorFilterSheet.Group codes = group(context, InspectorQuery.Field.STATUS, R.string.osservio_ui_http_status);
             for (int i = 1; i <= 5; i++) codes.option(i + "xx", i + "xx");
             codes.option("none", context.getString(R.string.osservio_ui_no_status)); groups.add(codes);
-        } else if (scope == 2) {
-            InspectorFilterSheet.Group states = group(context, InspectorQuery.Field.STATE, R.string.osservio_ui_connection_state);
-            for (WebSocketEvent.Kind kind : WebSocketEvent.Kind.values()) {
-                if (kind != WebSocketEvent.Kind.MESSAGE && kind != WebSocketEvent.Kind.MESSAGE_RESULT)
-                    states.option(kind.name(), WebSocketPresentation.kind(context, kind));
-            }
-            states.option("unknown", context.getString(R.string.osservio_ui_unknown)); groups.add(states);
+            InspectorFilterSheet.Group state = group(context, InspectorQuery.Field.STATE, R.string.osservio_ui_http_state);
+            for (HTTPEvent.State entry : states) state.option(entry.name(), HTTPPresentation.state(context, entry)); groups.add(state);
+            InspectorFilterSheet.Group content = group(context, InspectorQuery.Field.CONTENT, R.string.osservio_ui_http_content);
+            int[] labels = {R.string.osservio_ui_content_json, R.string.osservio_ui_content_text, R.string.osservio_ui_content_image,
+                R.string.osservio_ui_content_media, R.string.osservio_ui_content_other, R.string.osservio_ui_content_unknown};
+            for (int i = 0; i < labels.length; i++) if (contents.contains(InspectorHTTPContent.CATEGORIES[i])) content.option(InspectorHTTPContent.CATEGORIES[i], context.getString(labels[i]));
+            groups.add(content);
+        }
+        if (includeSockets) {
+            groups.add(group(context, InspectorQuery.Field.DIRECTION, R.string.osservio_ui_socket_direction)
+                .option("INCOMING", context.getString(R.string.osservio_ws_incoming)).option("OUTGOING", context.getString(R.string.osservio_ws_outgoing))
+                .option("none", context.getString(R.string.osservio_ui_no_direction)));
+            InspectorFilterSheet.Group kind = group(context, InspectorQuery.Field.KIND, R.string.osservio_ui_socket_kind);
+            for (WebSocketEvent.Kind entry : kinds) kind.option(entry.name(), WebSocketPresentation.kind(context, entry)); groups.add(kind);
+            groups.add(strings(context, InspectorQuery.Field.CONNECTION, R.string.osservio_ui_connection, connections));
         }
         return groups;
     }
@@ -101,6 +105,9 @@ final class InspectorFilterOptions {
                 : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440;
             parts.add(context.getString(label));
         }
+        if (!query.excludedText.isEmpty()) parts.add(context.getString(R.string.osservio_ui_exclude) + ": " + query.excludedText);
+        if (!query.fieldPath.isEmpty()) parts.add(query.fieldPath + " = " + query.fieldValue);
+        if (query.minimumDurationMillis > 0) parts.add("HTTP ≥ " + query.minimumDurationMillis + " ms");
         return parts.isEmpty() ? context.getString(R.string.osservio_ui_no_filters) : android.text.TextUtils.join(" · ", parts);
     }
 }

@@ -56,7 +56,8 @@ public final class InspectorRecordSearchTest {
         List<InspectorRecordSearch.Record> records = Collections.singletonList(new InspectorRecordSearch.Record(message(1, 10, "present", new History(), 100)));
         InspectorQuery query = new InspectorQuery(); query.text = "example.test";
         assertEquals(1, search(records, query, history, InspectorRecordSearch.MAX_UNITS).keys.size()); assertEquals(0, history.reads);
-        query.text = "present";
+        query.excludedText = "secret"; assertTrue(search(records, query, history, InspectorRecordSearch.MAX_UNITS).keys.isEmpty());
+        query.excludedText = ""; query.text = "present";
         InspectorRecordSearch.Result result = search(records, query, history, InspectorRecordSearch.MAX_UNITS);
         assertTrue(result.keys.isEmpty()); assertEquals(1, result.unavailable);
     }

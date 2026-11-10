@@ -27,7 +27,7 @@
 "ui_filters" = "筛选";
 "ui_filter_options" = "搜索筛选选项";
 "ui_apply" = "确定";
-"ui_reset" = "重置筛选";
+"ui_reset" = "重置";
 "ui_filter_hint" = "同组内满足任一选项，不同组之间同时满足。未选择表示不限。";
 "ui_no_filters" = "未设置筛选";
 "ui_all" = "全部";
@@ -62,17 +62,17 @@
 "ui_baseline" = "基础采集";
 "ui_detailed" = "详细采集";
 "ui_paused" = "阅读已暂停更新";
-"ui_follow_latest" = "返回最新";
+"ui_follow_latest" = "回到最新";
 "ui_pause" = "暂停更新";
 "ui_inactive_empty" = "调试尚未开启。可使用首页左上角的调试按钮，观察之后发生的日志与网络活动。";
 "ui_filtered_empty" = "没有符合条件的记录。可以修改搜索词或重置筛选。";
 "ui_waiting" = "等待新的记录";
 "ui_previous_window" = "当前显示上次取得的记录";
-"ui_network_search" = "搜索地址、方法或状态码";
+"ui_network_search" = "搜索地址、标识或正文";
 "ui_connection_state" = "最近观察到的连接状态";
 "ui_connection_hint" = "仅展示保留窗口中的观察结果，不能据此保证连接当前仍处于该状态。";
 "ui_network_clear" = "清空实时网络记录";
-"ui_clear_hint" = "仅清空当前实时记录；不改变采集状态，也不删除已保存的问题。";
+"ui_clear_hint" = "清空此页全部实时记录，包括被筛选隐藏的记录；不改变调试状态，也不删除已保存的问题。";
 "ui_problem_search" = "搜索备注或记录类型";
 "ui_problem_intro" = "保留现场，稍后分析";
 "ui_no_archive" = "宿主未提供问题存储";
@@ -123,3 +123,50 @@
 "ui_content_unknown" = "未确定";
 "ui_baseline_on" = "基础诊断开启";
 "ui_baseline_off" = "基础诊断关闭";
+
+"ui_transport" = "网络类型";
+
+"ui_connection" = "Socket 连接";
+
+"ui_content_conditions" = "正文条件";
+
+"ui_exclude" = "排除文本";
+
+"ui_field_path" = "JSON 字段路径，如 /data/id";
+
+"ui_field_value" = "字段值（精确匹配，可留空）";
+
+"ui_field_hint" = "仅检索已留存的脱敏正文。字段值按原文精确匹配，不解释业务含义；路径区分大小写。";
+
+"ui_field_invalid" = "请输入有效的 JSON 字段路径，以 / 开头，最多 16 层；时长须为非负整数。";
+
+"ui_duration" = "HTTP 最小时长（毫秒）";
+
+"ui_network_filter_hint" = "同组内任一匹配，组间同时满足。选择 HTTP 或 Socket 专属条件会切换类型；切回全部会清除专属条件。";
+
+"ui_searching" = "正在检索已留存内容…";
+
+"ui_search_partial" = "仅显示已检索范围：部分正文不可用、被截断或超出检索预算。";
+
+
+"ui_retention_loss" = "部分历史已因容量或限流被丢弃";
+
+"ui_remove_filter" = "移除此条件";
+
+"ui_connection_context" = "查看此连接的记录";
+
+"ui_socket_kind" = "Socket 记录类型";
+
+"ui_http_state" = "HTTP 传输状态";
+
+"ui_http_status" = "HTTP 状态码";
+
+"ui_http_content" = "HTTP 响应类型";
+
+"ui_http_method" = "HTTP 方法";
+
+"ui_socket_direction" = "Socket 消息方向";
+
+"ui_record_problem" = "记录问题";
+
+"ui_retry" = "重试";

@@ -7,6 +7,7 @@ enum InspectorTheme {
     static let canvas = pair(0xF5F6FA, 0x131720)
     static let surface = pair(0xFFFFFF, 0x1D2330)
     static let accent = pair(0x5146D8, 0xB4ADFF)
+    static let filledAccent = pair(0x5146D8, 0x5146D8)
     static let secondary = pair(0x626978, 0xAEB7C7)
     static let tint = pair(0xEEECFF, 0x302C48)
     static let jsonString = pair(0x26734F, 0x8BDDAE)
@@ -22,6 +23,7 @@ enum InspectorTheme {
     static func apply(_ controller: UIViewController) {
         let appearance: UIUserInterfaceStyle = InspectorPreferences.shared.appearance == .dark ? .dark : .light
         if controller.overrideUserInterfaceStyle != appearance { controller.overrideUserInterfaceStyle = appearance }
+        InspectorKeyboardDismissal.install(in: controller.view)
         controller.view.tintColor = accent
         controller.view.backgroundColor = canvas
         if let table = (controller as? UITableViewController)?.tableView {
@@ -92,7 +94,11 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     @objc private func minimize() { session?.collapse() }
     private func tintItems(_ controller: UIViewController) {
         let items = (controller.navigationItem.leftBarButtonItems ?? []) + (controller.navigationItem.rightBarButtonItems ?? [])
-        for item in items { item.tintColor = InspectorTheme.accent }
+        for item in items {
+            item.tintColor = InspectorTheme.accent
+            // Modern done buttons use tint as a solid fill behind a white title.
+            if #available(iOS 26, *), item.style == .done { item.tintColor = InspectorTheme.filledAccent }
+        }
         controller.inspectorMinimalBackTitle()
     }
     private func updateStyle() {

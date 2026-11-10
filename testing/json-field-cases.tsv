@@ -14,3 +14,5 @@ broken-json	unavailable	L2tpbmQ=	eA==	eyJraW5kIjoieCI=
 unpaired-surrogate	unavailable	L3ZhbHVl	eA==	eyJ2YWx1ZSI6Ilx1RDgwMCJ9
 null	yes	L3ZhbHVl	bnVsbA==	eyJ2YWx1ZSI6bnVsbH0=
 object	no	L3ZhbHVl	e30=	eyJ2YWx1ZSI6e319
+distinct_unicode_keys	yes	L8Op	Mg==	eyJlzIEiOjEsIsOpIjoyfQ==
+exact_unicode_value	no	L25hbWU=	w6k=	eyJuYW1lIjoiZcyBIn0=

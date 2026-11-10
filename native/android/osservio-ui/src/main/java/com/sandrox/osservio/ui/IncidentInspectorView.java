@@ -39,6 +39,10 @@ import java.util.Objects;
 /** Saved incident browsing and manual marking. The host owns persistence, histories, and presentation. */
 @SuppressLint("ViewConstructor")
 public final class IncidentInspectorView extends FrameLayout {
+    @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+        InspectorKeyboardDismissal.outside(this, event); return super.dispatchTouchEvent(event);
+    }
+
     static final class State {
         InspectorQuery query = new InspectorQuery();
         List<IncidentSummary> snapshots = Collections.emptyList();
@@ -49,9 +53,7 @@ public final class IncidentInspectorView extends FrameLayout {
     }
     private final State state;
     private final List<IncidentSummary> visible = new ArrayList<>();
-    private final TextView criteria;
-    private final TextView results;
-    private final Button filters;
+    private final InspectorFeedHeader header;
     private final IncidentArchive archive;
     private final EnvironmentProvider environment;
     private final BreadcrumbHistory breadcrumbs;
@@ -64,8 +66,9 @@ public final class IncidentInspectorView extends FrameLayout {
     private final TextView notice;
     private final TextView empty;
     private final Button mark;
-    private final Button refresh;
-    private final Button actions;
+    private final Button retry;
+    private final android.widget.ImageButton actions;
+    private boolean retryNeeded;
     private final ListView list;
     private final Rows rows = new Rows();
     private List<IncidentSummary> snapshots = Collections.emptyList();
@@ -99,25 +102,17 @@ public final class IncidentInspectorView extends FrameLayout {
         snapshots = state.snapshots; updatedAt = state.updatedAt;
         setBackgroundColor(InspectorTheme.canvas(context));
         listing = new LinearLayout(context); listing.setOrientation(LinearLayout.VERTICAL); addView(listing, new LayoutParams(-1, -1));
-        LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL); header.setPadding(dp(16), 0, dp(16), 0);
-        LinearLayout controls = new LinearLayout(context); controls.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        mark = InspectorWidgets.button(context, R.string.osservio_incident_mark, this::mark); InspectorWidgets.chip(mark, true);
-        refresh = InspectorWidgets.button(context, R.string.osservio_incident_refresh, this::read);
-        actions = InspectorWidgets.button(context, R.string.osservio_ui_actions, this::actions);
-        actions.setText("⋯"); actions.setTextSize(22); actions.setContentDescription(context.getString(R.string.osservio_ui_actions));
-        controls.addView(mark, new LinearLayout.LayoutParams(0, -2, 1));
-        controls.addView(refresh, new LinearLayout.LayoutParams(-2, -2)); controls.addView(actions, new LinearLayout.LayoutParams(dp(48), -2));
-        header.addView(controls, new LinearLayout.LayoutParams(-1, -2));
-        header.addView(InspectorWidgets.search(context, R.string.osservio_ui_problem_search, state.query.text, value -> {
-            state.query.text = value; render();
-        }), new LinearLayout.LayoutParams(-1, -2));
-        filters = InspectorWidgets.button(context, R.string.osservio_ui_filters, this::filters);
-        LinearLayout.LayoutParams filterLayout = new LinearLayout.LayoutParams(-2, -2); filterLayout.topMargin = dp(10); header.addView(filters, filterLayout);
-        criteria = caption(); header.addView(criteria, new LinearLayout.LayoutParams(-1, -2));
-        results = caption(); header.addView(results, new LinearLayout.LayoutParams(-1, -2));
-        notice = caption(); notice.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE); header.addView(notice, new LinearLayout.LayoutParams(-1, -2));
-        empty = caption(); empty.setTextSize(15); empty.setGravity(android.view.Gravity.CENTER); empty.setPadding(0, dp(24), 0, dp(24));
-        header.addView(empty, new LinearLayout.LayoutParams(-1, -2));
+        header = new InspectorFeedHeader(context, R.string.osservio_ui_problem_search, state.query.text,
+            value -> { state.query.text = value; render(); }, () -> { }, this::filters, () -> confirmDeletion(null), true, R.string.osservio_incident_delete_all);
+        header.onQueryChange = query -> { state.query = query; render(); };
+        mark = InspectorWidgets.button(context, R.string.osservio_ui_record_problem, this::mark); InspectorWidgets.chip(mark, true);
+        android.graphics.drawable.Drawable plus = context.getDrawable(R.drawable.osservio_add);
+        if (plus != null) plus.setTint(InspectorTheme.accent(context));
+        mark.setCompoundDrawablesRelativeWithIntrinsicBounds(plus, null, null, null);
+        retry = InspectorWidgets.button(context, R.string.osservio_ui_retry, this::read);
+        header.addView(mark, 0, new LinearLayout.LayoutParams(-1, -2)); header.addView(retry, 1, new LinearLayout.LayoutParams(-1, -2));
+        notice = header.status; notice.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
+        empty = header.empty; actions = header.actions;
         list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
         TextView hint = caption(); hint.setText(R.string.osservio_incident_archive_hint); hint.setPadding(dp(16), dp(16), dp(16), dp(16));
@@ -132,9 +127,10 @@ public final class IncidentInspectorView extends FrameLayout {
     private List<InspectorFilterSheet.Group> filterGroups() {
         List<InspectorFilterSheet.Group> groups = new ArrayList<>();
         InspectorFilterSheet.Group types = InspectorFilterOptions.group(getContext(), InspectorQuery.Field.RECORD, R.string.osservio_ui_record);
-        types.option("manual", getContext().getString(R.string.osservio_ui_manual));
-        for (com.sandrox.osservio.core.SystemDiagnostic.Kind kind : com.sandrox.osservio.core.SystemDiagnostic.Kind.values())
-            types.option(kind.name(), SystemDiagnosticPresentation.kind(getContext(), kind));
+        for (IncidentSummary snapshot : snapshots) {
+            if (snapshot.diagnosticKind == null) types.option("manual", getContext().getString(R.string.osservio_ui_manual));
+            else types.option(snapshot.diagnosticKind.name(), SystemDiagnosticPresentation.kind(getContext(), snapshot.diagnosticKind));
+        }
         groups.add(types);
         groups.add(InspectorFilterOptions.group(getContext(), InspectorQuery.Field.SOURCE, R.string.osservio_ui_source)
             .option("manual", getContext().getString(R.string.osservio_ui_manual)).option("system", getContext().getString(R.string.osservio_ui_system)));
@@ -144,17 +140,6 @@ public final class IncidentInspectorView extends FrameLayout {
         confirmation = InspectorFilterSheet.show(getContext(), state.query, filterGroups(), R.string.osservio_ui_record_time,
             query -> { state.query = query; render(); });
         confirmation.setOnDismissListener(ignored -> confirmation = null);
-    }
-    private void actions() {
-        String[] labels = {getContext().getString(R.string.osservio_incident_status), getContext().getString(R.string.osservio_incident_delete_all)};
-        confirmation = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, labels, (dialog, which) -> {
-            dialog.dismiss(); confirmation = null;
-            if (which == 0) {
-                confirmation = InspectorDialogs.message(getContext(), R.string.osservio_incident_status, PersistencePresentation.status(getContext(), archive.persistenceStatus(), R.string.osservio_incident_status));
-                confirmation.setOnDismissListener(ignored -> confirmation = null);
-            } else confirmDeletion(null);
-        });
-        InspectorScreen menu = confirmation; menu.setOnDismissListener(ignored -> { if (confirmation == menu) confirmation = null; });
     }
     void saveReadingPosition() {
         state.position = list.getFirstVisiblePosition(); View first = list.getChildAt(0); state.offset = first == null ? 0 : first.getTop();
@@ -187,7 +172,7 @@ public final class IncidentInspectorView extends FrameLayout {
         if (selected != null) selected.dismissDialogs();
     }
     private int begin() {
-        reading = true; attempted = true; generation++;
+        reading = true; retryNeeded = false; attempted = true; generation++;
         notice.setText(R.string.osservio_archive_reading); render(); return generation;
     }
     private void read() {
@@ -200,8 +185,7 @@ public final class IncidentInspectorView extends FrameLayout {
             else {
                 view.snapshots = value; view.updatedAt = System.currentTimeMillis();
                 view.state.snapshots = value; view.state.updatedAt = view.updatedAt;
-                String message = view.getContext().getString(R.string.osservio_archive_loaded) + " · " + RuntimePresentation.date(view.getContext(), view.updatedAt);
-                view.notice.setText(view.justSaved ? view.getContext().getString(R.string.osservio_incident_saved_read_at, RuntimePresentation.date(view.getContext(), view.updatedAt)) : message);
+                view.notice.setText(view.justSaved ? view.getContext().getString(R.string.osservio_incident_saved_read_at, RuntimePresentation.date(view.getContext(), view.updatedAt)) : "");
                 view.justSaved = false;
             }
             view.render();
@@ -278,22 +262,18 @@ public final class IncidentInspectorView extends FrameLayout {
         if (id == null) archive.deleteAllIncidents(completion); else archive.deleteIncident(id, completion);
     }
     private void failed(PersistenceStatus.Error error) {
+        retryNeeded = true;
         String message = PersistencePresentation.error(getContext(), error);
         if (updatedAt != null) message += "\n" + getContext().getString(R.string.osservio_runtime_previous) + " · " + RuntimePresentation.date(getContext(), updatedAt);
-        notice.setText(message); if (selected != null) selected.error(message);
+        notice.setText(message); if (selected != null) selected.error(message); render();
     }
     private void render() {
         if (list == null) return;
-        mark.setEnabled(!reading); refresh.setEnabled(!reading); actions.setEnabled(!reading);
+        mark.setEnabled(!reading); retry.setEnabled(!reading); retry.setVisibility(retryNeeded ? VISIBLE : GONE); actions.setEnabled(!reading && !snapshots.isEmpty());
         visible.clear();
         long now = updatedAt == null ? System.currentTimeMillis() : updatedAt;
         for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now)) visible.add(snapshot);
-        filters.setText(state.query.activeCount() == 0 ? getContext().getString(R.string.osservio_ui_filters)
-            : getContext().getString(R.string.osservio_ui_filter_count, state.query.activeCount()));
-        InspectorWidgets.chip(filters, state.query.activeCount() > 0);
-        criteria.setText(InspectorFilterOptions.summary(getContext(), state.query, filterGroups()));
-        criteria.setVisibility(state.query.activeCount() == 0 ? GONE : VISIBLE);
-        results.setText(getContext().getString(R.string.osservio_ui_result_count, visible.size(), snapshots.size()));
+        header.setQuery(state.query, filterGroups(), visible.size(), snapshots.size()); header.setPaused(false);
         list.setEnabled(!reading);
         empty.setVisibility(visible.isEmpty() ? VISIBLE : GONE);
         empty.setText(reading ? R.string.osservio_archive_reading : snapshots.isEmpty() ? R.string.osservio_incident_empty : R.string.osservio_ui_filtered_empty);

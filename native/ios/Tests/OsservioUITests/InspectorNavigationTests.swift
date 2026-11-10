@@ -37,22 +37,20 @@ final class InspectorNavigationTests: XCTestCase {
         root.selectedIndex = 1
         let network = try XCTUnwrap((root.selectedViewController as? UINavigationController)?.topViewController as? NetworkInspectorViewController)
         network.loadViewIfNeeded()
-        try tap(network.view, title: "HTTP")
-        XCTAssertEqual(network.tableView.contentOffset.y, -network.tableView.adjustedContentInset.top, accuracy: 0.5)
         let networkSearch = try XCTUnwrap(descendants(network.view).compactMap { $0 as? UISearchTextField }.first)
-        networkSearch.text = "request query"; try activate(networkSearch, event: .editingChanged)
-        try tap(network.view, title: "WebSocket")
-        XCTAssertEqual(network.tableView.contentOffset.y, -network.tableView.adjustedContentInset.top, accuracy: 0.5)
-        XCTAssertEqual(networkSearch.text, "")
         networkSearch.text = "connection query"; try activate(networkSearch, event: .editingChanged)
-        try tap(network.view, title: InspectorLocalization.text("ui_pause"))
+        let header = try XCTUnwrap(descendants(network.view).compactMap { $0 as? InspectorFeedHeader }.first)
+        var query = network.content.query; query.select(.status, value: "5xx"); header.onQueryChange?(query)
+        query = network.content.query; query.select(.kind, value: "message"); header.onQueryChange?(query)
+        XCTAssertEqual(network.content.query.text, "connection query"); XCTAssertNil(network.content.query.values[.status])
+        network.content.scrollViewWillBeginDragging(network.tableView)
         root.selectedIndex = 3
         preferences.language = .english; preferences.appearance = .dark
         XCTAssertEqual(root.selectedIndex, 3); XCTAssertEqual(root.overrideUserInterfaceStyle, .dark)
         XCTAssertEqual(root.viewControllers?.map { $0.tabBarItem.title ?? "" }, ["Logs", "Network", "Problems", "App"])
         root.selectedIndex = 1
         XCTAssertEqual(networkSearch.text, "connection query"); XCTAssertTrue(network.content.paused)
-        try tap(network.view, title: "HTTP"); XCTAssertEqual(networkSearch.text, "request query")
+        XCTAssertEqual(network.content.query.values[.transport], ["webSocket"])
         root.selectedIndex = 0
         XCTAssertEqual(logSearch.text, "retained query"); XCTAssertEqual(log.query.text, "retained query")
         XCTAssertEqual(host.overrideUserInterfaceStyle, .dark)

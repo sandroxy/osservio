@@ -39,7 +39,7 @@ final class InspectorScreen implements DialogInterface {
 
     InspectorScreen(Context context, String title, View content, boolean panel) {
         this.panel = panel; this.content = content; navigation = InspectorNavigation.from(context);
-        view = new FrameLayout(context);
+        view = new InspectorKeyboardDismissal.Frame(context);
         view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context));
         card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL); card.setClipToOutline(true);
         InspectorAppearance.style(view, () -> view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context)));
@@ -87,6 +87,12 @@ final class InspectorScreen implements DialogInterface {
             card.addView(action, card.indexOfChild(bar) + 1, layout);
         } else bar.addView(action, bar.getChildCount() - 1, new LinearLayout.LayoutParams(-2, -2));
         return action;
+    }
+    void leadingAction(int label, Runnable operation) {
+        back.setVisibility(View.GONE);
+        Button action = InspectorWidgets.button(view.getContext(), label, operation);
+        bar.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
+        heading.setGravity(Gravity.CENTER);
     }
     boolean coversTabs() { return panel || modal; }
     void fullScreenTask() { modal = true; }

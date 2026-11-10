@@ -27,8 +27,8 @@ React Native, Uni and Flutter adapters are not implemented.
   an optional auto-off deadline; per-message and admission-rate limits; and
   in-memory history bounded by both event count and UTF-8 text bytes.
 - An Android View and an iOS UIKit inspector organized into Logs, Network,
-  Problems and App, with combined filters, layered details and on-demand content
-  reading and search. Language defaults to Simplified Chinese, with English
+  Problems and App, with unified filters, log/network content search,
+  cross-connection Socket message lookup and layered details. Language defaults to Simplified Chinese, with English
   available; appearance defaults to Light, with Dark available. Both preferences
   are independent of the host. See [the native inspector guide](doc/inspector.md).
 - Independent capture and presentation lifetimes: closing the inspector does
@@ -57,8 +57,10 @@ React Native, Uni and Flutter adapters are not implemented.
 WebSocket observation supports explicit host events and opt-in OkHttp/URLSession
 wrappers, with a bounded timeline and independent text budget. Submission, queue
 admission, send results, and close events remain distinct; none proves peer
-receipt. Native inspectors group events by connection and provide timeline
-filters and on-demand content lookup; see the
+receipt. Native inspectors search messages across connections, filter by direction, record
+kind and connection, and open connection context from message details. Content
+search has explicit limits and reports missing, truncated or partially searched
+evidence; see the
 [WebSocket observation contract](doc/websocket.md).
 
 Native APIs and the Problems view support explicit manual snapshots with optional

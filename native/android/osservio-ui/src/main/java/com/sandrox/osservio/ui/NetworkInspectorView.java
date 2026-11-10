@@ -10,33 +10,19 @@ import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.Toast;
-import com.sandrox.osservio.core.CaptureController;
-import com.sandrox.osservio.core.HTTPEvent;
-import com.sandrox.osservio.core.HTTPHistory;
-import com.sandrox.osservio.core.HTTPRecorder;
-import com.sandrox.osservio.core.HTTPSnapshot;
-import com.sandrox.osservio.core.WebSocketEvent;
-import com.sandrox.osservio.core.WebSocketHistory;
-import com.sandrox.osservio.core.WebSocketRecorder;
-import com.sandrox.osservio.core.WebSocketSnapshot;
+import com.sandrox.osservio.core.*;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** One row per exchange or connection; message timelines are a separate reading scope. */
-// Histories and capture controllers must be supplied programmatically.
+/** One query spans HTTP exchanges and Socket observations; content search is bounded and cancellable. */
 @SuppressLint("ViewConstructor")
 class NetworkInspectorView extends LinearLayout {
     static final class State {
-        final InspectorQuery[] queries = {new InspectorQuery(), new InspectorQuery(), new InspectorQuery()};
-        final int[] positions = new int[3];
-        final int[] offsets = new int[3];
-        HTTPSnapshot http;
-        WebSocketSnapshot sockets;
-        int scope;
-        boolean paused;
-        long timeAnchor;
+        InspectorQuery query = new InspectorQuery();
+        HTTPSnapshot http; WebSocketSnapshot sockets;
+        boolean paused; long timeAnchor; int position, offset;
     }
     private final HTTPRecorder httpRecorder;
     private final HTTPHistory httpHistory;
@@ -45,23 +31,22 @@ class NetworkInspectorView extends LinearLayout {
     private final String connectionID;
     private final State state;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final List<Item> items = new ArrayList<>();
-    private List<InspectorQuery.Connection> connections = Collections.emptyList();
+    private final List<InspectorRecordSearch.Record> items = new ArrayList<>();
     private final Rows rows = new Rows();
     private final ListView list;
     private final InspectorFeedHeader header;
-    private boolean attached;
+    private boolean attached, stale;
     private boolean dirty = true;
-    private boolean changingScope;
     private InspectorScreen dialog;
+    private InspectorRecordSearchTask task;
+    private InspectorRecordSearch.Result result;
+    private long generation, nextSearchAt, timeCheck;
+    private int available;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) {
-                refresh(); handler.postDelayed(this, 500);
-            }
+            if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) { refresh(); handler.postDelayed(this, 500); }
         }
     };
-
     NetworkInspectorView(Context host, HTTPRecorder httpRecorder, HTTPHistory httpHistory,
                          WebSocketRecorder socketRecorder, WebSocketHistory socketHistory, State state) {
         this(host, httpRecorder, httpHistory, socketRecorder, socketHistory, state, null);
@@ -69,249 +54,163 @@ class NetworkInspectorView extends LinearLayout {
     private NetworkInspectorView(Context host, HTTPRecorder httpRecorder, HTTPHistory httpHistory,
                                  WebSocketRecorder socketRecorder, WebSocketHistory socketHistory, State state, String connectionID) {
         super(InspectorTheme.context(host));
-        this.httpRecorder = httpRecorder; this.httpHistory = httpHistory;
-        this.socketRecorder = socketRecorder; this.socketHistory = socketHistory;
+        this.httpRecorder = httpRecorder; this.httpHistory = httpHistory; this.socketRecorder = socketRecorder; this.socketHistory = socketHistory;
         this.state = state; this.connectionID = connectionID;
-        if (httpHistory == null) state.scope = 2;
-        else if (socketHistory == null) state.scope = 1;
         Context context = getContext(); setOrientation(VERTICAL); InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.canvas(context)));
-        header = new InspectorFeedHeader(context, connectionID == null ? R.string.osservio_ui_network_search : R.string.osservio_ws_search,
-            query().text, value -> { if (!changingScope) { query().text = value; dirty = true; refresh(); } },
-            () -> setPaused(!state.paused), this::filters, this::actions);
-        if (connectionID == null && httpHistory != null && socketHistory != null) {
-            String[] labels = {context.getString(R.string.osservio_ui_all), "HTTP", "WebSocket"};
-            View scopes = InspectorWidgets.segments(context, labels, state.scope, this::selectScope);
-            LayoutParams scopeLayout = new LayoutParams(-1, -2); scopeLayout.bottomMargin = dp(12);
-            header.addView(scopes, 0, scopeLayout);
-        }
+        header = new InspectorFeedHeader(context, R.string.osservio_ui_network_search, state.query.text,
+            value -> { InspectorQuery query = state.query.copy(); query.text = value; apply(query); }, this::followLatest, this::filters, this::confirmClear, true, R.string.osservio_ui_network_clear);
+        header.onQueryChange = this::apply;
         if (connectionID != null) {
-            android.widget.TextView explanation = InspectorWidgets.caption(context);
-            InspectorAppearance.text(explanation, R.string.osservio_ui_connection_hint); header.addView(explanation, 0, new LayoutParams(-1, -2));
+            android.widget.TextView hint = InspectorWidgets.caption(context); InspectorAppearance.text(hint, R.string.osservio_ui_connection_hint);
+            header.addView(hint, 0, new LayoutParams(-1, -2)); header.actions.setVisibility(GONE);
         }
-        list = new ListView(context); list.setDivider(new android.graphics.drawable.ColorDrawable(
-            InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
+        list = new ListView(context); list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
-            int index = position - list.getHeaderViewsCount();
-            if (index >= 0 && index < items.size()) open(items.get(index));
+            int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < items.size()) open(items.get(index));
         });
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override public void onScrollStateChanged(AbsListView view, int scrollState) {
-                if (scrollState == SCROLL_STATE_TOUCH_SCROLL) setPaused(true);
+                if (scrollState == SCROLL_STATE_TOUCH_SCROLL) { state.paused = true; cancelSearch(); dirty = false; status(); }
+                else if (scrollState == SCROLL_STATE_IDLE && list.getFirstVisiblePosition() == 0 && list.getChildAt(0) != null && list.getChildAt(0).getTop() >= 0) { state.paused = false; refresh(); }
             }
             @Override public void onScroll(AbsListView view, int first, int visible, int total) { }
         });
-        addView(list, new LayoutParams(-1, -1)); header.setPaused(state.paused);
-        if (state.sockets != null) connections = InspectorQuery.connections(state.sockets.events);
-        InspectorAppearance.content(this, () -> {
-            list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
-            render(); header.setPaused(state.paused);
-            header.status.setText(state.paused ? context.getString(R.string.osservio_ui_paused) : captureStatus());
-        });
-        render(); list.setSelectionFromTop(state.positions[state.scope], state.offsets[state.scope]);
+        addView(list, new LayoutParams(-1, -1));
+        InspectorAppearance.content(this, () -> { list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); display(); });
+        if ((state.http != null || state.sockets != null) && !state.query.searchesPayload()) search(); else display();
+        list.setSelectionFromTop(state.position, state.offset);
     }
-    private InspectorQuery query() { return state.queries[state.scope]; }
     private List<HTTPEvent> http() { return state.http == null ? Collections.emptyList() : state.http.events; }
     private List<WebSocketEvent> sockets() { return state.sockets == null ? Collections.emptyList() : state.sockets.events; }
     private List<InspectorFilterSheet.Group> groups() {
-        return connectionID == null ? InspectorFilterOptions.network(getContext(), http(), connections, state.scope, query())
-            : InspectorFilterOptions.timeline(getContext());
+        return InspectorFilterOptions.network(getContext(), http(), sockets(), state.query, httpHistory != null, socketHistory != null);
     }
-    private void selectScope(int scope) {
-        if (scope == state.scope) return;
-        saveReadingPosition(); state.scope = scope;
-        changingScope = true; header.search.setText(query().text); changingScope = false;
-        dirty = true; refresh(); list.setSelectionFromTop(state.positions[scope], state.offsets[scope]);
+    private void cancelSearch() { generation++; if (task != null) task.cancel(); task = null; dirty = true; }
+    private void apply(InspectorQuery query) {
+        cancelSearch(); state.query = query; result = null; items.clear(); nextSearchAt = android.os.SystemClock.uptimeMillis() + 200;
+        if (list != null) { display(); schedule(); }
     }
     private void refresh() {
         if (list == null) return;
-        if (httpRecorder != null) httpRecorder.maintenance();
-        if (!state.paused) {
-            state.timeAnchor = System.currentTimeMillis();
+        long now = android.os.SystemClock.uptimeMillis();
+        if (!state.paused && task == null) {
+            state.timeAnchor = System.currentTimeMillis(); stale = false;
+            if (httpRecorder != null) httpRecorder.maintenance();
             if (httpHistory != null) {
-                HTTPSnapshot snapshot = httpHistory.snapshot();
+                HTTPSnapshot snapshot = httpHistory.snapshot(); stale |= snapshot == null;
                 if (snapshot != null) { dirty |= state.http == null || snapshot.revision != state.http.revision; state.http = snapshot; }
             }
             if (socketHistory != null) {
-                WebSocketSnapshot snapshot = socketHistory.snapshot();
-                if (snapshot != null) {
-                    boolean changed = state.sockets == null || snapshot.revision != state.sockets.revision;
-                    state.sockets = snapshot;
-                    if (changed) { connections = InspectorQuery.connections(snapshot.events); dirty = true; }
-                }
+                WebSocketSnapshot snapshot = socketHistory.snapshot(); stale |= snapshot == null;
+                if (snapshot != null) { dirty |= state.sockets == null || snapshot.revision != state.sockets.revision; state.sockets = snapshot; }
             }
-            dirty |= query().recentMinutes > 0;
+            if (state.query.recentMinutes > 0 && now - timeCheck >= 5000) { dirty = true; timeCheck = now; }
         }
-        if (dirty) render();
-        header.status.setText(state.paused ? getContext().getString(R.string.osservio_ui_paused) : captureStatus());
-        header.setPaused(state.paused);
+        if (dirty && task == null && now >= nextSearchAt) search(); status();
     }
-    private String captureStatus() {
-        CaptureController http = httpRecorder == null || state.scope == 2 ? null : httpRecorder.captureController;
-        CaptureController socket = socketRecorder == null || state.scope == 1 ? null : socketRecorder.captureController;
-        if (http != null && socket != null && http != socket) return "HTTP · " + captureLabel(http) + "\nWebSocket · " + captureLabel(socket);
-        return captureLabel(http == null ? socket : http);
-    }
-    private String captureLabel(CaptureController controller) {
-        CaptureController.Status status = controller == null ? null : controller.status();
-        return InspectorDebugControl.describe(getContext(), status, false);
-    }
-    private void render() {
-        items.clear(); int total = 0;
-        if (connectionID != null) {
-            for (WebSocketEvent event : sockets()) if (connectionID.equals(event.connectionId)) {
-                total++; if (query().matches(event, state.timeAnchor)) items.add(new Item(null, null, event));
-            }
-        } else {
-            if (state.scope != 2) for (HTTPEvent event : http()) {
-                total++; if (query().matches(event, state.timeAnchor)) items.add(new Item(event, null, null));
-            }
-            if (state.scope != 1) for (InspectorQuery.Connection connection : connections) {
-                total++; if (query().matches(connection, state.timeAnchor)) items.add(new Item(null, connection, null));
-            }
+    private void search() {
+        List<InspectorRecordSearch.Record> records = new ArrayList<>();
+        if (connectionID == null) for (HTTPEvent event : http()) records.add(new InspectorRecordSearch.Record(event));
+        for (WebSocketEvent event : sockets()) if (connectionID == null || connectionID.equals(event.connectionId)) records.add(new InspectorRecordSearch.Record(event));
+        Collections.sort(records, InspectorRecordSearch::newestFirst); available = records.size();
+        InspectorQuery query = state.query.copy(); long anchor = state.timeAnchor;
+        if (!query.searchesPayload()) {
+            items.clear(); for (InspectorRecordSearch.Record record : records) if (record.matchesFacets(query, anchor)) items.add(record);
+            result = null; dirty = false; display(); return;
         }
-        Collections.sort(items, (left, right) -> {
-            if (left.event != null && right.event != null) return InspectorQuery.compareTimeline(left.event, right.event);
-            return left.time() == right.time() ? left.id().compareTo(right.id()) : Long.compare(right.time(), left.time());
+        HTTPHistory requests = httpHistory; WebSocketHistory socketEvents = socketHistory; long current = generation;
+        WeakReference<NetworkInspectorView> owner = new WeakReference<>(this);
+        task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(records, query, anchor, requests, socketEvents, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
+            NetworkInspectorView view = owner.get(); if (view == null || view.generation != current) return;
+            view.task = null; view.result = found; view.items.clear();
+            for (InspectorRecordSearch.Record record : records) if (found.keys.contains(record.key())) view.items.add(record);
+            view.dirty = false; view.nextSearchAt = android.os.SystemClock.uptimeMillis() + 1000; view.display();
         });
-        header.setQuery(query(), groups(), items.size(), total);
-        header.empty.setText(total > 0 ? R.string.osservio_ui_filtered_empty : isDetailed()
-            ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
-        rows.notifyDataSetChanged(); dirty = false;
+        if (task == null) nextSearchAt = android.os.SystemClock.uptimeMillis() + 500;
+    }
+    private void status() {
+        List<String> notes = new ArrayList<>(); Context context = getContext();
+        if (task != null || dirty && state.query.searchesPayload()) notes.add(context.getString(R.string.osservio_ui_searching));
+        if (result != null && (result.limited || result.unavailable > 0 || result.truncated > 0)) notes.add(context.getString(R.string.osservio_ui_search_partial));
+        if (stale) notes.add(context.getString(R.string.osservio_ui_previous_window));
+        WebSocketRecorder.Status socket = socketRecorder == null ? null : socketRecorder.status();
+        if ((state.http != null && (state.http.evictedEvents > 0 || state.http.evictedBodies > 0))
+            || (state.sockets != null && (state.sockets.evictedEvents > 0 || state.sockets.evictedPayloads > 0))
+            || (socket != null && socket.rateLimitedCount > 0)) notes.add(context.getString(R.string.osservio_ui_retention_loss));
+        header.status.setText(android.text.TextUtils.join(" · ", notes)); header.setPaused(state.paused);
+    }
+    private void display() {
+        header.setQuery(state.query, groups(), items.size(), available);
+        header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
+            : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
+        rows.notifyDataSetChanged(); status();
     }
     private boolean isDetailed() {
-        for (CaptureController controller : controllers()) {
-            CaptureController.Status status = controller.status();
-            if (status != null && status.mode == CaptureController.Mode.DETAILED) return true;
-        }
-        return false;
+        CaptureController.Status http = httpRecorder == null ? null : httpRecorder.captureController.status();
+        CaptureController.Status socket = socketRecorder == null ? null : socketRecorder.captureController.status();
+        return http != null && http.debugEnabled || socket != null && socket.debugEnabled;
     }
-    private List<CaptureController> controllers() {
-        List<CaptureController> result = new ArrayList<>();
-        if (httpRecorder != null && state.scope != 2) result.add(httpRecorder.captureController);
-        if (socketRecorder != null && state.scope != 1 && !result.contains(socketRecorder.captureController)) result.add(socketRecorder.captureController);
-        return result;
-    }
-    private void filters() {
-        dialog = InspectorFilterSheet.show(getContext(), query(), groups(), value -> {
-            state.queries[state.scope] = value; dirty = true; refresh();
-        });
-        watchDialog();
-    }
-    private void actions() {
-        List<String> labels = new ArrayList<>();
-        labels.add(getContext().getString(R.string.osservio_ui_capture_details));
-        labels.add(getContext().getString(R.string.osservio_ui_network_clear));
-        dialog = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, labels.toArray(new String[0]), (ignored, which) -> {
-                // Dismiss before replacing the tracked dialog so its callback cannot clear the new one.
-                dismissDialog();
-                if (which == 0) capacity();
-                else confirmClear();
-            });
-        watchDialog();
-    }
-    private void capacity() {
-        List<String> lines = new ArrayList<>();
-        if (httpRecorder != null && state.scope != 2) lines.add("HTTP\n" + getContext().getString(R.string.osservio_http_summary,
-            captureLabel(httpRecorder.captureController), http().size(), state.http == null ? 0L : state.http.evictedEvents,
-            state.http == null ? 0L : state.http.evictedBodies));
-        if (socketRecorder != null && state.scope != 1) {
-            WebSocketRecorder.Status status = socketRecorder.status();
-            lines.add("WebSocket\n" + (status == null ? getContext().getString(R.string.osservio_busy)
-                : getContext().getString(R.string.osservio_ws_summary, captureLabel(socketRecorder.captureController),
-                    sockets().size(), state.sockets == null ? 0L : state.sockets.evictedEvents,
-                    state.sockets == null ? 0L : state.sockets.evictedPayloads, status.rateLimitedCount)));
-        }
-        dialog = InspectorDialogs.message(getContext(), R.string.osservio_ui_capture_details, android.text.TextUtils.join("\n\n", lines)); watchDialog();
-    }
+    private void filters() { dialog = InspectorFilterSheet.show(getContext(), state.query, groups(), true, this::apply); watchDialog(); }
     private void confirmClear() {
         dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_ui_network_clear, getContext().getString(R.string.osservio_ui_clear_hint), R.string.osservio_ui_network_clear, (ignored, which) -> {
-                if (httpHistory != null && state.scope != 2) { httpHistory.clear(); state.http = httpHistory.snapshot(); }
-                if (socketHistory != null && state.scope != 1) { socketHistory.clear(); state.sockets = socketHistory.snapshot(); connections = InspectorQuery.connections(sockets()); }
-                dirty = true; refresh();
-            }); watchDialog();
+            cancelSearch(); if (httpHistory != null) { httpHistory.clear(); state.http = httpHistory.snapshot(); }
+            if (socketHistory != null) { socketHistory.clear(); state.sockets = socketHistory.snapshot(); }
+            result = null; items.clear(); nextSearchAt = 0; search();
+        }); watchDialog();
     }
-    private void open(Item item) {
-        if (dialog != null) return;
-        InspectorWidgets.hideKeyboard(this);
+    private void open(InspectorRecordSearch.Record item) {
+        if (dialog != null) return; InspectorWidgets.hideKeyboard(this);
         if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory).dialog;
-        else if (item.event != null) dialog = new WebSocketDetailDialog(getContext(), item.event, socketHistory).dialog;
         else {
-            NetworkInspectorView timeline = new NetworkInspectorView(getContext(), null, null, socketRecorder, socketHistory,
-                new State(), item.connection.latest.connectionId);
-            String id = item.connection.latest.connectionId;
-            dialog = InspectorDialogs.screen(getContext(), "WebSocket · " + id.substring(0, Math.min(8, id.length())), timeline);
+            WebSocketDetailDialog detail = new WebSocketDetailDialog(getContext(), item.socket, socketHistory);
+            detail.showConnection(() -> {
+                String id = item.socket.connectionId;
+                NetworkInspectorView timeline = new NetworkInspectorView(getContext(), null, null, socketRecorder, socketHistory, new State(), id);
+                InspectorDialogs.screen(getContext(), "WebSocket · " + id.substring(0, Math.min(8, id.length())), timeline).show();
+            }); dialog = detail.dialog;
         }
         watchDialog(); dialog.show();
     }
     private void watchDialog() {
-        handler.removeCallbacks(tick);
-        InspectorScreen watched = dialog;
+        handler.removeCallbacks(tick); cancelSearch(); InspectorScreen watched = dialog;
         watched.setOnDismissListener(ignored -> { if (dialog == watched) { dialog = null; schedule(); } });
     }
-    private void dismissDialog() {
-        InspectorScreen previous = dialog; dialog = null; if (previous != null) previous.dismiss(); schedule();
-    }
-    private void setPaused(boolean paused) {
-        if (state.paused == paused) return;
-        state.paused = paused; refresh(); if (!paused) list.setSelection(0);
-    }
-    void saveReadingPosition() {
-        state.positions[state.scope] = list.getFirstVisiblePosition();
-        View first = list.getChildAt(0); state.offsets[state.scope] = first == null ? 0 : first.getTop();
-    }
-    private void busy() { Toast.makeText(getContext(), R.string.osservio_busy, Toast.LENGTH_SHORT).show(); }
+    private void followLatest() { state.paused = false; dirty = true; list.setSelection(0); refresh(); }
+    void saveReadingPosition() { state.position = list.getFirstVisiblePosition(); View first = list.getChildAt(0); state.offset = first == null ? 0 : first.getTop(); }
     private int dp(int value) { return InspectorTheme.dp(getContext(), value); }
+    @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) { InspectorKeyboardDismissal.outside(this, event); return super.dispatchTouchEvent(event); }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); attached = true; schedule(); }
     @Override protected void onDetachedFromWindow() {
-        saveReadingPosition(); attached = false; handler.removeCallbacks(tick); if (!InspectorNavigation.owns(getContext())) dismissDialog(); super.onDetachedFromWindow();
+        saveReadingPosition(); attached = false; handler.removeCallbacks(tick); cancelSearch();
+        if (!InspectorNavigation.owns(getContext()) && dialog != null) { dialog.dismiss(); dialog = null; } super.onDetachedFromWindow();
     }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
     @Override protected void onVisibilityChanged(View view, int visibility) { super.onVisibilityChanged(view, visibility); schedule(); }
     private void schedule() {
-        if (handler == null || tick == null) return;
-        handler.removeCallbacks(tick);
+        if (handler == null || tick == null) return; handler.removeCallbacks(tick);
         if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
-        else if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) dismissDialog();
-    }
-    private static final class Item {
-        final HTTPEvent http;
-        final InspectorQuery.Connection connection;
-        final WebSocketEvent event;
-        Item(HTTPEvent http, InspectorQuery.Connection connection, WebSocketEvent event) { this.http = http; this.connection = connection; this.event = event; }
-        long time() { return http != null ? http.timestampMillis : connection != null ? connection.first.timestampMillis : event.timestampMillis; }
-        String id() { return http != null ? http.id : connection != null ? connection.first.connectionId : event.id; }
+        else { cancelSearch(); if (!InspectorNavigation.owns(getContext()) && dialog != null && (!attached || !isShown() || getWindowVisibility() != VISIBLE)) { dialog.dismiss(); dialog = null; } }
     }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return items.size(); }
-        @Override public Object getItem(int position) {
-            Item item = items.get(position);
-            return item.http != null ? item.http : item.connection != null ? item.connection.latest : item.event;
-        }
+        @Override public Object getItem(int position) { InspectorRecordSearch.Record item = items.get(position); return item.http != null ? item.http : item.socket; }
         @Override public long getItemId(int position) { return position; }
         @Override public View getView(int position, View recycled, ViewGroup parent) {
-            InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow
-                ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
-            Item item = items.get(position); Context context = getContext();
+            InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
+            InspectorRecordSearch.Record item = items.get(position); Context context = getContext();
+            String preview = result == null ? null : result.previews.get(item.key()); preview = preview == null ? "" : "\n" + preview;
             if (item.http != null) {
-                HTTPEvent event = item.http;
-                boolean failed = event.state == HTTPEvent.State.FAILED || (event.statusCode != null && event.statusCode >= 400);
-                int tone = failed ? InspectorTheme.color(context, R.color.osservio_error) : InspectorTheme.accent(context);
+                HTTPEvent event = item.http; boolean failed = event.state == HTTPEvent.State.FAILED || event.statusCode != null && event.statusCode >= 400;
                 row.bind(event.method + (event.statusCode == null ? "" : " · " + event.statusCode), InspectorQuery.path(event.url),
-                    InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(context, event), event.timestampMillis, tone);
-            } else if (item.connection != null) {
-                InspectorQuery.Connection connection = item.connection;
-                String observed = connection.lifecycle == null ? context.getString(R.string.osservio_ui_unknown)
-                    : WebSocketPresentation.kind(context, connection.lifecycle.kind);
-                row.bind("WebSocket", InspectorQuery.path(connection.latest.url), InspectorQuery.host(connection.latest.url) + " · " + observed
-                    + " · " + context.getString(R.string.osservio_ui_connection_count, connection.count), connection.first.timestampMillis, InspectorTheme.accent(context));
+                    InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(context, event) + preview, event.timestampMillis,
+                    failed ? InspectorTheme.color(context, R.color.osservio_error) : InspectorTheme.accent(context));
             } else {
-                WebSocketEvent event = item.event;
-                String direction = event.direction == null ? "WebSocket" : context.getString(event.direction == WebSocketEvent.Direction.INCOMING
-                    ? R.string.osservio_ws_incoming : R.string.osservio_ws_outgoing);
-                row.bind(direction, WebSocketPresentation.summary(context, event), "#" + event.sequence + " · " + event.id,
-                    event.timestampMillis, event.kind == WebSocketEvent.Kind.FAILED || event.outcome == WebSocketEvent.Outcome.FAILED
-                        ? InspectorTheme.color(context, R.color.osservio_error) : InspectorTheme.accent(context));
+                WebSocketEvent event = item.socket;
+                String direction = event.direction == null ? WebSocketPresentation.kind(context, event.kind) : context.getString(event.direction == WebSocketEvent.Direction.INCOMING ? R.string.osservio_ws_incoming : R.string.osservio_ws_outgoing);
+                row.bind("Socket · " + direction, InspectorQuery.path(event.url), WebSocketPresentation.summary(context, event) + " · " + InspectorQuery.host(event.url)
+                    + "\n" + event.connectionId.substring(0, 8) + " · #" + event.sequence + preview, event.timestampMillis,
+                    event.kind == WebSocketEvent.Kind.FAILED || event.outcome == WebSocketEvent.Outcome.FAILED || event.outcome == WebSocketEvent.Outcome.REJECTED ? InspectorTheme.color(context, R.color.osservio_error) : InspectorTheme.accent(context));
             }
             return row;
         }

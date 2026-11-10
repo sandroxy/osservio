@@ -14,6 +14,8 @@ final class WebSocketDetailDialog {
     private final WebSocketHistory history;
     private final Map<String, IncidentPayload> savedPayloads;
     private final WebSocketEvent event;
+    private Runnable connection;
+    void showConnection(Runnable action) { connection = action; render(); }
     private int section;
     private final FrameLayout body;
     final InspectorScreen dialog;
@@ -34,6 +36,7 @@ final class WebSocketDetailDialog {
             page.field(R.string.osservio_ws_time, () -> RuntimePresentation.date(context, event.timestampMillis));
             page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
             page.section(R.string.osservio_ui_metadata);
+            if (connection != null) page.action(R.string.osservio_ui_connection_context, connection);
             page.field(R.string.osservio_ws_connection, event.connectionId); page.field(R.string.osservio_ws_event, event.id);
             page.field(R.string.osservio_ws_related, event.relatedMessageId); page.field(R.string.osservio_ws_close_code, event.closeCode);
             page.field(R.string.osservio_http_status, event.statusCode); page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence);

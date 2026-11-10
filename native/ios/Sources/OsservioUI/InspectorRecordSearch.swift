@@ -54,14 +54,14 @@ enum InspectorRecordSearch {
             if !query.excludedText.isEmpty && record.contains(query.excludedText) { continue }
             if metadata && query.fieldPath.isEmpty && query.excludedText.isEmpty { result.keys.insert(record.key); continue }
             if spent >= unitLimit { result.limited = true; continue }
-            var matched = metadata && query.fieldPath.isEmpty, excluded = false
+            var matched = metadata && query.fieldPath.isEmpty, excluded = false, exclusionUnknown = false
             for payload in payloads(record, http: http, sockets: sockets) {
                 if cancelled() { return nil }
-                guard let text = payload.text else { result.unavailable += 1; continue }
+                guard let text = payload.text else { result.unavailable += 1; exclusionUnknown = true; continue }
                 let count = text.utf16.count
-                guard count <= InspectorJSONDocument.maximumUnits, count <= unitLimit - spent else { result.limited = true; continue }
+                guard count <= InspectorJSONDocument.maximumUnits, count <= unitLimit - spent else { result.limited = true; exclusionUnknown = true; continue }
                 spent += count
-                if payload.truncated { result.truncated += 1 }
+                if payload.truncated { result.truncated += 1; exclusionUnknown = true }
                 if !query.excludedText.isEmpty && InspectorQuery.contains(query.excludedText, in: text) { excluded = true; break }
                 var fieldMatches = true
                 if !query.fieldPath.isEmpty {
@@ -79,7 +79,7 @@ enum InspectorRecordSearch {
                     if result.previews[record.key] == nil { result.previews[record.key] = preview(text, term: query.text) }
                 }
             }
-            if matched && !excluded { result.keys.insert(record.key) } else { result.previews[record.key] = nil }
+            if matched && !excluded && (query.excludedText.isEmpty || !exclusionUnknown) { result.keys.insert(record.key) } else { result.previews[record.key] = nil }
         }
         return cancelled() ? nil : result
     }
@@ -113,7 +113,7 @@ enum InspectorRecordSearch {
 final class InspectorRecordSearchTask: Operation, @unchecked Sendable {
     private static let admission = NSLock()
     private static let worker: OperationQueue = {
-        let value = OperationQueue(); value.name = "com.sandrox.osservio.network-search"
+        let value = OperationQueue(); value.name = "com.sandrox.osservio.record-search"
         value.maxConcurrentOperationCount = 1; value.qualityOfService = .userInitiated; return value
     }()
     private let search: (@escaping () -> Bool) -> InspectorRecordSearch.Result?

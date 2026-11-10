@@ -51,7 +51,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         let groups: [InspectorFilterGroup]
         switch evidence {
         case .logs(let value): groups = InspectorFilterOptions.logs(value.events)
-        case .http(let value): groups = InspectorFilterOptions.network(value.events, connections: [], scope: 1, query: query)
+        case .http(let value): groups = InspectorFilterOptions.network(value.events, sockets: [], query: query).filter { $0.field != .transport && !InspectorQuery.socketFields.contains($0.field) }
         case .webSockets: groups = InspectorFilterOptions.timeline()
         }
         let filters = InspectorFilterViewController(query: query, groups: groups) { [weak self] value in self?.query = value; self?.render() }

@@ -27,7 +27,7 @@
 "ui_filters" = "Filters";
 "ui_filter_options" = "Search filter options";
 "ui_apply" = "Apply";
-"ui_reset" = "Reset filters";
+"ui_reset" = "Reset";
 "ui_filter_hint" = "Values within a group match any selection. Different groups must all match. No selection means unrestricted.";
 "ui_no_filters" = "No filters";
 "ui_all" = "All";
@@ -62,17 +62,17 @@
 "ui_baseline" = "Baseline capture";
 "ui_detailed" = "Detailed capture";
 "ui_paused" = "Updates paused for reading";
-"ui_follow_latest" = "Return to latest";
+"ui_follow_latest" = "Back to latest";
 "ui_pause" = "Pause updates";
 "ui_inactive_empty" = "Debugging is off. Use the debug button at the top left of a root tab to inspect subsequent logs and network activity.";
 "ui_filtered_empty" = "No records match. Try another search or reset the filters.";
 "ui_waiting" = "Waiting for records";
 "ui_previous_window" = "Showing the last available snapshot";
-"ui_network_search" = "Search address, method, or status";
+"ui_network_search" = "Search URL, ID, or content";
 "ui_connection_state" = "Last observed connection state";
 "ui_connection_hint" = "This is the last lifecycle observation in the retained window, not a guarantee of the socket’s current state.";
 "ui_network_clear" = "Clear live network records";
-"ui_clear_hint" = "Clears live records only. Capture and saved problems are unchanged.";
+"ui_clear_hint" = "Clear all live records in this destination, including records hidden by filters. Debug mode and saved problems are unchanged.";
 "ui_problem_search" = "Search notes or record types";
 "ui_problem_intro" = "Keep the evidence for later";
 "ui_no_archive" = "Problem storage is not configured";
@@ -123,3 +123,50 @@
 "ui_content_unknown" = "Unknown";
 "ui_baseline_on" = "Baseline diagnosis on";
 "ui_baseline_off" = "Baseline diagnosis off";
+
+"ui_transport" = "Network type";
+
+"ui_connection" = "Socket connection";
+
+"ui_content_conditions" = "Content conditions";
+
+"ui_exclude" = "Exclude text";
+
+"ui_field_path" = "JSON Pointer, e.g. /data/id";
+
+"ui_field_value" = "Exact field value (may be empty)";
+
+"ui_field_hint" = "Searches retained, sanitized content only. Field values match exactly; business meaning is not inferred. Paths are case-sensitive.";
+
+"ui_field_invalid" = "Enter a valid JSON Pointer starting with /, with at most 16 components. Duration must be a nonnegative integer.";
+
+"ui_duration" = "Minimum HTTP duration (ms)";
+
+"ui_network_filter_hint" = "Choices within a group are alternatives; groups intersect. Protocol-specific conditions select HTTP or Socket. All clears protocol-specific conditions.";
+
+"ui_searching" = "Searching retained content…";
+
+"ui_search_partial" = "Results cover searched content only: some content is unavailable, truncated, or beyond the search budget.";
+
+
+"ui_retention_loss" = "Some history was discarded by retention or rate limits";
+
+"ui_remove_filter" = "Remove this condition";
+
+"ui_connection_context" = "View records for this connection";
+
+"ui_socket_kind" = "Socket record type";
+
+"ui_http_state" = "HTTP transport state";
+
+"ui_http_status" = "HTTP status code";
+
+"ui_http_content" = "HTTP response type";
+
+"ui_http_method" = "HTTP method";
+
+"ui_socket_direction" = "Socket message direction";
+
+"ui_record_problem" = "Record a problem";
+
+"ui_retry" = "Retry";

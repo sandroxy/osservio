@@ -2,70 +2,50 @@
 import OsservioCore
 import UIKit
 
-/// One feed implementation backs the combined destination and the standalone public viewers.
-/// It owns only view state; recorders, capture controllers and histories remain host-owned.
+/// One query spans HTTP exchanges and Socket observations. Payload work stays off the main thread.
 @MainActor
 final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableViewDelegate {
     typealias HTTP = (recorder: HTTPRecorder, history: any HTTPHistory)
     typealias Socket = (recorder: WebSocketRecorder, history: any WebSocketHistory)
-    private enum Row {
-        case http(HTTPEvent), connection(InspectorConnection), event(WebSocketEvent)
-        var time: Int64 {
-            switch self { case .http(let value): return value.timestampMillis
-            case .connection(let value): return value.first.timestampMillis
-            case .event(let value): return value.timestampMillis }
-        }
-        var id: String {
-            switch self { case .http(let value): return value.id
-            case .connection(let value): return value.first.connectionID
-            case .event(let value): return value.id }
-        }
-    }
     let table = InspectorTableView(frame: .zero, style: .plain)
-    private let header = InspectorFeedHeader()
-    private let scopes = InspectorScopeControl(titles: ["", "HTTP", "WebSocket"])
+    private let header = InspectorFeedHeader(compact: true, actionLabel: "ui_network_clear")
     private let http: HTTP?
     private let sockets: Socket?
     private let connectionID: String?
     private weak var owner: UIViewController?
-    private lazy var loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
+    private lazy var loop: InspectorRefreshLoop = {
+        let loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
+        loop.suspended = { [weak self] in self?.cancelSearch() }; return loop
+    }()
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var latestHTTP: HTTPSnapshot?
     private var latestSockets: WebSocketSnapshot?
-    private var rows: [Row] = []
-    private var connections: [InspectorConnection] = []
+    private var rows: [InspectorSearchRecord] = []
+    private var result: InspectorRecordSearch.Result?
+    private var task: InspectorRecordSearchTask?
+    private var generation: UInt64 = 0
+    private var nextSearchAt: TimeInterval = 0
+    private var timeCheck: TimeInterval = 0
     private var anchor: Int64 = 0
-    private var dirty = true
-    private var attemptedRead = false
+    private var dirty = true, attemptedRead = false
     private var staleHTTP = false, staleSockets = false
-    private var offsets: [CGFloat] = [0, 0, 0]
-    private(set) var scope: Int
-    private(set) var queries = [InspectorQuery(), InspectorQuery(), InspectorQuery()]
+    private var available = 0
+    private(set) var query = InspectorQuery()
     private(set) var paused = false
-    private var query: InspectorQuery { queries[scope] }
 
     init(http: HTTP? = nil, sockets: Socket? = nil, connectionID: String? = nil) {
-        self.http = http; self.sockets = sockets; self.connectionID = connectionID
-        scope = http == nil ? 2 : sockets == nil ? 1 : 0
-        super.init()
+        self.http = http; self.sockets = sockets; self.connectionID = connectionID; super.init()
     }
     func attach(to owner: UIViewController) {
         self.owner = owner; table.dataSource = self; table.delegate = self
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 106
         table.keyboardDismissMode = .onDrag; table.tableHeaderView = header
-        scopes.selectedIndex = scope
-        scopes.onSelect = { [weak self] _ in self?.changeScope() }
-        if http != nil && sockets != nil { header.extra.addArrangedSubview(scopes) }
-        if connectionID != nil {
-            let hint = InspectorTheme.label(.caption1, secondary: true)
-            hint.text = InspectorLocalization.text("ui_connection_hint"); header.extra.addArrangedSubview(hint)
-        }
-        header.onSearch = { [weak self] value in
-            guard let self else { return }; self.queries[self.scope].text = value; self.render()
-        }
-        header.pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
+        if connectionID != nil { header.extra.addArrangedSubview(InspectorTheme.label(.caption1, secondary: true)); header.actions.isHidden = true }
+        header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }
+        header.onQueryChange = { [weak self] in self?.apply($0) }
+        header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
-        header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
+        header.actions.addTarget(self, action: #selector(clear), for: .touchUpInside)
         style.changed()
     }
     func show() { loop.show(in: table) }
@@ -73,135 +53,108 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private func relabel() {
         guard let owner else { return }; InspectorTheme.apply(owner)
         owner.title = connectionID.map { "WebSocket · " + $0.prefix(8) } ?? InspectorLocalization.text("network")
-        scopes.setTitles([InspectorLocalization.text("ui_all"), "HTTP", "WebSocket"])
-        header.search.placeholder = InspectorLocalization.text(connectionID == nil ? "ui_network_search" : "ws_search")
-        if connectionID != nil { (header.extra.arrangedSubviews.first as? UILabel)?.text = InspectorLocalization.text("ui_connection_hint") }
-        render()
+        header.search.placeholder = InspectorLocalization.text("ui_network_search")
+        (header.extra.arrangedSubviews.first as? UILabel)?.text = InspectorLocalization.text("ui_connection_hint")
+        display()
+    }
+    private func cancelSearch() { generation &+= 1; task?.cancel(); task = nil; dirty = true }
+    private func apply(_ query: InspectorQuery) {
+        cancelSearch(); self.query = query; result = nil; rows = []
+        nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.2; display(); refresh()
     }
     private func refresh() {
         guard owner?.presentedViewController == nil else { return }
-        if !paused {
-            anchor = Int64(Date().timeIntervalSince1970 * 1_000)
-            http?.recorder.maintenance()
-            attemptedRead = true
-            let requestSnapshot = http?.history.snapshot(), socketSnapshot = sockets?.history.snapshot()
-            let httpFailed = http != nil && requestSnapshot == nil, socketFailed = sockets != nil && socketSnapshot == nil
-            dirty = dirty || staleHTTP != httpFailed || staleSockets != socketFailed
-            staleHTTP = httpFailed; staleSockets = socketFailed
-            if let snapshot = requestSnapshot { dirty = dirty || latestHTTP?.revision != snapshot.revision; latestHTTP = snapshot }
-            if let snapshot = socketSnapshot {
-                if latestSockets?.revision != snapshot.revision { dirty = true; connections = InspectorConnection.groups(snapshot.events) }
-                latestSockets = snapshot
-            }
+        let now = Date.timeIntervalSinceReferenceDate
+        if !paused && task == nil {
+            anchor = Int64(Date().timeIntervalSince1970 * 1_000); http?.recorder.maintenance(); attemptedRead = true
+            let requests = http?.history.snapshot(), socketEvents = sockets?.history.snapshot()
+            staleHTTP = http != nil && requests == nil; staleSockets = sockets != nil && socketEvents == nil
+            if let requests { dirty = dirty || latestHTTP?.revision != requests.revision; latestHTTP = requests }
+            if let socketEvents { dirty = dirty || latestSockets?.revision != socketEvents.revision; latestSockets = socketEvents }
+            if query.recentMinutes > 0 && now - timeCheck >= 5 { dirty = true; timeCheck = now }
         }
-        if dirty || query.recentMinutes > 0 { render() } else { updateStatus() }
-    }
-    private var controllers: [(String, CaptureController)] {
-        var result: [(String, CaptureController)] = []
-        if let http { result.append(("HTTP", http.recorder.captureController)) }
-        if let sockets, result.first?.1 !== sockets.recorder.captureController { result.append(("WebSocket", sockets.recorder.captureController)) }
-        return result
-    }
-    private func updateStatus() {
-        let states = controllers.map { label, controller in
-            (controllers.count > 1 ? label + ": " : "") + (controller.status().map { InspectorDebugControl.describe($0) } ?? InspectorLocalization.text("busy"))
-        }
-        header.status.text = paused ? InspectorLocalization.text("ui_paused") : states.joined(separator: " · ")
-        if scope != 2 && staleHTTP { header.status.text! += " · HTTP: " + InspectorLocalization.text(latestHTTP == nil ? "busy" : "ui_previous_window") }
-        if scope != 1 && staleSockets { header.status.text! += " · WebSocket: " + InspectorLocalization.text(latestSockets == nil ? "busy" : "ui_previous_window") }
-        header.relabel(paused: paused, query: query); table.setNeedsLayout()
-    }
-    private func render() {
-        rows = []
-        var available = 0
-        if let connectionID {
-            let events = (latestSockets?.events ?? []).filter { $0.connectionID == connectionID }
-            available = events.count
-            rows = events.filter { query.matches($0, now: anchor) }.map(Row.event)
-        } else {
-            if scope != 2 {
-                available += latestHTTP?.events.count ?? 0
-                rows += (latestHTTP?.events ?? []).filter { query.matches($0, now: anchor) }.map(Row.http)
-            }
-            if scope != 1 {
-                available += connections.count; rows += connections.filter { query.matches($0, now: anchor) }.map(Row.connection)
-            }
-        }
-        rows.sort {
-            if case .event(let left) = $0, case .event(let right) = $1 {
-                return InspectorQuery.timelineNewestFirst(left, right)
-            }
-            return $0.time == $1.time ? $0.id < $1.id : $0.time > $1.time
-        }
-        table.reloadData(); dirty = false
-        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
-        let active = controllers.contains { $0.1.status()?.mode == .detailed }
-        let waiting = !attemptedRead ? "ui_reading" : (scope != 2 && staleHTTP) || (scope != 1 && staleSockets) ? "busy" : active ? "ui_waiting" : "ui_inactive_empty"
-        table.setEmptyState(rows.isEmpty ? InspectorTheme.empty(available > 0 ? "ui_filtered_empty" : waiting) : nil)
+        if dirty && task == nil && now >= nextSearchAt { search() }
         updateStatus()
     }
-    @objc private func changeScope() {
-        // Store distance from the visible top, not UIKit's inset-adjusted origin.
-        offsets[scope] = max(0, table.contentOffset.y + table.adjustedContentInset.top); scope = scopes.selectedIndex
-        header.search.text = query.text; render(); table.layoutIfNeeded()
-        table.setContentOffset(CGPoint(x: 0, y: offsets[scope] - table.adjustedContentInset.top), animated: false)
+    private var records: [InspectorSearchRecord] {
+        let requests = connectionID == nil ? (latestHTTP?.events ?? []).map(InspectorSearchRecord.http) : []
+        return (requests + (latestSockets?.events ?? []).filter { connectionID == nil || $0.connectionID == connectionID }.map(InspectorSearchRecord.socket))
+            .sorted(by: InspectorSearchRecord.newestFirst)
     }
-    @objc private func togglePause() {
-        paused.toggle(); dirty = true
-        if !paused { table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false) }
-        refresh()
+    private func search() {
+        let records = records, query = query, anchor = anchor
+        available = records.count
+        if !query.searchesPayload {
+            rows = records.filter { $0.matchesFacets(query, now: anchor) }; result = nil; dirty = false; display(); return
+        }
+        let requestHistory = http?.history, socketHistory = sockets?.history, current = generation
+        task = InspectorRecordSearchTask.submit(search: { cancelled in
+            InspectorRecordSearch.run(records, query: query, now: anchor, http: requestHistory, sockets: socketHistory, cancelled: cancelled)
+        }, completion: { [weak self] result in
+            guard let self, self.generation == current else { return }
+            self.task = nil; self.result = result; self.rows = records.filter { result.keys.contains($0.key) }
+            self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1; self.display()
+        })
+        if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
+    }
+    private func updateStatus() {
+        var notes: [String] = []
+        if task != nil || dirty && query.searchesPayload { notes.append(InspectorLocalization.text("ui_searching")) }
+        if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
+        if staleHTTP || staleSockets { notes.append(InspectorLocalization.text("ui_previous_window")) }
+        if (latestHTTP?.evictedEvents ?? 0) > 0 || (latestHTTP?.evictedBodies ?? 0) > 0
+            || (latestSockets?.evictedEvents ?? 0) > 0 || (latestSockets?.evictedPayloads ?? 0) > 0
+            || (sockets?.recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
+        header.status.text = notes.joined(separator: " · ")
+        header.relabel(paused: paused, query: query); table.setNeedsLayout()
+    }
+    private func display() {
+        table.reloadData()
+        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
+        let active = http?.recorder.captureController.status()?.debugEnabled == true || sockets?.recorder.captureController.status()?.debugEnabled == true
+        let key = dirty && query.searchesPayload ? "ui_searching" : available > 0 ? "ui_filtered_empty" : !attemptedRead ? "ui_reading"
+            : staleHTTP || staleSockets ? "busy" : active ? "ui_waiting" : "ui_inactive_empty"
+        table.setEmptyState(rows.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()
+    }
+    @objc private func followLatest() {
+        paused = false; dirty = true
+        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false); refresh()
     }
     @objc private func showFilters() {
         table.endEditing(true)
-        let groups = connectionID == nil ? InspectorFilterOptions.network(latestHTTP?.events ?? [], connections: connections, scope: scope, query: query)
-            : InspectorFilterOptions.timeline()
-        let filters = InspectorFilterViewController(query: query, groups: groups) { [weak self] value in
-            guard let self else { return }; self.queries[self.scope] = value; self.render()
-        }
+        let filters = InspectorFilterViewController(query: query,
+            groups: InspectorFilterOptions.network(latestHTTP?.events ?? [], sockets: latestSockets?.events ?? [], query: query,
+                includeHTTP: http != nil, includeSockets: sockets != nil), payload: true) { [weak self] in self?.apply($0) }
         owner?.inspectorPresent(filters)
     }
-    @objc private func showActions() {
-        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
-            guard let self else { return }
-            var parts: [String] = []
-            if let value = self.latestHTTP, let status = self.http?.recorder.captureController.status() {
-                parts.append(String(format: InspectorLocalization.text("http_summary"), InspectorLocalization.text("http_" + status.mode.rawValue), value.events.count, value.evictedEvents, value.evictedBodies))
-            }
-            if let value = self.latestSockets, let status = self.sockets?.recorder.captureController.status() {
-                parts.append(String(format: InspectorLocalization.text("ws_summary"), InspectorLocalization.text("http_" + status.mode.rawValue), value.events.count, value.evictedEvents, value.evictedPayloads, self.sockets?.recorder.status()?.rateLimitedCount ?? 0))
-            }
-            self.owner?.inspectorNotice(parts.isEmpty ? InspectorLocalization.text("busy") : parts.joined(separator: "\n\n"))
-        })
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_network_clear"), style: .destructive) { [weak self] _ in
-            self?.owner?.inspectorConfirm(InspectorLocalization.text("ui_network_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
-                guard let self else { return }
-                if self.scope != 2 { self.http?.history.clear(); self.latestHTTP = self.http?.history.snapshot() }
-                if self.scope != 1 { self.sockets?.history.clear(); self.latestSockets = self.sockets?.history.snapshot(); self.connections = InspectorConnection.groups(self.latestSockets?.events ?? []) }
-                self.render()
-            }
-        })
-        owner?.inspectorPresent(menu)
+    @objc private func clear() {
+        owner?.inspectorConfirm(InspectorLocalization.text("ui_network_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
+            guard let self else { return }; self.cancelSearch()
+            self.http?.history.clear(); self.sockets?.history.clear()
+            self.latestHTTP = self.http?.history.snapshot(); self.latestSockets = self.sockets?.history.snapshot()
+            self.result = nil; self.rows = []; self.nextSearchAt = 0; self.search()
+        }
     }
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { paused = true; cancelSearch(); dirty = false; updateStatus() }
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { resumeAtTop() } }
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { resumeAtTop() }
+    private func resumeAtTop() { if table.contentOffset.y + table.adjustedContentInset.top <= 1 { paused = false; refresh() } }
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let record = rows[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "network") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "network")
-        switch rows[indexPath.row] {
+        let preview = result?.previews[record.key].map { "\n" + $0 } ?? ""
+        switch record {
         case .http(let event):
             cell.configure(badge: event.method + (event.statusCode.map { " · \($0)" } ?? ""), time: event.timestampMillis,
-                title: InspectorQuery.path(event.url), subtitle: InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(event),
+                title: InspectorQuery.path(event.url), subtitle: InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(event) + preview,
                 color: event.state == .failed || (event.statusCode ?? 0) >= 400 ? .systemRed : InspectorTheme.accent)
-        case .connection(let connection):
-            let state = InspectorFilterOptions.label(.state, connection.state)
-            cell.configure(badge: "WebSocket", time: connection.first.timestampMillis, title: InspectorQuery.path(connection.latest.url),
-                subtitle: InspectorQuery.host(connection.latest.url) + " · " + state + "\n" + connection.latest.connectionID.prefix(8) + " · "
-                    + String(format: InspectorLocalization.text("ui_connection_count"), connection.count),
-                color: connection.state == "failed" ? .systemRed : InspectorTheme.accent)
-        case .event(let event):
-            cell.configure(badge: event.direction.map { InspectorLocalization.text("ws_" + $0.rawValue) } ?? "WebSocket",
-                time: event.timestampMillis, title: WebSocketPresentation.summary(event), subtitle: "#\(event.sequence) · " + event.id.prefix(8),
+        case .socket(let event):
+            cell.configure(badge: "Socket · " + (event.direction.map { InspectorLocalization.text("ws_" + $0.rawValue) } ?? WebSocketPresentation.kind(event)),
+                time: event.timestampMillis, title: InspectorQuery.path(event.url),
+                subtitle: WebSocketPresentation.summary(event) + " · " + InspectorQuery.host(event.url) + "\n" + event.connectionID.prefix(8) + " · #\(event.sequence)" + preview,
                 color: event.kind == .failed || event.outcome == .failed || event.outcome == .rejected ? .systemRed : InspectorTheme.accent)
+        case .log: break
         }
         return cell
     }
@@ -209,8 +162,13 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         table.deselectRow(at: indexPath, animated: true)
         switch rows[indexPath.row] {
         case .http(let event): if let http { owner?.inspectorPush(HTTPDetailViewController(event: event, history: http.history)) }
-        case .connection(let connection): if let sockets { owner?.inspectorPush(NetworkInspectorViewController(content: NetworkInspectorContent(sockets: sockets, connectionID: connection.latest.connectionID))) }
-        case .event(let event): if let sockets { owner?.inspectorPush(WebSocketDetailViewController(event: event, history: sockets.history)) }
+        case .socket(let event):
+            if let sockets {
+                let detail = WebSocketDetailViewController(event: event, history: sockets.history)
+                detail.showConnection = { [weak detail] in detail?.inspectorPush(NetworkInspectorViewController(content: NetworkInspectorContent(sockets: sockets, connectionID: event.connectionID))) }
+                owner?.inspectorPush(detail)
+            }
+        case .log: break
         }
     }
 }
@@ -219,8 +177,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
 final class NetworkInspectorViewController: UITableViewController {
     let content: NetworkInspectorContent
     init(content: NetworkInspectorContent) { self.content = content; super.init(style: .plain) }
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { return nil }
+    @available(*, unavailable) required init?(coder: NSCoder) { return nil }
     override func loadView() { super.loadView(); tableView = content.table }
     override func viewDidLoad() { super.viewDidLoad(); content.attach(to: self) }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); content.show() }
