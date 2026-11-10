@@ -14,7 +14,6 @@ final class WebSocketDetailDialog {
     private final WebSocketHistory history;
     private final Map<String, IncidentPayload> savedPayloads;
     private final WebSocketEvent event;
-    private String notice = "";
     private int section;
     private final FrameLayout body;
     final InspectorScreen dialog;
@@ -22,7 +21,6 @@ final class WebSocketDetailDialog {
     WebSocketDetailDialog(Context context, WebSocketEvent event, Map<String, IncidentPayload> payloads) { this(context, event, null, payloads); }
     private WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history, Map<String, IncidentPayload> payloads) {
         this.context = context; this.event = event; this.history = history; this.savedPayloads = payloads;
-        if (payloads != null) notice = context.getString(R.string.osservio_incident_frozen_detail);
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -51,7 +49,7 @@ final class WebSocketDetailDialog {
             page.action(R.string.osservio_ui_open_reader, () -> {
                 InspectorReadContent text = savedPayloads != null ? WebSocketPresentation.payload(context, event.payload, savedPayloads)
                     : WebSocketPresentation.payload(context, event.payload, history);
-                page.read(R.string.osservio_ws_payload, new InspectorReadContent(text.text, notice.isEmpty() ? text.notice : notice + "\n" + text.notice, text.allowsJson));
+                page.read(R.string.osservio_ws_payload, text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail)));
             });
         }
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));

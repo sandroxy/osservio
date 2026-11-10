@@ -18,7 +18,6 @@ final class HTTPDetailDialog {
     private final HTTPHistory history;
     private final Map<String, IncidentPayload> savedPayloads;
     private final HTTPEvent event;
-    private String notice = "";
     private int section;
     private final FrameLayout body;
     final InspectorScreen dialog;
@@ -31,7 +30,6 @@ final class HTTPDetailDialog {
     }
     private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, Map<String, IncidentPayload> savedPayloads) {
         this.context = context; this.event = event; this.history = history; this.savedPayloads = savedPayloads;
-        if (savedPayloads != null) notice = context.getString(R.string.osservio_incident_frozen_detail);
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ui_request, R.string.osservio_ui_response}, 0,
             index -> { section = index; render(); }), new LinearLayout.LayoutParams(-1, -2));
@@ -72,7 +70,7 @@ final class HTTPDetailDialog {
             page.section(R.string.osservio_ui_body); page.note(() -> HTTPPresentation.bodyDescription(context, reference));
             page.action(R.string.osservio_ui_open_reader, () -> {
                 InspectorReadContent text = savedPayloads != null ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
-                page.read(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body, new InspectorReadContent(text.text, notice.isEmpty() ? text.notice : notice + "\n" + text.notice, text.allowsJson));
+                page.read(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body, text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail)));
             });
         }
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));

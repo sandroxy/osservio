@@ -123,7 +123,7 @@ final class InspectorContentReader extends LinearLayout {
     }
     private void highlight(boolean reveal) {
         boolean showTree = structured && tree.hasDocument(); tree.setVisibility(showTree ? VISIBLE : GONE); scroll.setVisibility(showTree ? GONE : VISIBLE);
-        String message = value.notice;
+        String message = value.notice();
         if (parserNotice != 0) message += (message.isEmpty() ? "" : "\n") + getContext().getString(parserNotice);
         if (showTree) message += (message.isEmpty() ? "" : "\n") + getContext().getString(R.string.osservio_json_hint);
         notice.setText(message); notice.setVisibility(message.isEmpty() ? GONE : VISIBLE);

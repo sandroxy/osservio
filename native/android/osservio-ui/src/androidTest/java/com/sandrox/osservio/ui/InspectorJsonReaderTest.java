@@ -54,7 +54,38 @@ public final class InspectorJsonReaderTest {
             assertTrue(text(detail.dialog.view).contains(context.getString(R.string.osservio_http_pending)));
             InspectorReadContent missing = InspectorReadContent.saved(context, null, "state", true);
             assertEquals("", missing.text); assertFalse(missing.allowsJson);
-            assertTrue(missing.notice.contains(context.getString(R.string.osservio_incident_payload_missing)));
+            assertTrue(missing.notice().contains(context.getString(R.string.osservio_incident_payload_missing)));
+        });
+    }
+    @Test public void contentNoticesRelocalizeWithoutAnotherBodyLookup() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            boolean english = InspectorPreferences.english(base);
+            try {
+                InspectorPreferences.setEnglish(base, false);
+                android.content.MutableContextWrapper context = new android.content.MutableContextWrapper(InspectorTheme.context(base));
+                CaptureController capture = new CaptureController(false, true, LogClock.SYSTEM);
+                MemoryHTTPStore store = new MemoryHTTPStore();
+                HTTPRecorder recorder = new HTTPRecorder(store, capture,
+                    new HTTPPrivacyPolicy(true, java.util.Collections.emptySet(), HTTPPrivacyPolicy.BodyPolicy.PUBLIC_UTF8, 1024));
+                HTTPRecorder.Token token = recorder.begin("GET", "https://example.com", java.util.Collections.emptyList()).token;
+                assertNotNull(token);
+                assertEquals(HTTPRecorder.Result.RECORDED, recorder.receiveResponse(token, 200,
+                    java.util.Collections.singletonList(new HTTPHeader("Content-Type", "application/json")), true));
+                assertEquals(HTTPRecorder.Result.RECORDED, recorder.observeBody(token, HTTPRecorder.Direction.RESPONSE, 2, limit -> new byte[] {123, 125}));
+                assertEquals(HTTPRecorder.Result.RECORDED, recorder.finish(token, HTTPEvent.State.COMPLETED, null, true, true));
+                int[] reads = {0};
+                HTTPHistory history = new HTTPHistory() {
+                    @Override public HTTPSnapshot snapshot() { throw new AssertionError("No metadata refresh"); }
+                    @Override public BodyLookup body(String id) { reads[0]++; return store.body(id); }
+                    @Override public void clear() { throw new AssertionError("No clearing"); }
+                };
+                InspectorReadContent content = HTTPPresentation.body(context, store.snapshot().events.get(0).responseBody, history);
+                String original = content.notice(); assertEquals("{}", content.text);
+                InspectorPreferences.setEnglish(base, true); context.setBaseContext(InspectorTheme.context(base));
+                assertNotEquals(original, content.notice()); assertEquals("{}", content.text); assertEquals(1, reads[0]);
+                capture.stopAll();
+            } finally { InspectorPreferences.setEnglish(base, english); }
         });
     }
     private static InspectorJsonDocument parse(String source) {
