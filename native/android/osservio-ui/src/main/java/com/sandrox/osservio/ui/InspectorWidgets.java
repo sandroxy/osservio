@@ -97,8 +97,53 @@ final class InspectorWidgets {
     }
     static TextView sectionLabel(Context context) {
         TextView text = caption(context);
+        InspectorTheme.typography(text, 15, true);
         text.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 8));
         return text;
+    }
+    static LinearLayout group(Context context) {
+        LinearLayout group = new LinearLayout(context); group.setOrientation(LinearLayout.VERTICAL);
+        InspectorAppearance.style(group, () -> InspectorTheme.surface(group, false, 22));
+        group.setClipToOutline(true); return group;
+    }
+    static void addGrouped(LinearLayout group, View row) {
+        if (group.getChildCount() > 0) group.addView(divider(group.getContext()));
+        group.addView(row, new LinearLayout.LayoutParams(-1, -2));
+    }
+    static final class ValueRow extends LinearLayout {
+        final TextView title, value;
+        private final android.widget.ImageView arrow;
+        ValueRow(Context context) {
+            super(context); setGravity(Gravity.CENTER_VERTICAL);
+            int inset = InspectorTheme.dp(context, 16);
+            setPadding(inset, InspectorTheme.dp(context, 12), inset, InspectorTheme.dp(context, 12));
+            setMinimumHeight(InspectorTheme.dp(context, 52));
+            LinearLayout labels = new LinearLayout(context); labels.setOrientation(VERTICAL);
+            title = InspectorTheme.text(context, 16, false); labels.addView(title, new LayoutParams(-1, -2));
+            value = InspectorTheme.text(context, 13, false);
+            value.setPadding(0, InspectorTheme.dp(context, 3), 0, 0); labels.addView(value, new LayoutParams(-1, -2));
+            addView(labels, new LayoutParams(0, -2, 1));
+            arrow = new android.widget.ImageView(context); arrow.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            LayoutParams arrowLayout = new LayoutParams(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20)); arrowLayout.leftMargin = InspectorTheme.dp(context, 12);
+            addView(arrow, arrowLayout); arrow.setVisibility(GONE);
+            InspectorAppearance.style(this, () -> {
+                value.setTextColor(InspectorTheme.secondary(context));
+                arrow.setImageDrawable(symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)));
+            });
+        }
+        void bind(String heading, String detail, boolean navigates) {
+            title.setText(heading); value.setText(detail); value.setVisibility(detail.isEmpty() ? GONE : VISIBLE);
+            arrow.setVisibility(navigates ? VISIBLE : GONE);
+        }
+        void action(Runnable action) {
+            setFocusable(action != null); setClickable(action != null);
+            if (action != null) { setBackgroundResource(android.R.drawable.list_selector_background); setOnClickListener(view -> action.run()); }
+        }
+        void icon(int resource) {
+            android.widget.ImageView icon = new android.widget.ImageView(getContext()); icon.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            InspectorAppearance.style(icon, () -> icon.setImageDrawable(symbol(getContext(), resource, 22, InspectorTheme.accent(getContext()))));
+            LayoutParams layout = new LayoutParams(InspectorTheme.dp(getContext(), 24), InspectorTheme.dp(getContext(), 24)); layout.rightMargin = InspectorTheme.dp(getContext(), 16); addView(icon, 0, layout);
+        }
     }
     static android.graphics.drawable.Drawable symbol(Context context, int resource, int size, int color) {
         android.graphics.drawable.Drawable drawable = context.getDrawable(resource);

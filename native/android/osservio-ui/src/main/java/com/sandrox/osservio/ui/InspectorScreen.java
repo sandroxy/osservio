@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 /** A page or editing panel in the inspector. Standalone viewers use a native dialog container. */
 final class InspectorScreen implements DialogInterface {
+    interface Content { void bindScreen(InspectorScreen screen); }
     interface BackInterceptor { boolean consume(); }
     private BackInterceptor backInterceptor;
     void setBackInterceptor(BackInterceptor interceptor) { backInterceptor = interceptor; }
@@ -67,6 +68,7 @@ final class InspectorScreen implements DialogInterface {
         card.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         card.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
     }
+    void bindContent() { if (content instanceof Content) ((Content) content).bindScreen(this); }
     void compact() {
         FrameLayout.LayoutParams cardLayout = (FrameLayout.LayoutParams) card.getLayoutParams();
         cardLayout.height = -2; card.setLayoutParams(cardLayout);
@@ -97,7 +99,11 @@ final class InspectorScreen implements DialogInterface {
     void showCancel() { back.setVisibility(View.VISIBLE); }
     ImageButton iconAction(int icon, int label, Runnable operation) {
         ImageButton action = InspectorWidgets.icon(view.getContext(), icon, label, operation);
-        bar.trailing.addView(action, Math.max(0, bar.trailing.getChildCount() - 1)); return action;
+        addAction(action); return action;
+    }
+    void addAction(View action) {
+        if (action.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) action.getParent()).removeView(action);
+        bar.trailing.addView(action, Math.max(0, bar.trailing.getChildCount() - 1));
     }
     void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); }
     void show() {

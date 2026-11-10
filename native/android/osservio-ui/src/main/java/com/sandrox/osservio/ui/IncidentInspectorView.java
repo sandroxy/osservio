@@ -106,9 +106,14 @@ public final class IncidentInspectorView extends FrameLayout {
             value -> { state.query.text = value; render(); }, () -> { }, this::filters, () -> confirmDeletion(null), true, R.string.osservio_incident_delete_all);
         header.onQueryChange = query -> { state.query = query; render(); };
         mark = InspectorWidgets.button(context, R.string.osservio_ui_record_problem, this::mark); InspectorWidgets.primaryAction(mark);
-        android.graphics.drawable.Drawable plus = context.getDrawable(R.drawable.osservio_add);
-        if (plus != null) plus.setTint(InspectorTheme.accent(context));
-        mark.setCompoundDrawablesRelativeWithIntrinsicBounds(plus, null, null, null);
+        Runnable markLabel = () -> {
+            String label = context.getString(R.string.osservio_ui_record_problem);
+            android.text.SpannableString text = new android.text.SpannableString("+  " + label);
+            text.setSpan(new android.text.style.ImageSpan(InspectorWidgets.symbol(context, R.drawable.osservio_add, 20, InspectorTheme.accent(context)),
+                android.text.style.ImageSpan.ALIGN_BASELINE), 0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            mark.setText(text); mark.setContentDescription(label);
+        };
+        InspectorAppearance.content(mark, markLabel); markLabel.run();
         retry = InspectorWidgets.button(context, R.string.osservio_ui_retry, this::read);
         header.addView(mark, 0, new LinearLayout.LayoutParams(-1, -2)); header.addView(retry, 1, new LinearLayout.LayoutParams(-1, -2));
         notice = header.status; notice.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
@@ -145,7 +150,7 @@ public final class IncidentInspectorView extends FrameLayout {
     boolean navigateBack() {
         if (selected == null) return false;
         if (reading) return true;
-        if (!selected.navigateBack()) showList();
+        showList();
         return true;
     }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); visibility(); }
@@ -208,7 +213,7 @@ public final class IncidentInspectorView extends FrameLayout {
         if (InspectorNavigation.owns(getContext())) {
             state.selected = null; // The tab's page stack owns this snapshot across root-view rebuilding.
             snapshotScreen = InspectorDialogs.screen(getContext(), R.string.osservio_incident_title, selected);
-            snapshotScreen.setBackInterceptor(() -> reading || (selected != null && selected.navigateBack()));
+            snapshotScreen.setBackInterceptor(() -> reading);
             snapshotScreen.setOnDismissListener(ignored -> { snapshotScreen = null; selected = null; attempted = false; visibility(); });
             snapshotScreen.show();
         } else { listing.setVisibility(GONE); addView(selected, new LayoutParams(-1, -1)); }

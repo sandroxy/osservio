@@ -12,10 +12,10 @@ import android.widget.TextView;
 final class InspectorDialogs {
     private InspectorDialogs() { }
     static InspectorScreen screen(Context context, String title, View content) {
-        return new InspectorScreen(context, title, content, false);
+        InspectorScreen screen = new InspectorScreen(context, title, content, false); screen.bindContent(); return screen;
     }
     static InspectorScreen screen(Context context, int title, View content) {
-        InspectorScreen screen = screen(context, context.getString(title), content); screen.title(title); return screen;
+        InspectorScreen screen = new InspectorScreen(context, context.getString(title), content, false); screen.title(title); screen.bindContent(); return screen;
     }
     static InspectorScreen panel(Context context, int title, View content) {
         return new InspectorScreen(context, context.getString(title), content, true);

@@ -50,12 +50,12 @@ final class InspectorCaptureSettingsView extends ScrollView {
         for (int index = 0; index < supplied.length; index++) {
             if (supplied[index] != null && !controllers.contains(supplied[index])) { controllers.add(supplied[index]); names.add(labels[index]); }
         }
+        TextView title = InspectorWidgets.sectionLabel(context); InspectorAppearance.text(title, R.string.osservio_ui_capture_status); content.addView(title);
+        LinearLayout group = InspectorWidgets.group(context); content.addView(group);
         for (int index = 0; index < controllers.size(); index++) {
-            TextView title = InspectorWidgets.sectionLabel(context); int label = names.get(index);
-            InspectorAppearance.text(title, () -> controllers.size() == 1 ? "Osservio" : context.getString(label)); content.addView(title);
-            TextView value = InspectorTheme.text(context, 15, false); value.setPadding(inset, inset, inset, inset);
-            InspectorAppearance.style(value, () -> { value.setTextColor(InspectorTheme.primary(context)); InspectorTheme.surface(value, false, 20); });
-            content.addView(value); values.add(value);
+            int label = names.get(index); InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(context);
+            InspectorAppearance.text(row.title, () -> controllers.size() == 1 ? "Osservio" : context.getString(label));
+            InspectorWidgets.addGrouped(group, row); values.add(row.value);
         }
         InspectorAppearance.content(this, this::update); update();
     }

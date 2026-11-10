@@ -18,7 +18,7 @@ final class InspectorFeedHeader extends LinearLayout {
     final TextView empty;
     final EditText search;
     private final ImageButton pause;
-    private final Button filters;
+    private final ImageButton filters;
     private final TextView criteria;
     final ImageButton actions;
     private final boolean compact;
@@ -41,12 +41,8 @@ final class InspectorFeedHeader extends LinearLayout {
         LinearLayout searchRow = new LinearLayout(context); searchRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
         search = InspectorWidgets.search(context, searchHint, text, changed);
         searchRow.addView(search, new LayoutParams(0, -2, 1));
-        filters = InspectorWidgets.button(context, R.string.osservio_ui_filters, showFilters);
-        filters.setContentDescription(context.getString(R.string.osservio_ui_filters));
-        filters.setCompoundDrawablesRelative(InspectorWidgets.symbol(context, R.drawable.osservio_filter, 20, InspectorTheme.accent(context)), null, null, null);
-        filters.setCompoundDrawablePadding(InspectorTheme.dp(context, 4));
-        filters.setMinimumWidth(InspectorTheme.dp(context, 48));
-        LayoutParams filterLayout = new LayoutParams(-2, -2); filterLayout.leftMargin = InspectorTheme.dp(context, 8);
+        filters = InspectorWidgets.icon(context, R.drawable.osservio_filter, R.string.osservio_ui_filters, showFilters);
+        LayoutParams filterLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48)); filterLayout.leftMargin = InspectorTheme.dp(context, 4);
         searchRow.addView(filters, filterLayout); addView(searchRow, new LayoutParams(-1, -2));
         LinearLayout bar = new LinearLayout(context); bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
         bar.setPadding(InspectorTheme.dp(context, 4), 0, 0, 0);
@@ -55,11 +51,6 @@ final class InspectorFeedHeader extends LinearLayout {
         ImageButton menu = InspectorWidgets.icon(context, compact ? R.drawable.osservio_trash : R.drawable.osservio_more,
             compact ? actionLabel : R.string.osservio_ui_actions, actions);
         this.actions = menu;
-        InspectorAppearance.style(menu, () -> {
-            menu.setImageTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.secondary(context)));
-            menu.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
-                InspectorTheme.color(context, R.color.osservio_tint)), null, InspectorTheme.shape(context, android.graphics.Color.WHITE, 24, false)));
-        });
         latest = InspectorWidgets.button(context, R.string.osservio_ui_follow_latest, togglePause);
         latest.setMaxWidth(InspectorTheme.dp(context, 100)); latest.setVisibility(GONE);
         results = InspectorWidgets.caption(context);
@@ -81,15 +72,15 @@ final class InspectorFeedHeader extends LinearLayout {
     }
     void setQuery(InspectorQuery query, List<InspectorFilterSheet.Group> groups, int visible, int total) {
         filters.setContentDescription(getContext().getString(R.string.osservio_ui_filters));
-        filters.setCompoundDrawablesRelative(InspectorWidgets.symbol(getContext(), R.drawable.osservio_filter, 20, InspectorTheme.accent(getContext())), null, null, null);
-        filters.setText(query.activeCount() == 0 ? "" : Integer.toString(query.activeCount()));
-        InspectorWidgets.chip(filters, query.activeCount() > 0);
+        if (android.os.Build.VERSION.SDK_INT >= 30) filters.setStateDescription(getContext().getString(R.string.osservio_ui_filter_count, query.activeCount()));
+        filters.setSelected(query.activeCount() > 0);
         criteria.setText(InspectorFilterOptions.summary(getContext(), query, groups));
         criteria.setVisibility(compact || query.activeCount() == 0 ? GONE : VISIBLE);
         if (compact) updateTokens(query, groups);
         results.setText(getContext().getString(R.string.osservio_ui_result_count, visible, total));
         empty.setVisibility(visible == 0 ? VISIBLE : GONE);
     }
+    void hideActions() { actions.setVisibility(GONE); }
     void setPaused(boolean paused) {
         if (compact) {
             pause.setVisibility(GONE); latest.setVisibility(paused ? VISIBLE : GONE);

@@ -151,4 +151,5 @@
     <string name="osservio_ui_capture_settings">采集设置</string>
     <string name="osservio_ui_baseline_capture">基础采集</string>
     <string name="osservio_ui_event_time">发生时间</string>
+    <string name="osservio_ui_request_url">请求地址</string>
 </resources>

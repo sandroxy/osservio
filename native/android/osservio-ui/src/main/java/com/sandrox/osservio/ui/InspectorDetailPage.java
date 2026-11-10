@@ -25,6 +25,19 @@ final class InspectorDetailPage extends ScrollView {
         content.addView(group, new LinearLayout.LayoutParams(-1, -2));
     }
     void field(int title, Object value) { field(title, () -> value); }
+    void value(InspectorAppearance.Value<String> value) { value(value, null); }
+    void value(InspectorAppearance.Value<String> value, Runnable action) {
+        InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());
+        Runnable render = () -> row.bind(value.get(), "", action != null); InspectorAppearance.content(row, render); render.run(); row.action(action);
+        if (action != null) { row.title.setMaxLines(4); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); InspectorAppearance.style(row.title, () -> row.title.setTextColor(InspectorTheme.accent(getContext()))); }
+        InspectorWidgets.addGrouped(group, row);
+    }
+    void row(int title, InspectorAppearance.Value<String> value, Runnable action) {
+        InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());
+        Runnable render = () -> row.bind(getContext().getString(title), value.get(), action != null);
+        InspectorAppearance.content(row, render); render.run(); row.action(action);
+        InspectorWidgets.addGrouped(group, row);
+    }
     void field(int title, InspectorAppearance.Value<?> value) { field(() -> getContext().getString(title), value); }
     void field(String title, Object value) { field(() -> title, () -> value); }
     private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) { field(title, value, null); }
@@ -40,7 +53,7 @@ final class InspectorDetailPage extends ScrollView {
             text.setMaxLines(3); row.setFocusable(true); row.setOnClickListener(ignored -> action.run());
             row.setBackgroundResource(android.R.drawable.list_selector_background);
             InspectorAppearance.style(label, () -> {
-                label.setTextColor(InspectorTheme.secondary(context));
+                label.setTextColor(InspectorTheme.accent(context));
                 label.setCompoundDrawablesRelative(null, null, InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)), null);
             });
         }
@@ -81,7 +94,8 @@ final class InspectorDetailPage extends ScrollView {
         content.addView(note);
     }
     void action(int title, Runnable run) {
-        content.addView(InspectorWidgets.button(getContext(), title, run), new LinearLayout.LayoutParams(-1, -2));
+        if (group == null) section("");
+        value(() -> getContext().getString(title), run);
     }
     void read(int title, String text, boolean code) {
         read(getContext().getString(title), text, code); reader.title(title);

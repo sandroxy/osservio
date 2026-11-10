@@ -22,7 +22,7 @@ import android.widget.RadioGroup;
 import java.lang.ref.WeakReference;
 
 /** An explicit, immutable content read. This view never queries live history. */
-final class InspectorContentReader extends LinearLayout {
+final class InspectorContentReader extends LinearLayout implements InspectorScreen.Content {
     private final TextView text;
     private final TextView count;
     private final ScrollView scroll;
@@ -33,6 +33,8 @@ final class InspectorContentReader extends LinearLayout {
     private final Button next;
     private final RadioGroup mode;
     private final TextView notice;
+    private final LinearLayout actions, matchNavigation;
+    private final android.widget.ImageButton copy;
     private final InspectorJsonTreeView tree;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String content = "";
@@ -58,16 +60,15 @@ final class InspectorContentReader extends LinearLayout {
             selected -> { structured = selected == 0; highlight(true); });
         mode.setVisibility(GONE); header.addView(mode);
         notice = InspectorWidgets.caption(context); header.addView(notice);
-        LinearLayout actions = new LinearLayout(context);
-        android.widget.ImageButton copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, this::copy);
-        android.widget.ImageButton find = InspectorWidgets.icon(context, R.drawable.osservio_search, R.string.osservio_ui_search_content, this::toggleSearch);
-        actions.setGravity(Gravity.END); actions.addView(find); actions.addView(copy); header.addView(actions);
-        searching = new LinearLayout(context); searching.setOrientation(VERTICAL); searching.setVisibility(GONE);
+        actions = new LinearLayout(context);
+        copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, this::copy);
+        actions.setGravity(Gravity.END); actions.addView(copy); header.addView(actions);
+        searching = new LinearLayout(context); searching.setOrientation(VERTICAL);
         search = InspectorWidgets.search(context, R.string.osservio_ui_search_content, "", value -> {
             searchDirty = true; handler.removeCallbacks(searchContent); handler.postDelayed(searchContent, 120);
         });
         searching.addView(search, new LayoutParams(-1, -2));
-        LinearLayout navigation = new LinearLayout(context); navigation.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout navigation = new LinearLayout(context); navigation.setGravity(Gravity.CENTER_VERTICAL); matchNavigation = navigation;
         count = InspectorWidgets.caption(context); navigation.addView(count, new LayoutParams(0, -2, 1));
         previous = InspectorWidgets.button(context, R.string.osservio_ui_previous_match, () -> move(-1)); InspectorAppearance.text(previous, () -> "↑");
         previous.setContentDescription(context.getString(R.string.osservio_ui_previous_match));
@@ -88,6 +89,7 @@ final class InspectorContentReader extends LinearLayout {
         reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         reading.addView(tree, new FrameLayout.LayoutParams(-1, -1)); addView(reading, new LayoutParams(-1, 0, 1));
     }
+    @Override public void bindScreen(InspectorScreen screen) { screen.addAction(copy); actions.setVisibility(GONE); }
     @Override protected void onMeasure(int width, int height) {
         // Keep content reachable with the keyboard or large text in a short viewport.
         int available = Math.max(0, MeasureSpec.getSize(height) - getPaddingTop() - getPaddingBottom());
@@ -110,21 +112,12 @@ final class InspectorContentReader extends LinearLayout {
         selection = 0; highlight(false); scroll.scrollTo(0, 0);
         if (isAttachedToWindow()) startParsing();
     }
-    private void toggleSearch() {
-        boolean show = searching.getVisibility() != VISIBLE; searching.setVisibility(show ? VISIBLE : GONE);
-        if (show) { search.requestFocus(); searchContent.run(); }
-        else {
-            handler.removeCallbacks(searchContent); search.clearFocus();
-            android.view.inputmethod.InputMethodManager keyboard = getContext().getSystemService(android.view.inputmethod.InputMethodManager.class);
-            if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
-            matches = new InspectorTextSearch("", ""); highlight(false);
-        }
-    }
     private void move(int direction) {
         if (matches.matches.isEmpty()) return;
         selection = (selection + direction + matches.matches.size()) % matches.matches.size(); highlight(true);
     }
     private void highlight(boolean reveal) {
+        matchNavigation.setVisibility(search.length() == 0 ? GONE : VISIBLE);
         boolean showTree = structured && tree.hasDocument(); tree.setVisibility(showTree ? VISIBLE : GONE); scroll.setVisibility(showTree ? GONE : VISIBLE);
         String message = value.notice();
         if (parserNotice != 0) message += (message.isEmpty() ? "" : "\n") + getContext().getString(parserNotice);

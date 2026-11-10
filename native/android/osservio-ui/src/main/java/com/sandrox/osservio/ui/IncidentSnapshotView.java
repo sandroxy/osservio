@@ -4,16 +4,14 @@ import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.IncidentSnapshot;
@@ -25,136 +23,87 @@ import java.util.Locale;
 
 /** Read-only frozen evidence. Opening an attachment never queries a live provider. */
 @SuppressLint("ViewConstructor")
-final class IncidentSnapshotView extends LinearLayout {
+final class IncidentSnapshotView extends LinearLayout implements InspectorScreen.Content {
     private final IncidentSnapshot snapshot;
     private final EditText search;
-    private final TextView footer;
-    private final TextView status;
-    private final android.widget.ImageButton back;
+    private final TextView footer, status;
+    private final ImageButton back, copy;
     private final Button delete;
+    private final LinearLayout controls;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
     private InspectorScreen detail;
-    private View evidence;
     private IncidentSharePresentation sharing;
-    private Button share;
+    private ImageButton share;
 
     IncidentSnapshotView(Context context, IncidentSnapshot snapshot, Runnable goBack, Runnable deleteSnapshot, IncidentExporter exporter) {
         super(context); this.snapshot = snapshot; setOrientation(VERTICAL);
-        LinearLayout controls = new LinearLayout(context);
-        back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, () -> { }); back.setOnClickListener(view -> goBack.run());
-        android.widget.ImageButton copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> { }); copy.setOnClickListener(view -> copy(IncidentPresentation.summary(context, snapshot)));
-        delete = button(R.string.osservio_incident_delete); delete.setOnClickListener(view -> deleteSnapshot.run());
-        android.widget.ImageButton menu = InspectorWidgets.icon(context, R.drawable.osservio_more, R.string.osservio_ui_actions, () -> {
-            detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_incident_delete)}, (dialog, which) -> {
-                    dialog.dismiss(); detail = null; delete.performClick();
-                });
-            InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
-        });
-        back.setVisibility(InspectorNavigation.owns(context) ? GONE : VISIBLE); controls.addView(back);
-        View spacer = new View(context); controls.addView(spacer, new LayoutParams(0, 1, 1)); controls.addView(copy);
-        controls.addView(menu, new LayoutParams(dp(48), -2));
-        addView(controls, new LayoutParams(-1, -2));
-        status = caption(""); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE); addView(status, new LayoutParams(-1, -2));
-        search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> { });
-        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE);
-        ListView list = new ListView(context);
-        LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
-        header.setPadding(dp(16), 0, dp(16), 0);
-        SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
-        TextView metadata = caption(() -> IncidentPresentation.title(context, kind) + "\n" + IncidentPresentation.timeLabel(context, kind)
-            + " · " + RuntimePresentation.date(getContext(), snapshot.timestampMillis) + "\nID: " + snapshot.id);
-        metadata.setTextIsSelectable(true); header.addView(metadata, new LayoutParams(-1, -2));
-        TextView note = InspectorTheme.text(context, 18, true); InspectorAppearance.text(note, () -> IncidentPresentation.note(context, snapshot.note));
-        note.setPadding(0, dp(8), 0, dp(8)); note.setMaxLines(4); note.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        if (snapshot.note != null) {
-            note.setContentDescription(context.getString(R.string.osservio_incident_note) + ": " + IncidentPresentation.note(context, snapshot.note));
-            note.setOnClickListener(view -> showText(R.string.osservio_incident_note, IncidentPresentation.note(context, snapshot.note)));
-        }
-        header.addView(note, new LayoutParams(-1, -2));
+        controls = new LinearLayout(context); controls.setGravity(android.view.Gravity.END);
+        back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, goBack);
+        copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> copy(IncidentPresentation.summary(context, snapshot)));
+        controls.addView(back); controls.addView(copy); addView(controls, new LayoutParams(-1, -2));
+        ListView list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
+        list.setPadding(dp(16), 0, dp(16), dp(16)); list.setClipToPadding(false);
+        LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(0, dp(8), 0, 0);
+        status = caption(() -> ""); status.setVisibility(GONE); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
+        header.addView(status, new LayoutParams(-1, -2));
+        search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> filter());
+        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE); header.addView(search, new LayoutParams(-1, -2));
         if (exporter != null) {
-            share = button(R.string.osservio_incident_share); InspectorWidgets.chip(share, true); header.addView(share, new LayoutParams(-1, -2));
-            sharing = new IncidentSharePresentation(this, share, exporter, snapshot,
-                message -> status.setText(message == 0 ? "" : context.getString(message)));
+            share = InspectorWidgets.icon(context, R.drawable.osservio_share, R.string.osservio_incident_share, () -> { }); controls.addView(share);
+            sharing = new IncidentSharePresentation(this, share, exporter, snapshot, message -> status(message == 0 ? "" : context.getString(message)));
         }
-        if (snapshot.systemDiagnostic != null) {
-            Button diagnostic = button(R.string.osservio_diagnostic_title);
-            diagnostic.setOnClickListener(view -> showText(R.string.osservio_diagnostic_title, SystemDiagnosticPresentation.summary(context, snapshot.systemDiagnostic)));
-            header.addView(diagnostic, new LayoutParams(-1, -2));
-            if (snapshot.systemDiagnostic.appleSignal != null) {
-                com.sandrox.osservio.core.AppleSignalCrash crash = snapshot.systemDiagnostic.appleSignal;
-                for (boolean images : new boolean[] {false, true}) {
-                    Button addresses = button(images ? R.string.osservio_crash_images : R.string.osservio_crash_frames);
-                    addresses.setEnabled(!(images ? crash.images.isEmpty() : crash.frames.isEmpty()));
-                    addresses.setOnClickListener(view -> openEvidence(new SignalCrashView(context, crash, images, this::closeEvidence)));
-                    header.addView(addresses, new LayoutParams(-1, -2));
-                }
-            }
-            if (snapshot.systemDiagnostic.androidExit != null && snapshot.systemDiagnostic.androidExit.tombstone != null) {
-                com.sandrox.osservio.core.AndroidTombstone trace = snapshot.systemDiagnostic.androidExit.tombstone;
-                Button addresses = button(R.string.osservio_crash_frames); addresses.setEnabled(!trace.frames.isEmpty());
-                addresses.setOnClickListener(view -> openEvidence(new SignalCrashView(context, trace, this::closeEvidence)));
-                header.addView(addresses, new LayoutParams(-1, -2));
-            }
-        }
-        Button environment = button(R.string.osservio_runtime_environment);
-        environment.setEnabled(snapshot.environment != null);
-        environment.setOnClickListener(view -> {
-            if (snapshot.environment != null) {
-                detail = InspectorDialogs.screen(context, R.string.osservio_runtime_environment, EnvironmentInspectorView.snapshotView(context, snapshot.environment));
-                detail.setOnDismissListener(ignored -> detail = null); detail.show();
-            }
-        });
-        header.addView(environment, new LayoutParams(-1, -2));
-        header.addView(caption(() -> snapshot.environment == null ? context.getString(R.string.osservio_incident_not_attached) : RuntimePresentation.date(getContext(), snapshot.environment.timestampMillis)), new LayoutParams(-1, -2));
-        header.addView(caption(() -> context.getString(R.string.osservio_incident_evidence_title)), new LayoutParams(-1, -2));
-        attachment(header, () -> context.getString(R.string.osservio_logs), snapshot.logs == null ? null : snapshot.logs.events.size(),
-            () -> openEvidence(new IncidentEvidenceView(context, snapshot.logs, this::closeEvidence)));
-        attachment(header, () -> "HTTP", snapshot.http == null ? null : snapshot.http.events.size(),
-            () -> openEvidence(new IncidentEvidenceView(context, snapshot.http, this::closeEvidence)));
-        attachment(header, () -> context.getString(R.string.osservio_ws_title), snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
-            () -> openEvidence(new IncidentEvidenceView(context, snapshot.webSockets, this::closeEvidence)));
-        header.addView(caption(() -> IncidentPresentation.counts(context, snapshot.breadcrumbs)), new LayoutParams(-1, -2));
-        header.addView(search, new LayoutParams(-1, -2));
+        SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
+        LinearLayout metadata = section(header, () -> IncidentPresentation.title(context, kind));
+        field(metadata, () -> IncidentPresentation.timeLabel(context, kind), () -> RuntimePresentation.date(context, snapshot.timestampMillis), null);
+        field(metadata, () -> "ID", () -> snapshot.id, null);
+        field(metadata, () -> context.getString(R.string.osservio_incident_note), () -> IncidentPresentation.note(context, snapshot.note),
+            snapshot.note == null ? null : () -> showText(R.string.osservio_incident_note, IncidentPresentation.note(context, snapshot.note)));
+        if (snapshot.systemDiagnostic != null) field(metadata, () -> context.getString(R.string.osservio_diagnostic_title),
+            () -> SystemDiagnosticPresentation.kind(context, snapshot.systemDiagnostic.kind),
+            () -> open(R.string.osservio_diagnostic_title, new SystemDiagnosticView(context, snapshot.systemDiagnostic)));
+        header.addView(caption(() -> IncidentPresentation.hint(context, snapshot)));
+        LinearLayout environment = section(header, () -> context.getString(R.string.osservio_runtime_environment));
+        if (snapshot.environment == null) header.addView(caption(() -> context.getString(R.string.osservio_incident_not_attached)));
+        else field(environment, () -> context.getString(R.string.osservio_runtime_snapshot),
+            () -> RuntimePresentation.date(context, snapshot.environment.timestampMillis) + " · " + snapshot.environment.platform.name().toLowerCase(Locale.ROOT),
+            () -> open(R.string.osservio_runtime_environment, EnvironmentInspectorView.snapshotView(context, snapshot.environment)));
+        LinearLayout attachments = section(header, () -> context.getString(R.string.osservio_incident_evidence_title));
+        attachment(attachments, R.string.osservio_logs, snapshot.logs == null ? null : snapshot.logs.events.size(),
+            () -> open(R.string.osservio_logs, new IncidentEvidenceView(context, snapshot.logs, () -> { })));
+        attachment(attachments, R.string.osservio_http_title, snapshot.http == null ? null : snapshot.http.events.size(),
+            () -> open(R.string.osservio_http_title, new IncidentEvidenceView(context, snapshot.http, () -> { })));
+        attachment(attachments, R.string.osservio_ws_title, snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
+            () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
+        TextView eventsTitle = InspectorWidgets.sectionLabel(context); InspectorAppearance.text(eventsTitle, R.string.osservio_runtime_breadcrumbs); header.addView(eventsTitle);
+        header.addView(caption(() -> IncidentPresentation.counts(context, snapshot.breadcrumbs)));
         list.addHeaderView(header, null, false);
-        list.setDivider(null); list.setDividerHeight(0);
-        footer = caption(""); list.addFooterView(footer, null, false); list.setAdapter(rows);
+        LinearLayout ending = new LinearLayout(context); ending.setOrientation(VERTICAL);
+        footer = caption(() -> ""); ending.addView(footer);
+        delete = InspectorWidgets.button(context, R.string.osservio_incident_delete, deleteSnapshot);
+        InspectorAppearance.style(delete, () -> { delete.setTextColor(InspectorTheme.color(context, R.color.osservio_error)); InspectorTheme.surface(delete, false, 22); });
+        LayoutParams deletion = new LayoutParams(-1, -2); deletion.topMargin = dp(24); ending.addView(delete, deletion);
+        list.addFooterView(ending, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
-            if (index >= 0 && index < events.size() && detail == null) {
-                detail = BreadcrumbDetailDialog.create(context, events.get(index));
-                InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; }); shown.show();
-            }
+            if (index >= 0 && index < events.size() && detail == null) show(BreadcrumbDetailDialog.create(context, events.get(index)));
         });
-        addView(list, new LayoutParams(-1, 0, 1));
-        search.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence text, int start, int before, int count) { filter(); }
-            @Override public void afterTextChanged(Editable text) { }
-        });
-        InspectorAppearance.content(this, () -> {
-            menu.setContentDescription(context.getString(R.string.osservio_ui_actions));
-            if (snapshot.note != null) note.setContentDescription(context.getString(R.string.osservio_incident_note) + ": " + IncidentPresentation.note(context, snapshot.note));
-            list.setDivider(null);
-            filter();
-        });
-        filter();
+        addView(list, new LayoutParams(-1, 0, 1)); InspectorAppearance.content(this, this::filter); filter();
+    }
+    @Override public void bindScreen(InspectorScreen screen) {
+        screen.title(() -> IncidentPresentation.title(getContext(), snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind));
+        screen.addAction(copy); if (share != null) screen.addAction(share); controls.setVisibility(GONE);
     }
     void busy(boolean busy) {
         if (busy && sharing != null) sharing.cancel();
         if (share != null) share.setEnabled(!busy);
-        back.setEnabled(!busy); delete.setEnabled(!busy);
-        status.setText(busy ? getContext().getString(R.string.osservio_archive_deleting) : "");
+        back.setEnabled(!busy); delete.setEnabled(!busy); status(busy ? getContext().getString(R.string.osservio_archive_deleting) : "");
     }
-    void error(String message) { status.setText(message); }
-    boolean navigateBack() {
-        if (evidence == null) return false;
-        closeEvidence(); return true;
-    }
+    private void status(String text) { status.setText(text); status.setVisibility(text.isEmpty() ? GONE : VISIBLE); }
+    void error(String message) { status(message); }
     void dismissDialogs() {
         if (sharing != null) sharing.cancel();
-        if (InspectorNavigation.owns(getContext())) return;
-        if (detail != null) detail.dismiss(); if (evidence instanceof IncidentEvidenceView) ((IncidentEvidenceView) evidence).dismissDialogs();
+        if (!InspectorNavigation.owns(getContext()) && detail != null) detail.dismiss();
     }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
     @Override protected void onVisibilityChanged(View changed, int visibility) {
@@ -163,27 +112,25 @@ final class IncidentSnapshotView extends LinearLayout {
     @Override protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility); if (sharing != null && visibility != VISIBLE) sharing.cancel();
     }
-    private void attachment(LinearLayout header, InspectorAppearance.Value<String> title, Integer count, Runnable open) {
-        Button button = button(R.string.osservio_ui_read_content); InspectorAppearance.text(button, () -> getContext().getString(R.string.osservio_incident_attachment_count, title.get(), IncidentPresentation.count(getContext(), count)));
-        button.setAllCaps(false); button.setMinHeight(dp(48)); button.setEnabled(count != null);
-        button.setOnClickListener(view -> open.run()); header.addView(button, new LayoutParams(-1, -2));
+    private LinearLayout section(LinearLayout header, InspectorAppearance.Value<String> title) {
+        TextView label = InspectorWidgets.sectionLabel(getContext()); InspectorAppearance.text(label, title); header.addView(label);
+        LinearLayout group = InspectorWidgets.group(getContext()); header.addView(group, new LayoutParams(-1, -2)); return group;
     }
-    private void openEvidence(View selected) {
-        if (sharing != null) sharing.cancel();
-        hideKeyboard();
-        for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(GONE);
-        evidence = selected; addView(evidence, new LayoutParams(-1, -1));
+    private void field(LinearLayout group, InspectorAppearance.Value<String> title, InspectorAppearance.Value<String> value, Runnable action) {
+        InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());
+        Runnable render = () -> row.bind(title.get(), value.get(), action != null); InspectorAppearance.content(row, render); render.run();
+        row.value.setMaxLines(4); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END); row.action(action); InspectorWidgets.addGrouped(group, row);
     }
-    private void closeEvidence() {
-        hideKeyboard();
-        if (evidence != null) { removeView(evidence); evidence = null; }
-        for (int index = 0; index < getChildCount(); index++) getChildAt(index).setVisibility(VISIBLE);
-        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE);
+    private void attachment(LinearLayout group, int title, Integer count, Runnable open) {
+        field(group, () -> getContext().getString(title), () -> IncidentPresentation.count(getContext(), count), count == null ? null : open);
     }
-    private void hideKeyboard() {
-        InspectorWidgets.hideKeyboard(this);
+    private void open(int title, View content) { if (detail == null) show(InspectorDialogs.screen(getContext(), title, content)); }
+    private void show(InspectorScreen screen) {
+        InspectorWidgets.hideKeyboard(this); detail = screen;
+        screen.setOnDismissListener(ignored -> { if (detail == screen) detail = null; }); screen.show();
     }
     private void filter() {
+        if (footer == null) return;
         events.clear(); String query = search.getText().toString().toLowerCase(Locale.ROOT);
         if (snapshot.breadcrumbs != null) for (int i = snapshot.breadcrumbs.events.size() - 1; i >= 0; i--) {
             BreadcrumbEvent event = snapshot.breadcrumbs.events.get(i);
@@ -191,43 +138,31 @@ final class IncidentSnapshotView extends LinearLayout {
                 || RuntimePresentation.kind(getContext(), event.kind).toLowerCase(Locale.ROOT).contains(query)
                 || (event.message != null && event.message.toLowerCase(Locale.ROOT).contains(query))) events.add(event);
         }
-        footer.setText(events.isEmpty() ? getContext().getString(R.string.osservio_incident_empty_detail,
-            getContext().getString(snapshot.breadcrumbs == null ? R.string.osservio_incident_not_attached : R.string.osservio_ws_no_matches),
-            IncidentPresentation.hint(getContext(), snapshot)) : IncidentPresentation.hint(getContext(), snapshot));
-        rows.notifyDataSetChanged();
+        footer.setText(events.isEmpty() && snapshot.breadcrumbs != null ? getContext().getString(R.string.osservio_ws_no_matches) : "");
+        footer.setVisibility(footer.length() == 0 ? GONE : VISIBLE); rows.notifyDataSetChanged();
     }
     private void showText(int title, String value) {
-        if (detail != null) return;
-        InspectorContentReader content = new InspectorContentReader(getContext()); content.display(value, false);
-        InspectorScreen dialog = InspectorDialogs.screen(getContext(), title, content);
-        dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
+        InspectorContentReader content = new InspectorContentReader(getContext()); content.display(value, false); open(title, content);
     }
     private void copy(String value) {
         ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
         if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", value));
     }
-    private Button button(int label) {
-        Button button = InspectorWidgets.button(getContext(), label, () -> { }); button.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
-        InspectorAppearance.style(button, () -> {
-            button.setTextColor(InspectorTheme.primary(getContext())); InspectorTheme.surface(button, true, 20);
-            button.setCompoundDrawablesRelative(null, null, InspectorWidgets.symbol(getContext(), R.drawable.osservio_forward, 16, InspectorTheme.secondary(getContext())), null);
-        }); button.setPadding(dp(16), dp(13), dp(16), dp(13)); return button;
-    }
-    private TextView caption(String value) { return caption(() -> value); }
     private TextView caption(InspectorAppearance.Value<String> value) {
-        TextView text = InspectorWidgets.caption(getContext());
-        InspectorAppearance.text(text, value); text.setPadding(0, dp(8), 0, dp(8)); return text;
+        TextView text = InspectorWidgets.caption(getContext()); InspectorAppearance.text(text, value); text.setPadding(dp(16), dp(8), dp(16), dp(8)); return text;
     }
-    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private int dp(int value) { return InspectorTheme.dp(getContext(), value); }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return events.size(); }
         @Override public Object getItem(int position) { return events.get(position); }
         @Override public long getItemId(int position) { return position; }
         @Override public View getView(int position, View recycled, ViewGroup parent) {
-            InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
+            InspectorWidgets.ValueRow row = recycled instanceof InspectorWidgets.ValueRow ? (InspectorWidgets.ValueRow) recycled : new InspectorWidgets.ValueRow(getContext());
             BreadcrumbEvent event = events.get(position);
-            row.bind(RuntimePresentation.kind(getContext(), event.kind), event.label, event.message == null ? "#" + event.sequence : event.message,
-                event.timestampMillis, InspectorTheme.accent(getContext())); return row;
+            row.bind(RuntimePresentation.kind(getContext(), event.kind) + " · " + event.label,
+                RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + event.message), true);
+            row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1); return row;
         }
     }
 }

@@ -7,9 +7,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.EnvironmentProvider;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
@@ -17,29 +15,34 @@ import java.lang.ref.WeakReference;
 
 // Query dependencies require programmatic construction.
 @SuppressLint("ViewConstructor")
-final class EnvironmentInspectorView extends LinearLayout {
+final class EnvironmentInspectorView extends LinearLayout implements InspectorScreen.Content {
     private final EnvironmentProvider provider;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Button refresh;
+    private final android.widget.ImageButton refresh;
     private final android.widget.ImageButton copy;
     private final TextView notice;
     private final android.widget.FrameLayout facts;
+    private final LinearLayout controls;
     private EnvironmentSnapshot snapshot;
     private boolean reading;
     private boolean attempted;
     private int generation;
     EnvironmentInspectorView(Context context, EnvironmentProvider provider) {
         super(context); this.provider = provider; setOrientation(VERTICAL);
-        refresh = InspectorWidgets.button(context, R.string.osservio_http_refresh, this::read);
+        refresh = InspectorWidgets.icon(context, R.drawable.osservio_refresh, R.string.osservio_http_refresh, this::read);
         copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_runtime_copy_environment, () -> {
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
             if (clipboard != null && snapshot != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", RuntimePresentation.environment(context, snapshot)));
         }); copy.setEnabled(false);
-        LinearLayout controls = new LinearLayout(context); controls.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        controls.addView(refresh, new LayoutParams(0, -2, 1)); controls.addView(copy); addView(controls, new LayoutParams(-1, -2));
+        controls = new LinearLayout(context); controls.setGravity(android.view.Gravity.END | android.view.Gravity.CENTER_VERTICAL);
+        controls.addView(refresh); controls.addView(copy); addView(controls, new LayoutParams(-1, -2));
         notice = InspectorWidgets.caption(context); int inset = InspectorTheme.dp(context, 16); notice.setPadding(inset, 0, inset, inset);
         addView(notice, new LayoutParams(-1, -2));
         facts = new android.widget.FrameLayout(context); addView(facts, new LayoutParams(-1, 0, 1));
+        notice.setVisibility(GONE);
+    }
+    @Override public void bindScreen(InspectorScreen screen) {
+        screen.title(R.string.osservio_runtime_environment); screen.addAction(refresh); screen.addAction(copy); controls.setVisibility(GONE);
     }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); visibility(); }
     @Override protected void onDetachedFromWindow() { generation++; reading = false; attempted = false; super.onDetachedFromWindow(); }
@@ -53,7 +56,7 @@ final class EnvironmentInspectorView extends LinearLayout {
     }
     private void read() {
         if (reading) return;
-        reading = true; attempted = true; int request = ++generation; refresh.setEnabled(false); notice.setText(R.string.osservio_runtime_reading);
+        reading = true; attempted = true; int request = ++generation; refresh.setEnabled(false); notice.setText(R.string.osservio_runtime_reading); notice.setVisibility(VISIBLE);
         WeakReference<EnvironmentInspectorView> reference = new WeakReference<>(this); Handler handler = main;
         provider.read((value, error) -> handler.post(() -> {
             EnvironmentInspectorView view = reference.get();
@@ -68,14 +71,17 @@ final class EnvironmentInspectorView extends LinearLayout {
             notice.setText(message); return;
         }
         snapshot = value; copy.setEnabled(true);
-        notice.setText(getContext().getString(R.string.osservio_runtime_pair, getContext().getString(R.string.osservio_ui_snapshot_time), RuntimePresentation.date(getContext(), value.timestampMillis)));
+        notice.setText(""); notice.setVisibility(GONE);
         facts.removeAllViews(); facts.addView(snapshotView(getContext(), value), new android.widget.FrameLayout.LayoutParams(-1, -1));
     }
     static View snapshotView(Context context, EnvironmentSnapshot snapshot) {
         InspectorDetailPage page = new InspectorDetailPage(context);
+        page.section(R.string.osservio_ui_snapshot_time);
+        page.value(() -> RuntimePresentation.date(context, snapshot.timestampMillis));
+        page.note(R.string.osservio_runtime_environment_hint);
         EnvironmentSnapshot.Key[][] groups = {
             {EnvironmentSnapshot.Key.APP_IDENTIFIER, EnvironmentSnapshot.Key.APP_VERSION, EnvironmentSnapshot.Key.APP_BUILD},
-            {EnvironmentSnapshot.Key.MANUFACTURER, EnvironmentSnapshot.Key.DEVICE_MODEL, EnvironmentSnapshot.Key.OS_VERSION,
+            {EnvironmentSnapshot.Key.OS_VERSION, EnvironmentSnapshot.Key.MANUFACTURER, EnvironmentSnapshot.Key.DEVICE_MODEL,
                 EnvironmentSnapshot.Key.ARCHITECTURE, EnvironmentSnapshot.Key.PHYSICAL_MEMORY_BYTES},
             {EnvironmentSnapshot.Key.PROCESS_ID, EnvironmentSnapshot.Key.PROCESS_RESIDENT_BYTES, EnvironmentSnapshot.Key.PROCESS_PROPORTIONAL_BYTES,
                 EnvironmentSnapshot.Key.PROCESS_FOOTPRINT_BYTES, EnvironmentSnapshot.Key.RUNTIME_HEAP_BYTES, EnvironmentSnapshot.Key.RUNTIME_HEAP_LIMIT_BYTES},
@@ -86,6 +92,6 @@ final class EnvironmentInspectorView extends LinearLayout {
             page.section(labels[i]);
             for (EnvironmentSnapshot.Key key : groups[i]) page.field(RuntimePresentation.keyLabel(key), () -> RuntimePresentation.value(context, snapshot.values.get(key), key));
         }
-        page.note(R.string.osservio_runtime_environment_hint); return page;
+        return page;
     }
 }

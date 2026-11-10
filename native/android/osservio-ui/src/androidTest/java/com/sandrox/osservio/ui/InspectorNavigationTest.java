@@ -52,7 +52,7 @@ public final class InspectorNavigationTest {
             InspectorContentReader reader = new InspectorContentReader(context); reader.display("Line one\nLine two\nLine three", true);
             layout(reader, 568, 180);
             View find = description(reader, R.string.osservio_ui_search_content);
-            assertNotNull(find); assertTrue(find.performClick());
+            assertNotNull(find); assertTrue(find instanceof EditText); ((EditText) find).setText("Line");
             layout(reader, 568, 180);
             List<ScrollView> scrolling = new ArrayList<>(); collect(reader, ScrollView.class, scrolling);
             assertEquals(2, scrolling.size());
@@ -115,8 +115,8 @@ public final class InspectorNavigationTest {
                 navigation.refreshAppearance(InspectorTheme.context(base));
                 assertEquals("city", first(reader, EditText.class).getText().toString());
                 assertEquals(expanded, tree.getAdapter().getCount());
-                assertNotNull(description(reader, R.string.osservio_ui_copy_all));
-                assertEquals("Copy all", description(reader, R.string.osservio_ui_copy_all).getContentDescription().toString());
+                assertNotNull(description(screen.view, R.string.osservio_ui_copy_all));
+                assertEquals("Copy all", description(screen.view, R.string.osservio_ui_copy_all).getContentDescription().toString());
                 assertEquals(InspectorTheme.canvas(InspectorTheme.context(base)), InspectorTheme.canvas(context));
                 assertTrue(screen.isShowing()); navigation.dispose();
             } finally { InspectorPreferences.setEnglish(base, wasEnglish); InspectorPreferences.setDark(base, wasDark); }

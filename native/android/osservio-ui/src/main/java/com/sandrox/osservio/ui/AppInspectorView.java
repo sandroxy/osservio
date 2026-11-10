@@ -2,7 +2,6 @@ package com.sandrox.osservio.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -10,7 +9,6 @@ import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbArchive;
 import com.sandrox.osservio.core.BreadcrumbHistory;
 import com.sandrox.osservio.core.BreadcrumbRecorder;
-import com.sandrox.osservio.core.CaptureController;
 import com.sandrox.osservio.core.EnvironmentProvider;
 import com.sandrox.osservio.core.HTTPRecorder;
 import com.sandrox.osservio.core.LogRecorder;
@@ -35,53 +33,31 @@ final class AppInspectorView extends ScrollView {
         setFillViewport(true); setVerticalScrollBarEnabled(false); setBackgroundColor(InspectorTheme.canvas(context));
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, inset); addView(content);
-        TextView intro = InspectorWidgets.caption(context); intro.setText(R.string.osservio_ui_app_intro); intro.setPadding(inset, InspectorTheme.dp(context, 8), inset, 0); content.addView(intro);
-        section(R.string.osservio_ui_environment);
-        row(R.string.osservio_ui_app_device, environment == null ? context.getString(R.string.osservio_ui_not_configured) : "",
-            environment == null ? null : () -> open(R.string.osservio_ui_app_device, new EnvironmentInspectorView(context, environment)));
-        row(R.string.osservio_ui_current_timeline, history == null ? context.getString(R.string.osservio_ui_not_configured) : "",
+        section(R.string.osservio_ui_app_device);
+        row(R.drawable.osservio_device, R.string.osservio_ui_environment, environment == null ? context.getString(R.string.osservio_ui_not_configured) : "",
+            environment == null ? null : () -> open(R.string.osservio_runtime_environment, new EnvironmentInspectorView(context, environment)));
+        row(R.drawable.osservio_clock, R.string.osservio_ui_current_timeline, history == null ? context.getString(R.string.osservio_ui_not_configured) : "",
             history == null || recorder == null ? null : () -> open(R.string.osservio_ui_current_timeline, new BreadcrumbInspectorView(context, recorder, history)));
-        row(R.string.osservio_ui_saved_runs, archive == null ? context.getString(R.string.osservio_ui_not_configured) : "",
+        row(R.drawable.osservio_archive, R.string.osservio_ui_saved_runs, archive == null ? context.getString(R.string.osservio_ui_not_configured) : "",
             archive == null ? null : () -> open(R.string.osservio_ui_saved_runs, new BreadcrumbArchiveView(context, archive)));
         section(R.string.osservio_ui_inspector);
-        row(R.string.osservio_ui_language, context.getString(InspectorPreferences.english(context)
+        row(R.drawable.osservio_globe, R.string.osservio_ui_language, context.getString(InspectorPreferences.english(context)
             ? R.string.osservio_ui_english : R.string.osservio_ui_chinese), () -> choose(false));
-        row(R.string.osservio_ui_appearance, context.getString(InspectorPreferences.dark(context)
+        row(R.drawable.osservio_appearance, R.string.osservio_ui_appearance, context.getString(InspectorPreferences.dark(context)
             ? R.string.osservio_ui_dark : R.string.osservio_ui_light), () -> choose(true));
-        row(R.string.osservio_ui_capture_settings, "", this::captureStatus);
         TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_preferences_hint); hint.setPadding(inset, InspectorTheme.dp(context, 8), inset, 0); content.addView(hint);
+        section(R.string.osservio_ui_capture_status);
+        row(R.drawable.osservio_filter, R.string.osservio_ui_capture_settings, "", this::captureStatus);
         post(() -> scrollTo(0, state.scrollY));
     }
     private void section(int title) {
         TextView text = InspectorWidgets.sectionLabel(getContext()); text.setText(title); content.addView(text);
-        group = new LinearLayout(getContext()); group.setOrientation(LinearLayout.VERTICAL);
-        InspectorTheme.surface(group, false, 20); group.setClipToOutline(true); content.addView(group, new LinearLayout.LayoutParams(-1, -2));
+        group = InspectorWidgets.group(getContext()); content.addView(group, new LinearLayout.LayoutParams(-1, -2));
     }
-    private void row(int title, String value, Runnable action) {
-        Context context = getContext(); int inset = InspectorTheme.dp(context, 16);
-        LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(inset, InspectorTheme.dp(context, 14), inset, InspectorTheme.dp(context, 14)); row.setMinimumHeight(InspectorTheme.dp(context, 52));
-        LinearLayout labels = new LinearLayout(context); labels.setOrientation(LinearLayout.VERTICAL);
-        TextView name = InspectorTheme.text(context, 16, false); name.setText(title); labels.addView(name);
-        row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
-        if (!value.isEmpty()) {
-            TextView detail = InspectorWidgets.caption(context); detail.setText(value); detail.setTextSize(14);
-            if (getResources().getConfiguration().fontScale >= 1.5f) {
-                detail.setPadding(0, InspectorTheme.dp(context, 4), 0, 0); labels.addView(detail);
-            } else {
-                detail.setPadding(InspectorTheme.dp(context, 12), 0, InspectorTheme.dp(context, 8), 0);
-                detail.setMaxWidth(InspectorTheme.dp(context, 150)); row.addView(detail);
-            }
-        }
-        if (action != null) {
-            android.widget.ImageView arrow = new android.widget.ImageView(context);
-            arrow.setImageDrawable(InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)));
-            arrow.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); row.addView(arrow);
-            row.setOnClickListener(ignored -> action.run()); row.setFocusable(true);
-            row.setBackgroundResource(android.R.drawable.list_selector_background);
-        }
-        if (group.getChildCount() > 0) group.addView(InspectorWidgets.divider(context));
-        group.addView(row, new LinearLayout.LayoutParams(-1, -2));
+    private void row(int icon, int title, String value, Runnable action) {
+        InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());
+        row.bind(getContext().getString(title), value, action != null); row.icon(icon); row.action(action);
+        InspectorWidgets.addGrouped(group, row);
     }
     private void choose(boolean appearance) {
         Context context = getContext();

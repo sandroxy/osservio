@@ -77,7 +77,7 @@ public final class InspectorLayoutTest {
                 assertEquals(label, kind.equals("websocket") ? 2 : 1, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
                 List<Button> buttons = new ArrayList<>(); collect(viewer, Button.class, buttons);
                 buttons.removeAll(hidden(buttons));
-                assertEquals(label, 1, buttons.size());
+                assertEquals(label, 0, buttons.size());
                 for (Button button : buttons) {
                     assertTrue(label, button.getHeight() >= dp(context, 48));
                     assertNotNull(label, button.getLayout());
@@ -86,7 +86,7 @@ public final class InspectorLayoutTest {
                 }
                 List<android.widget.ImageButton> icons = new ArrayList<>(); collect(viewer, android.widget.ImageButton.class, icons);
                 icons.removeAll(hidden(icons));
-                assertEquals(label, 1, icons.size());
+                assertEquals(label, 2, icons.size());
                 for (android.widget.ImageButton icon : icons) {
                     assertTrue(label, icon.getWidth() >= dp(context, 48));
                     assertTrue(label, icon.getHeight() >= dp(context, 48));

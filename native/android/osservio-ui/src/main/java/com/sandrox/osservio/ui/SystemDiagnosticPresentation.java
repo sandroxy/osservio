@@ -23,13 +23,13 @@ final class SystemDiagnosticPresentation {
         }
         return context.getString(label);
     }
-    static String summary(Context context, SystemDiagnostic diagnostic) {
-        StringBuilder text = new StringBuilder();
-        int source, hint;
+    static java.util.List<Field> fields(Context context, SystemDiagnostic diagnostic) {
+        java.util.List<Field> text = new java.util.ArrayList<>();
+        int source;
         switch (diagnostic.source) {
-            case ANDROID_EXIT_INFO: source = R.string.osservio_diagnostic_source_android_exit_info; hint = R.string.osservio_diagnostic_android_hint; break;
-            case METRIC_KIT: source = R.string.osservio_diagnostic_source_metric_kit; hint = R.string.osservio_diagnostic_metric_hint; break;
-            case APPLE_SIGNAL: source = R.string.osservio_diagnostic_source_apple_signal; hint = R.string.osservio_crash_hint; break;
+            case ANDROID_EXIT_INFO: source = R.string.osservio_diagnostic_source_android_exit_info; break;
+            case METRIC_KIT: source = R.string.osservio_diagnostic_source_metric_kit; break;
+            case APPLE_SIGNAL: source = R.string.osservio_diagnostic_source_apple_signal; break;
             default: throw new IllegalStateException("Unknown diagnostic source");
         }
         field(text, context, R.string.osservio_diagnostic_source, context.getString(source));
@@ -87,11 +87,30 @@ final class SystemDiagnosticPresentation {
                 SystemDiagnostic.Text value = signal.metadata.get(key); field(text, context, metadataLabel(key), value == null ? null : value.value);
             }
         }
-        return text.append("\n\n").append(context.getString(hint)).toString();
+        return text;
     }
-    private static void field(StringBuilder text, Context context, int label, String value) {
-        if (text.length() != 0) text.append('\n');
-        text.append(context.getString(label)).append(": ").append(value == null ? context.getString(R.string.osservio_runtime_unavailable) : value);
+    static final class Field {
+        final int label; final String value;
+        Field(int label, String value) { this.label = label; this.value = value; }
+    }
+    private static void field(java.util.List<Field> fields, Context context, int label, String value) {
+        fields.add(new Field(label, value == null ? context.getString(R.string.osservio_runtime_unavailable) : value));
+    }
+    static String hint(Context context, SystemDiagnostic diagnostic) {
+        switch (diagnostic.source) {
+            case ANDROID_EXIT_INFO: return context.getString(R.string.osservio_diagnostic_android_hint);
+            case METRIC_KIT: return context.getString(R.string.osservio_diagnostic_metric_hint);
+            case APPLE_SIGNAL: return context.getString(R.string.osservio_crash_hint);
+            default: throw new IllegalStateException("Unknown diagnostic source");
+        }
+    }
+    static String summary(Context context, SystemDiagnostic diagnostic) {
+        StringBuilder text = new StringBuilder();
+        for (Field field : fields(context, diagnostic)) {
+            if (text.length() != 0) text.append('\n');
+            text.append(context.getString(field.label)).append(": ").append(field.value);
+        }
+        return text.append("\n\n").append(hint(context, diagnostic)).toString();
     }
     private static int metadataLabel(SystemDiagnostic.MetadataKey key) {
         switch (key) {

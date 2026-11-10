@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.Button;
 import com.sandrox.osservio.core.IncidentExporter;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import java.lang.ref.WeakReference;
@@ -20,7 +19,7 @@ import java.lang.ref.WeakReference;
 final class IncidentSharePresentation implements Application.ActivityLifecycleCallbacks {
     interface Notice { void show(int message); }
     private final View owner;
-    private final Button button;
+    private final View button;
     private final IncidentExporter exporter;
     private final IncidentSnapshot snapshot;
     private final Notice notice;
@@ -30,7 +29,7 @@ final class IncidentSharePresentation implements Application.ActivityLifecycleCa
     private IncidentExporter.Task task;
     private long generation;
 
-    IncidentSharePresentation(View owner, Button button, IncidentExporter exporter, IncidentSnapshot snapshot, Notice notice) {
+    IncidentSharePresentation(View owner, View button, IncidentExporter exporter, IncidentSnapshot snapshot, Notice notice) {
         this.owner = owner; this.button = button; this.exporter = exporter; this.snapshot = snapshot; this.notice = notice;
         button.setOnClickListener(view -> prepare());
     }
