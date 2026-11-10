@@ -88,6 +88,45 @@ public final class InspectorNavigationTest {
         });
     }
 
+    @Test public void retainedPageRebindsPreferencesWithoutReplacingQueryOrJsonExpansion() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            boolean wasEnglish = InspectorPreferences.english(base), wasDark = InspectorPreferences.dark(base);
+            try {
+                InspectorPreferences.setEnglish(base, false); InspectorPreferences.setDark(base, false);
+                android.widget.FrameLayout container = new android.widget.FrameLayout(base);
+                View workspace = new View(base);
+                InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, workspace);
+                Context context = new InspectorNavigation.OwnerContext(InspectorTheme.context(base), navigation, 0);
+                assertSame(context, InspectorTheme.context(context));
+                InspectorContentReader reader = new InspectorContentReader(context);
+                reader.display("{\"profile\":{\"city\":\"Paris\"}}", true);
+                List<InspectorJsonTreeView> trees = new ArrayList<>();
+                collectAll(reader, InspectorJsonTreeView.class, trees);
+                InspectorJsonTreeView tree = trees.get(0);
+                try { tree.display(InspectorJsonDocument.parse("{\"profile\":{\"city\":\"Paris\"}}", () -> false)); }
+                catch (InspectorJsonDocument.ParseFailure error) { throw new AssertionError(error); }
+                tree.performItemClick(tree.getAdapter().getView(1, null, tree), 1, tree.getAdapter().getItemId(1));
+                int expanded = tree.getAdapter().getCount();
+                description(reader, R.string.osservio_ui_search_content).performClick();
+                first(reader, EditText.class).setText("city");
+                InspectorScreen screen = InspectorDialogs.screen(context, R.string.osservio_http_response_body, reader); screen.show();
+                InspectorPreferences.setEnglish(base, true); InspectorPreferences.setDark(base, true);
+                navigation.refreshAppearance(InspectorTheme.context(base));
+                assertEquals("city", first(reader, EditText.class).getText().toString());
+                assertEquals(expanded, tree.getAdapter().getCount());
+                assertNotNull(description(reader, R.string.osservio_ui_copy_all));
+                assertEquals("Copy all", description(reader, R.string.osservio_ui_copy_all).getContentDescription().toString());
+                assertEquals(InspectorTheme.canvas(InspectorTheme.context(base)), InspectorTheme.canvas(context));
+                assertTrue(screen.isShowing()); navigation.dispose();
+            } finally { InspectorPreferences.setEnglish(base, wasEnglish); InspectorPreferences.setDark(base, wasDark); }
+        });
+    }
+    private static <T extends View> void collectAll(View view, Class<T> type, List<T> result) {
+        if (type.isInstance(view)) result.add(type.cast(view));
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) collectAll(((ViewGroup) view).getChildAt(i), type, result);
+    }
+
     private static void layout(View view, int width, int height) {
         int w = InspectorTheme.dp(view.getContext(), width), h = InspectorTheme.dp(view.getContext(), height);
         view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));

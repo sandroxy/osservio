@@ -14,6 +14,9 @@ final class InspectorDialogs {
     static InspectorScreen screen(Context context, String title, View content) {
         return new InspectorScreen(context, title, content, false);
     }
+    static InspectorScreen screen(Context context, int title, View content) {
+        InspectorScreen screen = screen(context, context.getString(title), content); screen.title(title); return screen;
+    }
     static InspectorScreen panel(Context context, int title, View content) {
         return new InspectorScreen(context, context.getString(title), content, true);
     }

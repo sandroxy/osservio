@@ -36,6 +36,8 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     private InspectorView inspector;
     private InspectorFloatingEntry entry;
     private Dialog window;
+    private final InspectorEntryTransition transition = new InspectorEntryTransition();
+    private final android.graphics.Rect entryBounds = new android.graphics.Rect();
     private final View.OnAttachStateChangeListener attachment = new View.OnAttachStateChangeListener() {
         @Override public void onViewAttachedToWindow(View view) { reconcile(); }
         @Override public void onViewDetachedFromWindow(View view) { detachSurfaces(); }
@@ -69,6 +71,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     }
     public boolean expand() {
         mainThread(); if (!available()) return false;
+        if (presentation == Presentation.EXPANDED) return true;
         presentation = Presentation.EXPANDED; reconcile(); return !disposed && presentation == Presentation.EXPANDED;
     }
     public void collapse() {
@@ -103,14 +106,20 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         Activity activity = owner.get();
         if (!available() || !resumed || activity == null || !activity.getWindow().getDecorView().isAttachedToWindow()) { detachSurfaces(); return; }
         if (presentation == Presentation.EXPANDED) {
-            if (entry != null) entry.detach();
+            if (transition.isClosing()) transition.cancel();
+            ensureEntry(activity);
+            int[] point = new int[2]; entry.getLocationOnScreen(point);
+            int size = InspectorTheme.dp(context, 48);
+            entryBounds.set(point[0], point[1], point[0] + size, point[1] + size);
+            entry.detach();
             if (inspector == null) {
                 InspectorView created = Objects.requireNonNull(factory.create(context), "Inspector factory returned null");
                 if (disposed) { created.disposePresentation(); return; }
                 inspector = created; factory = null; inspector.setOnMinimizeListener(this::collapse);
                 if (presentation != Presentation.EXPANDED || !available()) { reconcilePending = true; return; }
             }
-            if (window == null) createWindow(activity);
+            boolean opening = window == null;
+            if (opening) createWindow(activity);
             inspector.setVisibility(View.VISIBLE);
             try { window.show(); }
             catch (WindowManager.BadTokenException | WindowManager.InvalidDisplayException unavailable) {
@@ -121,15 +130,28 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
             if (nativeWindow != null) {
                 nativeWindow.setLayout(-1, -1); InspectorDialogs.configureWindow(nativeWindow, InspectorPreferences.dark(context));
                 inspector.requestApplyInsets();
+                if (opening && nativeWindow.getDecorView() instanceof ViewGroup) {
+                    transition.run((ViewGroup) nativeWindow.getDecorView(), entryBounds, true, null, () -> { });
+                }
             }
+        } else if (presentation == Presentation.ENTRY) {
+            ensureEntry(activity);
+            if (window != null && window.getWindow() != null && window.getWindow().getDecorView() instanceof ViewGroup) {
+                if (transition.isClosing()) return;
+                InspectorWidgets.hideKeyboard(inspector);
+                int[] point = new int[2]; entry.getLocationOnScreen(point);
+                int size = InspectorTheme.dp(context, 48);
+                entryBounds.set(point[0], point[1], point[0] + size, point[1] + size);
+                transition.run((ViewGroup) window.getWindow().getDecorView(), entryBounds, false, entry, this::detachContentWindow);
+            } else detachContentWindow();
         } else {
-            detachContentWindow();
-            if (presentation == Presentation.ENTRY) {
-                if (entry != null && !entry.matchesPreferences()) { entry.detach(); entry = null; }
-                if (entry == null) entry = new InspectorFloatingEntry(context, this::expand, this::hideEntry);
-                entry.attach((ViewGroup) activity.getWindow().getDecorView());
-            } else if (entry != null) entry.detach();
+            detachContentWindow(); if (entry != null) entry.detach();
         }
+    }
+    private void ensureEntry(Activity activity) {
+        if (entry != null && !entry.matchesPreferences()) { entry.detach(); entry = null; }
+        if (entry == null) entry = new InspectorFloatingEntry(context, this::expand, this::hideEntry);
+        entry.attach((ViewGroup) activity.getWindow().getDecorView());
     }
     private void createWindow(Activity activity) {
         window = new Dialog(InspectorTheme.context(context), InspectorPreferences.dark(context) ? R.style.OsservioScreenDark : R.style.OsservioScreenLight) {
@@ -145,7 +167,8 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
             WindowManager.LayoutParams attributes = nativeWindow.getAttributes();
             attributes.token = activity.getWindow().getDecorView().getWindowToken(); nativeWindow.setAttributes(attributes);
             nativeWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            nativeWindow.setWindowAnimations(InspectorFloatingEntry.motionDuration(context) == 0 ? 0 : R.style.OsservioWindowMotion);
+            nativeWindow.setWindowAnimations(0);
+            nativeWindow.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         }
         inspector.setOnApplyWindowInsetsListener((root, insets) -> { InspectorDialogs.applyInsets(root, insets); return insets; });
         inspector.setAppearanceListener(dark -> {
@@ -157,6 +180,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         detachContentWindow();
     }
     private void detachContentWindow() {
+        transition.cancel();
         if (window != null) {
             InspectorWidgets.hideKeyboard(inspector); inspector.setVisibility(View.GONE);
             window.setOnCancelListener(null); window.dismiss(); window = null;

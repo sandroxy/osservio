@@ -54,7 +54,7 @@ final class InspectorContentReader extends LinearLayout {
         int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
         controls = new ScrollView(context); controls.addView(header); addView(controls, new LayoutParams(-1, -2));
-        mode = (RadioGroup) InspectorWidgets.segments(context, new String[] {context.getString(R.string.osservio_json_structure), context.getString(R.string.osservio_json_raw)}, 0,
+        mode = (RadioGroup) InspectorWidgets.segments(context, new int[] {R.string.osservio_json_structure, R.string.osservio_json_raw}, 0,
             selected -> { structured = selected == 0; highlight(true); });
         mode.setVisibility(GONE); header.addView(mode);
         notice = InspectorWidgets.caption(context); header.addView(notice);
@@ -69,15 +69,20 @@ final class InspectorContentReader extends LinearLayout {
         searching.addView(search, new LayoutParams(-1, -2));
         LinearLayout navigation = new LinearLayout(context); navigation.setGravity(Gravity.CENTER_VERTICAL);
         count = InspectorWidgets.caption(context); navigation.addView(count, new LayoutParams(0, -2, 1));
-        previous = InspectorWidgets.button(context, R.string.osservio_ui_previous_match, () -> move(-1)); previous.setText("↑");
+        previous = InspectorWidgets.button(context, R.string.osservio_ui_previous_match, () -> move(-1)); InspectorAppearance.text(previous, () -> "↑");
         previous.setContentDescription(context.getString(R.string.osservio_ui_previous_match));
-        next = InspectorWidgets.button(context, R.string.osservio_ui_next_match, () -> move(1)); next.setText("↓");
+        next = InspectorWidgets.button(context, R.string.osservio_ui_next_match, () -> move(1)); InspectorAppearance.text(next, () -> "↓");
         next.setContentDescription(context.getString(R.string.osservio_ui_next_match));
         navigation.addView(previous, new LayoutParams(InspectorTheme.dp(context, 48), -2));
         navigation.addView(next, new LayoutParams(InspectorTheme.dp(context, 48), -2)); searching.addView(navigation); header.addView(searching);
         text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(0, inset, 0, inset);
         text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new ScrollView(context); scroll.addView(text);
         tree = new InspectorJsonTreeView(context); tree.setVisibility(GONE);
+        InspectorAppearance.content(this, () -> {
+            previous.setContentDescription(context.getString(R.string.osservio_ui_previous_match));
+            next.setContentDescription(context.getString(R.string.osservio_ui_next_match));
+            highlight(false);
+        });
         FrameLayout reading = new FrameLayout(context); reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         reading.addView(tree, new FrameLayout.LayoutParams(-1, -1)); addView(reading, new LayoutParams(-1, 0, 1));
     }

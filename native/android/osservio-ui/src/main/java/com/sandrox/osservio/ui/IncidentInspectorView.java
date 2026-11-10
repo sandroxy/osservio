@@ -225,7 +225,7 @@ public final class IncidentInspectorView extends FrameLayout {
         selected = new IncidentSnapshotView(getContext(), snapshot, this::showList, () -> confirmDeletion(snapshot.id), exporter);
         if (InspectorNavigation.owns(getContext())) {
             state.selected = null; // The tab's page stack owns this snapshot across root-view rebuilding.
-            snapshotScreen = InspectorDialogs.screen(getContext(), getContext().getString(R.string.osservio_incident_title), selected);
+            snapshotScreen = InspectorDialogs.screen(getContext(), R.string.osservio_incident_title, selected);
             snapshotScreen.setBackInterceptor(() -> reading || (selected != null && selected.navigateBack()));
             snapshotScreen.setOnDismissListener(ignored -> { snapshotScreen = null; selected = null; attempted = false; visibility(); });
             snapshotScreen.show();

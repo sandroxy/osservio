@@ -52,15 +52,19 @@ final class IncidentEvidenceView extends LinearLayout {
         header.addView(filters, new LayoutParams(-2, -2)); criteria = caption(""); header.addView(criteria, new LayoutParams(-1, -2));
         ListView list = new ListView(context); list.setItemsCanFocus(true);
         list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
-        String title = logs != null ? context.getString(R.string.osservio_logs) : http != null ? "HTTP" : context.getString(R.string.osservio_ws_title);
-        String info = logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
+        InspectorAppearance.Value<String> title = () -> logs != null ? context.getString(R.string.osservio_logs) : http != null ? "HTTP" : context.getString(R.string.osservio_ws_title);
+        InspectorAppearance.Value<String> info = () -> logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
             : http != null ? IncidentPresentation.window(context, http.observedAtMillis, http.events.size(), http.omittedEventCount, http.sourceEvictedEvents, http.sourceEvictedBodies)
             : IncidentPresentation.window(context, sockets.observedAtMillis, sockets.events.size(), sockets.omittedEventCount, sockets.sourceEvictedEvents, sockets.sourceEvictedPayloads);
-        header.addView(caption(title + "\n" + info), new LayoutParams(-1, -2)); list.addHeaderView(header, null, false); footer = caption(""); list.addFooterView(footer, null, false);
+        header.addView(caption(() -> title.get() + "\n" + info.get()), new LayoutParams(-1, -2)); list.addHeaderView(header, null, false); footer = caption(""); list.addFooterView(footer, null, false);
         list.setAdapter(rows); list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < indices.size()) show(indices.get(index));
         });
         addView(list, new LayoutParams(-1, 0, 1));
+        InspectorAppearance.content(this, () -> {
+            list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
+            filter();
+        });
         filter();
     }
     private int count() { return logs != null ? logs.events.size() : http != null ? http.events.size() : sockets.events.size(); }
@@ -96,9 +100,10 @@ final class IncidentEvidenceView extends LinearLayout {
     void dismissDialogs() { if (InspectorNavigation.owns(getContext())) return; if (detail != null) detail.dismiss(); }
     @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-    private TextView caption(String value) {
+    private TextView caption(String value) { return caption(() -> value); }
+    private TextView caption(InspectorAppearance.Value<String> value) {
         TextView text = InspectorWidgets.caption(getContext());
-        text.setText(value); text.setPadding(0, dp(8), 0, dp(8)); return text;
+        InspectorAppearance.text(text, value); text.setPadding(0, dp(8), 0, dp(8)); return text;
     }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return indices.size(); }

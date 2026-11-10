@@ -18,6 +18,16 @@ final class InspectorTheme {
     private InspectorTheme() { }
     static Context context(Context host) {
         boolean dark = InspectorPreferences.dark(host), english = InspectorPreferences.english(host);
+        Context candidate = host;
+        for (int i = 0; i < 16 && candidate instanceof android.content.ContextWrapper; i++) {
+            if (candidate instanceof ScopedContext) {
+                ScopedContext scoped = (ScopedContext) candidate;
+                if (scoped.dark == dark && scoped.english == english) return host;
+                break;
+            }
+            Context base = ((android.content.ContextWrapper) candidate).getBaseContext();
+            if (base == candidate) break; candidate = base;
+        }
         if (host instanceof ScopedContext) {
             ScopedContext scoped = (ScopedContext) host;
             if (scoped.dark == dark && scoped.english == english) return host;
@@ -64,7 +74,7 @@ final class InspectorTheme {
         view.setBackground(interactive ? new RippleDrawable(ColorStateList.valueOf(color(context, R.color.osservio_tint)), fill, null) : fill);
     }
     static TextView text(Context context, int size, boolean strong) {
-        TextView text = new TextView(context); text.setTextSize(size); text.setTextColor(primary(context));
+        TextView text = new TextView(context); text.setTextSize(size); InspectorAppearance.style(text, () -> text.setTextColor(primary(context)));
         if (strong) text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         text.setFontFeatureSettings("tnum"); return text;
     }

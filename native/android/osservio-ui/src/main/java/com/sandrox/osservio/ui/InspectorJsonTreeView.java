@@ -27,7 +27,8 @@ final class InspectorJsonTreeView extends ListView {
     private int focused = -1;
     InspectorJsonTreeView(Context context) {
         super(context); setDivider(null); setDividerHeight(0); setAdapter(adapter);
-        setBackgroundColor(InspectorTheme.surface(context));
+        InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.surface(context)));
+        InspectorAppearance.content(this, adapter::notifyDataSetChanged);
         setPadding(0, InspectorTheme.dp(context, 12), 0, InspectorTheme.dp(context, 16)); setClipToPadding(false);
         setOnItemClickListener((parent, view, position, id) -> toggle(position));
         setOnItemLongClickListener((parent, view, position, id) -> {

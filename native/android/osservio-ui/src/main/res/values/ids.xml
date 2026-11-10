@@ -1,0 +1,5 @@
+<resources>
+    <item name="osservio_appearance_style" type="id" />
+    <item name="osservio_appearance_text" type="id" />
+    <item name="osservio_appearance_content" type="id" />
+</resources>

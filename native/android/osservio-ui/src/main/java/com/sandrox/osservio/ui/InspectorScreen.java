@@ -26,6 +26,8 @@ final class InspectorScreen implements DialogInterface {
     private final View content;
     private final ImageButton minimize;
     private final ImageButton back;
+    private final TextView heading;
+    void title(int resource) { InspectorAppearance.text(heading, resource); }
     private InspectorSheetHandle handle;
     private boolean modal;
     private Dialog fallback;
@@ -40,7 +42,8 @@ final class InspectorScreen implements DialogInterface {
         view = new FrameLayout(context);
         view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context));
         card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL); card.setClipToOutline(true);
-        card.setBackground(InspectorTheme.shape(context, InspectorTheme.canvas(context), panel ? 24 : 0, false));
+        InspectorAppearance.style(view, () -> view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context)));
+        InspectorAppearance.style(card, () -> card.setBackground(InspectorTheme.shape(context, InspectorTheme.canvas(context), panel ? 24 : 0, false)));
         view.addView(card, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
         if (panel) {
             view.addOnLayoutChangeListener((root, l, t, r, b, ol, ot, or, ob) -> {
@@ -57,7 +60,7 @@ final class InspectorScreen implements DialogInterface {
         back = InspectorWidgets.icon(context, panel ? R.drawable.osservio_close : R.drawable.osservio_back,
             panel ? R.string.osservio_archive_cancel : R.string.osservio_ui_back, this::cancel);
         back.setVisibility(panel ? View.GONE : View.VISIBLE); bar.addView(back);
-        TextView heading = InspectorTheme.text(context, 19, true); heading.setText(title); heading.setMaxLines(2);
+        heading = InspectorTheme.text(context, 19, true); heading.setText(title); heading.setMaxLines(2);
         heading.setPadding(inset, 0, inset, 0); bar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         minimize = InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize,
             () -> { if (navigation != null) navigation.minimize(); });

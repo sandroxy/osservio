@@ -230,7 +230,7 @@ public final class InspectorView extends FrameLayout {
     }
     private void preferencesChanged() {
         if (dark == InspectorPreferences.dark(getContext()) && english == InspectorPreferences.english(getContext())) return;
-        rebuild(); if (appearanceListener != null) appearanceListener.changed(dark);
+        rebuild(); navigation.refreshAppearance(themed); if (appearanceListener != null) appearanceListener.changed(dark);
     }
     @Override protected void onMeasure(int width, int height) {
         if (MeasureSpec.getMode(height) != MeasureSpec.UNSPECIFIED)

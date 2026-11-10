@@ -197,6 +197,11 @@ Dragging the entry docks it to an edge within the host's safe area, including
 keyboard avoidance. Its dock position persists independently of ordinary reading
 content. Entry and page motion is short and non-repeating; disabled system
 animations, power saving and severe thermal pressure disable SDK transitions.
+Expansion and collapse use a native circular reveal anchored to the current entry
+position. The temporary touch blocker, animation callbacks and clipping are
+released on completion, cancellation, geometry changes or host detachment.
+Retained tab pages rebind SDK labels and colors when preferences change without
+replacing their content, JSON expansion or search state.
 
 Hosts that own presentation can still use `InspectorView` directly. Attach
 it with a bounded height and apply the host window's system-bar, display-cutout
@@ -218,6 +223,11 @@ Temporary filters and action panels have no inspector-wide Minimize action.
 The session restores host keyboard focus when collapsing and suspends polling
 before its short exit animation. Reduce Motion, Low Power Mode and elevated
 thermal state reduce motion; Reduce Transparency uses an opaque entry.
+The workspace expands from and contracts toward the docked entry using a bounded
+layer mask and opacity animation. The mask covers presented full-screen editors
+as well as navigation pages. Interruption removes clipping and touch blockers.
+Neither platform captures per-frame screenshots or runs a persistent full-screen
+blur. The diagnostic-panel entry mark is distinct from the debug toggle's bug.
 
 `collapse()` shows the entry, while `hideEntry()` hides both surfaces. Both retain
 the in-process tab, navigation, applied query, reading position and unfinished

@@ -59,6 +59,14 @@ final class InspectorNavigation extends FrameLayout {
         if (stack.isEmpty()) return false;
         stack.get(stack.size() - 1).cancel(); return true;
     }
+    void refreshAppearance(Context themed) {
+        java.util.Set<OwnerContext> contexts = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (List<InspectorScreen> stack : stacks) for (InspectorScreen screen : stack) {
+            OwnerContext owner = owner(screen.view.getContext());
+            if (owner != null && owner.tab >= 0 && contexts.add(owner)) owner.setBaseContext(themed);
+        }
+        for (List<InspectorScreen> stack : stacks) for (InspectorScreen screen : stack) InspectorAppearance.refresh(screen.view);
+    }
     void discardPanels() {
         for (List<InspectorScreen> stack : stacks) {
             for (InspectorScreen screen : new ArrayList<>(stack)) if (screen.panel) { screen.cancel(); break; }
@@ -99,7 +107,7 @@ final class InspectorNavigation extends FrameLayout {
     static InspectorNavigation from(Context context) { OwnerContext owner = owner(context); return owner == null ? null : owner.navigation; }
     private static int tab(Context context) { OwnerContext owner = owner(context); return owner == null ? -1 : owner.tab; }
     static boolean owns(Context context) { return from(context) != null; }
-    static final class OwnerContext extends ContextWrapper {
+    static final class OwnerContext extends android.content.MutableContextWrapper {
         InspectorNavigation navigation;
         final int tab;
         OwnerContext(Context base) { this(base, null, -1); }

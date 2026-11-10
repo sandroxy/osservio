@@ -74,7 +74,7 @@ class NetworkInspectorView extends LinearLayout {
         this.state = state; this.connectionID = connectionID;
         if (httpHistory == null) state.scope = 2;
         else if (socketHistory == null) state.scope = 1;
-        Context context = getContext(); setOrientation(VERTICAL); setBackgroundColor(InspectorTheme.canvas(context));
+        Context context = getContext(); setOrientation(VERTICAL); InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.canvas(context)));
         header = new InspectorFeedHeader(context, connectionID == null ? R.string.osservio_ui_network_search : R.string.osservio_ws_search,
             query().text, value -> { if (!changingScope) { query().text = value; dirty = true; refresh(); } },
             () -> setPaused(!state.paused), this::filters, this::actions);
@@ -86,7 +86,7 @@ class NetworkInspectorView extends LinearLayout {
         }
         if (connectionID != null) {
             android.widget.TextView explanation = InspectorWidgets.caption(context);
-            explanation.setText(R.string.osservio_ui_connection_hint); header.addView(explanation, 0, new LayoutParams(-1, -2));
+            InspectorAppearance.text(explanation, R.string.osservio_ui_connection_hint); header.addView(explanation, 0, new LayoutParams(-1, -2));
         }
         list = new ListView(context); list.setDivider(new android.graphics.drawable.ColorDrawable(
             InspectorTheme.color(context, R.color.osservio_separator))); list.setDividerHeight(dp(1));
@@ -103,6 +103,11 @@ class NetworkInspectorView extends LinearLayout {
         });
         addView(list, new LayoutParams(-1, -1)); header.setPaused(state.paused);
         if (state.sockets != null) connections = InspectorQuery.connections(state.sockets.events);
+        InspectorAppearance.content(this, () -> {
+            list.setDivider(new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator)));
+            render(); header.setPaused(state.paused);
+            header.status.setText(state.paused ? context.getString(R.string.osservio_ui_paused) : captureStatus());
+        });
         render(); list.setSelectionFromTop(state.positions[state.scope], state.offsets[state.scope]);
     }
     private InspectorQuery query() { return state.queries[state.scope]; }

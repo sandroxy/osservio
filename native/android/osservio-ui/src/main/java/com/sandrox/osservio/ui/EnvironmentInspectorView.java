@@ -84,8 +84,8 @@ final class EnvironmentInspectorView extends LinearLayout {
         int[] labels = {R.string.osservio_ui_app, R.string.osservio_ui_device, R.string.osservio_ui_process, R.string.osservio_ui_power};
         for (int i = 0; i < groups.length; i++) {
             page.section(labels[i]);
-            for (EnvironmentSnapshot.Key key : groups[i]) page.field(RuntimePresentation.keyLabel(key), RuntimePresentation.value(context, snapshot.values.get(key), key));
+            for (EnvironmentSnapshot.Key key : groups[i]) page.field(RuntimePresentation.keyLabel(key), () -> RuntimePresentation.value(context, snapshot.values.get(key), key));
         }
-        page.note(context.getString(R.string.osservio_runtime_environment_hint)); return page;
+        page.note(R.string.osservio_runtime_environment_hint); return page;
     }
 }

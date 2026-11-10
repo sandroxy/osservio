@@ -37,13 +37,13 @@ final class SignalCrashView extends LinearLayout {
             copy(text.toString());
         });
         controls.addView(back); View spacer = new View(context); controls.addView(spacer, new LayoutParams(0, 1, 1)); controls.addView(copy); addView(controls);
-        TextView title = text(); title.setText(images ? R.string.osservio_crash_images : R.string.osservio_crash_frames);
+        TextView title = text(); InspectorAppearance.text(title, images ? R.string.osservio_crash_images : R.string.osservio_crash_frames);
         if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         addView(title);
         ListView list = new ListView(context);
-        TextView hint = text(); hint.setText(context.getString(R.string.osservio_crash_browser_hint,
+        TextView hint = text(); InspectorAppearance.text(hint, () -> context.getString(R.string.osservio_crash_browser_hint,
             context.getString(tombstone != null ? R.string.osservio_tombstone_frames_hint : images ? R.string.osservio_crash_images_hint : R.string.osservio_crash_frames_hint), context.getString(R.string.osservio_crash_copy_hint)));
-        list.addFooterView(hint, null, false); list.setAdapter(new Rows());
+        list.addFooterView(hint, null, false); Rows rows = new Rows(); list.setAdapter(rows); InspectorAppearance.content(this, rows::notifyDataSetChanged);
         list.setOnItemClickListener((parent, view, position, id) -> { if (position < count()) copy(copyText(position)); });
         addView(list, new LayoutParams(-1, 0, 1));
     }
@@ -66,7 +66,7 @@ final class SignalCrashView extends LinearLayout {
         Button result = new Button(getContext()); result.setText(label); result.setAllCaps(false); result.setMinHeight(dp(48)); return result;
     }
     private TextView text() {
-        TextView result = new TextView(getContext()); result.setTextAppearance(android.R.style.TextAppearance_Material_Body1);
+        TextView result = InspectorTheme.text(getContext(), 16, false);
         result.setPadding(dp(12), dp(12), dp(12), dp(12)); result.setMinHeight(dp(48)); return result;
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

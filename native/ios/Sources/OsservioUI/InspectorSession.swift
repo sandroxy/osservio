@@ -17,8 +17,7 @@ public final class InspectorSession: NSObject {
     private var inspector: InspectorViewController?
     private var suspended = false
     private var creatingInspector = false
-    private var animator: UIViewPropertyAnimator?
-    private var animationGeneration: UInt64 = 0
+    private let transition = InspectorEntryTransition()
 
     public init(window: UIWindow, makeInspector: @escaping () -> InspectorViewController) {
         hostWindow = window; self.makeInspector = makeInspector
@@ -37,9 +36,9 @@ public final class InspectorSession: NSObject {
         NotificationCenter.default.removeObserver(self)
         // A host may release its owner without explicitly disposing. UIKit cleanup
         // must still run on the main actor, including when the last release did not.
-        let content = contentWindow, entry = entryWindow, previous = returnWindow, host = hostWindow, animation = animator
+        let content = contentWindow, entry = entryWindow, previous = returnWindow, host = hostWindow, animation = transition
         Task { @MainActor in
-            animation?.stopAnimation(true)
+            animation.cancel()
             if content?.isKeyWindow == true, let target = previous ?? host, !target.isHidden { target.makeKey() }
             content?.isHidden = true; entry?.isHidden = true
             content?.rootViewController = nil; entry?.rootViewController = nil
@@ -86,6 +85,7 @@ public final class InspectorSession: NSObject {
             restoreHostFocus(); contentWindow?.isHidden = true; entryWindow?.isHidden = true; return
         }
         if presentation == .expanded {
+            ensureEntry(host: hostWindow)
             if inspector == nil, let makeInspector {
                 guard !creatingInspector else { return }
                 creatingInspector = true
@@ -118,9 +118,13 @@ public final class InspectorSession: NSObject {
         }
     }
     private func makeWindow(host: UIWindow) -> UIWindow {
-        let window = host.windowScene.map(UIWindow.init(windowScene:)) ?? UIWindow(frame: host.frame)
+        let window = host.windowScene.map(InspectorContentWindow.init(windowScene:)) ?? InspectorContentWindow(frame: host.frame)
         window.frame = host.frame; window.windowLevel = host.windowLevel + 1
         window.backgroundColor = .clear
+        window.geometryChanged = { [weak self] in
+            guard let self, self.transition.isRunning else { return }
+            self.reconcile(animated: false)
+        }
         return window
     }
     private func ensureEntry(host: UIWindow) {
@@ -131,34 +135,16 @@ public final class InspectorSession: NSObject {
         controller.onOpen = { [weak self] in self?.expand() }
         controller.onHide = { [weak self] in self?.hideEntry() }
         window.rootViewController = controller; entryWindow = window
+        controller.loadViewIfNeeded(); controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
     }
     private func animate(_ window: UIWindow, opening: Bool, enabled: Bool) {
-        let duration = enabled ? InspectorMotion.duration : 0
-        window.isUserInteractionEnabled = opening
-        let view = window.rootViewController?.view
-        guard duration > 0 else { window.isHidden = !opening; return }
-        if opening {
-            view?.alpha = 0
-            view?.transform = InspectorMotion.reduced ? .identity : CGAffineTransform(scaleX: 0.98, y: 0.98)
-        }
-        let generation = animationGeneration
-        let animation = UIViewPropertyAnimator(duration: duration, curve: .easeInOut) {
-            view?.alpha = opening ? 1 : 0
-            view?.transform = opening || InspectorMotion.reduced ? .identity : CGAffineTransform(scaleX: 0.98, y: 0.98)
-        }
-        animation.addCompletion { [weak self, weak window] _ in
-            guard let self, self.animationGeneration == generation else { return }
-            window?.isHidden = !opening; view?.alpha = 1; view?.transform = .identity
-            self.animator = nil
-        }
-        animator = animation; animation.startAnimation()
+        entryWindow?.layoutIfNeeded()
+        let entry = (entryWindow?.rootViewController as? InspectorEntryViewController)?.entry
+        let origin = entry.map { $0.convert($0.bounds, to: window) }
+            ?? CGRect(x: window.bounds.maxX - 56, y: window.bounds.height * 0.35, width: 48, height: 48)
+        transition.run(window: window, entryWindow: entryWindow, origin: origin, opening: opening, animated: enabled)
     }
-    private func cancelAnimation() {
-        animationGeneration &+= 1; animator?.stopAnimation(true); animator = nil
-        contentWindow?.rootViewController?.viewIfLoaded?.alpha = 1
-        contentWindow?.rootViewController?.viewIfLoaded?.transform = .identity
-        contentWindow?.isUserInteractionEnabled = true
-    }
+    private func cancelAnimation() { transition.cancel() }
     private func discardTransientPanels() {
         var current: UIViewController? = inspector
         while let presented = current?.presentedViewController {

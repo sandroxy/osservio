@@ -38,7 +38,7 @@ final class InspectorFeedHeader extends LinearLayout {
         searchRow.addView(filters, filterLayout); addView(searchRow, new LayoutParams(-1, -2));
         LinearLayout bar = new LinearLayout(context); bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
         bar.setPadding(0, InspectorTheme.dp(context, 8), 0, 0);
-        status = InspectorWidgets.caption(context); status.setTextColor(InspectorTheme.accent(context));
+        status = InspectorWidgets.caption(context); InspectorAppearance.style(status, () -> status.setTextColor(InspectorTheme.accent(context)));
         pause = InspectorWidgets.icon(context, R.drawable.osservio_pause, R.string.osservio_ui_pause, togglePause);
         ImageButton menu = InspectorWidgets.icon(context, R.drawable.osservio_more, R.string.osservio_ui_actions, actions);
         bar.addView(status, new LayoutParams(0, -2, 1)); bar.addView(pause);
@@ -52,6 +52,10 @@ final class InspectorFeedHeader extends LinearLayout {
         empty.setPadding(inset, inset * 2, inset, inset * 2); addView(empty, new LayoutParams(-1, -2));
     }
     void setQuery(InspectorQuery query, List<InspectorFilterSheet.Group> groups, int visible, int total) {
+        filters.setContentDescription(getContext().getString(R.string.osservio_ui_filters));
+        android.graphics.drawable.Drawable symbol = getContext().getDrawable(R.drawable.osservio_filter);
+        if (symbol != null) symbol.setTint(InspectorTheme.accent(getContext()));
+        filters.setCompoundDrawablesRelativeWithIntrinsicBounds(symbol, null, null, null);
         filters.setText(query.activeCount() == 0 ? "" : Integer.toString(query.activeCount()));
         InspectorWidgets.chip(filters, query.activeCount() > 0);
         criteria.setText(InspectorFilterOptions.summary(getContext(), query, groups));
