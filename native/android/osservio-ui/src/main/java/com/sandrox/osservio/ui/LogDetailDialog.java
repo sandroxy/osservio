@@ -13,8 +13,10 @@ final class LogDetailDialog {
         page.field(R.string.osservio_http_time, () -> RuntimePresentation.date(context, event.timestampMillis));
         page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence);
         page.section(R.string.osservio_ui_read_content);
-        page.value(() -> event.message.length() > 600 ? event.message.substring(0, 600) + "…" : event.message,
+        InspectorWidgets.ValueRow reader = page.value(() -> event.message.length() > 600 ? event.message.substring(0, 600) + "…" : event.message,
             () -> page.read(event.category, new InspectorReadContent(event.message, () -> event.isTruncated ? context.getString(R.string.osservio_truncated) : "", !event.isTruncated && !event.isPrivate)));
+        Runnable label = () -> reader.setContentDescription(context.getString(R.string.osservio_ui_open_reader));
+        InspectorAppearance.content(page, label); label.run();
         if (event.isPrivate) page.note(R.string.osservio_crumb_private);
         if (event.isTruncated) page.note(R.string.osservio_truncated);
         InspectorScreen screen = InspectorDialogs.screen(context, event.category, page);

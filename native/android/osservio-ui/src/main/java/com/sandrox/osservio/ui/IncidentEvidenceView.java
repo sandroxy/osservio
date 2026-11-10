@@ -5,7 +5,6 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -25,7 +24,6 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private final IncidentHTTP http;
     private final IncidentWebSockets sockets;
     private InspectorQuery query = new InspectorQuery();
-    private final EditText search;
     private final InspectorFeedHeader header;
     private final android.widget.ImageButton goBack;
     private final TextView footer;
@@ -41,14 +39,16 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         header = new InspectorFeedHeader(context, R.string.osservio_incident_evidence_search, "", value -> { query.text = value; filter(); }, () -> { }, () -> {
             detail = InspectorFilterSheet.show(context, query, groups(), value -> { query = value; filter(); });
             detail.setOnDismissListener(ignored -> detail = null);
-        }, () -> { }, true); header.hideActions(); search = header.search;
+        }, () -> { }, true); header.hideActions();
         header.onQueryChange = value -> { query = value; filter(); };
         ListView list = new ListView(context); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
         InspectorAppearance.Value<String> info = () -> logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
             : http != null ? IncidentPresentation.window(context, http.observedAtMillis, http.events.size(), http.omittedEventCount, http.sourceEvictedEvents, http.sourceEvictedBodies)
             : IncidentPresentation.window(context, sockets.observedAtMillis, sockets.events.size(), sockets.omittedEventCount, sockets.sourceEvictedEvents, sockets.sourceEvictedPayloads);
-        header.addView(caption(info), new LayoutParams(-1, -2)); list.addHeaderView(header, null, false); footer = caption(""); footer.setPadding(dp(16), dp(8), dp(16), dp(16)); list.addFooterView(footer, null, false);
+        InspectorAppearance.text(header.status, () -> info.get() + "\n" + context.getString(R.string.osservio_incident_frozen_detail));
+        InspectorAppearance.style(header.status, () -> header.status.setTextColor(InspectorTheme.secondary(context)));
+        list.addHeaderView(header, null, false); footer = caption(""); footer.setPadding(dp(16), dp(8), dp(16), dp(16)); list.addFooterView(footer, null, false);
         list.setAdapter(rows); list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < indices.size()) show(indices.get(index));
         });
@@ -60,7 +60,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         filter();
     }
     @Override public void bindScreen(InspectorScreen screen) {
-        goBack.setVisibility(GONE); screen.title(logs != null ? R.string.osservio_logs : http != null ? R.string.osservio_http_title : R.string.osservio_ws_title);
+        goBack.setVisibility(GONE); screen.title(logs != null ? R.string.osservio_logs : http != null ? R.string.osservio_ui_http : R.string.osservio_ws_title);
     }
     private int count() { return logs != null ? logs.events.size() : http != null ? http.events.size() : sockets.events.size(); }
     private List<InspectorFilterSheet.Group> groups() {
@@ -84,9 +84,8 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
             if (matches) indices.add(i);
         }
         header.setQuery(query, groups(), indices.size(), count()); header.setPaused(false); header.empty.setVisibility(GONE);
-        footer.setText(indices.isEmpty() ? getContext().getString(R.string.osservio_incident_empty_detail,
-            getContext().getString(query.text.isEmpty() && query.activeCount() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty),
-            getContext().getString(R.string.osservio_incident_frozen_detail)) : getContext().getString(R.string.osservio_incident_frozen_detail));
+        footer.setText(query.text.isEmpty() && query.activeCount() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty);
+        footer.setVisibility(indices.isEmpty() ? VISIBLE : GONE);
         rows.notifyDataSetChanged();
     }
     private void show(int index) {
@@ -114,14 +113,14 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
             int index = indices.get(position); Context context = getContext();
             if (logs != null) {
                 LogEvent event = logs.events.get(index);
-                row.bind(event.level.name(), event.message, event.category, event.timestampMillis, InspectorTheme.accent(context));
+                row.bind(event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name(), event.message, event.category, event.timestampMillis, InspectorTheme.accent(context));
             } else if (http != null) {
                 HTTPEvent event = http.events.get(index);
-                row.bind(event.method + (event.statusCode == null ? "" : " · " + event.statusCode), InspectorQuery.path(event.url),
+                row.bind(event.method, InspectorQuery.path(event.url),
                     InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(context, event), event.timestampMillis, InspectorTheme.accent(context));
             } else {
                 WebSocketEvent event = sockets.events.get(index);
-                row.bind("WebSocket", WebSocketPresentation.summary(context, event), event.url + " · " + event.connectionId, event.timestampMillis, InspectorTheme.accent(context));
+                row.bind("WebSocket", WebSocketPresentation.summary(context, event), event.url + " · " + event.connectionId.substring(0, Math.min(8, event.connectionId.length())), event.timestampMillis, InspectorTheme.accent(context));
             }
             return row;
         }

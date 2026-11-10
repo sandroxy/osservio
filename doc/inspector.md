@@ -127,6 +127,20 @@ HTTP details separate Overview, Request and Response. WebSocket details separate
 metadata and payload. Selecting a section displays metadata and content state;
 Open reader performs the explicit body or payload lookup.
 
+Reading pages share the same information hierarchy on Android and iOS: page
+titles identify the selected evidence, navigation owns Back and copy/share
+actions, and related facts appear in labeled groups. Environment reads and saved
+runs expose their read times separately from event times. Saved problem pages
+group the record, environment, attached logs/network records and breadcrumbs;
+unattached evidence has no disclosure action. System diagnostics retain structured
+source facts and open address lists separately. Platform-specific evidence stays
+explicit rather than being replaced with a common placeholder value.
+
+Log details show a bounded message preview that opens the reader. The reader's
+search field is directly available; copy remains in the page navigation. A saved
+attachment uses the same search/filter row as live lists, without a live capture
+or clear control. Native address and evidence lists reuse rows as they scroll.
+
 The reader holds that one bounded, sanitized content result. Capture and saved
 inclusion notices appear separately from the payload, including truncated,
 omitted, missing, busy and empty states. Copy all copies the payload text, not

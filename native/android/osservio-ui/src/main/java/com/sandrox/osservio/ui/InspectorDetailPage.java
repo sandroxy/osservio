@@ -18,19 +18,21 @@ final class InspectorDetailPage extends ScrollView {
     void section(int title) { section(() -> getContext().getString(title)); }
     void section(String title) { section(() -> title); }
     private void section(InspectorAppearance.Value<String> title) {
-        TextView label = InspectorWidgets.sectionLabel(getContext()); InspectorAppearance.text(label, title);
+        TextView label = InspectorWidgets.sectionLabel(getContext());
+        InspectorAppearance.text(label, () -> { String value = title.get(); label.setVisibility(value.isEmpty() ? GONE : VISIBLE); return value; });
         content.addView(label, new LinearLayout.LayoutParams(-1, -2));
-        group = new LinearLayout(getContext()); group.setOrientation(LinearLayout.VERTICAL); LinearLayout surface = group;
-        InspectorAppearance.style(surface, () -> InspectorTheme.surface(surface, false, 20)); surface.setClipToOutline(true);
-        content.addView(group, new LinearLayout.LayoutParams(-1, -2));
+        group = InspectorWidgets.group(getContext());
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
+        if (title.get().isEmpty()) layout.topMargin = InspectorTheme.dp(getContext(), 20);
+        content.addView(group, layout);
     }
     void field(int title, Object value) { field(title, () -> value); }
     void value(InspectorAppearance.Value<String> value) { value(value, null); }
-    void value(InspectorAppearance.Value<String> value, Runnable action) {
+    InspectorWidgets.ValueRow value(InspectorAppearance.Value<String> value, Runnable action) {
         InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());
         Runnable render = () -> row.bind(value.get(), "", action != null); InspectorAppearance.content(row, render); render.run(); row.action(action);
         if (action != null) { row.title.setMaxLines(4); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); InspectorAppearance.style(row.title, () -> row.title.setTextColor(InspectorTheme.accent(getContext()))); }
-        InspectorWidgets.addGrouped(group, row);
+        InspectorWidgets.addGrouped(group, row); return row;
     }
     void row(int title, InspectorAppearance.Value<String> value, Runnable action) {
         InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());

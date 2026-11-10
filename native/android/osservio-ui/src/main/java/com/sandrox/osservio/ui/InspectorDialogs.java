@@ -25,9 +25,20 @@ final class InspectorDialogs {
     }
     static InspectorScreen confirm(Context context, int title, String message, int confirm,
                                    android.content.DialogInterface.OnClickListener action) {
-        InspectorScreen screen = panel(context, title, messageView(context, message));
+        android.widget.LinearLayout content = new android.widget.LinearLayout(context); content.setOrientation(android.widget.LinearLayout.VERTICAL);
+        content.addView(messageText(context, message));
+        android.widget.ScrollView scroll = new android.widget.ScrollView(context); scroll.addView(content);
+        InspectorScreen screen = panel(context, title, scroll);
         screen.compact();
-        screen.action(confirm, () -> { screen.dismiss(); action.onClick(screen, android.content.DialogInterface.BUTTON_POSITIVE); });
+        android.widget.Button button = InspectorWidgets.button(context, confirm,
+            () -> { screen.dismiss(); action.onClick(screen, android.content.DialogInterface.BUTTON_POSITIVE); });
+        InspectorAppearance.style(button, () -> {
+            button.setTextColor(InspectorTheme.color(context, R.color.osservio_error));
+            InspectorTheme.surface(button, false, 24);
+        });
+        android.widget.LinearLayout.LayoutParams layout = new android.widget.LinearLayout.LayoutParams(-1, -2);
+        int inset = InspectorTheme.dp(context, 16); layout.setMargins(inset, 0, inset, inset);
+        content.addView(button, layout);
         screen.show(); return screen;
     }
     static InspectorScreen menu(Context context, int title, String[] labels, android.content.DialogInterface.OnClickListener chosen) {
@@ -56,8 +67,11 @@ final class InspectorDialogs {
     }
     private static View messageView(Context context, String message) {
         android.widget.ScrollView scroll = new android.widget.ScrollView(context);
+        scroll.addView(messageText(context, message)); return scroll;
+    }
+    private static TextView messageText(Context context, String message) {
         TextView text = InspectorTheme.text(context, 15, false); text.setText(message); text.setTextIsSelectable(true);
-        int inset = InspectorTheme.dp(context, 20); text.setPadding(inset, inset, inset, inset); scroll.addView(text); return scroll;
+        int inset = InspectorTheme.dp(context, 20); text.setPadding(inset, inset, inset, inset); return text;
     }
     @SuppressWarnings("deprecation") // Window APIs differ across supported API 23–36 hosts.
     static void configureWindow(Window window, boolean dark) {

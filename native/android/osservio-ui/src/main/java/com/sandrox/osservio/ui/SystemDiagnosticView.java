@@ -31,7 +31,7 @@ final class SystemDiagnosticView extends FrameLayout implements InspectorScreen.
         page.note(() -> SystemDiagnosticPresentation.hint(getContext(), diagnostic));
         AppleSignalCrash crash = diagnostic.appleSignal;
         AndroidTombstone trace = diagnostic.androidExit == null ? null : diagnostic.androidExit.tombstone;
-        if (crash != null || trace != null) page.section(R.string.osservio_diagnostic_title);
+        if (crash != null || trace != null) page.section("");
         if (crash != null) {
             for (boolean images : new boolean[] {false, true}) {
                 int count = images ? crash.images.size() : crash.frames.size();

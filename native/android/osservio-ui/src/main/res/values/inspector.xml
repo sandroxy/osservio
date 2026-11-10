@@ -153,4 +153,5 @@
     <string name="osservio_ui_baseline_capture">Baseline capture</string>
     <string name="osservio_ui_event_time">Observed at</string>
     <string name="osservio_ui_request_url">Request URL</string>
+    <string name="osservio_ui_http">HTTP</string>
 </resources>

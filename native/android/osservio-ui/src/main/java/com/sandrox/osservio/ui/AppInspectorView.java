@@ -74,7 +74,7 @@ final class AppInspectorView extends ScrollView {
     private void captureStatus() {
         Context context = getContext();
         open(R.string.osservio_ui_capture_settings, new InspectorCaptureSettingsView(context, breadcrumbs == null ? null : breadcrumbs.captureController,
-            new int[] {R.string.osservio_logs, R.string.osservio_http_title, R.string.osservio_ws_title, R.string.osservio_runtime_breadcrumbs},
+            new int[] {R.string.osservio_logs, R.string.osservio_ui_http, R.string.osservio_ws_title, R.string.osservio_runtime_breadcrumbs},
             logs.captureController, http.captureController, sockets == null ? null : sockets.captureController, breadcrumbs == null ? null : breadcrumbs.captureController));
     }
     private void open(int title, View view) {

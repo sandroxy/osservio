@@ -45,7 +45,7 @@ final class HTTPDetailDialog {
     }
     private void render() {
         body.removeAllViews();
-        InspectorDetailPage page = new InspectorDetailPage(context); page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
+        InspectorDetailPage page = new InspectorDetailPage(context);
         if (section == 0) {
             page.section(R.string.osservio_ui_overview);
             page.field(R.string.osservio_ui_state, () -> HTTPPresentation.state(context, event.state));
@@ -54,6 +54,7 @@ final class HTTPDetailDialog {
             page.field(R.string.osservio_http_status, event.statusCode);
             page.field(R.string.osservio_http_duration, event.durationMillis == null ? null : event.durationMillis + " ms");
             page.field(R.string.osservio_http_failure, () -> event.failure == null ? null : HTTPPresentation.failure(context, event.failure));
+            page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
             page.section(R.string.osservio_ui_metadata);
             page.field(R.string.osservio_http_time, () -> RuntimePresentation.date(context, event.timestampMillis));
             page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
@@ -73,6 +74,7 @@ final class HTTPDetailDialog {
                 InspectorReadContent text = savedPayloads != null ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
                 page.read(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body, text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail)));
             });
+            page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
         }
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));
     }

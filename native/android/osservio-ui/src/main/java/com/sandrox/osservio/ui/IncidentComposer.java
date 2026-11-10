@@ -7,7 +7,7 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.CheckBox;
+import android.widget.Switch;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -36,14 +36,14 @@ final class IncidentComposer {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final InspectorScreen dialog;
     private final android.widget.Button saveButton;
-    private final CheckBox includeEnvironment;
-    private final CheckBox includeBreadcrumbs;
-    private final CheckBox includeNote;
-    private final CheckBox includeLogs;
-    private final CheckBox includeHTTP;
-    private final CheckBox includeHTTPBodies;
-    private final CheckBox includeWebSockets;
-    private final CheckBox includeWebSocketPayloads;
+    private final Switch includeEnvironment;
+    private final Switch includeBreadcrumbs;
+    private final Switch includeNote;
+    private final Switch includeLogs;
+    private final Switch includeHTTP;
+    private final Switch includeHTTPBodies;
+    private final Switch includeWebSockets;
+    private final Switch includeWebSocketPayloads;
     private final EditText editor;
     private final TextView environmentStatus;
     private final TextView notice;
@@ -64,28 +64,33 @@ final class IncidentComposer {
         this.context = context; this.mark = mark; this.archive = archive; this.provider = provider; this.saved = saved;
         this.httpHistory = httpHistory; this.webSocketHistory = webSocketHistory;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL); content.setPadding(dp(16), dp(8), dp(16), dp(16));
-        content.addView(label(context.getString(R.string.osservio_incident_frozen_time) + " · " + RuntimePresentation.date(context, mark.timestampMillis)), params());
+        LinearLayout metadata = InspectorWidgets.group(context);
+        InspectorWidgets.ValueRow time = new InspectorWidgets.ValueRow(context);
+        time.bind(context.getString(R.string.osservio_incident_frozen_time), RuntimePresentation.date(context, mark.timestampMillis), false);
+        metadata.addView(time); content.addView(metadata, params());
         content.addView(label(context.getString(R.string.osservio_incident_mark_hint)), params());
-        includeEnvironment = option(R.string.osservio_incident_include_environment, true); content.addView(includeEnvironment, params());
-        environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); content.addView(environmentStatus, params());
-        includeBreadcrumbs = option(R.string.osservio_incident_include_breadcrumbs, true); content.addView(includeBreadcrumbs, params());
-        content.addView(label(mark.breadcrumbs == null ? context.getString(R.string.osservio_incident_breadcrumbs_failed) : IncidentPresentation.counts(context, mark.breadcrumbs)), params());
-        includeLogs = option(R.string.osservio_incident_include_logs, mark.logs != null); content.addView(includeLogs, params());
-        content.addView(label(mark.logs == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.window(context, mark.logs.observedAtMillis, mark.logs.events.size(), mark.logs.omittedEventCount, mark.logs.sourceEvictedCount, null)), params());
-        includeHTTP = option(R.string.osservio_incident_include_http, mark.http != null); content.addView(includeHTTP, params());
-        content.addView(label(mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.window(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount, mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies)), params());
-        includeHTTPBodies = option(R.string.osservio_incident_include_http_bodies, false); content.addView(includeHTTPBodies, params());
+        notice = label(""); notice.setVisibility(View.GONE); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); content.addView(notice, params());
+        LinearLayout options = InspectorWidgets.group(context); content.addView(options, params());
+        includeEnvironment = option(R.string.osservio_incident_include_environment, true);
+        environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); addOption(options, includeEnvironment, environmentStatus);
+        includeBreadcrumbs = option(R.string.osservio_incident_include_breadcrumbs, true);
+        addOption(options, includeBreadcrumbs, label(mark.breadcrumbs == null ? context.getString(R.string.osservio_incident_breadcrumbs_failed) : IncidentPresentation.counts(context, mark.breadcrumbs)));
+        includeLogs = option(R.string.osservio_incident_include_logs, mark.logs != null);
+        addOption(options, includeLogs, label(mark.logs == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.window(context, mark.logs.observedAtMillis, mark.logs.events.size(), mark.logs.omittedEventCount, mark.logs.sourceEvictedCount, null)));
+        includeHTTP = option(R.string.osservio_incident_include_http, mark.http != null);
+        addOption(options, includeHTTP, label(mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.window(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount, mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies)));
+        includeHTTPBodies = option(R.string.osservio_incident_include_http_bodies, false);
         httpBodiesStatus = label(context.getString(mark.http != null && !mark.http.payloads.isEmpty() && httpHistory != null
-            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); content.addView(httpBodiesStatus, params());
-        includeWebSockets = option(R.string.osservio_incident_include_websockets, mark.webSockets != null); content.addView(includeWebSockets, params());
-        content.addView(label(mark.webSockets == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.window(context, mark.webSockets.observedAtMillis, mark.webSockets.events.size(), mark.webSockets.omittedEventCount, mark.webSockets.sourceEvictedEvents, mark.webSockets.sourceEvictedPayloads)), params());
-        includeWebSocketPayloads = option(R.string.osservio_incident_include_ws_payloads, false); content.addView(includeWebSocketPayloads, params());
+            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(options, includeHTTPBodies, httpBodiesStatus);
+        includeWebSockets = option(R.string.osservio_incident_include_websockets, mark.webSockets != null);
+        addOption(options, includeWebSockets, label(mark.webSockets == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.window(context, mark.webSockets.observedAtMillis, mark.webSockets.events.size(), mark.webSockets.omittedEventCount, mark.webSockets.sourceEvictedEvents, mark.webSockets.sourceEvictedPayloads)));
+        includeWebSocketPayloads = option(R.string.osservio_incident_include_ws_payloads, false);
         socketPayloadsStatus = label(context.getString(mark.webSockets != null && !mark.webSockets.payloads.isEmpty() && webSocketHistory != null
-            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); content.addView(socketPayloadsStatus, params());
-        includeNote = option(R.string.osservio_incident_include_note, false); content.addView(includeNote, params());
+            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(options, includeWebSocketPayloads, socketPayloadsStatus);
+        includeNote = option(R.string.osservio_incident_include_note, false); addOption(options, includeNote, null);
         editor = new EditText(context); editor.setHint(R.string.osservio_incident_note); editor.setMinLines(3); editor.setMaxLines(6);
         InspectorTheme.typography(editor, 16, false); editor.setPadding(dp(16), dp(12), dp(16), dp(12));
         InspectorAppearance.style(editor, () -> { editor.setTextColor(InspectorTheme.primary(context)); editor.setHintTextColor(InspectorTheme.secondary(context)); InspectorTheme.surface(editor, false, 20); });
@@ -108,7 +113,6 @@ final class IncidentComposer {
         }});
         content.addView(editor, params());
         content.addView(label(context.getString(R.string.osservio_incident_note_hint) + "\n" + context.getString(R.string.osservio_incident_note_limit)), params());
-        notice = label(""); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); content.addView(notice, params());
         ScrollView scroll = new ScrollView(context); scroll.setFillViewport(true); scroll.addView(content);
         dialog = InspectorDialogs.screen(context, context.getString(R.string.osservio_incident_mark), scroll);
         dialog.fullScreenTask();
@@ -193,14 +197,14 @@ final class IncidentComposer {
                 includeBreadcrumbs.isChecked() ? mark.breadcrumbs : null, includeLogs.isChecked() ? mark.logs : null,
                 includeHTTP.isChecked() ? (includeHTTPBodies.isChecked() ? httpWithBodies : mark.http) : null,
                 includeWebSockets.isChecked() ? (includeWebSocketPayloads.isChecked() ? socketsWithPayloads : mark.webSockets) : null);
-        } catch (IllegalArgumentException failure) { notice.setText(R.string.osservio_incident_mark_failed); return; }
-        saving = true; notice.setText(R.string.osservio_incident_saving); updateControls();
+        } catch (IllegalArgumentException failure) { notice(context.getString(R.string.osservio_incident_mark_failed)); return; }
+        saving = true; notice(context.getString(R.string.osservio_incident_saving)); updateControls();
         WeakReference<IncidentComposer> reference = new WeakReference<>(this); Handler handler = main;
         archive.save(snapshot, error -> handler.post(() -> {
             IncidentComposer composer = reference.get(); if (composer == null || !composer.dialog.isShowing()) return;
             composer.saving = false; composer.updateControls();
             if (error == null) { composer.editor.setText(""); composer.saved.run(); composer.dialog.dismiss(); }
-            else composer.notice.setText(PersistencePresentation.error(composer.context, error));
+            else composer.notice(PersistencePresentation.error(composer.context, error));
         }));
     }
     static boolean validNote(CharSequence text) {
@@ -216,16 +220,17 @@ final class IncidentComposer {
         }
         return true;
     }
-    private CheckBox option(int label, boolean checked) {
-        CheckBox option = new CheckBox(context); option.setText(label); option.setChecked(checked); option.setMinHeight(dp(52));
-        InspectorTheme.typography(option, 16, false); option.setButtonDrawable(null); option.setPadding(dp(16), dp(13), dp(16), dp(13)); option.setCompoundDrawablePadding(dp(12));
-        InspectorAppearance.style(option, () -> {
-            option.setTextColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[0]},
-                new int[] {InspectorTheme.secondary(context), InspectorTheme.primary(context)}));
-            option.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, InspectorWidgets.checkmark(context), null);
-            InspectorTheme.surface(option, true, 20);
-        }); return option;
+    private Switch option(int label, boolean checked) {
+        Switch option = new Switch(context); option.setText(label); option.setContentDescription(context.getString(label)); option.setChecked(checked);
+        option.setMinHeight(dp(56)); option.setPadding(dp(16), dp(12), dp(16), dp(8));
+        InspectorAppearance.style(option, () -> { InspectorWidgets.styleSwitch(option); option.setBackground(null); }); return option;
     }
+    private void addOption(LinearLayout group, Switch option, TextView detail) {
+        LinearLayout row = new LinearLayout(context); row.setOrientation(LinearLayout.VERTICAL); row.addView(option, params());
+        if (detail != null) { detail.setPadding(dp(16), 0, dp(16), dp(12)); row.addView(detail, params()); }
+        InspectorWidgets.addGrouped(group, row);
+    }
+    private void notice(String value) { notice.setText(value); notice.setVisibility(value.isEmpty() ? View.GONE : View.VISIBLE); }
     private TextView label(String value) {
         TextView text = InspectorWidgets.caption(context); text.setTextSize(12);
         text.setText(value); text.setPadding(dp(16), dp(8), dp(16), dp(12)); return text;

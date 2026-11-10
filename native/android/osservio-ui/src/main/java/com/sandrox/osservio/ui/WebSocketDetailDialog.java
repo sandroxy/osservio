@@ -36,7 +36,7 @@ final class WebSocketDetailDialog {
         }); render();
     }
     private void render() {
-        body.removeAllViews(); InspectorDetailPage page = new InspectorDetailPage(context); page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
+        body.removeAllViews(); InspectorDetailPage page = new InspectorDetailPage(context);
         if (section == 0) {
             page.section(R.string.osservio_ui_overview);
             page.value(() -> WebSocketPresentation.summary(context, event));
@@ -44,6 +44,7 @@ final class WebSocketDetailDialog {
             page.field(R.string.osservio_ws_time, () -> RuntimePresentation.date(context, event.timestampMillis));
             page.field(R.string.osservio_http_status, event.statusCode); page.field(R.string.osservio_ws_close_code, event.closeCode);
             page.field(R.string.osservio_http_failure, () -> event.failure == null ? null : WebSocketPresentation.failure(context, event.failure));
+            page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
             page.section(R.string.osservio_ui_metadata);
             page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
             if (connection != null) page.disclosure(R.string.osservio_ui_connection_context, () -> event.connectionId, connection);
@@ -61,6 +62,7 @@ final class WebSocketDetailDialog {
                     : WebSocketPresentation.payload(context, event.payload, history);
                 page.read(R.string.osservio_ws_payload, text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail)));
             });
+            page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
         }
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));
     }

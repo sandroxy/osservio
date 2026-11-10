@@ -300,8 +300,8 @@ public final class IncidentInspectorView extends FrameLayout {
             String type = IncidentPresentation.title(getContext(), snapshot.diagnosticKind);
             row.bind(getContext().getString(snapshot.diagnosticKind == null ? R.string.osservio_ui_manual : R.string.osservio_ui_system),
                 snapshot.note == null || snapshot.note.text.isEmpty() ? type : snapshot.note.text,
-                getContext().getString(R.string.osservio_ui_record_time) + " · " + RuntimePresentation.date(getContext(), snapshot.timestampMillis)
-                    + "\n" + IncidentPresentation.attachments(getContext(), snapshot), snapshot.timestampMillis, InspectorTheme.accent(getContext()));
+                IncidentPresentation.timeLabel(getContext(), snapshot.diagnosticKind) + " · " + RuntimePresentation.date(getContext(), snapshot.timestampMillis)
+                    + "\n" + snapshot.id.substring(0, Math.min(8, snapshot.id.length())), snapshot.timestampMillis, InspectorTheme.accent(getContext()));
             return row;
         }
     }

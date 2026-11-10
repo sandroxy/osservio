@@ -71,8 +71,8 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         LinearLayout attachments = section(header, () -> context.getString(R.string.osservio_incident_evidence_title));
         attachment(attachments, R.string.osservio_logs, snapshot.logs == null ? null : snapshot.logs.events.size(),
             () -> open(R.string.osservio_logs, new IncidentEvidenceView(context, snapshot.logs, () -> { })));
-        attachment(attachments, R.string.osservio_http_title, snapshot.http == null ? null : snapshot.http.events.size(),
-            () -> open(R.string.osservio_http_title, new IncidentEvidenceView(context, snapshot.http, () -> { })));
+        attachment(attachments, R.string.osservio_ui_http, snapshot.http == null ? null : snapshot.http.events.size(),
+            () -> open(R.string.osservio_ui_http, new IncidentEvidenceView(context, snapshot.http, () -> { })));
         attachment(attachments, R.string.osservio_ws_title, snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
             () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
         TextView eventsTitle = InspectorWidgets.sectionLabel(context); InspectorAppearance.text(eventsTitle, R.string.osservio_runtime_breadcrumbs); header.addView(eventsTitle);
