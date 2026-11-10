@@ -15,10 +15,7 @@
     <string name="osservio_runtime_previous">Showing the previous snapshot</string>
     <string name="osservio_runtime_copy_environment">Copy snapshot</string>
     <string name="osservio_runtime_environment_hint">This is a point-in-time sample. Memory measurements differ by platform. On iOS, battery level is unavailable unless the host already monitors it.</string>
-    <string name="osservio_crumb_enable_baseline">Enable baseline</string>
-    <string name="osservio_crumb_disable_baseline">Disable baseline</string>
-    <string name="osservio_crumb_baseline_hint">Baseline applies outside detailed sessions. Changing it does not end an active detailed session.</string>
-    <string name="osservio_crumb_summary">%1$s · Retained: %2$d\nEvicted: %3$d · Rate-limited: %4$d</string>
+    <string name="osservio_crumb_baseline_hint">Keeps lightweight runtime signals available when debug mode is off. Turning baseline capture off does not stop an active debug session. Saving still depends on the host’s storage configuration.</string>
     <string name="osservio_crumb_search">Search kind, label, or message</string>
     <string name="osservio_crumb_empty">No breadcrumbs yet. Enable baseline or detailed capture to record host and runtime observations.</string>
     <string name="osservio_crumb_clear">Clear breadcrumbs</string>
@@ -32,7 +29,7 @@
     <string name="osservio_crumb_memory_only">Memory only</string>
     <string name="osservio_crumb_value">Platform code or measured value</string>
     <string name="osservio_crumb_private">Private content omitted</string>
-    <string name="osservio_crumb_detail_hint">This is the event snapshot opened from the timeline. It remains readable if history is cleared.</string>
+    <string name="osservio_crumb_detail_hint">Snapshot at opening; later history changes do not affect this page.</string>
     <string name="osservio_env_os_version">OS version</string>
     <string name="osservio_env_app_identifier">App identifier</string>
     <string name="osservio_env_app_version">App version</string>

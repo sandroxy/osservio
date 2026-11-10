@@ -28,14 +28,36 @@ final class InspectorDetailPage extends ScrollView {
     void field(int title, Object value) { field(title, () -> value); }
     void field(int title, InspectorAppearance.Value<?> value) { field(() -> getContext().getString(title), value); }
     void field(String title, Object value) { field(() -> title, () -> value); }
-    private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) {
+    private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) { field(title, value, null); }
+    private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value, Runnable action) {
         if (group == null) section(R.string.osservio_ui_metadata);
         Context context = getContext(); int inset = InspectorTheme.dp(context, 12);
         LinearLayout row = new LinearLayout(context); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(inset, inset, inset, inset);
         if (group.getChildCount() > 0) group.addView(InspectorWidgets.divider(context));
         TextView label = InspectorWidgets.caption(context); InspectorAppearance.text(label, title); label.setPadding(0, 0, 0, InspectorTheme.dp(context, 4)); row.addView(label);
         TextView text = InspectorTheme.text(context, 15, false); InspectorAppearance.text(text, () -> { Object result = value.get(); return result == null ? context.getString(R.string.osservio_http_none) : result.toString(); });
-        text.setTextIsSelectable(true); row.addView(text); group.addView(row);
+        text.setTextIsSelectable(action == null); row.addView(text); group.addView(row);
+        if (action != null) {
+            text.setMaxLines(3); row.setFocusable(true); row.setOnClickListener(ignored -> action.run());
+            row.setBackgroundResource(android.R.drawable.list_selector_background);
+        }
+
+    }
+    void disclosure(int title, InspectorAppearance.Value<String> value, Runnable action) {
+        field(() -> getContext().getString(title), value, action);
+    }
+    void expandable(int title, int show, int hide, Runnable appendFields) {
+        section(title); LinearLayout target = group;
+        boolean[] expanded = {false};
+        android.widget.Button toggle = InspectorWidgets.button(getContext(), show, () -> { });
+        target.addView(toggle, new LinearLayout.LayoutParams(-1, -2));
+        appendFields.run();
+        for (int index = 1; index < target.getChildCount(); index++) target.getChildAt(index).setVisibility(GONE);
+        InspectorAppearance.text(toggle, () -> getContext().getString(expanded[0] ? hide : show));
+        toggle.setOnClickListener(ignored -> {
+            expanded[0] = !expanded[0]; toggle.setText(expanded[0] ? hide : show);
+            for (int index = 1; index < target.getChildCount(); index++) target.getChildAt(index).setVisibility(expanded[0] ? VISIBLE : GONE);
+        });
     }
     void note(String message) { note(() -> message); }
     void note(int message) { note(() -> getContext().getString(message)); }

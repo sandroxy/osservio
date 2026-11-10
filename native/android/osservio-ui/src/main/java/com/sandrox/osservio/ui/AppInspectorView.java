@@ -26,10 +26,11 @@ final class AppInspectorView extends ScrollView {
     private final LogRecorder logs;
     private final HTTPRecorder http;
     private final WebSocketRecorder sockets;
+    private final BreadcrumbRecorder breadcrumbs;
     private InspectorScreen dialog;
     AppInspectorView(Context context, EnvironmentProvider environment, BreadcrumbRecorder recorder, BreadcrumbHistory history,
                      BreadcrumbArchive archive, LogRecorder logs, HTTPRecorder http, WebSocketRecorder sockets, State state) {
-        super(context); this.state = state; this.logs = logs; this.http = http; this.sockets = sockets;
+        super(context); this.state = state; this.logs = logs; this.http = http; this.sockets = sockets; this.breadcrumbs = recorder;
         setFillViewport(true); setBackgroundColor(InspectorTheme.canvas(context));
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, inset); addView(content);
@@ -46,7 +47,7 @@ final class AppInspectorView extends ScrollView {
             ? R.string.osservio_ui_english : R.string.osservio_ui_chinese), () -> choose(false));
         row(R.string.osservio_ui_appearance, context.getString(InspectorPreferences.dark(context)
             ? R.string.osservio_ui_dark : R.string.osservio_ui_light), () -> choose(true));
-        row(R.string.osservio_ui_capture_status, "", this::captureStatus);
+        row(R.string.osservio_ui_capture_settings, "", this::captureStatus);
         TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_preferences_hint); content.addView(hint);
         post(() -> scrollTo(0, state.scrollY));
     }
@@ -87,22 +88,9 @@ final class AppInspectorView extends ScrollView {
     }
     private void captureStatus() {
         Context context = getContext();
-        LinearLayout details = new LinearLayout(context); details.setOrientation(LinearLayout.VERTICAL);
-        int inset = InspectorTheme.dp(context, 16); details.setPadding(inset, inset, inset, inset);
-        statusRow(details, context.getString(R.string.osservio_logs), mode(logs.captureController));
-        statusRow(details, "HTTP", mode(http.captureController));
-        if (sockets != null) statusRow(details, "WebSocket", mode(sockets.captureController));
-        TextView note = InspectorWidgets.caption(context); note.setText(R.string.osservio_ui_preferences_hint); details.addView(note);
-        ScrollView scroll = new ScrollView(context); scroll.addView(details); open(R.string.osservio_ui_capture_status, scroll);
-    }
-    private void statusRow(LinearLayout parent, String title, String value) {
-        TextView name = InspectorTheme.text(getContext(), 16, true); name.setText(title); parent.addView(name);
-        TextView detail = InspectorWidgets.caption(getContext()); detail.setText(value); parent.addView(detail);
-        parent.addView(InspectorWidgets.divider(getContext()));
-    }
-    private String mode(CaptureController controller) {
-        CaptureController.Status status = controller.status();
-        return InspectorDebugControl.describe(getContext(), status, true);
+        open(R.string.osservio_ui_capture_settings, new InspectorCaptureSettingsView(context, breadcrumbs == null ? null : breadcrumbs.captureController,
+            new int[] {R.string.osservio_logs, R.string.osservio_http_title, R.string.osservio_ws_title, R.string.osservio_runtime_breadcrumbs},
+            logs.captureController, http.captureController, sockets == null ? null : sockets.captureController, breadcrumbs == null ? null : breadcrumbs.captureController));
     }
     private void open(int title, View view) {
         dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), view); clearOnDismiss(); dialog.show();

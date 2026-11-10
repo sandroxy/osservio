@@ -7,12 +7,14 @@ import UIKit
 public final class RuntimeInspectorViewController: UIViewController {
     private let environment: EnvironmentInspectorViewController
     private let breadcrumbs: BreadcrumbInspectorViewController
+    private let capture: CaptureController
     private let archive: BreadcrumbArchiveViewController?
     private let content = UIView()
     private let selection = UISegmentedControl(items: [RuntimePresentation.text("runtime_environment"), RuntimePresentation.text("runtime_breadcrumbs")])
     private var current: UIViewController?
     public init(provider: any EnvironmentProvider, recorder: BreadcrumbRecorder, history: any BreadcrumbHistory,
                 archive: (any BreadcrumbArchive)? = nil) {
+        capture = recorder.captureController
         environment = EnvironmentInspectorViewController(provider: provider)
         breadcrumbs = BreadcrumbInspectorViewController(recorder: recorder, history: history)
         self.archive = archive.map { BreadcrumbArchiveViewController(archive: $0) }
@@ -23,6 +25,8 @@ public final class RuntimeInspectorViewController: UIViewController {
     public override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
         title = RuntimePresentation.text("runtime_title")
+        let settings = UIBarButtonItem(image: UIImage(systemName: "slider.horizontal.3"), style: .plain, target: self, action: #selector(showSettings))
+        settings.accessibilityLabel = InspectorLocalization.text("ui_capture_settings"); inspectorPrimaryAction = settings
         view.backgroundColor = .systemBackground
         if archive != nil { selection.insertSegment(withTitle: RuntimePresentation.text("archive_title"), at: 2, animated: false) }
         selection.selectedSegmentIndex = 0
@@ -38,6 +42,7 @@ public final class RuntimeInspectorViewController: UIViewController {
         ])
         selectSection()
     }
+    @objc private func showSettings() { inspectorPush(InspectorCaptureSettingsViewController(baseline: capture, controllers: [("runtime_breadcrumbs", capture)])) }
     @objc private func selectSection() {
         current?.willMove(toParent: nil)
         current?.view.removeFromSuperview(); current?.removeFromParent()

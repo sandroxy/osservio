@@ -27,6 +27,7 @@ final class InspectorScreen implements DialogInterface {
     private final ImageButton minimize;
     private final ImageButton back;
     private final TextView heading;
+    void title(InspectorAppearance.Value<String> value) { InspectorAppearance.text(heading, value); }
     void title(int resource) { InspectorAppearance.text(heading, resource); }
     private InspectorSheetHandle handle;
     private boolean modal;

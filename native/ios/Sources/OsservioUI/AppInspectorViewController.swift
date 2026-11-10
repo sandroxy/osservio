@@ -9,8 +9,6 @@ final class AppInspectorViewController: UITableViewController {
     private let archive: (any BreadcrumbArchive)?
     private let controllers: [(String, CaptureController)]
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
-    private lazy var loop = InspectorRefreshLoop { [weak self] in self?.refreshStatus() }
-    private var statuses: [String] = []
     init(environment: (any EnvironmentProvider)?, breadcrumbs: (BreadcrumbRecorder, any BreadcrumbHistory)?,
          archive: (any BreadcrumbArchive)?, controllers: [(String, CaptureController)]) {
         self.environment = environment; self.breadcrumbs = breadcrumbs; self.archive = archive; self.controllers = controllers
@@ -22,16 +20,9 @@ final class AppInspectorViewController: UITableViewController {
         super.viewDidLoad(); tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 62
         style.changed()
     }
-    private func relabel() { InspectorTheme.apply(self); title = InspectorLocalization.text("ui_app"); statuses = []; refreshStatus() }
-    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); loop.show(in: view) }
-    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); loop.show(in: view) }
-    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); loop.hide() }
-    private func refreshStatus() {
-        let values = controllers.map { _, controller in controller.status().map { InspectorDebugControl.describe($0, includeBaseline: true) } ?? InspectorLocalization.text("busy") }
-        if values != statuses { statuses = values; tableView.reloadData() }
-    }
+    private func relabel() { InspectorTheme.apply(self); title = InspectorLocalization.text("ui_app"); tableView.reloadData() }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : section == 1 ? 2 : controllers.count }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : section == 1 ? 2 : 1 }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         InspectorLocalization.text(["ui_app_device", "ui_inspector", "ui_capture_status"][section])
     }
@@ -55,13 +46,12 @@ final class AppInspectorViewController: UITableViewController {
                 ? InspectorPreferences.shared.language == .chinese ? "ui_chinese" : "ui_english"
                 : InspectorPreferences.shared.appearance == .light ? "ui_light" : "ui_dark")
         } else {
-            let key = controllers[indexPath.row].0
-            cell.textLabel?.text = controllers.count == 1 ? "Osservio" : ["HTTP", "WebSocket"].contains(key) ? key : InspectorLocalization.text(key)
-            cell.detailTextLabel?.text = indexPath.row < statuses.count ? statuses[indexPath.row] : InspectorLocalization.text("busy")
+            cell.textLabel?.text = InspectorLocalization.text("ui_capture_settings")
+            cell.imageView?.image = UIImage(systemName: "slider.horizontal.3")
         }
         cell.imageView?.tintColor = InspectorTheme.accent
-        cell.accessoryType = available && indexPath.section < 2 ? .disclosureIndicator : .none
-        cell.isUserInteractionEnabled = available && indexPath.section < 2
+        cell.accessoryType = available ? .disclosureIndicator : .none
+        cell.isUserInteractionEnabled = available
         cell.textLabel?.textColor = available ? .label : InspectorTheme.secondary
         cell.selectionStyle = cell.isUserInteractionEnabled ? .default : .none
         return cell
@@ -76,6 +66,8 @@ final class AppInspectorViewController: UITableViewController {
             }
         } else if indexPath.section == 1 {
             inspectorPush(InspectorPreferenceViewController(language: indexPath.row == 0))
+        } else {
+            inspectorPush(InspectorCaptureSettingsViewController(baseline: breadcrumbs?.recorder.captureController, controllers: controllers))
         }
     }
 }

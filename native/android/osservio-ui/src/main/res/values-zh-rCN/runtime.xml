@@ -12,10 +12,7 @@
     <string name="osservio_runtime_previous">当前显示上一次快照</string>
     <string name="osservio_runtime_copy_environment">复制快照</string>
     <string name="osservio_runtime_environment_hint">这些信息是读取时的快照，各平台的内存指标含义不同。iOS 宿主未开启电量监测时，电量会显示为暂不可用。</string>
-    <string name="osservio_crumb_enable_baseline">开启基础采集</string>
-    <string name="osservio_crumb_disable_baseline">关闭基础采集</string>
-    <string name="osservio_crumb_baseline_hint">基础采集在详细会话之外生效。切换此开关不会结束正在进行的详细会话。</string>
-    <string name="osservio_crumb_summary">%1$s · 保留：%2$d\n已淘汰：%3$d · 限流丢弃：%4$d</string>
+    <string name="osservio_crumb_baseline_hint">关闭调试时，仍采集轻量运行信号。关闭基础采集不会中断已开启的调试；是否留存仍取决于宿主的存储配置。</string>
     <string name="osservio_crumb_search">搜索类型、标签或内容</string>
     <string name="osservio_crumb_empty">暂无运行线索。开启基础采集或详细采集后，可记录宿主标记与系统运行事件。</string>
     <string name="osservio_crumb_clear">清空线索</string>
@@ -29,7 +26,7 @@
     <string name="osservio_crumb_memory_only">仅内存</string>
     <string name="osservio_crumb_value">平台代码或测量值</string>
     <string name="osservio_crumb_private">隐私内容已省略</string>
-    <string name="osservio_crumb_detail_hint">此处显示打开详情时的事件快照；即使历史已被清空，仍可继续阅读。</string>
+    <string name="osservio_crumb_detail_hint">打开时的事件快照，不随历史记录变化。</string>
     <string name="osservio_env_os_version">系统版本</string>
     <string name="osservio_env_app_identifier">应用标识</string>
     <string name="osservio_env_app_version">应用版本</string>

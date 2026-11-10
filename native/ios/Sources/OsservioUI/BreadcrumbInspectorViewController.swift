@@ -7,7 +7,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     private let recorder: BreadcrumbRecorder
     private let history: any BreadcrumbHistory
     private let table = InspectorTableView(frame: .zero, style: .plain)
-    private let header = InspectorFeedHeader()
+    private let header = InspectorFeedHeader(compact: true, actionLabel: "crumb_clear")
     private var query = InspectorQuery()
     private var paused = false
     private var anchor: Int64 = 0
@@ -27,6 +27,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad(); table.tableHeaderView = header
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
+        header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
         header.pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
@@ -62,9 +63,10 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         updateStatus()
     }
     private func updateStatus() {
-        header.status.text = paused ? InspectorLocalization.text("ui_paused")
-            : recorder.captureController.status().map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy")
-        if stale { header.status.text! += " · " + InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window") }
+        var notes: [String] = []
+        if stale { notes.append(InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window")) }
+        if (latest?.evictedCount ?? 0) > 0 || (recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
+        header.status.text = notes.joined(separator: " · ")
         header.relabel(paused: paused, query: query); table.setNeedsLayout()
     }
     @objc private func togglePause() {
@@ -78,28 +80,14 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         view.endEditing(true); inspectorPresent(filters)
     }
     @objc private func showActions() {
-        let enabled = recorder.captureController.status()?.baselineEnabled == true
-        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: InspectorLocalization.text("crumb_baseline_hint"))
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text(enabled ? "crumb_disable_baseline" : "crumb_enable_baseline"), style: .default) { [weak self] _ in
-            guard let self else { return }
-            if let status = self.recorder.captureController.status(), self.recorder.captureController.setBaselineEnabled(!status.baselineEnabled) { self.updateStatus() }
-            else { self.inspectorNotice(InspectorLocalization.text("busy")) }
-        })
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
-            guard let self else { return }
-            let status = self.recorder.captureController.status(), recording = self.recorder.status()
-            self.inspectorNotice(String(format: InspectorLocalization.text("crumb_summary"),
-                status.map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy"),
-                self.latest?.events.count ?? 0, self.latest?.evictedCount ?? 0, recording?.rateLimitedCount ?? 0))
-        })
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("crumb_clear"), style: .destructive) { [weak self] _ in
-            self?.inspectorConfirm(InspectorLocalization.text("crumb_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
-                guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
-            }
-        })
-        inspectorPresent(menu)
+        inspectorConfirm(InspectorLocalization.text("crumb_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
+            guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
+        }
     }
     override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
+    override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { resumeAtTop() } }
+    override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { resumeAtTop() }
+    private func resumeAtTop() { if paused && table.contentOffset.y <= -table.adjustedContentInset.top + 1 { togglePause() } }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
@@ -112,13 +100,4 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     }
 }
 
-@MainActor
-final class BreadcrumbDetailViewController: InspectorContentViewController {
-    init(event: BreadcrumbEvent) {
-        super.init(title: RuntimePresentation.kind(event),
-            content: InspectorLocalization.text("crumb_detail_hint") + "\n\n" + RuntimePresentation.breadcrumb(event), code: false)
-    }
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { return nil }
-}
 #endif

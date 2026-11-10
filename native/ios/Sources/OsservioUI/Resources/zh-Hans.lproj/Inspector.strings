@@ -174,3 +174,11 @@
 "ui_json_field" = "JSON 字段匹配";
 "ui_not_set" = "未设置";
 "ui_http_timing" = "HTTP 耗时";
+
+"ui_event_type" = "事件类型";
+"ui_event_message" = "事件内容";
+"ui_show_identifiers" = "展开标识信息";
+"ui_hide_identifiers" = "收起标识信息";
+"ui_technical_details" = "技术信息";
+"ui_capture_settings" = "采集设置";
+"ui_baseline_capture" = "基础采集";

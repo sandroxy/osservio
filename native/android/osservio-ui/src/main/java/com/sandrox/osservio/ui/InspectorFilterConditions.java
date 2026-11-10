@@ -28,12 +28,12 @@ final class InspectorFilterConditions {
         LinearLayout excludeEditor = editor(), fieldEditor = editor(); excludeEditor.addView(exclude);
         TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_field_hint);
         fieldEditor.addView(hint); fieldEditor.addView(path); fieldEditor.addView(value);
+        excludeEditor.setVisibility(draft.excludedText.isEmpty() ? View.GONE : View.VISIBLE);
+        fieldEditor.setVisibility(draft.fieldPath.isEmpty() && draft.fieldValue.isEmpty() ? View.GONE : View.VISIBLE);
         excludeSummary = row(card, R.string.osservio_ui_exclude, excludeEditor);
         View line = new View(context); line.setBackgroundColor(InspectorTheme.color(context, R.color.osservio_separator));
         card.addView(line, new LinearLayout.LayoutParams(-1, InspectorTheme.dp(context, 1)));
         fieldSummary = row(card, R.string.osservio_ui_json_field, fieldEditor);
-        excludeEditor.setVisibility(draft.excludedText.isEmpty() ? View.GONE : View.VISIBLE);
-        fieldEditor.setVisibility(draft.fieldPath.isEmpty() && draft.fieldValue.isEmpty() ? View.GONE : View.VISIBLE);
         TextView timing = InspectorWidgets.caption(context); timing.setText(R.string.osservio_ui_http_timing);
         durationView.addView(timing); durationView.addView(duration, new LinearLayout.LayoutParams(-1, -2));
         for (EditText field : new EditText[] {exclude, path, value, duration}) {
@@ -59,6 +59,7 @@ final class InspectorFilterConditions {
         if (arrow != null) arrow.setTint(InspectorTheme.secondary(context));
         android.graphics.drawable.RotateDrawable chevron = new android.graphics.drawable.RotateDrawable();
         chevron.setDrawable(arrow); chevron.setFromDegrees(0); chevron.setToDegrees(180);
+        chevron.setLevel(editor.getVisibility() == View.VISIBLE ? 10000 : 0);
         title.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, chevron, null);
         TextView summary = InspectorTheme.text(context, 13, false); summary.setTextColor(InspectorTheme.secondary(context)); summary.setMaxLines(2);
         row.addView(title); row.addView(summary); row.setFocusable(true);

@@ -197,9 +197,7 @@ final class BreadcrumbArchiveView extends LinearLayout {
     }
     private void showDetail(BreadcrumbEvent event) {
         if (detail != null) return;
-        String content = RuntimePresentation.breadcrumb(getContext(), event);
-        InspectorContentReader reader = new InspectorContentReader(getContext()); reader.display(content, false);
-        InspectorScreen dialog = InspectorDialogs.screen(getContext(), RuntimePresentation.kind(getContext(), event.kind), reader);
+        InspectorScreen dialog = BreadcrumbDetailDialog.create(getContext(), event);
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void copy(String value) {

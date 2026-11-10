@@ -9,7 +9,7 @@ recorders, histories, environment provider and optional archives.
 | Logs | Live log records, search, level/category filters and individual details |
 | Network | HTTP exchanges and Socket observations in one searchable feed |
 | Problems | Saved manual snapshots and recovered system reports, with immutable evidence |
-| App | App/device facts, the current breadcrumb timeline, saved runs, inspector preferences and capture status |
+| App | App/device facts, the current breadcrumb timeline, saved runs, inspector preferences and capture settings |
 
 Socket messages are searchable across retained connections. An individual message
 opens its evidence details, with a link to records from that connection. A missing
@@ -41,7 +41,10 @@ baseline diagnosis. Opening or revealing the inspector never enables debugging.
 Supply one shared controller for a consistent log/network lifecycle. If the host
 supplies separate controllers, the switch sets each independently; it displays
 partial state or reports rejected control instead of claiming atomic success.
-Standalone viewers rely on the host's capture controls.
+Standalone log and network viewers rely on the host's capture controls.
+App > Capture settings controls baseline capture independently; the standalone
+runtime viewer provides the same settings. Disabling baseline does not end an
+active debug session or change the host's storage configuration.
 
 Both platforms keep the tab bar available for ordinary read-only details. Each
 tab retains its own navigation stack, while covered lists and readers suspend
@@ -53,7 +56,7 @@ accessibility labels; Apply and Save retain their primary-action text.
 
 ## Reading and filtering
 
-Logs and Network show search, filters, result counts and a direct trash action.
+Logs, Network and the current runtime timeline show search, filters, result counts and a direct trash action.
 They have no permanent play/pause or More controls. Controls scroll with the feed
 so short windows and large text retain reading space. Capacity eviction and rate
 limits appear as loss notices when relevant. Clearing affects the destination's
@@ -83,11 +86,16 @@ search text.
 | Network, common | HTTP/Socket type, host, source when relevant, time, content search and exclusion, optional JSON field |
 | HTTP | Method, status class, observed transport state, response type, minimum observed duration |
 | Socket | Message direction, observed record kind and connection ID |
-| Problems | Observed problem kind, manual/system source, record time and note/identifier search |
+| Problems | Observed problem kind, record time and note/identifier search |
 
 Values within a field are alternatives; fields intersect. Categories, hosts,
 connections and observed record kinds come from retained records; selected values
-remain editable even after their examples disappear. A category is an exact
+remain editable even after their examples disappear. Groups without any candidate
+or selected value are omitted. Candidate lists are frozen while a draft is open;
+choosing a condition does not make the other sections disappear. Fixed semantic
+choices, such as levels and time ranges, can also describe future observations.
+Content filters expand inline into text exclusion and JSON field matching;
+minimum HTTP duration appears with the HTTP conditions. A category is an exact
 host-defined identifier, not a runtime or content-format classification. The SDK
 does not recognize sample hosts or interpret application protocols. Framework log
 provenance awaits the corresponding adapters.
@@ -150,6 +158,12 @@ Malformed, incomplete or over-budget content remains readable as source with
 an explanation; the reader does not repair JSON, strip arbitrary log prefixes
 or decode a JSON string as a second document. These implementation limits are
 resource bounds, not physical-device performance guarantees.
+
+Runtime event details group the event, content and retention intent. Event and
+session identifiers expand on demand. Live history, retained runs and saved
+problems share this immutable presentation, with exact full-snapshot copying and
+a separate bounded content reader. Retention intent alone is not proof of a
+committed write.
 
 Saved problem details never refresh from current histories. Attached groups
 retain their observation times, source loss counters and body-selection states.

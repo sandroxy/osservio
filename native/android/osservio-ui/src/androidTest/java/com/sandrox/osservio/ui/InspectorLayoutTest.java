@@ -58,7 +58,7 @@ public final class InspectorLayoutTest {
                 }
                 List<android.widget.ImageButton> icons = new ArrayList<>(); collect(viewer, android.widget.ImageButton.class, icons);
                 icons.removeAll(hidden(icons));
-                assertEquals(label, kind.equals("breadcrumb") ? 2 : 1, icons.size());
+                assertEquals(label, 1, icons.size());
                 for (android.widget.ImageButton icon : icons) {
                     assertTrue(label, icon.getWidth() >= dp(context, 48));
                     assertTrue(label, icon.getHeight() >= dp(context, 48));

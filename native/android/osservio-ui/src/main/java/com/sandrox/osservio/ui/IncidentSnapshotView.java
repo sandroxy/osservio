@@ -122,7 +122,10 @@ final class IncidentSnapshotView extends LinearLayout {
         footer = caption(""); list.addFooterView(footer, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
-            if (index >= 0 && index < events.size()) showText(R.string.osservio_runtime_breadcrumbs, RuntimePresentation.breadcrumb(context, events.get(index)));
+            if (index >= 0 && index < events.size() && detail == null) {
+                detail = BreadcrumbDetailDialog.create(context, events.get(index));
+                InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; }); shown.show();
+            }
         });
         addView(list, new LayoutParams(-1, 0, 1));
         search.addTextChangedListener(new TextWatcher() {

@@ -143,4 +143,11 @@
     <string name="osservio_ui_json_field">JSON 字段匹配</string>
     <string name="osservio_ui_not_set">未设置</string>
     <string name="osservio_ui_http_timing">HTTP 耗时</string>
+    <string name="osservio_ui_event_type">事件类型</string>
+    <string name="osservio_ui_event_message">事件内容</string>
+    <string name="osservio_ui_show_identifiers">展开标识信息</string>
+    <string name="osservio_ui_hide_identifiers">收起标识信息</string>
+    <string name="osservio_ui_technical_details">技术信息</string>
+    <string name="osservio_ui_capture_settings">采集设置</string>
+    <string name="osservio_ui_baseline_capture">基础采集</string>
 </resources>

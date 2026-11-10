@@ -174,3 +174,11 @@
 "ui_json_field" = "JSON field match";
 "ui_not_set" = "Not set";
 "ui_http_timing" = "HTTP duration";
+
+"ui_event_type" = "Event type";
+"ui_event_message" = "Event content";
+"ui_show_identifiers" = "Show identifiers";
+"ui_hide_identifiers" = "Hide identifiers";
+"ui_technical_details" = "Technical details";
+"ui_capture_settings" = "Capture settings";
+"ui_baseline_capture" = "Baseline capture";

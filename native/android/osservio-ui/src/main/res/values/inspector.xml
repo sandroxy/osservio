@@ -144,4 +144,11 @@
     <string name="osservio_ui_json_field">JSON field match</string>
     <string name="osservio_ui_not_set">Not set</string>
     <string name="osservio_ui_http_timing">HTTP duration</string>
+    <string name="osservio_ui_event_type">Event type</string>
+    <string name="osservio_ui_event_message">Event content</string>
+    <string name="osservio_ui_show_identifiers">Show identifiers</string>
+    <string name="osservio_ui_hide_identifiers">Hide identifiers</string>
+    <string name="osservio_ui_technical_details">Technical details</string>
+    <string name="osservio_ui_capture_settings">Capture settings</string>
+    <string name="osservio_ui_baseline_capture">Baseline capture</string>
 </resources>

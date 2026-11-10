@@ -140,10 +140,7 @@
 "runtime_previous" = "Showing the previous snapshot";
 "runtime_copy_environment" = "Copy snapshot";
 "runtime_environment_hint" = "This is a point-in-time sample. Memory measurements differ by platform. On iOS, battery level is unavailable unless the host already monitors it.";
-"crumb_enable_baseline" = "Enable baseline";
-"crumb_disable_baseline" = "Disable baseline";
-"crumb_baseline_hint" = "Baseline applies outside detailed sessions. Changing it does not end an active detailed session.";
-"crumb_summary" = "%@ · Retained: %ld\nEvicted: %lld · Rate-limited: %lld";
+"crumb_baseline_hint" = "Keeps lightweight runtime signals available when debug mode is off. Turning baseline capture off does not stop an active debug session. Saving still depends on the host’s storage configuration.";
 "crumb_search" = "Search kind, label, or message";
 "crumb_empty" = "No breadcrumbs yet. Enable baseline or detailed capture to record host and runtime observations.";
 "crumb_clear" = "Clear breadcrumbs";
@@ -157,7 +154,7 @@
 "crumb_memory_only" = "Memory only";
 "crumb_value" = "Platform code or measured value";
 "crumb_private" = "Private content omitted";
-"crumb_detail_hint" = "This is the event snapshot opened from the timeline. It remains readable if history is cleared.";
+"crumb_detail_hint" = "Snapshot at opening; later history changes do not affect this page.";
 "env_osVersion" = "OS version";
 "env_appIdentifier" = "App identifier";
 "env_appVersion" = "App version";
