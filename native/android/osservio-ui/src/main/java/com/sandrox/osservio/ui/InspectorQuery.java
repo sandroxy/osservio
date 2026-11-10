@@ -18,23 +18,53 @@ import java.util.HashSet;
 
 /** View-only criteria: OR within one field, AND between independent fields. */
 final class InspectorQuery {
-    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT }
+    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION }
     String text = "";
+    String excludedText = "", fieldPath = "", fieldValue = "";
+    long minimumDurationMillis;
     int recentMinutes;
     final Map<Field, Set<String>> values = new EnumMap<>(Field.class);
     InspectorQuery copy() {
         InspectorQuery result = new InspectorQuery(); result.text = text; result.recentMinutes = recentMinutes;
+        result.excludedText = excludedText; result.fieldPath = fieldPath; result.fieldValue = fieldValue; result.minimumDurationMillis = minimumDurationMillis;
         for (Map.Entry<Field, Set<String>> entry : values.entrySet()) result.values.put(entry.getKey(), new HashSet<>(entry.getValue()));
         return result;
     }
     int activeCount() {
-        int result = recentMinutes > 0 ? 1 : 0;
+        int result = (recentMinutes > 0 ? 1 : 0) + (minimumDurationMillis > 0 ? 1 : 0)
+            + (fieldPath.isEmpty() ? 0 : 1) + (excludedText.isEmpty() ? 0 : 1);
         for (Set<String> selected : values.values()) if (!selected.isEmpty()) result++;
         return result;
     }
     boolean allows(Field field, String value) {
         Set<String> selected = values.get(field);
         return selected == null || selected.isEmpty() || selected.contains(value);
+    }
+    boolean searchesPayload() { return !text.isEmpty() || !excludedText.isEmpty() || !fieldPath.isEmpty(); }
+    private static final Field[] HTTP_FIELDS = {Field.METHOD, Field.STATE, Field.STATUS, Field.CONTENT};
+    private static final Field[] SOCKET_FIELDS = {Field.DIRECTION, Field.KIND, Field.CONNECTION};
+    void select(Field field, String value) {
+        if (field == Field.TRANSPORT) {
+            if (value == null) values.remove(field); else values.put(field, new HashSet<>(Collections.singleton(value)));
+            if (!"http".equals(value)) { for (Field key : HTTP_FIELDS) values.remove(key); minimumDurationMillis = 0; }
+            if (!"webSocket".equals(value)) for (Field key : SOCKET_FIELDS) values.remove(key);
+            return;
+        }
+        if (value != null) {
+            for (Field key : HTTP_FIELDS) if (key == field) select(Field.TRANSPORT, "http");
+            for (Field key : SOCKET_FIELDS) if (key == field) select(Field.TRANSPORT, "webSocket");
+        }
+        if (value == null) { values.remove(field); return; }
+        Set<String> selected = values.get(field);
+        if (selected == null) { selected = new HashSet<>(); values.put(field, selected); }
+        if (!selected.remove(value)) selected.add(value);
+    }
+    void resetFilters() {
+        values.clear(); recentMinutes = 0; minimumDurationMillis = 0; fieldPath = ""; fieldValue = ""; excludedText = "";
+    }
+    private boolean empty(Field[] fields) {
+        for (Field field : fields) if (values.containsKey(field) && !values.get(field).isEmpty()) return false;
+        return true;
     }
     boolean includesTime(long timestamp, long now) {
         if (recentMinutes <= 0) return true;
@@ -49,26 +79,35 @@ final class InspectorQuery {
         return false;
     }
     boolean matches(LogEvent event, long now) {
-        return allows(Field.LEVEL, event.level.name()) && allows(Field.CATEGORY, event.category)
-            && includesTime(event.timestampMillis, now) && contains(event.message, event.category);
+        return matchesFacets(event, now) && contains(event.message, event.category)
+            && (excludedText.isEmpty() || !hasText(event.message, excludedText) && !hasText(event.category, excludedText));
+    }
+    boolean matchesFacets(LogEvent event, long now) {
+        return allows(Field.LEVEL, event.level.name()) && allows(Field.CATEGORY, event.category) && includesTime(event.timestampMillis, now);
     }
     boolean matches(HTTPEvent event, long now) {
-        return allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
+        return matchesFacets(event, now) && contains(event.url, event.responseURL, event.method, event.statusCode == null ? null : event.statusCode.toString());
+    }
+    boolean matchesFacets(HTTPEvent event, long now) {
+        return allows(Field.TRANSPORT, "http") && allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
             && allows(Field.STATUS, event.statusCode == null ? "none" : event.statusCode / 100 + "xx")
             && allows(Field.HOST, host(event.url)) && allows(Field.SOURCE, event.source.name())
             && allows(Field.CONTENT, InspectorHTTPContent.category(event.responseHeaders))
-            && includesTime(event.timestampMillis, now)
-            && contains(event.url, event.responseURL, event.method, event.statusCode == null ? null : event.statusCode.toString());
+            && (minimumDurationMillis == 0 || event.durationMillis != null && event.durationMillis >= minimumDurationMillis)
+            && empty(SOCKET_FIELDS) && includesTime(event.timestampMillis, now);
     }
     boolean matches(WebSocketEvent event, long now) {
-        return allows(Field.DIRECTION, event.direction == null ? "none" : event.direction.name())
+        return matchesFacets(event, now) && contains(event.url, event.id, event.connectionId, event.kind.name(), event.outcome == null ? null : event.outcome.name());
+    }
+    boolean matchesFacets(WebSocketEvent event, long now) {
+        return allows(Field.TRANSPORT, "webSocket") && allows(Field.CONNECTION, event.connectionId)
+            && allows(Field.DIRECTION, event.direction == null ? "none" : event.direction.name())
             && allows(Field.KIND, event.kind.name()) && allows(Field.HOST, host(event.url))
-            && allows(Field.SOURCE, event.source.name()) && includesTime(event.timestampMillis, now)
-            && contains(event.url, event.id, event.connectionId, event.kind.name(), event.outcome == null ? null : event.outcome.name());
+            && allows(Field.SOURCE, event.source.name()) && empty(HTTP_FIELDS) && minimumDurationMillis == 0 && includesTime(event.timestampMillis, now);
     }
     boolean matches(Connection connection, long now) {
         return allows(Field.STATE, connection.state()) && allows(Field.HOST, host(connection.latest.url))
-            && allows(Field.SOURCE, connection.latest.source.name()) && includesTime(connection.first.timestampMillis, now)
+            && allows(Field.SOURCE, connection.latest.source.name()) && includesTime(connection.latest.timestampMillis, now)
             && contains(connection.latest.url, connection.latest.connectionId);
     }
     boolean matches(IncidentSummary incident, long now) {
@@ -77,6 +116,11 @@ final class InspectorQuery {
             && includesTime(incident.timestampMillis, now)
             && contains(incident.id, incident.note == null ? null : incident.note.text,
                 incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name());
+    }
+    static boolean hasText(String text, String query) {
+        if (text == null) return false;
+        for (int i = 0; i <= text.length() - query.length(); i++) if (text.regionMatches(true, i, query, 0, query.length())) return true;
+        return false;
     }
     static String host(String url) {
         try { String host = new URI(url).getHost(); return host == null ? "" : host.toLowerCase(Locale.ROOT); }

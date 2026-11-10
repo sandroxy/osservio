@@ -4,12 +4,40 @@ import OsservioCore
 /// View-only criteria. Each value set is a union; independent fields intersect.
 /// The caller supplies a fixed time anchor while reading a paused snapshot.
 struct InspectorQuery: Equatable {
-    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content }
+    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection }
     var text = ""
+    var excludedText = ""
+    var fieldPath = ""
+    var fieldValue = ""
+    var minimumDurationMillis: UInt64 = 0
     var values: [Field: Set<String>] = [:]
     var recentMinutes = 0
 
-    var activeCount: Int { values.values.filter { !$0.isEmpty }.count + (recentMinutes > 0 ? 1 : 0) }
+    var activeCount: Int { values.values.filter { !$0.isEmpty }.count + (recentMinutes > 0 ? 1 : 0)
+        + (minimumDurationMillis > 0 ? 1 : 0) + (fieldPath.isEmpty ? 0 : 1) + (excludedText.isEmpty ? 0 : 1) }
+    var searchesPayload: Bool { !text.isEmpty || !excludedText.isEmpty || !fieldPath.isEmpty }
+    static let httpFields: Set<Field> = [.method, .state, .status, .content]
+    static let socketFields: Set<Field> = [.direction, .kind, .connection]
+    mutating func select(_ field: Field, value: String?) {
+        if field == .transport {
+            values[field] = value.map { [$0] } ?? []
+            if value != "http" { for key in Self.httpFields { values[key] = nil }; minimumDurationMillis = 0 }
+            if value != "webSocket" { for key in Self.socketFields { values[key] = nil } }
+            return
+        }
+        if value != nil {
+            if Self.httpFields.contains(field) { select(.transport, value: "http") }
+            if Self.socketFields.contains(field) { select(.transport, value: "webSocket") }
+        }
+        guard let value else { values[field] = nil; return }
+        var selection = values[field] ?? []
+        if selection.contains(value) { selection.remove(value) } else { selection.insert(value) }
+        values[field] = selection
+    }
+    mutating func resetFilters() {
+        values.removeAll(); recentMinutes = 0; minimumDurationMillis = 0
+        fieldPath = ""; fieldValue = ""; excludedText = ""
+    }
     func allows(_ field: Field, _ value: String) -> Bool {
         guard let selected = values[field], !selected.isEmpty else { return true }
         return selected.contains(value)
@@ -24,28 +52,42 @@ struct InspectorQuery: Equatable {
         text.isEmpty || candidates.contains { $0.range(of: text, options: [.caseInsensitive, .literal], locale: Locale(identifier: "en_US_POSIX")) != nil }
     }
     func matches(_ event: LogEvent, now: Int64) -> Bool {
-        allows(.level, event.level.rawValue) && allows(.category, event.category)
-            && includesTime(event.timestampMillis, now: now) && contains(event.message, event.category)
+        matchesFacets(event, now: now) && contains(event.message, event.category)
+            && (excludedText.isEmpty || !Self.contains(excludedText, in: event.message) && !Self.contains(excludedText, in: event.category))
+    }
+    func matchesFacets(_ event: LogEvent, now: Int64) -> Bool {
+        allows(.level, event.level.rawValue) && allows(.category, event.category) && includesTime(event.timestampMillis, now: now)
     }
     func matches(_ event: HTTPEvent, now: Int64) -> Bool {
-        allows(.method, event.method) && allows(.state, event.state.rawValue)
+        matchesFacets(event, now: now) && contains(event.url, event.responseURL ?? "", event.method, event.statusCode.map(String.init) ?? "")
+    }
+    func matchesFacets(_ event: HTTPEvent, now: Int64) -> Bool {
+        allows(.transport, "http") && allows(.method, event.method) && allows(.state, event.state.rawValue)
             && allows(.status, event.statusCode.map { "\($0 / 100)xx" } ?? "none")
             && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
             && allows(.content, InspectorHTTPContent.category(event.responseHeaders))
+            && (minimumDurationMillis == 0 || event.durationMillis.map { $0 >= minimumDurationMillis } == true)
+            && Self.socketFields.allSatisfy { values[$0]?.isEmpty ?? true }
             && includesTime(event.timestampMillis, now: now)
-            && contains(event.url, event.responseURL ?? "", event.method, event.statusCode.map(String.init) ?? "")
     }
     func matches(_ event: WebSocketEvent, now: Int64) -> Bool {
-        allows(.direction, event.direction?.rawValue ?? "none") && allows(.kind, event.kind.rawValue)
+        matchesFacets(event, now: now) && contains(event.url, event.id, event.connectionID, event.kind.rawValue, event.outcome?.rawValue ?? "")
+    }
+    func matchesFacets(_ event: WebSocketEvent, now: Int64) -> Bool {
+        allows(.transport, "webSocket") && allows(.connection, event.connectionID)
+            && allows(.direction, event.direction?.rawValue ?? "none") && allows(.kind, event.kind.rawValue)
             && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
+            && Self.httpFields.allSatisfy { values[$0]?.isEmpty ?? true } && minimumDurationMillis == 0
             && includesTime(event.timestampMillis, now: now)
-            && contains(event.url, event.id, event.connectionID, event.kind.rawValue, event.outcome?.rawValue ?? "")
     }
     func matches(_ connection: InspectorConnection, now: Int64) -> Bool {
         allows(.state, connection.state) && allows(.host, Self.host(connection.latest.url))
             && allows(.source, connection.latest.source.rawValue)
-            && includesTime(connection.first.timestampMillis, now: now)
+            && includesTime(connection.latest.timestampMillis, now: now)
             && contains(connection.latest.url, connection.latest.connectionID)
+    }
+    static func contains(_ query: String, in text: String) -> Bool {
+        text.range(of: query, options: [.caseInsensitive, .literal], locale: Locale(identifier: "en_US_POSIX")) != nil
     }
     func matches(_ incident: IncidentSummary, now: Int64) -> Bool {
         allows(.record, incident.diagnosticKind?.rawValue ?? "manual")

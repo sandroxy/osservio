@@ -1,0 +1,16 @@
+# name	result	pointer-base64	value-base64	content-base64
+flat	yes	L2tpbmQ=	dXBkYXRl	eyJraW5kIjoidXBkYXRlIn0=
+missing	no	L2tpbmQ=	dXBkYXRl	eyJvdGhlciI6InVwZGF0ZSJ9
+nested-number	yes	L3BheWxvYWQvaWRzLzA=	OTAwNzE5OTI1NDc0MDk5MzEyMzQ1	eyJwYXlsb2FkIjp7ImlkcyI6WzkwMDcxOTkyNTQ3NDA5OTMxMjM0NV19fQ==
+exact-number	no	L3ZhbHVl	MQ==	eyJ2YWx1ZSI6MS4wfQ==
+escaped-key	yes	L2F+MWIvfjBuYW1l	5Lit	eyJhL2IiOnsifm5hbWUiOiJcdTRFMkQifX0=
+duplicate	unavailable	L2tpbmQ=	Zmlyc3Q=	eyJraW5kIjoiZmlyc3QiLCJraW5kIjoic2Vjb25kIn0=
+plain	unavailable	L2tpbmQ=	cGluZw==	cGluZw==
+empty	yes	L3ZhbHVl	-	eyJ2YWx1ZSI6IiJ9
+array	yes	LzEvbmFtZQ==	8J+Zgg==	WzAseyJuYW1lIjoi8J+ZgiJ9XQ==
+leading-zero	no	LzAxL25hbWU=	eA==	WzAseyJuYW1lIjoieCJ9XQ==
+bad-pointer	unavailable	L2F+MmI=	eA==	eyJhfjJiIjoieCJ9
+broken-json	unavailable	L2tpbmQ=	eA==	eyJraW5kIjoieCI=
+unpaired-surrogate	unavailable	L3ZhbHVl	eA==	eyJ2YWx1ZSI6Ilx1RDgwMCJ9
+null	yes	L3ZhbHVl	bnVsbA==	eyJ2YWx1ZSI6bnVsbH0=
+object	no	L3ZhbHVl	e30=	eyJ2YWx1ZSI6e319

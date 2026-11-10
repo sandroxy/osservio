@@ -193,3 +193,8 @@ the native encoders. These are portable revision-3 documents, separate from the
 private SQLite migration fixtures.
 The unchanged goldens in `incident-export/revisions/1` and `revisions/2` verify supported old reads;
 old schemas reject new documents and mixed/unsupported revisions fail explicitly.
+
+`json-field-cases.tsv` verifies exact scalar lookup through JSON Pointer paths.
+It covers escaped keys, arrays, large numeric tokens, duplicate members, invalid
+content and missing fields. The native viewers share these query semantics;
+this fixture does not change the portable evidence schema.
