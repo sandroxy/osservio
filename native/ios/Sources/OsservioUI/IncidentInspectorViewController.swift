@@ -134,7 +134,7 @@ public final class IncidentInspectorViewController: UITableViewController {
                 httpHistory: http, webSocketHistory: webSockets) { [weak self] in
                 self?.justSaved = true; self?.read()
             }
-            inspectorPresent(editor)
+            inspectorPresent(editor, retainingPage: true)
         } catch { notice = RuntimePresentation.text("incident_mark_failed"); render() }
     }
     private func open(id: String) {

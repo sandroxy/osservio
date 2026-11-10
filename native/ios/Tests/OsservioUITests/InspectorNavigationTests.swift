@@ -26,7 +26,7 @@ final class InspectorNavigationTests: XCTestCase {
         window.makeKeyAndVisible(); window.layoutIfNeeded()
         XCTAssertEqual(root.viewControllers?.count, 4)
         for navigation in root.viewControllers?.compactMap({ $0 as? UINavigationController }) ?? [] {
-            XCTAssertEqual(navigation.topViewController?.navigationItem.leftBarButtonItem?.accessibilityLabel, "关闭")
+            XCTAssertEqual(navigation.topViewController?.navigationItem.leftBarButtonItem?.customView?.accessibilityLabel, "关闭调试")
         }
         XCTAssertEqual(root.overrideUserInterfaceStyle, .light)
         XCTAssertEqual(root.viewControllers?.last?.tabBarItem.title, "应用")
@@ -58,6 +58,45 @@ final class InspectorNavigationTests: XCTestCase {
         XCTAssertEqual(host.overrideUserInterfaceStyle, .dark)
         XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "AppleLanguages"), hostLanguage)
         XCTAssertEqual(capture.status()?.mode, .detailed); XCTAssertEqual(logs.snapshot()?.events.count, 1)
+    }
+
+    @MainActor
+    func testGlobalDebugButtonsShareStateAndDoNotAppearInChildPages() throws {
+        let capture = CaptureController(baselineEnabled: true)
+        let logs = try MemoryLogStore(), http = try MemoryHTTPStore()
+        let logger = try LogRecorder(sink: logs, captureController: capture)
+        let root = try InspectorViewController(logRecorder: logger, logHistory: logs,
+            httpRecorder: HTTPRecorder(sink: http, captureController: capture, privacy: HTTPPrivacyPolicy()), httpHistory: http)
+        root.loadViewIfNeeded()
+        let navigation = try XCTUnwrap(root.viewControllers?.first as? InspectorNavigationController)
+        let button = try XCTUnwrap(navigation.topViewController?.navigationItem.leftBarButtonItem?.customView as? UIButton)
+        XCTAssertFalse(button.isSelected)
+        try activate(button, event: .touchUpInside)
+        XCTAssertTrue(capture.status()?.debugEnabled == true)
+        for tab in root.viewControllers?.compactMap({ $0 as? UINavigationController }) ?? [] {
+            XCTAssertTrue((tab.viewControllers.first?.navigationItem.leftBarButtonItem?.customView as? UIButton)?.isSelected == true)
+        }
+        XCTAssertEqual(logger.record(.info, category: "test", message: .publicText("kept")), .recorded)
+        let reader = InspectorContentViewController(title: "test", content: "kept", code: false)
+        navigation.pushViewController(reader, animated: false)
+        XCTAssertNil(reader.navigationItem.leftBarButtonItem)
+        _ = navigation.popViewController(animated: false)
+        try activate(button, event: .touchUpInside)
+        XCTAssertEqual(capture.status()?.mode, .baseline)
+        XCTAssertEqual(logs.snapshot()?.events.count, 1)
+    }
+
+    @MainActor
+    func testIndependentControllersExposeMixedDebugStateAndConverge() throws {
+        let first = CaptureController(debugEnabled: true), second = CaptureController()
+        let control = InspectorDebugControl(controllers: [first, second, first])
+        let button = try XCTUnwrap(control.item().customView as? UIButton)
+        XCTAssertEqual(button.accessibilityValue, InspectorLocalization.text("ui_debug_partial"))
+        let identity = first.status()?.sessionID
+        try activate(button, event: .touchUpInside)
+        XCTAssertEqual(first.status()?.sessionID, identity)
+        XCTAssertTrue(second.status()?.debugEnabled == true)
+        XCTAssertTrue(button.isSelected)
     }
 
     @MainActor

@@ -37,7 +37,11 @@ final class HTTPDetailDialog {
             context.getString(R.string.osservio_ui_request), context.getString(R.string.osservio_ui_response)}, 0,
             index -> { section = index; render(); }), new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
-        dialog = InspectorDialogs.screen(context, event.method + " · HTTP", content); render();
+        dialog = InspectorDialogs.screen(context, event.method + " · HTTP", content);
+        dialog.iconAction(R.drawable.osservio_copy, R.string.osservio_ui_copy_metadata, () -> {
+            ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
+            if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", HTTPPresentation.overview(context, event)));
+        }); render();
     }
     private void render() {
         body.removeAllViews();
@@ -72,10 +76,6 @@ final class HTTPDetailDialog {
                 page.read(context.getString(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body), new InspectorReadContent(text.text, notice.isEmpty() ? text.notice : notice + "\n" + text.notice, text.allowsJson));
             });
         }
-        page.action(R.string.osservio_ui_copy_metadata, () -> {
-            ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
-            if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", HTTPPresentation.overview(context, event)));
-        });
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));
     }
 }

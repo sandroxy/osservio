@@ -149,9 +149,7 @@ class NetworkInspectorView extends LinearLayout {
     }
     private String captureLabel(CaptureController controller) {
         CaptureController.Status status = controller == null ? null : controller.status();
-        return getContext().getString(status == null ? R.string.osservio_busy : status.mode == CaptureController.Mode.DETAILED
-            ? R.string.osservio_ui_detailed : status.mode == CaptureController.Mode.BASELINE
-            ? R.string.osservio_ui_baseline : R.string.osservio_ui_not_capturing);
+        return InspectorDebugControl.describe(getContext(), status, false);
     }
     private void render() {
         items.clear(); int total = 0;
@@ -196,31 +194,16 @@ class NetworkInspectorView extends LinearLayout {
         watchDialog();
     }
     private void actions() {
-        List<CaptureController> controllers = controllers();
         List<String> labels = new ArrayList<>();
-        for (CaptureController controller : controllers) {
-            CaptureController.Status status = controller.status();
-            String prefix = controllers.size() == 1 ? "" : controller == httpRecorder.captureController ? "HTTP · " : "WebSocket · ";
-            labels.add(prefix + getContext().getString(status != null && status.mode == CaptureController.Mode.DETAILED
-                ? R.string.osservio_http_stop : R.string.osservio_http_start));
-        }
         labels.add(getContext().getString(R.string.osservio_ui_capture_details));
         labels.add(getContext().getString(R.string.osservio_ui_network_clear));
         dialog = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, labels.toArray(new String[0]), (ignored, which) -> {
                 // Dismiss before replacing the tracked dialog so its callback cannot clear the new one.
                 dismissDialog();
-                if (which < controllers.size()) toggleCapture(controllers.get(which));
-                else if (which == controllers.size()) capacity();
+                if (which == 0) capacity();
                 else confirmClear();
             });
         watchDialog();
-    }
-    private void toggleCapture(CaptureController controller) {
-        CaptureController.Status status = controller.status();
-        if (status == null) { busy(); return; }
-        if (status.mode == CaptureController.Mode.DETAILED) { if (!controller.stopDetailed()) busy(); }
-        else { try { controller.startDetailed(); } catch (IllegalStateException failure) { busy(); } }
-        dirty = true; refresh();
     }
     private void capacity() {
         List<String> lines = new ArrayList<>();

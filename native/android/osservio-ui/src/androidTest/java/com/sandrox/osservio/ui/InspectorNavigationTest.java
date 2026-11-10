@@ -51,20 +51,50 @@ public final class InspectorNavigationTest {
             Context context = InspectorTheme.context(base.createConfigurationContext(configuration));
             InspectorContentReader reader = new InspectorContentReader(context); reader.display("Line one\nLine two\nLine three", true);
             layout(reader, 568, 180);
-            List<Button> buttons = new ArrayList<>(); collect(reader, Button.class, buttons);
-            for (Button button : buttons) if (context.getString(R.string.osservio_ui_search_content).contentEquals(button.getText())) button.performClick();
+            View find = description(reader, R.string.osservio_ui_search_content);
+            assertNotNull(find); assertTrue(find.performClick());
             layout(reader, 568, 180);
             List<ScrollView> scrolling = new ArrayList<>(); collect(reader, ScrollView.class, scrolling);
             assertEquals(2, scrolling.size());
             for (ScrollView scroll : scrolling) assertTrue(scroll.getHeight() >= InspectorTheme.dp(context, 48));
         });
     }
+    @Test public void tabStacksKeepReadersAndTemporaryPanelsDoNotSurviveCollapse() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController(true, false, LogClock.SYSTEM);
+            MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore http = new MemoryHTTPStore();
+            InspectorView inspector = new InspectorView(context, new LogRecorder(logs, capture), logs,
+                new HTTPRecorder(http, capture, new HTTPPrivacyPolicy()), http);
+            inspector.setOnMinimizeListener(() -> { }); layout(inspector, 390, 844);
+            View debug = description(inspector, R.string.osservio_ui_debug_enable); assertNotNull(debug); debug.performClick();
+            assertTrue(capture.status().debugEnabled);
+            InspectorNavigation navigation = InspectorNavigation.from(inspector.getContext());
+            InspectorScreen reader = InspectorDialogs.screen(inspector.getContext(), "reader", new android.widget.TextView(context));
+            reader.show(); layout(inspector, 390, 844);
+            assertFalse(navigation.isAtRoot()); assertFalse(debug.isShown());
+            View network = description(inspector, R.string.osservio_network); assertNotNull(network); network.performClick();
+            assertTrue(navigation.isAtRoot()); assertEquals(View.GONE, reader.view.getVisibility());
+            description(inspector, R.string.osservio_logs).performClick();
+            assertEquals(View.VISIBLE, reader.view.getVisibility());
+            final boolean[] applied = {false};
+            InspectorScreen filters = InspectorFilterSheet.show(inspector.getContext(), new InspectorQuery(), new ArrayList<>(), query -> applied[0] = true);
+            assertNull(description(filters.view, R.string.osservio_ui_minimize));
+            inspector.discardTransientPanels(); assertFalse(filters.isShowing()); assertFalse(applied[0]);
+            assertTrue(reader.isShowing()); assertTrue(inspector.navigateBack()); assertFalse(reader.isShowing());
+            description(inspector, R.string.osservio_ui_debug_disable).performClick();
+            assertEquals(CaptureController.Mode.BASELINE, capture.status().mode);
+            inspector.disposePresentation();
+        });
+    }
+
     private static void layout(View view, int width, int height) {
         int w = InspectorTheme.dp(view.getContext(), width), h = InspectorTheme.dp(view.getContext(), height);
         view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, w, h);
     }
     private static View description(View view, int label) {
+        if (view.getVisibility() != View.VISIBLE) return null;
         if (view.getContentDescription() != null && view.getContext().getString(label).contentEquals(view.getContentDescription())) return view;
         if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
             View found = description(((ViewGroup) view).getChildAt(i), label); if (found != null) return found;

@@ -38,8 +38,7 @@ final class SignalCrashViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text(images ? "crash_images" : "crash_frames")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 100
-        inspectorPrimaryAction = UIBarButtonItem(title: RuntimePresentation.text("crash_copy_all"), style: .plain,
-            target: self, action: #selector(copyAll))
+        inspectorPrimaryAction = inspectorCopyItem(target: self, action: #selector(copyAll), label: "crash_copy_all")
     }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         switch evidence {
@@ -49,7 +48,7 @@ final class SignalCrashViewController: UITableViewController {
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self); title = RuntimePresentation.text(images ? "crash_images" : "crash_frames")
-        inspectorPrimaryAction?.title = RuntimePresentation.text("crash_copy_all"); tableView.reloadData()
+        inspectorPrimaryAction?.accessibilityLabel = RuntimePresentation.text("crash_copy_all"); tableView.reloadData()
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         let hint: String

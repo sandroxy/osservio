@@ -27,7 +27,7 @@ final class AppInspectorViewController: UITableViewController {
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); loop.show(in: view) }
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); loop.hide() }
     private func refreshStatus() {
-        let values = controllers.map { _, controller in controller.status().map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy") }
+        let values = controllers.map { _, controller in controller.status().map { InspectorDebugControl.describe($0, includeBaseline: true) } ?? InspectorLocalization.text("busy") }
         if values != statuses { statuses = values; tableView.reloadData() }
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }

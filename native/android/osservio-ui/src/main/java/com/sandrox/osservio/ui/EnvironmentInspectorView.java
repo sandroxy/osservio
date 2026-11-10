@@ -21,7 +21,7 @@ final class EnvironmentInspectorView extends LinearLayout {
     private final EnvironmentProvider provider;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Button refresh;
-    private final Button copy;
+    private final android.widget.ImageButton copy;
     private final TextView notice;
     private final android.widget.FrameLayout facts;
     private EnvironmentSnapshot snapshot;
@@ -31,11 +31,12 @@ final class EnvironmentInspectorView extends LinearLayout {
     EnvironmentInspectorView(Context context, EnvironmentProvider provider) {
         super(context); this.provider = provider; setOrientation(VERTICAL);
         refresh = InspectorWidgets.button(context, R.string.osservio_http_refresh, this::read);
-        copy = InspectorWidgets.button(context, R.string.osservio_runtime_copy_environment, () -> {
+        copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_runtime_copy_environment, () -> {
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
             if (clipboard != null && snapshot != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", RuntimePresentation.environment(context, snapshot)));
         }); copy.setEnabled(false);
-        addView(new InspectorControls(context, refresh, copy), new LayoutParams(-1, -2));
+        LinearLayout controls = new LinearLayout(context); controls.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        controls.addView(refresh, new LayoutParams(0, -2, 1)); controls.addView(copy); addView(controls, new LayoutParams(-1, -2));
         notice = InspectorWidgets.caption(context); int inset = InspectorTheme.dp(context, 16); notice.setPadding(inset, 0, inset, inset);
         addView(notice, new LayoutParams(-1, -2));
         facts = new android.widget.FrameLayout(context); addView(facts, new LayoutParams(-1, 0, 1));

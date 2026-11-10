@@ -93,9 +93,8 @@ public final class LogInspectorView extends LinearLayout {
             }
         }
         if (dirty) render();
-        LogRecorder.Status status = recorder.status();
-        header.status.setText(state.paused ? R.string.osservio_ui_paused : status == null ? R.string.osservio_busy
-            : status.isRecording ? R.string.osservio_ui_capturing : R.string.osservio_ui_not_capturing);
+        header.status.setText(state.paused ? getContext().getString(R.string.osservio_ui_paused)
+            : InspectorDebugControl.describe(getContext(), recorder.captureController.status(), false));
         header.setPaused(state.paused);
     }
     private void render() {
@@ -117,11 +116,9 @@ public final class LogInspectorView extends LinearLayout {
     private void actions() {
         LogRecorder.Status status = recorder.status();
         if (status == null) { busy(); return; }
-        String[] items = {getContext().getString(status.isRecording ? R.string.osservio_stop : R.string.osservio_start),
-            getContext().getString(R.string.osservio_ui_capture_details), getContext().getString(R.string.osservio_clear)};
+        String[] items = {getContext().getString(R.string.osservio_ui_capture_details), getContext().getString(R.string.osservio_clear)};
         dialog = InspectorDialogs.menu(getContext(), R.string.osservio_ui_actions, items, (ignored, which) -> {
-            if (which == 0) toggleCapture();
-            else if (which == 1) capacity();
+            if (which == 0) capacity();
             else confirmClear();
         });
         watchDialog();
@@ -140,13 +137,6 @@ public final class LogInspectorView extends LinearLayout {
                 history.clear(); state.snapshot = history.snapshot(); dirty = true; refresh();
             });
         watchDialog();
-    }
-    private void toggleCapture() {
-        LogRecorder.Status status = recorder.status();
-        if (status == null) { busy(); return; }
-        if (status.isRecording) { if (!recorder.stop()) busy(); }
-        else { try { recorder.start(); } catch (IllegalStateException failure) { busy(); } }
-        refresh();
     }
     private void setPaused(boolean paused) {
         if (state.paused == paused) return;

@@ -56,9 +56,19 @@ public final class InspectorView extends FrameLayout {
     private Context themed;
     private FrameLayout body;
     private TextView title;
+    private LinearLayout rootBar;
     private TextView brand;
     private android.widget.ImageButton close;
     private final LinearLayout workspace;
+    private final LinearLayout rootPage;
+    private InspectorDebugControl debugControl;
+    private final Runnable debugTick = new Runnable() {
+        @Override public void run() {
+            if (isShown() && hasWindowFocus() && navigation.isAtRoot()) {
+                debugControl.refresh(); postDelayed(this, 250);
+            }
+        }
+    };
     private final InspectorNavigation navigation;
     private Runnable onClose;
     private boolean minimizes;
@@ -108,9 +118,11 @@ public final class InspectorView extends FrameLayout {
         this.breadcrumbRecorder = breadcrumbRecorder; this.breadcrumbHistory = breadcrumbHistory; this.breadcrumbArchive = breadcrumbArchive;
         this.incidentArchive = incidentArchive; this.exporter = exporter;
         workspace = new LinearLayout(getContext()); workspace.setOrientation(LinearLayout.VERTICAL);
-        navigation = new InspectorNavigation(getContext(), workspace);
+        rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
+        navigation = new InspectorNavigation(getContext(), rootPage, this, workspace);
         ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
-        addView(navigation, new FrameLayout.LayoutParams(-1, -1)); rebuild();
+        addView(workspace, new FrameLayout.LayoutParams(-1, -1)); rebuild();
+        navigation.setChanged(this::updateDebugPolling);
     }
     /** Optional close affordance. The callback belongs to the presenting host. Main thread only. */
     public void setOnCloseListener(Runnable listener) { onClose = listener; minimizes = false; navigation.setMinimize(null); updateClose(); }
@@ -120,6 +132,9 @@ public final class InspectorView extends FrameLayout {
         close.setContentDescription(themed.getString(minimizes ? R.string.osservio_ui_minimize : R.string.osservio_close));
         close.setVisibility(onClose == null ? GONE : VISIBLE);
     }
+    void discardTransientPanels() { navigation.discardPanels(); }
+    private void updateDebugPolling() { removeCallbacks(debugTick); if (debugControl != null) debugTick.run(); }
+    @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); updateDebugPolling(); }
     void disposePresentation() { navigation.dispose(); appearanceListener = null; onClose = null; }
     /** Immediately reports the current inspector appearance, then subsequent appearance changes. */
     public void setAppearanceListener(AppearanceListener listener) {
@@ -131,20 +146,25 @@ public final class InspectorView extends FrameLayout {
     }
     private void rebuild() {
         for (View page : pages) savePosition(page);
-        workspace.removeAllViews();
+        rootPage.removeAllViews(); workspace.removeAllViews();
+        workspace.addView(navigation, new LinearLayout.LayoutParams(-1, 0, 1));
         for (int i = 0; i < pages.length; i++) pages[i] = null;
         dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
-        LinearLayout bar = new LinearLayout(themed); bar.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout bar = new LinearLayout(themed); rootBar = bar; bar.setGravity(Gravity.CENTER_VERTICAL);
         int inset = InspectorTheme.dp(themed, 16); bar.setPadding(inset, InspectorTheme.dp(themed, 8), inset, InspectorTheme.dp(themed, 8));
+        debugControl = new InspectorDebugControl(themed, logRecorder.captureController, httpRecorder.captureController,
+            socketRecorder == null ? null : socketRecorder.captureController);
+        bar.addView(debugControl.button);
         LinearLayout heading = new LinearLayout(themed); heading.setOrientation(LinearLayout.VERTICAL);
+        heading.setPadding(InspectorTheme.dp(themed, 12), 0, 0, 0);
         title = InspectorTheme.text(themed, 22, true); heading.addView(title);
         brand = InspectorWidgets.caption(themed); brand.setText(R.string.osservio_product_name); brand.setPadding(0, 0, 0, InspectorTheme.dp(themed, 6));
         heading.addView(brand); bar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         close = InspectorWidgets.icon(themed, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> { if (onClose != null) onClose.run(); });
         updateClose(); bar.addView(close, new LinearLayout.LayoutParams(-2, -2));
-        workspace.addView(bar, new LinearLayout.LayoutParams(-1, -2));
-        body = new FrameLayout(themed); workspace.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
+        rootPage.addView(bar, new LinearLayout.LayoutParams(-1, -2));
+        body = new FrameLayout(themed); rootPage.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         LinearLayout navigation = new LinearLayout(themed);
         navigation.setBackground(InspectorTheme.shape(themed, InspectorTheme.surface(themed), 32, false));
         int spacing = InspectorTheme.dp(themed, 4); navigation.setPadding(spacing, spacing, spacing, spacing);
@@ -177,11 +197,12 @@ public final class InspectorView extends FrameLayout {
         if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
         savePosition(pages[selection]); selection = index;
         if (pages[index] == null) {
-            if (index == 0) pages[index] = new LogInspectorView(themed, logRecorder, logHistory, logState);
-            else if (index == 1) pages[index] = new NetworkInspectorView(themed, httpRecorder, httpHistory, socketRecorder, socketHistory, networkState);
+            Context pageContext = new InspectorNavigation.OwnerContext(themed, navigation, index);
+            if (index == 0) pages[index] = new LogInspectorView(pageContext, logRecorder, logHistory, logState);
+            else if (index == 1) pages[index] = new NetworkInspectorView(pageContext, httpRecorder, httpHistory, socketRecorder, socketHistory, networkState);
             else if (index == 2) pages[index] = incidentArchive == null ? unavailable()
-                : new IncidentInspectorView(themed, incidentArchive, environment, breadcrumbHistory, logHistory, httpHistory, socketHistory, exporter, incidentState);
-            else pages[index] = new AppInspectorView(themed, environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive, logRecorder, httpRecorder, socketRecorder, appState);
+                : new IncidentInspectorView(pageContext, incidentArchive, environment, breadcrumbHistory, logHistory, httpHistory, socketHistory, exporter, incidentState);
+            else pages[index] = new AppInspectorView(pageContext, environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive, logRecorder, httpRecorder, socketRecorder, appState);
             body.addView(pages[index], new FrameLayout.LayoutParams(-1, -1));
         }
         for (int i = 0; i < pages.length; i++) {
@@ -192,7 +213,7 @@ public final class InspectorView extends FrameLayout {
             tabs[i].setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(InspectorTheme.color(themed, R.color.osservio_separator)),
                 InspectorTheme.shape(themed, i == index ? InspectorTheme.color(themed, R.color.osservio_tint) : android.graphics.Color.TRANSPARENT, 27, false), null));
         }
-        title.setText(labels[index]);
+        title.setText(labels[index]); navigation.select(index); updateDebugPolling();
     }
     private View unavailable() {
         LinearLayout message = new LinearLayout(themed); message.setOrientation(LinearLayout.VERTICAL); message.setGravity(Gravity.CENTER);
@@ -219,6 +240,8 @@ public final class InspectorView extends FrameLayout {
     private void compactChrome(int height) {
         if (brand == null || height == 0) return;
         boolean compact = height < InspectorTheme.dp(themed, 360);
+        int horizontal = InspectorTheme.dp(themed, 16), vertical = InspectorTheme.dp(themed, compact ? 0 : 8);
+        rootBar.setPadding(horizontal, vertical, horizontal, vertical);
         brand.setVisibility(compact ? GONE : VISIBLE); title.setTextSize(compact ? 18 : 22);
         for (LinearLayout tab : tabs) if (tab != null) {
             tab.getChildAt(0).setVisibility(compact ? GONE : VISIBLE);
@@ -227,9 +250,9 @@ public final class InspectorView extends FrameLayout {
         }
     }
     @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow(); InspectorPreferences.storage(getContext()).registerOnSharedPreferenceChangeListener(preferences); preferencesChanged();
+        super.onAttachedToWindow(); InspectorPreferences.storage(getContext()).registerOnSharedPreferenceChangeListener(preferences); preferencesChanged(); updateDebugPolling();
     }
     @Override protected void onDetachedFromWindow() {
-        InspectorPreferences.storage(getContext()).unregisterOnSharedPreferenceChangeListener(preferences); removeCallbacks(refreshPreferences); super.onDetachedFromWindow();
+        InspectorPreferences.storage(getContext()).unregisterOnSharedPreferenceChangeListener(preferences); removeCallbacks(refreshPreferences); removeCallbacks(debugTick); super.onDetachedFromWindow();
     }
 }

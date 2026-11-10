@@ -70,6 +70,7 @@ public final class IncidentInspectorView extends FrameLayout {
     private final Rows rows = new Rows();
     private List<IncidentSummary> snapshots = Collections.emptyList();
     private IncidentSnapshotView selected;
+    private InspectorScreen snapshotScreen;
     private IncidentComposer composer;
     private InspectorScreen confirmation;
     private boolean reading;
@@ -222,10 +223,17 @@ public final class IncidentInspectorView extends FrameLayout {
     private void showSnapshot(IncidentSnapshot snapshot) {
         state.selected = snapshot;
         selected = new IncidentSnapshotView(getContext(), snapshot, this::showList, () -> confirmDeletion(snapshot.id), exporter);
-        listing.setVisibility(GONE); addView(selected, new LayoutParams(-1, -1));
+        if (InspectorNavigation.owns(getContext())) {
+            state.selected = null; // The tab's page stack owns this snapshot across root-view rebuilding.
+            snapshotScreen = InspectorDialogs.screen(getContext(), getContext().getString(R.string.osservio_incident_title), selected);
+            snapshotScreen.setBackInterceptor(() -> reading || (selected != null && selected.navigateBack()));
+            snapshotScreen.setOnDismissListener(ignored -> { snapshotScreen = null; selected = null; attempted = false; visibility(); });
+            snapshotScreen.show();
+        } else { listing.setVisibility(GONE); addView(selected, new LayoutParams(-1, -1)); }
     }
     private void showList() {
         state.selected = null;
+        if (snapshotScreen != null) { snapshotScreen.dismiss(); return; }
         hideKeyboard();
         if (selected != null) { removeView(selected); selected = null; }
         listing.setVisibility(VISIBLE); read();

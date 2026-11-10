@@ -34,8 +34,10 @@ React Native, Uni and Flutter adapters are not implemented.
 - Independent capture and presentation lifetimes: closing the inspector does
   not stop capture, and stopping capture does not clear history.
 - An app-local floating entry on both platforms, initially hidden until the host
-  reveals it. Minimize from SDK detail, filter or editing screens and resume the
-  same full-screen session without applying or saving drafts. The entry supports
+  reveals it. Minimize from detail pages or full-screen editors and resume the
+  same session; each tab retains its own navigation stack. More and filter panels
+  are temporary, with no inspector-wide minimize button. Explicit host collapse
+  dismisses them and discards unapplied filters without saving a problem. The entry supports
   dragging and edge docking. Reading state lasts for the in-process session;
   disposing it or restarting the process discards ordinary inspection content.
   Hidden views stop refreshing, and no cross-app overlay permission is required.

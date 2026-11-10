@@ -108,7 +108,8 @@ final class IncidentComposer {
         content.addView(label(context.getString(R.string.osservio_incident_note_hint) + "\n" + context.getString(R.string.osservio_incident_note_limit)), params());
         notice = label(""); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); content.addView(notice, params());
         ScrollView scroll = new ScrollView(context); scroll.setFillViewport(true); scroll.addView(content);
-        dialog = InspectorDialogs.panel(context, R.string.osservio_incident_mark, scroll);
+        dialog = InspectorDialogs.screen(context, context.getString(R.string.osservio_incident_mark), scroll);
+        dialog.fullScreenTask();
         saveButton = dialog.action(R.string.osservio_incident_save, this::save);
         includeEnvironment.setOnCheckedChangeListener((button, checked) -> updateControls());
         includeHTTP.setOnCheckedChangeListener((button, checked) -> updateControls());

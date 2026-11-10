@@ -49,7 +49,7 @@ with independent rate budgets and histories. Separate controllers have separate
 lifecycles. All capture admission remains bounded before payload copying or
 formatting; continuous debugging does not remove privacy or resource limits.
 
-The inspector exposes explicit start and stop controls. Opening, hiding, closing,
+The combined inspector exposes a global debug switch on its root pages. Opening, hiding, closing,
 or pausing it does not change capture. Scrolling pauses the displayed snapshot;
 resuming loads current retained history. Clearing history affects the shared
 store, including other viewers, but does not stop capture. Existing snapshots

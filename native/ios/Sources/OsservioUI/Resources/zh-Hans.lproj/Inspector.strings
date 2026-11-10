@@ -26,7 +26,7 @@
 "ui_preferences_hint" = "语言和外观仅影响 Osservio，关闭面板不会停止采集。";
 "ui_filters" = "筛选";
 "ui_filter_options" = "搜索筛选选项";
-"ui_apply" = "应用筛选";
+"ui_apply" = "确定";
 "ui_reset" = "重置筛选";
 "ui_filter_hint" = "同组内满足任一选项，不同组之间同时满足。未选择表示不限。";
 "ui_no_filters" = "未设置筛选";
@@ -64,7 +64,7 @@
 "ui_paused" = "阅读已暂停更新";
 "ui_follow_latest" = "返回最新";
 "ui_pause" = "暂停更新";
-"ui_inactive_empty" = "尚未开启详细采集。需要观察操作过程时，可通过「更多操作」开启。";
+"ui_inactive_empty" = "调试尚未开启。可使用首页左上角的调试按钮，观察之后发生的日志与网络活动。";
 "ui_filtered_empty" = "没有符合条件的记录。可以修改搜索词或重置筛选。";
 "ui_waiting" = "等待新的记录";
 "ui_previous_window" = "当前显示上次取得的记录";
@@ -102,3 +102,24 @@
 "ui_hide_entry" = "隐藏悬浮入口";
 "ui_dock_leading" = "移到左侧";
 "ui_dock_trailing" = "移到右侧";
+
+"ui_debug_enable" = "开启调试";
+"ui_debug_disable" = "关闭调试";
+"ui_debug_on" = "调试已开启";
+"ui_debug_off" = "调试已关闭";
+"ui_debug_partial" = "部分调试已开启";
+"ui_debug_expired" = "调试已自动关闭";
+"ui_debug_remaining" = "剩余 %llu 秒";
+"ui_debug_hint" = "控制日志与网络调试记录，不影响基础诊断和已有记录。";
+"ui_debug_control_failed" = "部分采集控制未成功，请根据当前状态重试。";
+"ui_dismiss_panel" = "关闭面板";
+
+"ui_content" = "响应类型";
+"ui_content_json" = "JSON";
+"ui_content_text" = "文本 / XML";
+"ui_content_image" = "图片";
+"ui_content_media" = "音频 / 视频";
+"ui_content_other" = "其他";
+"ui_content_unknown" = "未确定";
+"ui_baseline_on" = "基础诊断开启";
+"ui_baseline_off" = "基础诊断关闭";

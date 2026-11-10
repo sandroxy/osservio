@@ -37,6 +37,11 @@ final class InspectorFilterOptions {
             for (String key : sources) source.option(key, source(context, key)); groups.add(source);
         }
         if (scope == 1) {
+            InspectorFilterSheet.Group content = group(context, InspectorQuery.Field.CONTENT, R.string.osservio_ui_content);
+            int[] labels = {R.string.osservio_ui_content_json, R.string.osservio_ui_content_text, R.string.osservio_ui_content_image,
+                R.string.osservio_ui_content_media, R.string.osservio_ui_content_other, R.string.osservio_ui_content_unknown};
+            for (int i = 0; i < labels.length; i++) content.option(InspectorHTTPContent.CATEGORIES[i], context.getString(labels[i]));
+            groups.add(content);
             Set<String> methods = new TreeSet<>(); for (HTTPEvent event : http) methods.add(event.method);
             groups.add(strings(context, InspectorQuery.Field.METHOD, R.string.osservio_ui_method, methods));
             InspectorFilterSheet.Group states = group(context, InspectorQuery.Field.STATE, R.string.osservio_ui_state);

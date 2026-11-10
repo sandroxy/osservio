@@ -106,6 +106,7 @@ final class InspectorFilterSheet {
             adapter.notifyDataSetChanged();
         });
         InspectorScreen dialog = InspectorDialogs.panel(context, R.string.osservio_ui_filters, content);
+        dialog.showCancel();
         dialog.action(R.string.osservio_ui_apply, () -> { applied.apply(draft); dialog.dismiss(); });
         content.addView(InspectorWidgets.button(context, R.string.osservio_ui_reset, () -> {
             draft.values.clear(); draft.recentMinutes = 0; adapter.notifyDataSetChanged();

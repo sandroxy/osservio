@@ -38,8 +38,8 @@ final class BreadcrumbArchiveView extends LinearLayout {
     private final TextView summary;
     private final TextView empty;
     private final Button refresh;
-    private final Button back;
-    private final Button copy;
+    private final android.widget.ImageButton back;
+    private final android.widget.ImageButton copy;
     private final Button delete;
     private final EditText search;
     private final ListView list;
@@ -58,16 +58,16 @@ final class BreadcrumbArchiveView extends LinearLayout {
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(dp(16), 0, dp(16), 0);
         LinearLayout controls = new LinearLayout(context);
         refresh = button(R.string.osservio_archive_refresh); refresh.setOnClickListener(view -> { selected = null; read(); });
-        back = button(R.string.osservio_archive_back); back.setOnClickListener(view -> {
+        back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_archive_back, () -> { }); back.setOnClickListener(view -> {
             View focused = findFocus(); if (focused != null) focused.clearFocus();
             InputMethodManager keyboard = getContext().getSystemService(InputMethodManager.class);
             if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
             selected = null; read();
         });
-        copy = button(R.string.osservio_archive_copy_summary); copy.setOnClickListener(view -> {
+        copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> { }); copy.setOnClickListener(view -> {
             if (selected != null) copy(PersistencePresentation.run(getContext(), selected.run));
         });
-        for (Button button : new Button[] {back, refresh, copy}) controls.addView(button, new LayoutParams(0, -2, 1));
+        controls.addView(back); controls.addView(refresh, new LayoutParams(0, -2, 1)); controls.addView(copy);
         header.addView(controls, new LayoutParams(-1, -2));
         delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
         Button actions = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {

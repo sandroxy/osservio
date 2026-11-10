@@ -20,16 +20,41 @@ The full-screen workspace separates Back from Minimize. Search and filtering
 share a row; capture/reading status and icon actions form a separate row.
 Protocol scopes use a single-choice segmented control. Language and appearance
 open dedicated settings pages. Short contextual actions use panels; filters and
-problem forms use editing panels with explicit Apply or Save. Destructive actions
+problem forms use a retained full-screen editing page with explicit Save.
+Filters use a temporary sheet with Cancel and Apply. Destructive actions
 retain confirmation. Platform alerts and system share interfaces keep their own
 native dismissal behavior.
+
+## Debug control and navigation
+
+A bug button at the top left of each root destination controls the same debug
+state. It is absent from child pages; Back occupies that position instead.
+A filled icon and selected background indicate enabled debugging, with localized
+action and state descriptions. List status and App capture status expose an
+optional auto-off countdown and expiry. Busy controls are not treated as off.
+The host chooses the initial state and optional deadline through
+[`CaptureController`](logging.md); UI choices are process-local and do not change
+baseline diagnosis. Opening or revealing the inspector never enables debugging.
+
+Supply one shared controller for a consistent log/network lifecycle. If the host
+supplies separate controllers, the switch sets each independently; it displays
+partial state or reports rejected control instead of claiming atomic success.
+Standalone viewers rely on the host's capture controls.
+
+Both platforms keep the tab bar available for ordinary read-only details. Each
+tab retains its own navigation stack, while covered lists and readers suspend
+polling and pending parsing. Temporary panels and full-screen editing tasks cover
+the tab bar. More panels dismiss by native swipe/backdrop or an accessible dismiss
+action; Android also provides a draggable handle. Filters retain explicit Cancel
+because their changes are provisional. Copy and Back use icons with contextual
+accessibility labels; Apply and Save retain their primary-action text.
 
 ## Reading and filtering
 
 Live lists show their current capture state, pause control, search, filters and
 result count. These controls scroll with the list so that short windows and
-large text retain space for records. More actions contains capture controls,
-capacity information and confirmed clearing of the relevant live history.
+large text retain space for records. More actions contains capacity information
+and confirmed clearing of the relevant live history.
 In Network, All clears both supplied histories, HTTP clears requests, and
 WebSocket clears socket observations. Clearing from a connection timeline affects
 the entire WebSocket history, not only the displayed connection.
@@ -52,7 +77,7 @@ appearance preserves the current list queries and pause state.
 | --- | --- |
 | Logs | Level, category, time |
 | Network: All | Host, source when relevant, time |
-| Network: HTTP | Host, source when relevant, method, observed state, HTTP status class, time |
+| Network: HTTP | Host, source when relevant, method, response type, observed state, HTTP status class, time |
 | Network: WebSocket | Host, source when relevant, last observed connection state, time |
 | WebSocket timeline | Event type, direction or connection events, time |
 | Problems | Record type, manual/system source, record time |
@@ -63,14 +88,21 @@ Different dimensions and the search text are joined with **AND**. For example,
 WARN or ERROR in category `checkout` means `(WARN OR ERROR) AND checkout`.
 All, or no selected values, removes that dimension's restriction. Time is a
 single choice: any time, last 5 minutes, last 30 minutes, last hour or last day.
-Changes in the filter sheet remain a draft until Apply filters. Cancel discards
-them. Reset filters resets that draft without clearing the list's search text.
+Changes in the filter sheet remain a draft until Apply. Cancel, swipe dismissal and explicit inspector collapse
+discard them. Reset filters resets that draft without clearing the list's search text.
 Searching the sheet narrows its options, not the records themselves.
 
 Category, host and method choices come from the retained metadata. An active
 choice remains visible even after its records leave that window. Source is
 offered when multiple sources are present or a source filter is already active.
 Search and filtering never recover uncaptured or evicted evidence.
+
+Response type is available in the HTTP scope: JSON, text/XML, images, audio/video,
+other and unknown. It uses retained response `Content-Type` metadata only, without
+reading bodies. Missing, malformed or conflicting header values remain unknown.
+A JSON request, URL suffix or transport source does not establish the response
+type or make a request an “API” call. The three primary scopes describe native
+interaction types; browser-specific Fetch/XHR classifications are not inferred.
 
 An HTTP status class and an observed request state are independent. A completed
 503 response can match both Completed and 5xx; it is not a transport failure.
@@ -181,14 +213,17 @@ Its app-local entry starts hidden; the host chooses when to call `showEntry()`.
 The entry can be dragged to either edge and remembers its normalized position.
 It passes touches outside the entry through to the host and does not become the
 key window. Tapping it expands a full-screen workspace in the same scene.
-Minimize remains available in SDK navigation pages, readers and editing panels.
+Minimize remains available in SDK navigation pages, readers and full-screen editors.
+Temporary filters and action panels have no inspector-wide Minimize action.
 The session restores host keyboard focus when collapsing and suspends polling
 before its short exit animation. Reduce Motion, Low Power Mode and elevated
 thermal state reduce motion; Reduce Transparency uses an opaque entry.
 
 `collapse()` shows the entry, while `hideEntry()` hides both surfaces. Both retain
-the in-process tab, navigation, query, reading position and unfinished filter or
-problem draft. They never apply a filter or save a problem. A single retained
+the in-process tab, navigation, applied query, reading position and unfinished
+problem draft. Temporary filter drafts, action panels and SDK notices are
+dismissed; they are not restored. Background interruption alone does not discard
+an open draft. These operations never apply a filter or save a problem. A single retained
 hierarchy reuses the existing content limits; it does not create a new history
 or keep ordinary diagnostics across process restarts. `dispose()` releases the
 hierarchy independently of capture and evidence; scene disconnection disposes it

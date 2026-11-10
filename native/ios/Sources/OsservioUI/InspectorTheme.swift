@@ -55,6 +55,20 @@ final class InspectorStyleObserver: NSObject {
 
 @MainActor
 final class InspectorNavigationController: UINavigationController, UINavigationControllerDelegate {
+    var transientPanel = false
+    private var discardRequested = false
+    func discardPanel() {
+        discardRequested = true
+        if isBeingPresented, let transitionCoordinator,
+           transitionCoordinator.animate(alongsideTransition: nil, completion: { [weak self] _ in self?.finishDiscard() }) { return }
+        finishDiscard()
+    }
+    private func finishDiscard() {
+        guard discardRequested, !isBeingPresented, !isBeingDismissed else { return }
+        presentingViewController?.dismiss(animated: false)
+    }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); finishDiscard() }
+    var visiblePageChanged: (() -> Void)?
     weak var session: InspectorSession? {
         didSet { for controller in viewControllers { installSessionAction(on: controller) } }
     }
@@ -63,6 +77,7 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
         installSessionAction(on: viewController)
         tintItems(viewController)
+        visiblePageChanged?()
     }
     private func installSessionAction(on controller: UIViewController) {
         let actions = controller.inspectorActions
@@ -78,7 +93,7 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     private func tintItems(_ controller: UIViewController) {
         let items = (controller.navigationItem.leftBarButtonItems ?? []) + (controller.navigationItem.rightBarButtonItems ?? [])
         for item in items { item.tintColor = InspectorTheme.accent }
-        controller.navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
+        controller.inspectorMinimalBackTitle()
     }
     private func updateStyle() {
         InspectorTheme.apply(self)
@@ -108,7 +123,7 @@ extension UIViewController {
         set {
             let items = newValue?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } ?? []
             let result: [UIBarButtonItem]
-            if let navigation = navigationController as? InspectorNavigationController, navigation.session != nil {
+            if let navigation = navigationController as? InspectorNavigationController, navigation.session != nil, !navigation.transientPanel {
                 let minimize = navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "Osservio.Minimize" }
                     ?? navigation.minimizeItem()
                 minimize.accessibilityLabel = InspectorLocalization.text("ui_minimize")
@@ -124,21 +139,31 @@ extension UIViewController {
         get { inspectorActions?.first }
         set { inspectorActions = newValue.map { [$0] } }
     }
-    func inspectorPresent(_ controller: UIViewController) {
+    func inspectorPresent(_ controller: UIViewController, retainingPage: Bool = false) {
         view.endEditing(true)
         let navigation = InspectorNavigationController(rootViewController: controller)
+        navigation.transientPanel = !retainingPage
         navigation.session = inspectorSession
+        navigation.modalPresentationStyle = retainingPage ? .fullScreen : .pageSheet
+        if #available(iOS 15, *), !retainingPage, let sheet = navigation.sheetPresentationController {
+            sheet.detents = [.large()]; sheet.prefersGrabberVisible = true; sheet.preferredCornerRadius = 28
+        }
         present(navigation, animated: true)
+    }
+    func inspectorMinimalBackTitle() {
+        if #available(iOS 14, *) { navigationItem.backButtonDisplayMode = .minimal }
+        else { navigationItem.backBarButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil) }
     }
     func inspectorPush(_ controller: UIViewController) {
         view.endEditing(true)
-        navigationItem.backBarButtonItem = UIBarButtonItem(title: InspectorLocalization.text("ui_back"), style: .plain, target: nil, action: nil)
+        inspectorMinimalBackTitle()
         if let navigationController { navigationController.pushViewController(controller, animated: true) }
-        else { inspectorPresent(controller) }
+        else { inspectorPresent(controller, retainingPage: true) }
     }
     func inspectorNotice(_ message: String, title: String? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: InspectorLocalization.text("ok"), style: .default))
+        alert.view.accessibilityIdentifier = "Osservio.TransientNotice"
         alert.overrideUserInterfaceStyle = overrideUserInterfaceStyle
         present(alert, animated: true)
     }
@@ -146,6 +171,7 @@ extension UIViewController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
         alert.addAction(UIAlertAction(title: title, style: .destructive) { _ in action() })
+        alert.view.accessibilityIdentifier = "Osservio.TransientNotice"
         alert.overrideUserInterfaceStyle = overrideUserInterfaceStyle
         present(alert, animated: true)
     }

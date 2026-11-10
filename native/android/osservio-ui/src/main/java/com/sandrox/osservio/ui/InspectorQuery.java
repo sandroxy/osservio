@@ -18,7 +18,7 @@ import java.util.HashSet;
 
 /** View-only criteria: OR within one field, AND between independent fields. */
 final class InspectorQuery {
-    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD }
+    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT }
     String text = "";
     int recentMinutes;
     final Map<Field, Set<String>> values = new EnumMap<>(Field.class);
@@ -56,6 +56,7 @@ final class InspectorQuery {
         return allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
             && allows(Field.STATUS, event.statusCode == null ? "none" : event.statusCode / 100 + "xx")
             && allows(Field.HOST, host(event.url)) && allows(Field.SOURCE, event.source.name())
+            && allows(Field.CONTENT, InspectorHTTPContent.category(event.responseHeaders))
             && includesTime(event.timestampMillis, now)
             && contains(event.url, event.responseURL, event.method, event.statusCode == null ? null : event.statusCode.toString());
     }

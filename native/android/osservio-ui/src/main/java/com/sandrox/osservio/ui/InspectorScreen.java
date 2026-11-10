@@ -15,6 +15,9 @@ import android.widget.TextView;
 
 /** A page or editing panel in the inspector. Standalone viewers use a native dialog container. */
 final class InspectorScreen implements DialogInterface {
+    interface BackInterceptor { boolean consume(); }
+    private BackInterceptor backInterceptor;
+    void setBackInterceptor(BackInterceptor interceptor) { backInterceptor = interceptor; }
     final FrameLayout view;
     final boolean panel;
     private final InspectorNavigation navigation;
@@ -22,6 +25,9 @@ final class InspectorScreen implements DialogInterface {
     private final LinearLayout card;
     private final View content;
     private final ImageButton minimize;
+    private final ImageButton back;
+    private InspectorSheetHandle handle;
+    private boolean modal;
     private Dialog fallback;
     private boolean showing;
     private boolean cancelable = true;
@@ -43,11 +49,14 @@ final class InspectorScreen implements DialogInterface {
                 if (params.topMargin != gap) { params.topMargin = gap; card.setLayoutParams(params); }
             });
             view.setOnClickListener(ignored -> cancel()); card.setClickable(true);
+            handle = new InspectorSheetHandle(context, card, this::cancel);
+            card.addView(handle, new LinearLayout.LayoutParams(-1, InspectorTheme.dp(context, 40)));
         }
         bar = new LinearLayout(context); bar.setGravity(Gravity.CENTER_VERTICAL);
         int inset = InspectorTheme.dp(context, 8); bar.setPadding(inset, inset, inset, inset);
-        bar.addView(InspectorWidgets.icon(context, panel ? R.drawable.osservio_close : R.drawable.osservio_back,
-            panel ? R.string.osservio_archive_cancel : R.string.osservio_ui_back, this::cancel));
+        back = InspectorWidgets.icon(context, panel ? R.drawable.osservio_close : R.drawable.osservio_back,
+            panel ? R.string.osservio_archive_cancel : R.string.osservio_ui_back, this::cancel);
+        back.setVisibility(panel ? View.GONE : View.VISIBLE); bar.addView(back);
         TextView heading = InspectorTheme.text(context, 19, true); heading.setText(title); heading.setMaxLines(2);
         heading.setPadding(inset, 0, inset, 0); bar.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         minimize = InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize,
@@ -72,11 +81,18 @@ final class InspectorScreen implements DialogInterface {
         if (view.getResources().getConfiguration().fontScale >= 1.5f) {
             LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
             layout.setMargins(InspectorTheme.dp(view.getContext(), 16), 0, InspectorTheme.dp(view.getContext(), 16), 0);
-            card.addView(action, 1, layout);
+            card.addView(action, card.indexOfChild(bar) + 1, layout);
         } else bar.addView(action, bar.getChildCount() - 1, new LinearLayout.LayoutParams(-2, -2));
         return action;
     }
-    void updateMinimize() { minimize.setVisibility(navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); }
+    boolean coversTabs() { return panel || modal; }
+    void fullScreenTask() { modal = true; }
+    void showCancel() { back.setVisibility(View.VISIBLE); }
+    ImageButton iconAction(int icon, int label, Runnable operation) {
+        ImageButton action = InspectorWidgets.icon(view.getContext(), icon, label, operation);
+        bar.addView(action, bar.getChildCount() - 1); return action;
+    }
+    void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); }
     void show() {
         if (showing) return;
         if (navigation != null) { navigation.push(this); return; }
@@ -101,11 +117,11 @@ final class InspectorScreen implements DialogInterface {
         else if (fallback != null) { fallback.dismiss(); fallback = null; }
     }
     @Override public void cancel() {
-        if (!cancelable) return;
+        if (!cancelable || (backInterceptor != null && backInterceptor.consume())) return;
         if (cancelled != null) cancelled.onCancel(this);
         dismiss();
     }
-    void setCancelable(boolean value) { cancelable = value; if (fallback != null) fallback.setCancelable(value); }
+    void setCancelable(boolean value) { cancelable = value; if (handle != null) handle.setEnabled(value); back.setEnabled(value); if (fallback != null) fallback.setCancelable(value); }
     void setOnDismissListener(OnDismissListener listener) { dismissed = listener; }
     void setOnShowListener(OnShowListener listener) { appeared = listener; }
     void setOnCancelListener(OnCancelListener listener) { cancelled = listener; }

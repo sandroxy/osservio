@@ -28,7 +28,7 @@
     <string name="osservio_ui_preferences_hint">Language and appearance apply only to Osservio. Closing the inspector does not stop capture.</string>
     <string name="osservio_ui_filters">Filters</string>
     <string name="osservio_ui_filter_options">Search filter options</string>
-    <string name="osservio_ui_apply">Apply filters</string>
+    <string name="osservio_ui_apply">Apply</string>
     <string name="osservio_ui_reset">Reset filters</string>
     <string name="osservio_ui_filter_hint">Values within a group match any selection. Different groups must all match. No selection means unrestricted.</string>
     <string name="osservio_ui_no_filters">No filters</string>
@@ -66,7 +66,7 @@
     <string name="osservio_ui_paused">Updates paused for reading</string>
     <string name="osservio_ui_follow_latest">Return to latest</string>
     <string name="osservio_ui_pause">Pause updates</string>
-    <string name="osservio_ui_inactive_empty">Detailed capture is off. Use More actions to start it when you want to inspect an operation.</string>
+    <string name="osservio_ui_inactive_empty">Debugging is off. Use the debug button at the top left of a root tab to inspect subsequent logs and network activity.</string>
     <string name="osservio_ui_filtered_empty">No records match. Try another search or reset the filters.</string>
     <string name="osservio_ui_waiting">Waiting for records</string>
     <string name="osservio_ui_previous_window">Showing the last available snapshot</string>
@@ -98,4 +98,23 @@
     <string name="osservio_ui_minimize">Minimize inspector</string>
     <string name="osservio_ui_open">Open Osservio</string>
     <string name="osservio_ui_hide_entry">Hide floating entry</string>
+    <string name="osservio_ui_debug_enable">Enable debugging</string>
+    <string name="osservio_ui_debug_disable">Disable debugging</string>
+    <string name="osservio_ui_debug_on">Debugging on</string>
+    <string name="osservio_ui_debug_off">Debugging off</string>
+    <string name="osservio_ui_debug_partial">Debugging partially on</string>
+    <string name="osservio_ui_debug_expired">Debugging expired</string>
+    <string name="osservio_ui_debug_remaining">Auto-off in %1$d s</string>
+    <string name="osservio_ui_debug_hint">Controls debug logs and network observations. Baseline diagnosis and retained records are unchanged.</string>
+    <string name="osservio_ui_debug_control_failed">Some capture controls could not be applied. Check the current state and try again.</string>
+    <string name="osservio_ui_dismiss_panel">Dismiss panel</string>
+    <string name="osservio_ui_content">Response type</string>
+    <string name="osservio_ui_content_json">JSON</string>
+    <string name="osservio_ui_content_text">Text / XML</string>
+    <string name="osservio_ui_content_image">Image</string>
+    <string name="osservio_ui_content_media">Audio / video</string>
+    <string name="osservio_ui_content_other">Other</string>
+    <string name="osservio_ui_content_unknown">Unknown</string>
+    <string name="osservio_ui_baseline_on">Baseline diagnosis on</string>
+    <string name="osservio_ui_baseline_off">Baseline diagnosis off</string>
 </resources>

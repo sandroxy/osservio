@@ -1,0 +1,21 @@
+missing	-	unknown
+empty		unknown
+json	application/json	json
+json_case	Application/JSON; charset=utf-8	json
+vendor_json	application/problem+json	json
+text_json	text/json	json
+xml	application/xml	text
+vendor_xml	application/atom+xml	text
+plain	text/plain	text
+image	image/png	image
+svg	image/svg+xml	image
+audio	audio/mpeg	media
+video	video/mp4	media
+binary	application/octet-stream	other
+same_duplicates	application/json|APPLICATION/JSON	json
+conflicting	application/json|text/plain	unknown
+redacted	[redacted]	unknown
+malformed	application / json	unknown
+wildcard	image/*	unknown
+multiple_slashes	text/plain/extra	unknown
+missing_subtype	text/	unknown

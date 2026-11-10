@@ -41,7 +41,7 @@ final class IncidentEvidenceView extends LinearLayout {
     IncidentEvidenceView(Context context, IncidentWebSockets sockets, Runnable back) { this(context, null, null, sockets, back); }
     private IncidentEvidenceView(Context context, IncidentLogs logs, IncidentHTTP http, IncidentWebSockets sockets, Runnable back) {
         super(context); this.logs = logs; this.http = http; this.sockets = sockets; setOrientation(VERTICAL);
-        Button goBack = InspectorWidgets.button(context, R.string.osservio_ui_back, back); addView(goBack, new LayoutParams(-1, -2));
+        android.widget.ImageButton goBack = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, back); addView(goBack);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(dp(16), 0, dp(16), 0);
         search = InspectorWidgets.search(context, R.string.osservio_incident_evidence_search, "", value -> { query.text = value; filter(); });
         header.addView(search, new LayoutParams(-1, -2));

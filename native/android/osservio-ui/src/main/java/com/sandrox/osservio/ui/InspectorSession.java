@@ -73,10 +73,12 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     }
     public void collapse() {
         mainThread(); if (disposed || presentation != Presentation.EXPANDED) return;
+        if (inspector != null) inspector.discardTransientPanels();
         presentation = Presentation.ENTRY; reconcile();
     }
     public void hideEntry() {
         mainThread(); if (disposed) return;
+        if (inspector != null) inspector.discardTransientPanels();
         presentation = Presentation.HIDDEN; reconcile();
     }
     /** Releases UI state and callbacks; never stops capture or deletes evidence. */

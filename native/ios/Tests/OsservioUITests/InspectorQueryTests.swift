@@ -36,6 +36,12 @@ final class InspectorQueryTests: XCTestCase {
         XCTAssertFalse(query.matches(event, now: 1))
         query.values = [.status: ["none"]]
         XCTAssertFalse(query.matches(event, now: 1))
+        query.values = [.content: ["json"]]
+        XCTAssertFalse(query.matches(event, now: 1), "Missing response headers cannot be inferred from request metadata or URL")
+        query.values = [.content: ["json", "unknown"], .method: ["POST"]]
+        XCTAssertTrue(query.matches(event, now: 1))
+        query.values[.method] = ["GET"]
+        XCTAssertFalse(query.matches(event, now: 1))
     }
 
     func testConnectionUsesLifecycleAndCountsAllRetainedEvents() throws {

@@ -104,7 +104,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     }
     private func updateStatus() {
         let states = controllers.map { label, controller in
-            (controllers.count > 1 ? label + ": " : "") + (controller.status().map { InspectorLocalization.text("http_" + $0.mode.rawValue) } ?? InspectorLocalization.text("busy"))
+            (controllers.count > 1 ? label + ": " : "") + (controller.status().map { InspectorDebugControl.describe($0) } ?? InspectorLocalization.text("busy"))
         }
         header.status.text = paused ? InspectorLocalization.text("ui_paused") : states.joined(separator: " · ")
         if scope != 2 && staleHTTP { header.status.text! += " · HTTP: " + InspectorLocalization.text(latestHTTP == nil ? "busy" : "ui_previous_window") }
@@ -162,10 +162,6 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     }
     @objc private func showActions() {
         let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
-        for (label, controller) in controllers {
-            let title = (controllers.count > 1 ? label + " · " : "") + InspectorLocalization.text(controller.status()?.mode == .detailed ? "http_stop" : "http_start")
-            menu.addAction(InspectorActionPanel.Action(title: title, style: .default) { [weak self] _ in self?.toggleCapture(controller) })
-        }
         menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
             guard let self else { return }
             var parts: [String] = []
@@ -186,12 +182,6 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             }
         })
         owner?.inspectorPresent(menu)
-    }
-    private func toggleCapture(_ controller: CaptureController) {
-        guard let status = controller.status() else { owner?.inspectorNotice(InspectorLocalization.text("busy")); return }
-        if status.mode == .detailed { if !controller.stopDetailed() { owner?.inspectorNotice(InspectorLocalization.text("busy")) } }
-        else { do { try controller.startDetailed() } catch { owner?.inspectorNotice(InspectorLocalization.text("busy")) } }
-        dirty = true; refresh()
     }
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }

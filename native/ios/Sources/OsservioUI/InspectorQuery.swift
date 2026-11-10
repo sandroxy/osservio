@@ -4,7 +4,7 @@ import OsservioCore
 /// View-only criteria. Each value set is a union; independent fields intersect.
 /// The caller supplies a fixed time anchor while reading a paused snapshot.
 struct InspectorQuery: Equatable {
-    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record }
+    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content }
     var text = ""
     var values: [Field: Set<String>] = [:]
     var recentMinutes = 0
@@ -31,6 +31,7 @@ struct InspectorQuery: Equatable {
         allows(.method, event.method) && allows(.state, event.state.rawValue)
             && allows(.status, event.statusCode.map { "\($0 / 100)xx" } ?? "none")
             && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
+            && allows(.content, InspectorHTTPContent.category(event.responseHeaders))
             && includesTime(event.timestampMillis, now: now)
             && contains(event.url, event.responseURL ?? "", event.method, event.statusCode.map(String.init) ?? "")
     }

@@ -26,7 +26,7 @@ final class InspectorActionPanel: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 56
-        navigationItem.leftBarButtonItem = inspectorDismissItem(target: self, action: #selector(close))
+
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -35,7 +35,7 @@ final class InspectorActionPanel: UITableViewController {
             sheet.prefersGrabberVisible = true; sheet.preferredCornerRadius = 28
         }
     }
-    @objc private func close() { dismiss(animated: true) }
+    override func accessibilityPerformEscape() -> Bool { dismiss(animated: true); return true }
     override func numberOfSections(in tableView: UITableView) -> Int { groups.count }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { groups[section].count }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { section == 0 ? message : nil }
@@ -55,6 +55,13 @@ final class InspectorActionPanel: UITableViewController {
         guard action.isEnabled else { return }
         dismiss(animated: true) { action.handler(action) }
     }
+}
+
+@MainActor
+func inspectorCopyItem(target: Any, action: Selector, label: String) -> UIBarButtonItem {
+    let item = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: target, action: action)
+    item.accessibilityLabel = InspectorLocalization.text(label)
+    return item
 }
 
 @MainActor

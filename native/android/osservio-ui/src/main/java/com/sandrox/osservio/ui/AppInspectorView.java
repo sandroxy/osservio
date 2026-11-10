@@ -89,9 +89,7 @@ final class AppInspectorView extends ScrollView {
         Context context = getContext();
         LinearLayout details = new LinearLayout(context); details.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); details.setPadding(inset, inset, inset, inset);
-        LogRecorder.Status log = logs.status();
-        statusRow(details, context.getString(R.string.osservio_logs), context.getString(log == null ? R.string.osservio_busy
-            : log.isRecording ? R.string.osservio_ui_capturing : R.string.osservio_ui_not_capturing));
+        statusRow(details, context.getString(R.string.osservio_logs), mode(logs.captureController));
         statusRow(details, "HTTP", mode(http.captureController));
         if (sockets != null) statusRow(details, "WebSocket", mode(sockets.captureController));
         TextView note = InspectorWidgets.caption(context); note.setText(R.string.osservio_ui_preferences_hint); details.addView(note);
@@ -104,9 +102,7 @@ final class AppInspectorView extends ScrollView {
     }
     private String mode(CaptureController controller) {
         CaptureController.Status status = controller.status();
-        return getContext().getString(status == null ? R.string.osservio_busy : status.mode == CaptureController.Mode.DETAILED
-            ? R.string.osservio_ui_detailed : status.mode == CaptureController.Mode.BASELINE
-            ? R.string.osservio_ui_baseline : R.string.osservio_ui_not_capturing);
+        return InspectorDebugControl.describe(getContext(), status, true);
     }
     private void open(int title, View view) {
         dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), view); clearOnDismiss(); dialog.show();

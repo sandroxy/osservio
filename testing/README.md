@@ -63,6 +63,11 @@ and source offsets. These are reader checks, not capture or redaction rules.
 paths, queries, and fragments. Each row contains a name, whether paths are
 approved, raw input, and the expected display URL.
 
+`http-content-type.tsv` defines view-only response classification. Columns are case
+name, observed Content-Type values separated by `|` (`-` means missing), and the
+expected category. Both UI model suites check absent, malformed, conflicting and
+structured-suffix values. No body is read and no event or archive schema changes.
+
 `http-body-cases.tsv` covers UTF-8 boundaries, invalid encodings, empty content,
 and unsupported formats. Rows contain a name, prefix byte limit, Base64 input,
 content type, expected body state, and Base64 output. `-` means that no blob may

@@ -29,6 +29,7 @@ enum InspectorFilterOptions {
         }
         if scope == 1 {
             result += [InspectorFilterGroup(.method, values: events.map(\.method).sorted()),
+                       InspectorFilterGroup(.content, values: InspectorHTTPContent.categories),
                        InspectorFilterGroup(.state, values: httpStates.map(\.rawValue)),
                        InspectorFilterGroup(.status, values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"])]
         } else if scope == 2 {
@@ -44,6 +45,7 @@ enum InspectorFilterOptions {
     static func label(_ field: InspectorQuery.Field, _ value: String) -> String {
         if value.isEmpty || value == "unknown" { return InspectorLocalization.text("ui_unknown") }
         switch field {
+        case .content: return InspectorLocalization.text("ui_content_" + value)
         case .level: return value == "warning" ? "WARN" : value.uppercased()
         case .state:
             if let state = HTTPState(rawValue: value) { return HTTPPresentation.state(state) }

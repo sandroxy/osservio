@@ -30,7 +30,7 @@ final class IncidentSnapshotView extends LinearLayout {
     private final EditText search;
     private final TextView footer;
     private final TextView status;
-    private final Button back;
+    private final android.widget.ImageButton back;
     private final Button delete;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
@@ -42,17 +42,19 @@ final class IncidentSnapshotView extends LinearLayout {
     IncidentSnapshotView(Context context, IncidentSnapshot snapshot, Runnable goBack, Runnable deleteSnapshot, IncidentExporter exporter) {
         super(context); this.snapshot = snapshot; setOrientation(VERTICAL);
         LinearLayout controls = new LinearLayout(context);
-        back = button(R.string.osservio_incident_title); back.setOnClickListener(view -> goBack.run());
-        Button copy = button(R.string.osservio_archive_copy_summary); copy.setOnClickListener(view -> copy(IncidentPresentation.summary(context, snapshot)));
+        back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, () -> { }); back.setOnClickListener(view -> goBack.run());
+        android.widget.ImageButton copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> { }); copy.setOnClickListener(view -> copy(IncidentPresentation.summary(context, snapshot)));
         delete = button(R.string.osservio_incident_delete); delete.setOnClickListener(view -> deleteSnapshot.run());
         Button menu = InspectorWidgets.button(context, R.string.osservio_ui_actions, () -> {
-            detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_archive_copy_summary), context.getString(R.string.osservio_incident_delete)}, (dialog, which) -> {
-                    dialog.dismiss(); detail = null; if (which == 0) copy.performClick(); else delete.performClick();
+            detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_incident_delete)}, (dialog, which) -> {
+                    dialog.dismiss(); detail = null; delete.performClick();
                 });
             InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
         });
         menu.setText("⋯"); menu.setTextSize(22); menu.setContentDescription(context.getString(R.string.osservio_ui_actions));
-        controls.addView(back, new LayoutParams(0, -2, 1)); controls.addView(menu, new LayoutParams(dp(48), -2));
+        back.setVisibility(InspectorNavigation.owns(context) ? GONE : VISIBLE); controls.addView(back);
+        View spacer = new View(context); controls.addView(spacer, new LayoutParams(0, 1, 1)); controls.addView(copy);
+        controls.addView(menu, new LayoutParams(dp(48), -2));
         addView(controls, new LayoutParams(-1, -2));
         status = caption(""); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE); addView(status, new LayoutParams(-1, -2));
         search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> { });

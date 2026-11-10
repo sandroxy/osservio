@@ -55,8 +55,7 @@ public final class LogInspectorViewController: UITableViewController {
         if dirty || query.recentMinutes > 0 { render() } else { updateStatus() }
     }
     private func updateStatus() {
-        let recording = recorder.status()?.isRecording == true
-        header.status.text = InspectorLocalization.text(paused ? "ui_paused" : recording ? "ui_capturing" : "ui_not_capturing")
+        header.status.text = paused ? InspectorLocalization.text("ui_paused") : recorder.captureController.status().map { InspectorDebugControl.describe($0) } ?? InspectorLocalization.text("busy")
         if stale { header.status.text! += " · " + InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window") }
         header.relabel(paused: paused, query: query); table.setNeedsLayout()
     }
@@ -82,9 +81,7 @@ public final class LogInspectorViewController: UITableViewController {
         inspectorPresent(filters)
     }
     @objc private func showActions() {
-        let active = recorder.status()?.isRecording == true
         let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
-        menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text(active ? "stopCapture" : "startCapture"), style: .default) { [weak self] _ in self?.toggleCapture() })
         menu.addAction(InspectorActionPanel.Action(title: InspectorLocalization.text("ui_capture_details"), style: .default) { [weak self] _ in
             guard let self else { return }
             let status = self.recorder.status()
@@ -97,12 +94,6 @@ public final class LogInspectorViewController: UITableViewController {
             }
         })
         inspectorPresent(menu)
-    }
-    private func toggleCapture() {
-        guard let status = recorder.status() else { inspectorNotice(InspectorLocalization.text("busy")); return }
-        if status.isRecording { if !recorder.stop() { inspectorNotice(InspectorLocalization.text("busy")) } }
-        else { do { try recorder.start() } catch { inspectorNotice(InspectorLocalization.text("busy")) } }
-        dirty = true; refresh()
     }
     public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
     public override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
@@ -127,7 +118,7 @@ final class LogDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); title = event.category
-        inspectorPrimaryAction = UIBarButtonItem(title: InspectorLocalization.text("copy"), style: .plain, target: self, action: #selector(copyMessage))
+        inspectorPrimaryAction = inspectorCopyItem(target: self, action: #selector(copyMessage), label: "copy")
         sections = [Section(title: InspectorLocalization.text("ui_metadata"), rows: [
             Row(InspectorLocalization.text("ui_level"), InspectorFilterOptions.label(.level, event.level.rawValue)),
             Row(InspectorLocalization.text("ui_category"), event.category),

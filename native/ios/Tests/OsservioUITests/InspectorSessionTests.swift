@@ -68,7 +68,7 @@ final class InspectorSessionTests: XCTestCase {
     }
 
     @MainActor
-    func testDeepReaderAndUnappliedFilterSurviveMinimize() async throws {
+    func testDeepReaderSurvivesMinimize() async throws {
         let sources = try Sources(), host = hostWindow()
         var created: InspectorViewController?
         let session = InspectorSession(window: host) { let controller = sources.makeInspector(); created = controller; return controller }
@@ -87,24 +87,23 @@ final class InspectorSessionTests: XCTestCase {
         XCTAssertTrue(session.expand())
         XCTAssertTrue(navigation.topViewController === reader); XCTAssertEqual(text.contentOffset, position)
         XCTAssertNotNil(reader.inspectorPrimaryAction)
-        _ = navigation.popViewController(animated: false)
-        var applied: InspectorQuery?
-        let filter = InspectorFilterViewController(query: InspectorQuery(),
-            groups: [InspectorFilterGroup(.level, values: ["info", "warning", "error"])]) { applied = $0 }
-        navigation.topViewController?.inspectorPresent(filter)
-        try await Task.sleep(nanoseconds: 400_000_000)
-        filter.loadViewIfNeeded()
-        filter.tableView(filter.tableView, didSelectRowAt: IndexPath(row: 2, section: 0))
-        let sheet = filter.navigationController
-        XCTAssertTrue((sheet as? InspectorNavigationController)?.session === session)
-        session.collapse()
-        try await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertNil(applied)
-        XCTAssertTrue(session.expand()); XCTAssertTrue(filter.navigationController === sheet)
-        XCTAssertNotNil(sheet?.presentingViewController)
-        let apply = try XCTUnwrap(filter.inspectorPrimaryAction)
-        _ = (apply.target as? NSObject)?.perform(try XCTUnwrap(apply.action))
-        XCTAssertEqual(applied?.values[.level], ["warning"])
+    }
+
+    @MainActor
+    func testTransientFilterHasCancelAndApplyWithoutSessionMinimize() throws {
+        let sources = try Sources(), host = hostWindow()
+        let session = InspectorSession(window: host) { sources.makeInspector() }
+        defer { session.dispose(); host.isHidden = true; host.rootViewController = nil; _ = sources.capture.stopAll() }
+        var applied = false
+        let filter = InspectorFilterViewController(query: InspectorQuery(), groups: []) { _ in applied = true }
+        let navigation = InspectorNavigationController(rootViewController: filter)
+        navigation.transientPanel = true; navigation.session = session
+        navigation.loadViewIfNeeded(); filter.loadViewIfNeeded()
+        XCTAssertEqual(filter.navigationItem.leftBarButtonItem?.accessibilityLabel, InspectorLocalization.text("archive_cancel"))
+        XCTAssertEqual(filter.inspectorPrimaryAction?.title, InspectorLocalization.text("ui_apply"))
+        XCTAssertFalse(filter.navigationItem.rightBarButtonItems?.contains { $0.accessibilityIdentifier == "Osservio.Minimize" } ?? false)
+        XCTAssertFalse(applied)
+        // UIKit modal dismissal and draft restoration require a running consumer application.
     }
 
     @MainActor

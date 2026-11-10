@@ -30,13 +30,13 @@ final class SignalCrashView extends LinearLayout {
     private SignalCrashView(Context context, AppleSignalCrash crash, AndroidTombstone tombstone, boolean images, Runnable goBack) {
         super(context); this.crash = crash; this.tombstone = tombstone; this.images = images; setOrientation(VERTICAL);
         LinearLayout controls = new LinearLayout(context);
-        Button back = button(R.string.osservio_diagnostic_title); back.setOnClickListener(view -> goBack.run());
-        Button copy = button(R.string.osservio_crash_copy_all); copy.setOnClickListener(view -> {
+        android.widget.ImageButton back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, () -> { }); back.setOnClickListener(view -> goBack.run());
+        android.widget.ImageButton copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_crash_copy_all, () -> { }); copy.setOnClickListener(view -> {
             StringBuilder text = new StringBuilder();
             for (int index = 0; index < count(); index++) { if (index != 0) text.append("\n\n"); text.append(copyText(index)); }
             copy(text.toString());
         });
-        controls.addView(back, new LayoutParams(0, -2, 1)); controls.addView(copy, new LayoutParams(0, -2, 1)); addView(controls);
+        controls.addView(back); View spacer = new View(context); controls.addView(spacer, new LayoutParams(0, 1, 1)); controls.addView(copy); addView(controls);
         TextView title = text(); title.setText(images ? R.string.osservio_crash_images : R.string.osservio_crash_frames);
         if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         addView(title);

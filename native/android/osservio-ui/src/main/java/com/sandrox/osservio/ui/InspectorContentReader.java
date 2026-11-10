@@ -3,6 +3,7 @@ package com.sandrox.osservio.ui;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.view.View;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
@@ -58,9 +59,9 @@ final class InspectorContentReader extends LinearLayout {
         mode.setVisibility(GONE); header.addView(mode);
         notice = InspectorWidgets.caption(context); header.addView(notice);
         LinearLayout actions = new LinearLayout(context);
-        Button copy = InspectorWidgets.button(context, R.string.osservio_ui_copy_all, this::copy);
-        Button find = InspectorWidgets.button(context, R.string.osservio_ui_search_content, this::toggleSearch);
-        actions.addView(copy, new LayoutParams(0, -2, 1)); actions.addView(find, new LayoutParams(0, -2, 1)); header.addView(actions);
+        android.widget.ImageButton copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, this::copy);
+        android.widget.ImageButton find = InspectorWidgets.icon(context, R.drawable.osservio_search, R.string.osservio_ui_search_content, this::toggleSearch);
+        actions.setGravity(Gravity.END); actions.addView(find); actions.addView(copy); header.addView(actions);
         searching = new LinearLayout(context); searching.setOrientation(VERTICAL); searching.setVisibility(GONE);
         search = InspectorWidgets.search(context, R.string.osservio_ui_search_content, "", value -> {
             searchDirty = true; handler.removeCallbacks(searchContent); handler.postDelayed(searchContent, 120);
@@ -140,7 +141,7 @@ final class InspectorContentReader extends LinearLayout {
     }
     private void cancelParsing() { generation++; if (parsing != null) parsing.cancel(); parsing = null; }
     private void startParsing() {
-        if (parsed || parsing != null || !value.allowsJson || getWindowVisibility() != VISIBLE) return;
+        if (parsed || parsing != null || !value.allowsJson || !isShown() || getWindowVisibility() != VISIBLE) return;
         int first = 0;
         while (first < Math.min(content.length(), 128) && (content.charAt(first) == ' ' || content.charAt(first) == '\n' || content.charAt(first) == '\r' || content.charAt(first) == '\t')) first++;
         if (first < Math.min(content.length(), 128) && content.charAt(first) != '{' && content.charAt(first) != '[') { parsed = true; return; }
@@ -158,6 +159,14 @@ final class InspectorContentReader extends LinearLayout {
         });
         if (parsing == null) parserNotice = R.string.osservio_json_busy;
         highlight(false);
+    }
+    @Override protected void onVisibilityChanged(View changed, int visibility) {
+        super.onVisibilityChanged(changed, visibility);
+        if (tree == null) return;
+        if (isShown() && isAttachedToWindow()) {
+            if (searchDirty && searching.getVisibility() == VISIBLE) { handler.removeCallbacks(searchContent); handler.post(searchContent); }
+            startParsing();
+        } else { cancelParsing(); handler.removeCallbacks(searchContent); }
     }
     @Override protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);

@@ -61,12 +61,12 @@ public final class InspectorSession: NSObject {
     /// Returns to the host without applying a filter draft or saving an unfinished problem.
     public func collapse() {
         guard !isDisposed, presentation == .expanded else { return }
-        endEditing(); presentation = .entry; reconcile(animated: true)
+        endEditing(); discardTransientPanels(); presentation = .entry; reconcile(animated: true)
     }
     /// Hides both surfaces without stopping capture or discarding the session.
     public func hideEntry() {
         guard !isDisposed else { return }
-        endEditing(); presentation = .hidden; reconcile(animated: false)
+        endEditing(); discardTransientPanels(); presentation = .hidden; reconcile(animated: false)
     }
     /// Releases presentation state. Does not stop recorders or delete retained evidence.
     public func dispose() {
@@ -158,6 +158,18 @@ public final class InspectorSession: NSObject {
         contentWindow?.rootViewController?.viewIfLoaded?.alpha = 1
         contentWindow?.rootViewController?.viewIfLoaded?.transform = .identity
         contentWindow?.isUserInteractionEnabled = true
+    }
+    private func discardTransientPanels() {
+        var current: UIViewController? = inspector
+        while let presented = current?.presentedViewController {
+            if let navigation = presented as? InspectorNavigationController, navigation.transientPanel {
+                navigation.discardPanel(); return
+            }
+            if presented.viewIfLoaded?.accessibilityIdentifier == "Osservio.TransientNotice" {
+                presented.dismiss(animated: false); return
+            }
+            current = presented
+        }
     }
     private func endEditing() { contentWindow?.endEditing(true) }
     private func restoreHostFocus() {
