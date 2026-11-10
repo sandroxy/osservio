@@ -23,7 +23,8 @@ React Native, Uni and Flutter adapters are not implemented.
   readable as source. Network details keep their entry-time record. Return to
   the list and reopen to see the latest retained state; no refresh/retry action
   is offered in those details.
-- Time-limited capture sessions, per-message and admission-rate limits, and
+- A debug switch that defaults to off, with host-selected startup behavior and
+  an optional auto-off deadline; per-message and admission-rate limits; and
   in-memory history bounded by both event count and UTF-8 text bytes.
 - An Android View and an iOS UIKit inspector organized into Logs, Network,
   Problems and App, with combined filters, layered details and on-demand content
@@ -148,10 +149,13 @@ guides.
 The host controls initialization and access to the inspector. Inspector
 visibility, active capture, and data retention are managed separately.
 
-Baseline capture is designed to collect selected runtime breadcrumbs within
-explicit resource limits. A detailed capture session adds richer observations
-with a time limit and resource budget. Development setups can enable these
-sessions directly; released apps can also enable them on the device when needed.
+Baseline capture collects configured runtime breadcrumbs and diagnostic evidence
+within explicit resource limits. A separate debug switch admits ordinary logs
+and detailed network observations. It defaults to off; hosts can enable it
+explicitly for development or testing. Debugging continues until disabled or the
+process ends, unless the host configures an auto-off deadline. Privacy and
+resource limits always apply. The switch is not persisted across launches, and
+hiding the inspector does not change capture.
 
 Live inspection uses bounded data windows. Breadcrumbs that must survive a
 restart and retained incident archives have separate retention policies. A

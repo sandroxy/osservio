@@ -11,27 +11,43 @@ desired lifetime. The optional inspector receives the same recorder and history.
 The host owns initialization, access to the inspector, and presentation. A view
 does not create another recorder or store.
 
-An independently constructed recorder starts inactive. `start` creates a new
-detailed session with a unique identifier and resets its sequence and rate
-window, without clearing history. The default
-session lasts 15 minutes; allowed durations range from 1 millisecond to 24 hours.
-Expiry uses a monotonic clock and requires no background timer. `stop` prevents
-new logs without deleting earlier events. Starting an active recorder replaces
-its session; it does not create a concurrent capture pipeline.
+An independently constructed recorder starts inactive. For a shared debug switch,
+create one `CaptureController` and pass it to the log, HTTP and WebSocket recorders.
+Debugging defaults to off. The host may explicitly initialize it with
+`debugEnabled: true` (Swift) or the `debugEnabled` constructor argument (Java).
+The SDK never infers this choice from the build type or server environment.
 
-For shared lifecycle control, create a `CaptureController` and pass it to each
-recorder. Its states are off, baseline, and detailed. Logs require detailed
-capture; enabling baseline alone does not admit logs or install collectors.
-Detailed capture expires back to the configured baseline or off state.
-`setBaselineEnabled` changes that fallback without restarting an active detailed
-session. `stopAll` disables both modes without clearing retained data.
+`setDebugEnabled` applies a process-local on/off state. Repeating the current
+setting preserves session identity, rate windows, active exchanges and deadlines.
+Enabling starts subsequent observations only. Disabling releases active capture
+buffers and returns to the configured baseline or off state, without clearing
+history or cancelling host requests or sockets. Existing wrapped sockets can
+attach to a later session; this does not recreate their original handshake.
+The setting is not persisted; the next process uses the host's initial value.
 
-Calling `start` or `stop` on any attached recorder changes detailed capture for
-all recorders sharing its controller. They share session identity and sequence
-ordering, while retaining independent rate budgets and histories. Recorders
-using different controllers have independent lifecycles. Changing state outside
-an active detailed session creates a new session identity; repeating an already
-satisfied stop or baseline setting does not.
+The default debug session lasts until disabled or process termination. Hosts may
+supply `debugAutoOffAfterMillis` at construction (1 millisecond to 24 hours) to
+limit each off-to-on transition. A repeated enable does not renew that deadline.
+`status` distinguishes enabled, time-limited and expired states; `remainingMillis`
+is zero for untimed debugging as well as inactive capture. Expiry uses a
+monotonic clock and requires no background timer. Invalid duration or contention
+is reported as an error; rejected control must not be displayed as successful.
+
+The lower-level `startDetailed` API, also exposed by `LogRecorder.start`, still
+explicitly replaces the session and accepts a finite duration (15 minutes by
+default, 1 millisecond to 24 hours). Use `setDebugEnabled` for an idempotent switch.
+`stopDetailed` / `LogRecorder.stop` ends either kind of debug session.
+
+Baseline policy is independent: `setBaselineEnabled` changes the fallback without
+interrupting active debugging; `stopAll` disables both. Baseline alone does not
+admit ordinary logs, including error-level logs, or detailed network records.
+It allows configured breadcrumb and diagnosis mechanisms; no collectors or
+fatal handlers are installed by constructing a controller.
+
+Recorders sharing a controller share session identity and sequence ordering,
+with independent rate budgets and histories. Separate controllers have separate
+lifecycles. All capture admission remains bounded before payload copying or
+formatting; continuous debugging does not remove privacy or resource limits.
 
 The inspector exposes explicit start and stop controls. Opening, hiding, closing,
 or pausing it does not change capture. Scrolling pauses the displayed snapshot;

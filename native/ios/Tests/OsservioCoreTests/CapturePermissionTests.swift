@@ -32,6 +32,20 @@ final class CapturePermissionTests: XCTestCase {
         XCTAssertEqual(observer.values.count, 6)
     }
 
+    func testContinuousDebugPermissionDoesNotEnableBaselineOrInventDeadline() throws {
+        let capture = CaptureController(debugEnabled: true)
+        let observer = Observer()
+        try capture.observePermission(observer)
+        try capture.setDebugEnabled(true)
+        XCTAssertEqual(observer.values.count, 1)
+        XCTAssertFalse(observer.values[0].baselineEnabled)
+        XCTAssertTrue(observer.values[0].continuousDebugEnabled)
+        XCTAssertEqual(observer.values[0].detailedDeadlineMillis, 0)
+        try capture.setDebugEnabled(false)
+        XCTAssertFalse(observer.values[1].continuousDebugEnabled)
+        XCTAssertFalse(observer.values[1].baselineEnabled)
+    }
+
     func testBindingIsExclusiveWeakAndSerializesInitialDeliveryWithControl() throws {
         let capture = CaptureController(baselineEnabled: true)
         var first: Observer? = Observer()

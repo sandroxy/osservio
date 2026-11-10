@@ -46,7 +46,10 @@ These fixture checks do not establish real Android OS delivery.
 suites. Rows contain a case name, monotonic milliseconds, control operation,
 argument, expected mode, remaining detailed-session milliseconds, and whether
 the visible session identity changed. It covers baseline fallback, expiry,
-replacement, repeated controls, and stopping all capture. Contention and shared
+replacement, idempotent continuous debug controls, and stopping all capture.
+Zero remaining time for an enabled continuous session means no deadline. Native
+tests separately check host defaults, configured deadlines, invalid limits,
+body admission after disable and native crash permission without handler installation. Contention and shared
 recorder ordering are verified separately with bounded concurrency tests.
 
 `json-reader-cases.tsv` covers strict container syntax, exact number tokens,

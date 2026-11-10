@@ -17,11 +17,18 @@ public final class CaptureController {
         public final boolean baselineEnabled;
         public final String sessionId;
         public final long remainingMillis;
-        private Status(Mode mode, boolean baselineEnabled, String sessionId, long remainingMillis) {
+        public final boolean debugEnabled;
+        public final boolean debugHasTimeLimit;
+        public final boolean debugExpired;
+        private Status(Mode mode, boolean baselineEnabled, String sessionId, long remainingMillis,
+                       boolean debugHasTimeLimit, boolean debugExpired) {
             this.mode = mode;
             this.baselineEnabled = baselineEnabled;
             this.sessionId = sessionId;
             this.remainingMillis = remainingMillis;
+            this.debugEnabled = mode == Mode.DETAILED;
+            this.debugHasTimeLimit = debugHasTimeLimit;
+            this.debugExpired = debugExpired;
         }
     }
 
@@ -53,6 +60,9 @@ public final class CaptureController {
     final LogClock clock;
     private boolean baselineEnabled;
     private boolean detailed;
+    private boolean timed;
+    private boolean debugExpired;
+    private final Long debugAutoOffAfterMillis;
     private long deadline;
     private String sessionId = UUID.randomUUID().toString();
     private long sequence;
@@ -61,9 +71,42 @@ public final class CaptureController {
 
     public CaptureController() { this(false, LogClock.SYSTEM); }
     public CaptureController(boolean baselineEnabled, LogClock clock) {
+        this(baselineEnabled, false, null, clock);
+    }
+    public CaptureController(boolean baselineEnabled, boolean debugEnabled, LogClock clock) {
+        this(baselineEnabled, debugEnabled, null, clock);
+    }
+
+    /** The optional limit applies to each off-to-on transition; null enables process-lifetime debugging. */
+    public CaptureController(boolean baselineEnabled, boolean debugEnabled, Long debugAutoOffAfterMillis, LogClock clock) {
+        if (debugAutoOffAfterMillis != null && (debugAutoOffAfterMillis < 1 || debugAutoOffAfterMillis > 86_400_000L)) {
+            throw new IllegalArgumentException("Invalid debug duration");
+        }
         this.baselineEnabled = baselineEnabled;
+        this.debugAutoOffAfterMillis = debugAutoOffAfterMillis;
         this.clock = Objects.requireNonNull(clock, "clock");
         sessionStartMillis = clock.monotonicMillis();
+        if (debugEnabled) setDebugEnabled(true);
+    }
+
+    /** Idempotent, process-local control. Does not change baseline policy, visibility or retained history. */
+    public void setDebugEnabled(boolean enabled) {
+        if (!enter()) throw new IllegalStateException("Capture is busy");
+        try {
+            long now = clock.monotonicMillis();
+            expire(now);
+            if (detailed == enabled) return;
+            long nextDeadline = 0;
+            if (enabled && debugAutoOffAfterMillis != null) {
+                if (now > Long.MAX_VALUE - debugAutoOffAfterMillis) throw new IllegalArgumentException("Invalid clock deadline");
+                nextDeadline = now + debugAutoOffAfterMillis;
+            }
+            detailed = enabled;
+            timed = enabled && debugAutoOffAfterMillis != null;
+            deadline = nextDeadline;
+            debugExpired = false;
+            replaceSession(now);
+        } finally { lock.unlock(); }
     }
 
     public void startDetailed() { startDetailed(900_000L); }
@@ -79,6 +122,8 @@ public final class CaptureController {
             if (now > Long.MAX_VALUE - durationMillis) throw new IllegalArgumentException("Invalid clock deadline");
             deadline = now + durationMillis;
             detailed = true;
+            timed = true;
+            debugExpired = false;
             replaceSession(now);
         } finally { lock.unlock(); }
     }
@@ -86,7 +131,7 @@ public final class CaptureController {
     public boolean stopDetailed() {
         if (!enter()) return false;
         try {
-            if (detailed) { detailed = false; replaceSession(clock.monotonicMillis()); }
+            if (detailed) { detailed = false; timed = false; debugExpired = false; replaceSession(clock.monotonicMillis()); }
             return true;
         } finally { lock.unlock(); }
     }
@@ -112,6 +157,8 @@ public final class CaptureController {
             if (baselineEnabled || detailed) {
                 baselineEnabled = false;
                 detailed = false;
+                timed = false;
+                debugExpired = false;
                 replaceSession(clock.monotonicMillis());
             }
             return true;
@@ -141,7 +188,8 @@ public final class CaptureController {
             long now = clock.monotonicMillis();
             expire(now);
             Mode mode = currentMode();
-            return body.apply(new Status(mode, baselineEnabled, mode == Mode.OFF ? null : sessionId, detailed ? deadline - now : 0));
+            return body.apply(new Status(mode, baselineEnabled, mode == Mode.OFF ? null : sessionId,
+                    detailed && timed ? deadline - now : 0, detailed && timed, debugExpired));
         } finally { lock.unlock(); }
     }
 
@@ -162,7 +210,9 @@ public final class CaptureController {
     private boolean enter() { return !lock.isHeldByCurrentThread() && lock.tryLock(); }
     private Mode currentMode() { return detailed ? Mode.DETAILED : baselineEnabled ? Mode.BASELINE : Mode.OFF; }
     private void expire(long now) {
-        if (detailed && now >= deadline) { detailed = false; replaceSession(now); }
+        if (detailed && timed && now >= deadline) {
+            detailed = false; timed = false; debugExpired = true; replaceSession(now);
+        }
     }
     private void replaceSession(long now) {
         pruneObservers();

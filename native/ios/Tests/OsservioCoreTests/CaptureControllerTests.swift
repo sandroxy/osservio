@@ -17,6 +17,7 @@ final class CaptureControllerTests: XCTestCase {
             clock.now = try XCTUnwrap(UInt64(fields[1]))
             switch fields[2] {
             case "status": break
+            case "debug": try capture.setDebugEnabled(fields[3] == "true")
             case "baseline": XCTAssertTrue(capture.setBaselineEnabled(fields[3] == "true"), fields[0])
             case "detailed": try capture.startDetailed(durationMillis: XCTUnwrap(UInt64(fields[3])))
             case "stop_detailed": XCTAssertTrue(capture.stopDetailed(), fields[0])
@@ -29,6 +30,56 @@ final class CaptureControllerTests: XCTestCase {
             XCTAssertEqual(status.sessionID != previousID, fields[6] == "changed", fields[0])
             previousID = status.sessionID
         }
+    }
+
+    func testHostDefaultsDeadlinesAndIdempotentDebugControl() throws {
+        let clock = LogPipelineTests.Clock(); clock.now = 100
+        let capture = CaptureController(baselineEnabled: true, debugEnabled: true, clock: clock)
+        let identity = capture.status()?.sessionID
+        clock.now += 86_400_001
+        try capture.setDebugEnabled(true)
+        XCTAssertEqual(capture.status()?.sessionID, identity)
+        XCTAssertEqual(capture.status()?.debugEnabled, true)
+        XCTAssertEqual(capture.status()?.debugHasTimeLimit, false)
+        try capture.setDebugEnabled(false)
+        XCTAssertEqual(capture.status()?.mode, .baseline)
+        XCTAssertEqual(CaptureController().status()?.debugEnabled, false)
+        XCTAssertEqual(CaptureController(debugEnabled: true).status()?.debugEnabled, true)
+
+        let limited = try CaptureController(baselineEnabled: true, debugEnabled: true,
+                                            debugAutoOffAfterMillis: 10, clock: clock)
+        let timedIdentity = limited.status()?.sessionID
+        clock.now += 9
+        try limited.setDebugEnabled(true)
+        XCTAssertEqual(limited.status()?.sessionID, timedIdentity)
+        XCTAssertEqual(limited.status()?.remainingMillis, 1)
+        XCTAssertEqual(limited.status()?.debugHasTimeLimit, true)
+        clock.now += 1
+        XCTAssertEqual(limited.status()?.mode, .baseline)
+        XCTAssertEqual(limited.status()?.debugExpired, true)
+        try limited.setDebugEnabled(true)
+        XCTAssertEqual(limited.status()?.remainingMillis, 10)
+        XCTAssertEqual(limited.status()?.debugExpired, false)
+        XCTAssertThrowsError(try CaptureController(debugAutoOffAfterMillis: 0))
+        XCTAssertThrowsError(try CaptureController(debugAutoOffAfterMillis: 86_400_001))
+    }
+
+    func testDebugRepeatPreservesExchangeAndStopRejectsBodyWork() throws {
+        let capture = CaptureController(debugEnabled: true)
+        let store = try MemoryHTTPStore()
+        let http = try HTTPRecorder(sink: store, captureController: capture,
+                                   privacy: HTTPPrivacyPolicy(bodyPolicy: .publicUTF8))
+        let token = try XCTUnwrap(http.begin(method: "POST", url: "https://example.com").token)
+        try capture.setDebugEnabled(true)
+        XCTAssertEqual(http.receiveResponse(token, statusCode: 200, headers: []), .recorded)
+        try capture.setDebugEnabled(false)
+        XCTAssertEqual(http.observeBody(token, direction: .response, byteCount: 20) { _ in
+            XCTFail("Disabled debugging must not copy the body"); return Data()
+        }, .inactive)
+        XCTAssertEqual(store.snapshot()?.events.first?.state, .captureEnded)
+        try capture.setDebugEnabled(true)
+        XCTAssertNotNil(http.begin(method: "GET", url: "https://example.com").token)
+        XCTAssertEqual(store.snapshot()?.events.count, 2)
     }
 
     func testBaselineNeverAdmitsDetailedLogs() throws {
@@ -89,6 +140,7 @@ final class CaptureControllerTests: XCTestCase {
         XCTAssertEqual(second.record(.info, category: "app", message: .publicText("busy")), .busy)
         XCTAssertNil(capture.status())
         XCTAssertFalse(capture.stopAll())
+        XCTAssertThrowsError(try capture.setDebugEnabled(false))
         XCTAssertFalse(capture.setBaselineEnabled(false))
         release.signal()
         wait(for: [finished], timeout: 2)

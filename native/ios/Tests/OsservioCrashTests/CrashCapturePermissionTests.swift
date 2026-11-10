@@ -40,6 +40,22 @@ final class CrashCapturePermissionTests: XCTestCase {
         XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
     }
 
+    func testContinuousDebugPermissionIsRevokedWithoutChangingBaseline() throws {
+        let capture = CaptureController(debugEnabled: true)
+        let permission = try CrashCapturePermission(captureController: capture)
+        defer { withExtendedLifetime(permission) {} }
+        XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
+        try capture.setDebugEnabled(true)
+        XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
+        try capture.setDebugEnabled(false)
+        XCTAssertFalse(OsservioCrashCaptureAllowsRecording())
+        XCTAssertEqual(capture.status()?.baselineEnabled, false)
+        XCTAssertTrue(capture.setBaselineEnabled(true))
+        try capture.setDebugEnabled(true)
+        try capture.setDebugEnabled(false)
+        XCTAssertTrue(OsservioCrashCaptureAllowsRecording())
+    }
+
     func testFailedSecondOwnerCannotChangeTheExistingPermission() throws {
         let capture = CaptureController(baselineEnabled: true)
         var owner: CrashCapturePermission? = try CrashCapturePermission(captureController: capture)

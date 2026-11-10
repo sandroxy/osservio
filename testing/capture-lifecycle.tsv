@@ -14,3 +14,11 @@ stop_detail	1212	stop_detailed	-	baseline	0	changed
 repeat_stop_detail	1213	stop_detailed	-	baseline	0	same
 stop_everything	1214	stop_all	-	off	0	changed
 repeat_stop_everything	1215	stop_all	-	off	0	same
+enable_debug	1300	debug	true	detailed	0	changed
+repeat_debug	1400	debug	true	detailed	0	same
+continuous_debug	86402000	status	-	detailed	0	same
+baseline_with_debug	86402000	baseline	true	detailed	0	same
+disable_debug	86402001	debug	false	baseline	0	changed
+repeat_disable_debug	86402002	debug	false	baseline	0	same
+resume_debug	86402003	debug	true	detailed	0	changed
+stop_continuous	86402004	stop_all	-	off	0	changed

@@ -9,6 +9,10 @@ public struct CaptureStatus: Sendable {
     public let baselineEnabled: Bool
     public let sessionID: String?
     public let remainingMillis: UInt64
+    public var debugEnabled: Bool { mode == .detailed }
+    /// Zero remaining time denotes no deadline when this is false.
+    public let debugHasTimeLimit: Bool
+    public let debugExpired: Bool
 }
 
 struct CaptureContext {
@@ -38,6 +42,9 @@ public final class CaptureController: @unchecked Sendable {
     private let lock = NSLock()
     let clock: any LogClock
     private var baselineEnabled: Bool
+    private var detailed: Bool
+    private var debugAutoOffAfterMillis: UInt64?
+    private var debugExpired = false
     private var deadline: UInt64 = 0
     private var sessionID = UUID().uuidString
     private var sequence: Int64 = 0
@@ -45,10 +52,40 @@ public final class CaptureController: @unchecked Sendable {
     private var observers: [WeakCaptureObserver] = []
     private weak var permissionObserver: (any CapturePermissionObserver)?
 
-    public init(baselineEnabled: Bool = false, clock: any LogClock = SystemLogClock()) {
+    public init(baselineEnabled: Bool = false, debugEnabled: Bool = false,
+                clock: any LogClock = SystemLogClock()) {
         self.baselineEnabled = baselineEnabled
+        self.detailed = debugEnabled
         self.clock = clock
         self.sessionStartMillis = clock.monotonicMillis()
+    }
+
+    /// Applies a host-selected deadline to each off-to-on debug transition, including startup.
+    public convenience init(baselineEnabled: Bool = false, debugEnabled: Bool = false,
+                            debugAutoOffAfterMillis: UInt64, clock: any LogClock = SystemLogClock()) throws {
+        guard (1...86_400_000).contains(debugAutoOffAfterMillis) else { throw CaptureConfigurationError.invalidDuration }
+        self.init(baselineEnabled: baselineEnabled, clock: clock)
+        self.debugAutoOffAfterMillis = debugAutoOffAfterMillis
+        if debugEnabled { try setDebugEnabled(true) }
+    }
+
+    /// Idempotent process-local control. Visibility, baseline policy and retained history are independent.
+    /// A repeated enable neither renews a deadline nor interrupts in-flight observations.
+    public func setDebugEnabled(_ enabled: Bool) throws {
+        guard lock.try() else { throw CaptureConfigurationError.busy }
+        defer { lock.unlock() }
+        let now = clock.monotonicMillis()
+        expire(at: now)
+        guard detailed != enabled else { return }
+        var nextDeadline: UInt64 = 0
+        if enabled, let duration = debugAutoOffAfterMillis {
+            guard now <= UInt64.max - duration else { throw CaptureConfigurationError.invalidDuration }
+            nextDeadline = now + duration
+        }
+        detailed = enabled
+        deadline = nextDeadline
+        debugExpired = false
+        replaceSession(at: now)
     }
 
     /// Starts or replaces detailed capture. Expiry returns to the configured baseline or off state.
@@ -59,6 +96,8 @@ public final class CaptureController: @unchecked Sendable {
         let now = clock.monotonicMillis()
         guard now <= UInt64.max - durationMillis else { throw CaptureConfigurationError.invalidDuration }
         deadline = now + durationMillis
+        detailed = true
+        debugExpired = false
         replaceSession(at: now)
     }
 
@@ -66,7 +105,7 @@ public final class CaptureController: @unchecked Sendable {
     public func stopDetailed() -> Bool {
         guard lock.try() else { return false }
         defer { lock.unlock() }
-        if deadline != 0 { deadline = 0; replaceSession(at: clock.monotonicMillis()) }
+        if detailed { detailed = false; deadline = 0; debugExpired = false; replaceSession(at: clock.monotonicMillis()) }
         return true
     }
 
@@ -79,7 +118,7 @@ public final class CaptureController: @unchecked Sendable {
         expire(at: now)
         if baselineEnabled != enabled {
             baselineEnabled = enabled
-            if deadline == 0 { replaceSession(at: now) }
+            if !detailed { replaceSession(at: now) }
             else { publishPermission() }
         }
         return true
@@ -90,9 +129,11 @@ public final class CaptureController: @unchecked Sendable {
     public func stopAll() -> Bool {
         guard lock.try() else { return false }
         defer { lock.unlock() }
-        if baselineEnabled || deadline != 0 {
+        if baselineEnabled || detailed {
             baselineEnabled = false
+            detailed = false
             deadline = 0
+            debugExpired = false
             replaceSession(at: clock.monotonicMillis())
         }
         return true
@@ -130,7 +171,8 @@ public final class CaptureController: @unchecked Sendable {
         expire(at: now)
         let mode = currentMode
         return body(CaptureStatus(mode: mode, baselineEnabled: baselineEnabled, sessionID: mode == .off ? nil : sessionID,
-                                  remainingMillis: deadline == 0 ? 0 : deadline - now))
+                                  remainingMillis: deadline == 0 ? 0 : deadline - now,
+                                  debugHasTimeLimit: detailed && deadline != 0, debugExpired: debugExpired))
     }
 
     // All recorder state associated with this controller is accessed under this lock.
@@ -150,11 +192,13 @@ public final class CaptureController: @unchecked Sendable {
     }
 
     private var currentMode: CaptureMode {
-        deadline != 0 ? .detailed : baselineEnabled ? .baseline : .off
+        detailed ? .detailed : baselineEnabled ? .baseline : .off
     }
 
     private func expire(at now: UInt64) {
-        if deadline != 0 && now >= deadline { deadline = 0; replaceSession(at: now) }
+        if detailed && deadline != 0 && now >= deadline {
+            detailed = false; deadline = 0; debugExpired = true; replaceSession(at: now)
+        }
     }
 
     private func replaceSession(at now: UInt64) {
@@ -168,6 +212,7 @@ public final class CaptureController: @unchecked Sendable {
 
     private func publishPermission() {
         permissionObserver?.capturePermissionDidChange(CapturePermission(
-            baselineEnabled: baselineEnabled, detailedDeadlineMillis: deadline))
+            baselineEnabled: baselineEnabled, continuousDebugEnabled: detailed && deadline == 0,
+            detailedDeadlineMillis: deadline))
     }
 }

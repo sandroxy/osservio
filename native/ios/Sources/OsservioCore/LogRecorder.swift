@@ -1,6 +1,6 @@
 import Foundation
 
-/// A finite capture session. Capture uses try-lock admission and has no async queue.
+/// Bounded text capture under a shared lifecycle. Capture uses try-lock admission and has no async queue.
 public final class LogRecorder: @unchecked Sendable {
     public let captureController: CaptureController
     private let sink: any LogSink

@@ -3,6 +3,7 @@ import Foundation
 /// A bounded native permission mirror. The deadline uses the controller's monotonic clock, not wall time.
 package struct CapturePermission: Sendable {
     package let baselineEnabled: Bool
+    package let continuousDebugEnabled: Bool
     package let detailedDeadlineMillis: UInt64
 }
 

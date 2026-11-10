@@ -31,6 +31,7 @@ public final class CaptureControllerTest {
             clock.now = Long.parseLong(fields[1]);
             switch (fields[2]) {
                 case "status": break;
+                case "debug": capture.setDebugEnabled(Boolean.parseBoolean(fields[3])); break;
                 case "baseline": assertTrue(fields[0], capture.setBaselineEnabled(Boolean.parseBoolean(fields[3]))); break;
                 case "detailed": capture.startDetailed(Long.parseLong(fields[3])); break;
                 case "stop_detailed": assertTrue(fields[0], capture.stopDetailed()); break;
@@ -43,6 +44,55 @@ public final class CaptureControllerTest {
             assertEquals(fields[0], fields[6].equals("changed"), !Objects.equals(status.sessionId, previousId));
             previousId = status.sessionId;
         }
+    }
+
+    @Test public void hostDefaultsDeadlinesAndIdempotentDebugControl() {
+        Clock clock = new Clock();
+        CaptureController capture = new CaptureController(true, true, clock);
+        String identity = capture.status().sessionId;
+        clock.now += 86_400_001;
+        capture.setDebugEnabled(true);
+        assertEquals(identity, capture.status().sessionId);
+        assertTrue(capture.status().debugEnabled);
+        assertFalse(capture.status().debugHasTimeLimit);
+        capture.setDebugEnabled(false);
+        assertEquals(CaptureController.Mode.BASELINE, capture.status().mode);
+        assertFalse(new CaptureController().status().debugEnabled);
+        assertTrue(new CaptureController(false, true, clock).status().debugEnabled);
+        CaptureController limited = new CaptureController(true, true, 10L, clock);
+        String timedIdentity = limited.status().sessionId;
+        clock.now += 9;
+        limited.setDebugEnabled(true);
+        assertEquals(timedIdentity, limited.status().sessionId);
+        assertEquals(1, limited.status().remainingMillis);
+        assertTrue(limited.status().debugHasTimeLimit);
+        clock.now++;
+        assertEquals(CaptureController.Mode.BASELINE, limited.status().mode);
+        assertTrue(limited.status().debugExpired);
+        limited.setDebugEnabled(true);
+        assertEquals(10, limited.status().remainingMillis);
+        assertFalse(limited.status().debugExpired);
+        assertThrows(IllegalArgumentException.class, () -> new CaptureController(false, false, 0L, clock));
+        assertThrows(IllegalArgumentException.class, () -> new CaptureController(false, false, 86_400_001L, clock));
+    }
+
+    @Test public void debugRepeatPreservesExchangeAndStopRejectsBodyWork() {
+        CaptureController capture = new CaptureController(false, true, LogClock.SYSTEM);
+        MemoryHTTPStore store = new MemoryHTTPStore();
+        HTTPRecorder http = new HTTPRecorder(store, capture, new HTTPPrivacyPolicy(false, java.util.Collections.emptySet(),
+                HTTPPrivacyPolicy.BodyPolicy.PUBLIC_UTF8, 1024));
+        HTTPRecorder.Token token = http.begin("POST", "https://example.com", java.util.Collections.emptyList()).token;
+        assertNotNull(token);
+        capture.setDebugEnabled(true);
+        assertEquals(HTTPRecorder.Result.RECORDED, http.receiveResponse(token, 200, java.util.Collections.emptyList(), false));
+        capture.setDebugEnabled(false);
+        assertEquals(HTTPRecorder.Result.INACTIVE, http.observeBody(token, HTTPRecorder.Direction.RESPONSE, 20, count -> {
+            fail("Disabled debugging must not copy the body"); return null;
+        }));
+        assertEquals(HTTPEvent.State.CAPTURE_ENDED, store.snapshot().events.get(0).state);
+        capture.setDebugEnabled(true);
+        assertNotNull(http.begin("GET", "https://example.com", java.util.Collections.emptyList()).token);
+        assertEquals(2, store.snapshot().events.size());
     }
 
     @Test public void baselineNeverAdmitsDetailedLogs() {
@@ -105,6 +155,7 @@ public final class CaptureControllerTest {
             assertEquals(LogRecorder.Result.BUSY, second.record(LogLevel.INFO, "app", LogMessage.publicText("busy")));
             assertNull(capture.status());
             assertFalse(capture.stopAll());
+            assertThrows(IllegalStateException.class, () -> capture.setDebugEnabled(false));
             assertFalse(capture.setBaselineEnabled(false));
         } finally { release.countDown(); worker.join(2000L); }
         assertFalse(worker.isAlive());

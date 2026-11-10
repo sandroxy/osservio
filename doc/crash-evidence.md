@@ -24,7 +24,8 @@ slots can be processed before one is reserved for the new process.
 `CrashRecorder.install(reports:captureController:completion:)` explicitly installs
 the BSD signal backend on the source's worker. It requires `SystemLogClock` and
 exclusive crash-handler ownership. Baseline or unexpired detailed capture permits
-new fatal files; off prevents new writes. The absolute detailed deadline remains
+new fatal files; off prevents new writes. Continuous debugging also permits recording without enabling baseline.
+The absolute deadline of a time-limited debug session remains
 effective without polling Core. A write admitted before stop may finish.
 
 The installer reports conflicts with existing BSD handlers, an Objective-C

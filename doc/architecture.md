@@ -73,10 +73,10 @@ configuration alone to decide what can be enabled.
 | --- | --- |
 | Off | No new observations are recorded; access to existing evidence and deletion are controlled separately. |
 | Baseline | Selected breadcrumbs and incident mechanisms operate within a low-overhead budget. |
-| Detailed session | Explicitly selected collectors add richer detail within time and resource limits. |
+| Detailed session | Explicitly enabled debugging adds richer detail within resource limits and an optional host-selected deadline. |
 
 A development preset may start detailed capture during initialization. Its
-limits still apply. Ending a detailed session restores the configured baseline
+resource limits still apply; a host may also configure an automatic deadline. Ending a detailed session restores the configured baseline
 or off state. Closing the inspector does not implicitly change either state.
 
 The host controls access policy, available capabilities, and privacy settings.
@@ -179,7 +179,7 @@ observers and one-shot environment queries. SQLite persistence accepts only
 sanitized restart-relevant breadcrumbs. The optional iOS `OsservioCrash` product
 provides explicit process-lifetime recording and bounded pending-file recovery,
 with separate [verification](../testing/crash-backend/README.md). Its permission
-bridge follows Core control and absolute detailed-session expiry. Reading old
+bridge follows Core control, continuous debug permission and absolute timed-session expiry. Reading old
 files is independent of installing handlers; other products do not link this backend.
 Core also validates [address-only signal evidence](crash-evidence.md). The
 internal iOS decoder enforces the backend's privacy profile before producing

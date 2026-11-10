@@ -28,7 +28,10 @@ final class CrashCapturePermission: CapturePermissionObserver {
     }
 
     func capturePermissionDidChange(_ permission: CapturePermission) {
-        OsservioCrashCaptureUpdate(permission.baselineEnabled, permission.detailedDeadlineMillis)
+        // The native permission bit allows recording without a deadline. It serves both
+        // baseline diagnosis and explicitly enabled process-lifetime debugging.
+        OsservioCrashCaptureUpdate(permission.baselineEnabled || permission.continuousDebugEnabled,
+                                  permission.detailedDeadlineMillis)
     }
 
     func arm() {
