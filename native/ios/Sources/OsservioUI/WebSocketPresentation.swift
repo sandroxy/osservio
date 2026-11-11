@@ -26,19 +26,19 @@ enum WebSocketPresentation {
             .filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
     static func payload(_ reference: WebSocketPayloadReference?, history: any WebSocketHistory) -> InspectorReadContent {
-        guard let reference else { return InspectorReadContent(notice: text("ws_no_payload")) }
-        let notice = payloadDescription(reference)
+        guard let reference else { return InspectorReadContent(notice: { text("ws_no_payload") }) }
+        let notice = { payloadDescription(reference) }
         guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
         switch history.payload(id: id) {
         case .available(let payload):
-            return InspectorReadContent(text: payload.text, notice: notice + (payload.text.isEmpty ? "\n" + text("http_body_empty") : ""), allowsJSON: reference.state == .available)
-        case .unavailable: return InspectorReadContent(notice: text("http_body_unavailable"))
-        case .busy: return InspectorReadContent(notice: text("http_body_busy"))
+            return InspectorReadContent(text: payload.text, notice: { notice() + (payload.text.isEmpty ? "\n" + text("http_body_empty") : "") }, allowsJSON: reference.state == .available)
+        case .unavailable: return InspectorReadContent(notice: { text("http_body_unavailable") })
+        case .busy: return InspectorReadContent(notice: { text("http_body_busy") })
         }
     }
     static func payload(_ reference: WebSocketPayloadReference?, savedPayloads: [String: IncidentPayload]) -> InspectorReadContent {
-        guard let reference else { return InspectorReadContent(notice: text("ws_no_payload")) }
-        let notice = payloadDescription(reference)
+        guard let reference else { return InspectorReadContent(notice: { text("ws_no_payload") }) }
+        let notice = { payloadDescription(reference) }
         guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
         return .saved(savedPayloads[id], notice: notice, complete: reference.state == .available)
     }

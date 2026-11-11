@@ -143,7 +143,7 @@ final class IncidentSnapshotViewController: UITableViewController {
         }
         if indexPath.section == 0 && (indexPath.row == 1 || indexPath.row == 2 && snapshot.note?.isPrivate == false) {
             let content = InspectorReadContent(text: indexPath.row == 1 ? snapshot.id : snapshot.note?.text ?? "",
-                notice: indexPath.row == 2 && snapshot.note?.isTruncated == true ? RuntimePresentation.text("truncated") : "",
+                notice: { [snapshot] in indexPath.row == 2 && snapshot.note?.isTruncated == true ? RuntimePresentation.text("truncated") : "" },
                 context: { [snapshot] in IncidentPresentation.title(snapshot.systemDiagnostic?.kind) + " · " + InspectorValuePresentation.eventTime(snapshot.timestampMillis, full: true) })
             inspectorPush(InspectorContentViewController(titleKey: indexPath.row == 1 ? "ui_record_identity" : "incident_note", value: content))
         }

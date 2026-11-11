@@ -1,5 +1,6 @@
 #if canImport(UIKit)
 import UIKit
+import OsservioCore
 @testable import OsservioUI
 import XCTest
 
@@ -49,7 +50,7 @@ final class InspectorJSONReaderTests: XCTestCase {
         }
     }
     @MainActor func testIncompleteSourceNeverBecomesAStructuralSuccessAndCancelledReadCanResume() async throws {
-        let incomplete = InspectorContentViewController(title: "Partial", value: InspectorReadContent(text: "{}", notice: "Truncated", allowsJSON: false))
+        let incomplete = InspectorContentViewController(title: "Partial", value: InspectorReadContent(text: "{}", notice: { "Truncated" }, allowsJSON: false))
         let window = show(incomplete); defer { window.isHidden = true; window.rootViewController = nil }
         try await Task.sleep(nanoseconds: 100_000_000)
         XCTAssertNil(find(incomplete.view, InspectorJSONTreeView.self)?.document)
@@ -66,18 +67,31 @@ final class InspectorJSONReaderTests: XCTestCase {
         let preferences = InspectorPreferences.shared, language = preferences.language
         defer { preferences.language = language }
         preferences.language = .chinese
-        let reader = InspectorContentViewController(title: "JSON", content: source, code: true)
+        let id = "12345678-1234-1234-1234-123456789abc.response"
+        let reference = try HTTPBodyReference.restore(state: .available, blobID: id, observedBytes: Int64(source.utf8.count))
+        let payload = try IncidentPayload.restore(id: id, state: .available, text: source)
+        let content = HTTPPresentation.body(reference, savedPayloads: [id: payload])
+            .withNoticePrefix { InspectorLocalization.text("incident_frozen_detail") }
+        let reader = InspectorContentViewController(title: "JSON", value: content)
         let window = show(reader); defer { window.isHidden = true; window.rootViewController = nil }
         let tree = try XCTUnwrap(find(reader.view, InspectorJSONTreeView.self)); try await ready(tree)
         tree.tableView(tree, didSelectRowAt: IndexPath(row: 1, section: 0)); tree.layoutIfNeeded()
         let path = IndexPath(row: 1, section: 0)
         XCTAssertEqual(try XCTUnwrap(tree.cellForRow(at: path)).accessibilityValue, "已展开")
+        XCTAssertTrue(hasLabel(reader.view, containing: HTTPPresentation.bodyDescription(reference)))
         let offset = tree.contentOffset
         reader.beginAppearanceTransition(false, animated: false); reader.endAppearanceTransition()
         preferences.language = .english
         reader.beginAppearanceTransition(true, animated: false); reader.endAppearanceTransition()
         XCTAssertEqual(try XCTUnwrap(tree.cellForRow(at: path)).accessibilityValue, "Expanded")
         XCTAssertEqual(tree.expanded, [1]); XCTAssertEqual(tree.contentOffset, offset)
+        XCTAssertTrue(hasLabel(reader.view, containing: HTTPPresentation.bodyDescription(reference)))
+        XCTAssertTrue(hasLabel(reader.view, containing: InspectorLocalization.text("incident_frozen_detail")))
+        XCTAssertEqual(tree.document?.original(0), source)
+    }
+    @MainActor private func hasLabel(_ view: UIView, containing text: String) -> Bool {
+        if let label = view as? UILabel, label.text?.contains(text) == true { return true }
+        return view.subviews.contains { hasLabel($0, containing: text) }
     }
     @MainActor private func ready(_ tree: InspectorJSONTreeView) async throws {
         for _ in 0..<100 {

@@ -51,17 +51,17 @@ enum HTTPPresentation {
     }
 
     static func body(_ reference: HTTPBodyReference, history: any HTTPHistory) -> InspectorReadContent {
-        let notice = bodyDescription(reference)
+        let notice = { bodyDescription(reference) }
         guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
         switch history.body(id: id) {
         case .available(let body):
-            return InspectorReadContent(text: body.text, notice: notice + (body.text.isEmpty ? "\n" + text("http_body_empty") : ""), allowsJSON: reference.state == .available)
-        case .unavailable: return InspectorReadContent(notice: text("http_body_unavailable"))
-        case .busy: return InspectorReadContent(notice: text("http_body_busy"))
+            return InspectorReadContent(text: body.text, notice: { notice() + (body.text.isEmpty ? "\n" + text("http_body_empty") : "") }, allowsJSON: reference.state == .available)
+        case .unavailable: return InspectorReadContent(notice: { text("http_body_unavailable") })
+        case .busy: return InspectorReadContent(notice: { text("http_body_busy") })
         }
     }
     static func body(_ reference: HTTPBodyReference, savedPayloads: [String: IncidentPayload]) -> InspectorReadContent {
-        let notice = bodyDescription(reference)
+        let notice = { bodyDescription(reference) }
         guard let id = reference.blobID else { return InspectorReadContent(notice: notice) }
         return .saved(savedPayloads[id], notice: notice, complete: reference.state == .available)
     }

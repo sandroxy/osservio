@@ -144,7 +144,7 @@ final class LogDetailViewController: InspectorDetailViewController {
         sections = [Section(title: InspectorLocalization.text("ui_read_content"), rows: [
             Row(RuntimePresentation.message(String(event.message.prefix(600)), isPrivate: event.isPrivate), action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }; self.read(titleKey: "ui_log_content", content: InspectorReadContent(text: self.event.message,
-                    notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate,
+                    notice: { [event = self.event] in event.isTruncated ? InspectorLocalization.text("truncated") : "" }, allowsJSON: !self.event.isTruncated && !self.event.isPrivate,
                     context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
             })
         ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · ")),

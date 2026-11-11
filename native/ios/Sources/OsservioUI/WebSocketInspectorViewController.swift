@@ -88,8 +88,8 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         var content: InspectorReadContent
         if let savedPayloads { content = WebSocketPresentation.payload(event.payload, savedPayloads: savedPayloads) }
         else if let history { content = WebSocketPresentation.payload(event.payload, history: history) }
-        else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
-        if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
+        else { content = InspectorReadContent(notice: { InspectorLocalization.text("incident_payload_missing") }) }
+        if let noticeKey { content = content.withNoticePrefix { InspectorLocalization.text(noticeKey) } }
         content.context = { [event] in InspectorRecordPresentation.context(event) }
         return content
     }

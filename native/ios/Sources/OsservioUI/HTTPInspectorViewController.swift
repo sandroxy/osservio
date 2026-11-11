@@ -90,8 +90,8 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         var content: InspectorReadContent
         if let savedPayloads { content = HTTPPresentation.body(reference, savedPayloads: savedPayloads) }
         else if let history { content = HTTPPresentation.body(reference, history: history) }
-        else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
-        if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
+        else { content = InspectorReadContent(notice: { InspectorLocalization.text("incident_payload_missing") }) }
+        if let noticeKey { content = content.withNoticePrefix { InspectorLocalization.text(noticeKey) } }
         content.context = { [event] in InspectorRecordPresentation.context(event) }
         return content
     }

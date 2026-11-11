@@ -13,6 +13,9 @@ final class IncidentEvidenceTests: XCTestCase {
     }
     @MainActor
     func testLiveOverviewDoesNotReadBodiesAndSelectedContentDoesNotRefreshMetadata() async throws {
+        let preferences = InspectorPreferences.shared, language = preferences.language
+        defer { preferences.language = language }
+        preferences.language = .chinese
         let bodyID = id + ".response"
         let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 1, revision: 2, timestampMillis: 123, method: "GET", source: .host,
             url: "https://example.com/fixture", responseURL: nil, requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 200,
@@ -32,6 +35,12 @@ final class IncidentEvidenceTests: XCTestCase {
         XCTAssertEqual(history.reads, 2)
         let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
         XCTAssertTrue(try XCTUnwrap(find(reader.view, UITextView.self)).text.contains("content"))
+        reader.beginAppearanceTransition(false, animated: false); reader.endAppearanceTransition()
+        preferences.language = .english
+        reader.beginAppearanceTransition(true, animated: false); reader.endAppearanceTransition()
+        XCTAssertEqual(history.reads, 2, "Relocalizing a retained reader must not consult live content again")
+        XCTAssertTrue(labels(reader.view).joined(separator: "\n").contains(HTTPPresentation.bodyDescription(event.responseBody)))
+        XCTAssertEqual(find(reader.view, UITextView.self)?.text, "content")
     }
     @MainActor
     func testSavedHTTPNavigationSearchAndContentHaveNoLiveRefresh() async throws {

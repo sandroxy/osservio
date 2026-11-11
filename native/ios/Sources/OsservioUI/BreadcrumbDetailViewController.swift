@@ -29,7 +29,10 @@ final class BreadcrumbDetailViewController: InspectorDetailViewController {
             let flags = [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · ")
             result.append(Section(title: InspectorLocalization.text("ui_event_message"), rows: [Row(InspectorLocalization.text(event.isPrivate ? "ui_private_content" : "ui_open_reader"), event.isPrivate ? nil : preview, action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }
-                self.read(titleKey: "ui_event_message", content: InspectorReadContent(text: message, notice: flags, allowsJSON: !self.event.isPrivate && !self.event.isTruncated, context: { [event = self.event] in RuntimePresentation.breadcrumbTitle(event) + " · " + InspectorValuePresentation.eventTime(event.timestampMillis) }))
+                self.read(titleKey: "ui_event_message", content: InspectorReadContent(text: message,
+                    notice: { [event = self.event] in event.isTruncated ? InspectorLocalization.text("truncated") : "" },
+                    allowsJSON: !self.event.isPrivate && !self.event.isTruncated,
+                    context: { [event = self.event] in RuntimePresentation.breadcrumbTitle(event) + " · " + InspectorValuePresentation.eventTime(event.timestampMillis) }))
             })], footer: flags.isEmpty ? nil : flags))
         }
         result.append(Section(title: InspectorLocalization.text("crumb_retention"), rows: [Row(InspectorLocalization.text(event.retention == .restartRelevant ? "crumb_restart_relevant" : "crumb_memory_only"))]))
