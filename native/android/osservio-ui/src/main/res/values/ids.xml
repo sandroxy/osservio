@@ -2,4 +2,6 @@
     <item name="osservio_appearance_style" type="id" />
     <item name="osservio_appearance_text" type="id" />
     <item name="osservio_appearance_content" type="id" />
+    <item name="osservio_scroll_padding" type="id" />
+    <item name="osservio_floating_margin" type="id" />
 </resources>

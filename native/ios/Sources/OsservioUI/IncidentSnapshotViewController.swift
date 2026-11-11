@@ -113,7 +113,7 @@ final class IncidentSnapshotViewController: UITableViewController {
         } else {
             let event = events[indexPath.row]
             cell.textLabel?.text = RuntimePresentation.kind(event) + " · " + event.label
-            cell.detailTextLabel?.text = RuntimePresentation.date(event.timestampMillis) + " · #\(event.sequence)" + (event.message.map { "\n" + $0 } ?? "")
+            cell.detailTextLabel?.text = RuntimePresentation.date(event.timestampMillis) + " · #\(event.sequence)" + (event.message.map { "\n" + RuntimePresentation.message($0, isPrivate: event.isPrivate) } ?? "")
             cell.textLabel?.numberOfLines = 2; cell.detailTextLabel?.numberOfLines = 3
             cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button
         }

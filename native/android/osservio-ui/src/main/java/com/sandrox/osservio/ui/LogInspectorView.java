@@ -71,7 +71,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             InspectorQuery query = state.query.copy(); query.text = value; apply(query);
         }, this::followLatest, this::filters, this::confirmClear, true);
         header.onQueryChange = this::apply;
-        list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
+        list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
@@ -141,6 +141,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
             : stale || status == null ? R.string.osservio_busy : status.isRecording ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
         rows.notifyDataSetChanged(); status();
+        if (!state.paused) list.setSelectionFromTop(0, 0);
     }
     private void filters() { dialog = InspectorFilterSheet.show(getContext(), state.query, InspectorFilterOptions.logs(getContext(), retained()), true, this::apply); watchDialog(); }
     private void confirmClear() {
@@ -150,6 +151,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         watchDialog();
     }
     private void followLatest() {
+        list.smoothScrollBy(0, 0); // Stop an in-flight fling before changing the reading anchor.
         cancelSearch(); nextSearchAt = 0; state.paused = false;
         refresh();
         // Set the anchor after notifying the adapter, which otherwise restores the old row.
@@ -188,7 +190,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
                 : event.level == LogLevel.WARNING ? InspectorTheme.color(getContext(), R.color.osservio_warning) : InspectorTheme.secondary(getContext());
             String marker = event.isTruncated ? " · " + getContext().getString(R.string.osservio_truncated) : "";
             String preview = result == null ? null : result.previews.get(new InspectorRecordSearch.Record(event).key());
-            row.bind(event.level == LogLevel.WARNING ? "WARN" : event.level.name(), preview == null ? event.message.substring(0, Math.min(600, event.message.length())) : preview, event.category + marker, event.timestampMillis, tone);
+            row.bind(event.level == LogLevel.WARNING ? "WARN" : event.level.name(), event.isPrivate ? getContext().getString(R.string.osservio_ui_private_content) : preview == null ? event.message.substring(0, Math.min(600, event.message.length())) : preview, event.category + marker, event.timestampMillis, tone);
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

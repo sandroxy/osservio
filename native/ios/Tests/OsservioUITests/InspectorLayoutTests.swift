@@ -28,6 +28,7 @@ final class InspectorLayoutTests: XCTestCase {
                     let label = "\(type(of: viewer)) \(category.rawValue) \(size)"
                     XCTAssertGreaterThanOrEqual(table.bounds.height, 44, label)
                     XCTAssertGreaterThan(table.numberOfRows(inSection: 0), 0, label)
+                    table.delegate?.scrollViewWillBeginDragging?(table)
                     table.scrollToRow(at: IndexPath(row: 0, section: 0), at: .top, animated: false)
                     table.layoutIfNeeded()
                     let row = table.rectForRow(at: IndexPath(row: 0, section: 0))
@@ -78,6 +79,7 @@ final class InspectorLayoutTests: XCTestCase {
                 XCTAssertEqual(header.frame.width, table.bounds.width)
                 XCTAssertEqual(footer.frame.width, table.bounds.width)
                 XCTAssertNil(table.backgroundView)
+                table.delegate?.scrollViewWillBeginDragging?(table)
                 table.scrollRectToVisible(footer.frame, animated: false)
                 XCTAssertTrue(footer.frame.intersects(table.bounds))
                 heights.append(header.frame.height)
@@ -88,16 +90,73 @@ final class InspectorLayoutTests: XCTestCase {
         }
     }
 
-    @MainActor private func viewers(empty: Bool = false) throws -> [UIViewController] {
+    @MainActor
+    func testLatestRemainsAtTopAfterRealRowsSearchAndReappearance() async throws {
+        for viewer in try viewers(count: 32) {
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            window.rootViewController = viewer; window.makeKeyAndVisible()
+            defer { window.isHidden = true; window.rootViewController = nil }
+            viewer.beginAppearanceTransition(true, animated: false); viewer.endAppearanceTransition()
+            window.layoutIfNeeded()
+            let table = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? UITableView }.first)
+            let header = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? InspectorFeedHeader }.first)
+            XCTAssertGreaterThan(table.numberOfRows(inSection: 0), 20)
+            table.delegate?.scrollViewWillBeginDragging?(table)
+            table.scrollToRow(at: IndexPath(row: 20, section: 0), at: .top, animated: false)
+            table.layoutIfNeeded()
+            XCTAssertGreaterThan(table.contentOffset.y, 200)
+            let restingSize = header.pause.bounds.size
+            viewer.beginAppearanceTransition(false, animated: false); viewer.endAppearanceTransition()
+            viewer.beginAppearanceTransition(true, animated: true); viewer.endAppearanceTransition()
+            table.layoutIfNeeded()
+            XCTAssertEqual(header.pause.bounds.size, restingSize)
+            XCTAssertFalse(header.pause.isHidden)
+            try invoke(header.pause, event: .touchUpInside)
+            for _ in 0..<20 {
+                try await Task.sleep(nanoseconds: 20_000_000)
+                table.setNeedsLayout(); table.layoutIfNeeded()
+                XCTAssertEqual(table.contentOffset.y, -table.adjustedContentInset.top, accuracy: 1, "\(type(of: viewer))")
+            }
+            XCTAssertTrue(header.pause.isHidden)
+            // Search completions reload a real window after the explicit jump.
+            header.search.text = viewer is LogInspectorViewController ? "evidence" : "example"
+            try invoke(header.search, event: .editingChanged)
+            for _ in 0..<60 {
+                try await Task.sleep(nanoseconds: 20_000_000)
+                table.layoutIfNeeded()
+                XCTAssertEqual(table.contentOffset.y, -table.adjustedContentInset.top, accuracy: 1)
+            }
+            table.delegate?.scrollViewWillBeginDragging?(table)
+            table.setContentOffset(CGPoint(x: 0, y: 160), animated: false); table.layoutIfNeeded()
+            XCTAssertFalse(header.pause.isHidden)
+            XCTAssertEqual(table.contentOffset.y, 160, accuracy: 1, "A drag must release the latest anchor")
+            try invoke(header.pause, event: .touchUpInside)
+            _ = table.accessibilityScroll(.down)
+            table.setContentOffset(CGPoint(x: 0, y: 180), animated: false); table.layoutIfNeeded()
+            XCTAssertFalse(header.pause.isHidden)
+            XCTAssertEqual(table.contentOffset.y, 180, accuracy: 1, "Accessibility scrolling must also release the anchor")
+            viewer.beginAppearanceTransition(false, animated: false); viewer.endAppearanceTransition()
+        }
+    }
+    @MainActor private func invoke(_ control: UIControl, event: UIControl.Event) throws {
+        for target in control.allTargets {
+            let receiver = try XCTUnwrap(target.base as? NSObject)
+            for action in control.actions(forTarget: receiver, forControlEvent: event) ?? [] {
+                _ = receiver.perform(NSSelectorFromString(action), with: control)
+            }
+        }
+    }
+
+    @MainActor private func viewers(empty: Bool = false, count: Int = 1) throws -> [UIViewController] {
         let capture = CaptureController(baselineEnabled: true); try capture.startDetailed()
         let logs = try MemoryLogStore(), crumbs = try MemoryBreadcrumbStore()
         let requests = try MemoryHTTPStore(), sockets = try MemoryWebSocketStore()
         let log = try LogRecorder(sink: logs, captureController: capture)
-        let breadcrumb = try BreadcrumbRecorder(sink: crumbs, captureController: capture)
+        let breadcrumb = try BreadcrumbRecorder(sink: crumbs, captureController: capture, eventsPerSecond: 100)
         let http = try HTTPRecorder(sink: requests, captureController: capture, privacy: HTTPPrivacyPolicy())
         let ws = try WebSocketRecorder(sink: sockets, captureController: capture, privacy: WebSocketPrivacyPolicy())
-        if !empty {
-            XCTAssertEqual(log.record(.info, category: "layout", message: .publicText("Synthetic layout evidence")), .recorded)
+        for index in 0..<(empty ? 0 : count) {
+            XCTAssertEqual(log.record(.info, category: "layout", message: .publicText("Synthetic layout evidence \(index) " + String(repeating: "variable row height ", count: index % 7))), .recorded)
             XCTAssertEqual(breadcrumb.record(.hostMarker, label: "layout.ready"), .recorded)
             let request = try XCTUnwrap(http.begin(method: "GET", url: "https://example.com").token)
             XCTAssertEqual(http.receiveResponse(request, statusCode: 200, headers: []), .recorded)

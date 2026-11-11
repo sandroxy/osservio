@@ -7,7 +7,8 @@ import UIKit
 final class BreadcrumbArchiveViewController: UITableViewController {
     private let archive: any BreadcrumbArchive
     private var runs: [RetainedRun] = []
-    private var reading = false { didSet { updateDeleteAction() } }
+    private var reading = false { didSet { updateDeleteAction(); updateReadingState() } }
+    private var pendingRow = IndexPath(row: 0, section: 0)
     private var generation = 0
     private var updatedAt: Int64?
     private var notice = RuntimePresentation.text("archive_hint")
@@ -28,8 +29,8 @@ final class BreadcrumbArchiveViewController: UITableViewController {
     }
     private func read() {
         guard !reading else { return }
+        pendingRow = IndexPath(row: 0, section: 0)
         reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_reading"); tableView.reloadData()
         archive.readRuns { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -69,7 +70,23 @@ final class BreadcrumbArchiveViewController: UITableViewController {
             cell.accessoryType = .disclosureIndicator
         }
         if reading { cell.accessibilityTraits.insert(.notEnabled) }
+        showActivity(cell, at: indexPath)
         return cell
+    }
+    private func updateReadingState() {
+        guard isViewLoaded else { return }
+        for cell in tableView.visibleCells {
+            guard let index = tableView.indexPath(for: cell) else { continue }
+            showActivity(cell, at: index)
+        }
+    }
+    private func showActivity(_ cell: UITableViewCell, at index: IndexPath) {
+        cell.isUserInteractionEnabled = !reading
+        if reading && index == pendingRow {
+            let activity = cell.accessoryView as? UIActivityIndicatorView ?? UIActivityIndicatorView(style: .medium)
+            activity.accessibilityLabel = RuntimePresentation.text("archive_reading")
+            activity.startAnimating(); cell.accessoryView = activity
+        } else { cell.accessoryView = nil }
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
@@ -78,8 +95,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
             read()
             return
         }
-        reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_reading"); tableView.reloadData()
+        pendingRow = indexPath; reading = true; generation += 1; let request = generation
         archive.readRun(id: runs[indexPath.row].id) { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -115,7 +131,6 @@ final class BreadcrumbArchiveViewController: UITableViewController {
     private func delete(id: String?) {
         guard !reading else { return }
         reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_deleting"); tableView.reloadData()
         let completed: @Sendable (Result<Void, PersistenceError>) -> Void = { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -179,7 +194,7 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
         PersistencePresentation.style(cell)
         let event = events[indexPath.row]
         cell.textLabel?.text = RuntimePresentation.kind(event) + " · " + event.label
-        cell.detailTextLabel?.text = RuntimePresentation.date(event.timestampMillis) + " · #\(event.sequence)" + (event.message.map { "\n" + $0 } ?? "")
+        cell.detailTextLabel?.text = RuntimePresentation.date(event.timestampMillis) + " · #\(event.sequence)" + (event.message.map { "\n" + RuntimePresentation.message($0, isPrivate: event.isPrivate) } ?? "")
         cell.textLabel?.numberOfLines = 2; cell.detailTextLabel?.numberOfLines = 3; cell.accessoryType = .disclosureIndicator
         return cell
     }

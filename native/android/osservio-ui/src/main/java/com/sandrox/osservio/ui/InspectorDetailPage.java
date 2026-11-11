@@ -2,11 +2,10 @@ package com.sandrox.osservio.ui;
 
 import android.content.Context;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 /** Grouped metadata and explicit readers share one compact native visual hierarchy. */
-final class InspectorDetailPage extends ScrollView {
+final class InspectorDetailPage extends InspectorScroll.Page {
     private final LinearLayout content;
     private LinearLayout group;
     private InspectorScreen reader;

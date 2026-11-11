@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -16,7 +15,7 @@ import java.util.List;
 /** Visible-only status updates; baseline changes never end a debug session. */
 // Capture controllers are required; this view is never inflated from XML.
 @android.annotation.SuppressLint("ViewConstructor")
-final class InspectorCaptureSettingsView extends ScrollView {
+final class InspectorCaptureSettingsView extends InspectorScroll.Page {
     private final CaptureController baseline;
     private final List<CaptureController> controllers = new ArrayList<>();
     private final List<TextView> values = new ArrayList<>();

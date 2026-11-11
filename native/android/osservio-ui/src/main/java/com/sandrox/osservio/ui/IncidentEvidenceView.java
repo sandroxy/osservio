@@ -41,7 +41,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
             detail.setOnDismissListener(ignored -> detail = null);
         }, () -> { }, true); header.hideActions();
         header.onQueryChange = value -> { query = value; filter(); };
-        ListView list = new ListView(context); list.setItemsCanFocus(true);
+        ListView list = new InspectorScroll.List(context); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
         InspectorAppearance.Value<String> info = () -> logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
             : http != null ? IncidentPresentation.window(context, http.observedAtMillis, http.events.size(), http.omittedEventCount, http.sourceEvictedEvents, http.sourceEvictedBodies)
@@ -113,7 +113,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
             int index = indices.get(position); Context context = getContext();
             if (logs != null) {
                 LogEvent event = logs.events.get(index);
-                row.bind(event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name(), event.message, event.category, event.timestampMillis, InspectorTheme.accent(context));
+                row.bind(event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name(), RuntimePresentation.message(context, event.message, event.isPrivate), event.category, event.timestampMillis, InspectorTheme.accent(context));
             } else if (http != null) {
                 HTTPEvent event = http.events.get(index);
                 row.bind(event.method, InspectorQuery.path(event.url),

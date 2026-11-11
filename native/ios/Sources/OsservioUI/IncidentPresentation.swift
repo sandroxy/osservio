@@ -6,6 +6,21 @@ enum IncidentPresentation {
     static func title(_ kind: SystemDiagnosticKind?) -> String {
         kind.map(SystemDiagnosticPresentation.kind) ?? RuntimePresentation.text("incident_manual")
     }
+    static func listTitle(_ summary: IncidentSummary) -> String {
+        if let note = summary.note, !note.isPrivate, !note.text.isEmpty { return note.text }
+        return title(summary.diagnosticKind)
+    }
+    static func listSubtitle(_ summary: IncidentSummary) -> String {
+        var evidence: [String] = []
+        if summary.hasEnvironment { evidence.append(RuntimePresentation.text("runtime_environment")) }
+        for (key, count) in [("runtime_breadcrumbs", summary.breadcrumbCount), ("logs", summary.logCount),
+                             ("HTTP", summary.httpCount), ("ws_title", summary.webSocketCount)] {
+            if let count { evidence.append((key == "HTTP" ? key : RuntimePresentation.text(key)) + ": \(count)") }
+        }
+        return (summary.note?.isPrivate == true ? RuntimePresentation.text("incident_private_note") + "\n" : "")
+            + (evidence.isEmpty ? RuntimePresentation.text("incident_no_attachments") : evidence.joined(separator: " · "))
+            + "\n" + timeLabel(summary.diagnosticKind) + " · " + RuntimePresentation.date(summary.timestampMillis)
+    }
     static func timeLabel(_ kind: SystemDiagnosticKind?) -> String {
         RuntimePresentation.text(kind == nil ? "incident_frozen_time" : "diagnostic_recovered_at")
     }
@@ -19,7 +34,7 @@ enum IncidentPresentation {
     }
     static func note(_ note: IncidentNote?) -> String {
         guard let note else { return RuntimePresentation.text("incident_no_note") }
-        return note.text + (note.isPrivate ? "\n" + RuntimePresentation.text("crumb_private") : "")
+        return (note.isPrivate ? RuntimePresentation.text("incident_private_note") : note.text)
             + (note.isTruncated ? "\n" + RuntimePresentation.text("truncated") : "")
     }
     static func counts(_ context: IncidentBreadcrumbs?) -> String {

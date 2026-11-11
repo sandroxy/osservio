@@ -65,7 +65,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             android.widget.TextView hint = InspectorWidgets.caption(context); InspectorAppearance.text(hint, () -> context.getString(R.string.osservio_ui_connection_hint) + "\n" + connectionID);
             header.addView(hint, 0, new LayoutParams(-1, -2)); header.actions.setVisibility(GONE);
         }
-        list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
+        list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < items.size()) open(items.get(index));
@@ -146,6 +146,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
             : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
         rows.notifyDataSetChanged(); status();
+        if (!state.paused) list.setSelectionFromTop(0, 0);
     }
     private boolean isDetailed() {
         CaptureController.Status http = httpRecorder == null ? null : httpRecorder.captureController.status();
@@ -178,6 +179,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         watched.setOnDismissListener(ignored -> { if (dialog == watched) { dialog = null; schedule(); } });
     }
     private void followLatest() {
+        list.smoothScrollBy(0, 0); // A pending fling must not move the list away after the jump.
         cancelSearch(); nextSearchAt = 0; state.paused = false;
         refresh();
         // Set the anchor after notifying the adapter, which otherwise restores the old row.

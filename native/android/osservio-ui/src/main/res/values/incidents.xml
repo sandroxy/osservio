@@ -71,4 +71,7 @@
     <string name="osservio_incident_discard_hint">Your unsaved note and attachment choices will be discarded.</string>
     <string name="osservio_incident_keep_editing">Keep editing</string>
     <string name="osservio_incident_discard">Discard record</string>
+    <string name="osservio_ui_private_content">Content hidden for privacy</string>
+    <string name="osservio_incident_private_note">Description hidden for privacy</string>
+    <string name="osservio_incident_no_attachments">No evidence attached</string>
 </resources>

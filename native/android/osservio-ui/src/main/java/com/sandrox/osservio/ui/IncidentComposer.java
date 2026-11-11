@@ -116,7 +116,7 @@ final class IncidentComposer {
         }});
         content.addView(editor, params());
         content.addView(label(context.getString(R.string.osservio_incident_note_hint) + "\n" + context.getString(R.string.osservio_incident_note_limit)), params());
-        ScrollView scroll = new ScrollView(context); scroll.setFillViewport(true); scroll.addView(content);
+        ScrollView scroll = new InspectorScroll.Page(context); scroll.setFillViewport(true); scroll.addView(content);
         dialog = InspectorDialogs.panel(context, R.string.osservio_incident_mark, scroll);
         cancelButton = dialog.leadingAction(R.string.osservio_archive_cancel, dialog::cancel);
         saveButton = dialog.action(R.string.osservio_incident_save, this::save);
@@ -173,7 +173,7 @@ final class IncidentComposer {
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(16), 0, dp(16), dp(16));
         content.addView(label(context.getString(R.string.osservio_incident_discard_hint)), params());
-        ScrollView scroll = new ScrollView(context); scroll.addView(content);
+        ScrollView scroll = new InspectorScroll.Page(context); scroll.addView(content);
         InspectorScreen confirmation = InspectorDialogs.panel(context, R.string.osservio_incident_discard_title, scroll);
         confirmation.compact();
         LinearLayout choices = InspectorWidgets.group(context); content.addView(choices, params());

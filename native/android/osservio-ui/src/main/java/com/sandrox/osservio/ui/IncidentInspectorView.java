@@ -117,7 +117,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         header.addView(mark, 0, markLayout); header.addView(retry, 1, new LinearLayout.LayoutParams(-1, -2));
         notice = header.status; notice.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         empty = header.empty; actions = header.actions;
-        list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
+        list = new InspectorScroll.List(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
         TextView hint = caption(); hint.setText(R.string.osservio_incident_archive_hint); hint.setPadding(dp(16), dp(16), dp(16), dp(16));
         list.addFooterView(hint, null, false); list.setAdapter(rows);
@@ -175,7 +175,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
     }
     private int begin() {
         reading = true; retryNeeded = false; attempted = true; generation++;
-        notice.setText(R.string.osservio_archive_reading); render(); return generation;
+        updateReadingState(); return generation;
     }
     private void read() {
         if (reading) return;
@@ -254,7 +254,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         confirmation.setOnDismissListener(ignored -> confirmation = null); confirmation.show();
     }
     private void delete(String id) {
-        int request = begin(); notice.setText(R.string.osservio_archive_deleting);
+        int request = begin();
         WeakReference<IncidentInspectorView> reference = new WeakReference<>(this); Handler handler = main;
         IncidentArchive.Completion completion = error -> handler.post(() -> {
             IncidentInspectorView view = reference.get(); if (view == null || view.generation != request) return;
@@ -271,7 +271,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
     }
     private void render() {
         if (list == null) return;
-        mark.setEnabled(!reading); retry.setEnabled(!reading); retry.setVisibility(retryNeeded ? VISIBLE : GONE); actions.setEnabled(!reading && !snapshots.isEmpty());
+        updateReadingState(); retry.setVisibility(retryNeeded ? VISIBLE : GONE);
         visible.clear();
         long now = updatedAt == null ? System.currentTimeMillis() : updatedAt;
         for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now)) visible.add(snapshot);
@@ -280,6 +280,11 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         empty.setVisibility(visible.isEmpty() ? VISIBLE : GONE);
         empty.setText(reading ? R.string.osservio_archive_reading : snapshots.isEmpty() ? R.string.osservio_incident_empty : R.string.osservio_ui_filtered_empty);
         if (selected != null) selected.busy(reading); rows.notifyDataSetChanged();
+    }
+    private void updateReadingState() {
+        mark.setEnabled(!reading); retry.setEnabled(!reading); actions.setEnabled(!reading && !snapshots.isEmpty());
+        list.setEnabled(!reading); header.setReading(reading);
+        if (snapshots.isEmpty()) empty.setText(reading ? R.string.osservio_archive_reading : R.string.osservio_incident_empty);
     }
     private void hideKeyboard() {
         View focused = findFocus(); if (focused != null) focused.clearFocus();
@@ -296,11 +301,9 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
             InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow
                 ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             IncidentSummary snapshot = visible.get(position);
-            String type = IncidentPresentation.title(getContext(), snapshot.diagnosticKind);
             row.bind(getContext().getString(snapshot.diagnosticKind == null ? R.string.osservio_ui_manual : R.string.osservio_ui_system),
-                snapshot.note == null || snapshot.note.text.isEmpty() ? type : snapshot.note.text,
-                IncidentPresentation.timeLabel(getContext(), snapshot.diagnosticKind) + " · " + RuntimePresentation.date(getContext(), snapshot.timestampMillis)
-                    + "\n" + snapshot.id.substring(0, Math.min(8, snapshot.id.length())), snapshot.timestampMillis, InspectorTheme.accent(getContext()));
+                IncidentPresentation.listTitle(getContext(), snapshot), IncidentPresentation.listSubtitle(getContext(), snapshot),
+                snapshot.timestampMillis, InspectorTheme.accent(getContext()));
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

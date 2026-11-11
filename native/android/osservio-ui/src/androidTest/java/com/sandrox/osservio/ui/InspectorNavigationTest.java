@@ -123,6 +123,48 @@ public final class InspectorNavigationTest {
             } finally { InspectorPreferences.setEnglish(base, wasEnglish); InspectorPreferences.setDark(base, wasDark); InspectorPreferences.setPalette(base, wasPalette); }
         });
     }
+    @Test public void bottomTabsOverlayScrollableContentWithoutHidingTheLastRowOrInsetGrowth() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController();
+            MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore http = new MemoryHTTPStore();
+            InspectorView inspector = new InspectorView(context, new LogRecorder(logs, capture), logs,
+                new HTTPRecorder(http, capture, new HTTPPrivacyPolicy()), http);
+            inspector.setOnMinimizeListener(() -> { });
+            for (int i = 0; i < 3; i++) { inspector.requestLayout(); layout(inspector, 390, 844); }
+            ListView list = first(inspector, ListView.class);
+            View tab = description(inspector, R.string.osservio_logs);
+            android.graphics.Rect listRect = new android.graphics.Rect(0, 0, list.getWidth(), list.getHeight());
+            android.graphics.Rect tabRect = new android.graphics.Rect(0, 0, tab.getWidth(), tab.getHeight());
+            inspector.offsetDescendantRectToMyCoords(list, listRect); inspector.offsetDescendantRectToMyCoords(tab, tabRect);
+            assertTrue("History continues behind the tab bar", listRect.bottom > tabRect.bottom);
+            assertTrue("Last row can scroll above the controls", list.getPaddingBottom() >= listRect.bottom - tabRect.top);
+            int inset = list.getPaddingBottom();
+            for (int i = 0; i < 4; i++) { inspector.requestLayout(); layout(inspector, 390, 844); }
+            assertEquals("Insets must not accumulate", inset, list.getPaddingBottom());
+            InspectorNavigation navigation = InspectorNavigation.from(inspector.getContext());
+            ScrollView scroll = new InspectorScroll.Page(inspector.getContext());
+            android.widget.TextView evidence = new android.widget.TextView(context); StringBuilder lines = new StringBuilder(); for (int row = 0; row < 100; row++) lines.append("Retained detail\n");
+            evidence.setText(lines); scroll.addView(evidence);
+            InspectorScreen reader = InspectorDialogs.screen(inspector.getContext(), "Detail", scroll); reader.show();
+            for (int i = 0; i < 3; i++) { inspector.requestLayout(); layout(inspector, 390, 844); }
+            assertEquals(inset, scroll.getPaddingBottom());
+            scroll.scrollTo(0, InspectorTheme.dp(context, 200));
+            for (int i = 0; i < 3; i++) { inspector.requestLayout(); layout(inspector, 390, 844); }
+            assertEquals("Scrolling must not remove or accumulate the safe reading inset", inset, scroll.getPaddingBottom());
+            android.graphics.Rect target = new android.graphics.Rect(0, scroll.getScrollY() + scroll.getHeight() - 50,
+                30, scroll.getScrollY() + scroll.getHeight() - 10);
+            int requestedBottom = target.bottom;
+            evidence.requestRectangleOnScreen(target, true);
+            assertTrue("Requested content stays above the bottom controls",
+                requestedBottom - scroll.getScrollY() <= scroll.getHeight() - scroll.getPaddingBottom());
+            InspectorScreen panel = InspectorDialogs.panel(inspector.getContext(), R.string.osservio_ui_filters, new ScrollView(context)); panel.show();
+            layout(inspector, 390, 844);
+            assertEquals("Sheets cover tabs and receive no tab inset", 0, first(panel.view, ScrollView.class).getPaddingBottom());
+            navigation.dispose();
+        });
+    }
+
     private static <T extends View> void collectAll(View view, Class<T> type, List<T> result) {
         if (type.isInstance(view)) result.add(type.cast(view));
         if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) collectAll(((ViewGroup) view).getChildAt(i), type, result);

@@ -5,6 +5,9 @@ import UIKit
 enum RuntimePresentation {
     static func text(_ key: String) -> String { InspectorLocalization.text(key) }
     static func kind(_ event: BreadcrumbEvent) -> String { text("crumb_kind_" + event.kind.rawValue) }
+    static func message(_ value: String, isPrivate: Bool) -> String {
+        isPrivate ? text("ui_private_content") : value
+    }
     static func date(_ millis: Int64) -> String {
         InspectorLocalization.date(millis)
     }

@@ -26,7 +26,7 @@ public final class LogInspectorViewController: UITableViewController {
     private var attemptedRead = false
     private var stale = false
     private(set) var query = InspectorQuery()
-    private(set) var paused = false
+    private(set) var paused = false { didSet { table.followsLatest = !paused } }
 
     public init(recorder: LogRecorder, history: any LogHistory) {
         self.recorder = recorder; self.history = history; super.init(style: .plain)
@@ -40,7 +40,7 @@ public final class LogInspectorViewController: UITableViewController {
         table.keyboardDismissMode = .onDrag
         header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }
         header.onQueryChange = { [weak self] in self?.apply($0) }
-        table.followLatestButton = header.pause
+        table.followLatestButton = header.pause; table.followsLatest = true
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
         style.changed()
@@ -104,7 +104,7 @@ public final class LogInspectorViewController: UITableViewController {
     }
     @objc private func followLatest() {
         cancelSearch(); nextSearchAt = 0; paused = false; refresh()
-        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false)
+        table.showLatest()
     }
     @objc private func showFilters() {
         view.endEditing(true)
@@ -125,7 +125,7 @@ public final class LogInspectorViewController: UITableViewController {
         let event = events[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "log") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "log")
         cell.configure(badge: InspectorFilterOptions.label(.level, event.level.rawValue), time: event.timestampMillis,
-            title: result?.previews[InspectorSearchRecord.log(event).key] ?? String(event.message.prefix(600)), subtitle: event.category + (event.isTruncated ? " · " + InspectorLocalization.text("truncated") : ""),
+            title: event.isPrivate ? InspectorLocalization.text("ui_private_content") : result?.previews[InspectorSearchRecord.log(event).key] ?? String(event.message.prefix(600)), subtitle: event.category + (event.isTruncated ? " · " + InspectorLocalization.text("truncated") : ""),
             color: event.level == .error ? .systemRed : event.level == .warning ? .systemOrange : InspectorTheme.accent)
         return cell
     }
@@ -149,7 +149,7 @@ final class LogDetailViewController: InspectorDetailViewController {
             Row(InspectorLocalization.text("http_time"), InspectorLocalization.date(event.timestampMillis)),
             Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
         ]), Section(title: InspectorLocalization.text("ui_read_content"), rows: [
-            Row(String(event.message.prefix(600)), action: { [weak self] in
+            Row(RuntimePresentation.message(String(event.message.prefix(600)), isPrivate: event.isPrivate), action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }; self.read(titleKey: "ui_log_content", content: InspectorReadContent(text: self.event.message,
                     notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate))
             })

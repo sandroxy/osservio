@@ -18,6 +18,44 @@ final class InspectorNavigation extends FrameLayout {
     private Runnable changed;
     private int selection;
     private boolean disposing;
+    private int bottomInset;
+    private final android.graphics.Rect contentBounds = new android.graphics.Rect();
+
+    void setBottomInset(int value) {
+        if (bottomInset == value) return;
+        bottomInset = value; requestLayout();
+    }
+    @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        insetContent(this);
+    }
+    private void insetContent(View child) {
+        if (child.getVisibility() == GONE) return;
+        if (child instanceof android.widget.AbsListView || child instanceof android.widget.ScrollView) {
+            int[] padding = (int[]) child.getTag(R.id.osservio_scroll_padding);
+            if (padding == null) {
+                padding = new int[] {child.getPaddingLeft(), child.getPaddingTop(), child.getPaddingRight(), child.getPaddingBottom()};
+                child.setTag(R.id.osservio_scroll_padding, padding);
+            }
+            contentBounds.set(child.getScrollX(), child.getScrollY(), child.getScrollX() + child.getWidth(), child.getScrollY() + child.getHeight());
+            offsetDescendantRectToMyCoords(child, contentBounds);
+            int inset = contentBounds.bottom >= getHeight() - InspectorTheme.dp(getContext(), 20) ? bottomInset : 0;
+            if (child.getPaddingBottom() != padding[3] + inset) child.setPadding(padding[0], padding[1], padding[2], padding[3] + inset);
+            ((android.view.ViewGroup) child).setClipToPadding(false);
+            return; // A scroll container owns its content; never inset individual rows.
+        }
+        Object margin = child.getTag(R.id.osservio_floating_margin);
+        if (margin instanceof Integer && child.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) child.getLayoutParams();
+            if (params.bottomMargin != (Integer) margin + bottomInset) {
+                params.bottomMargin = (Integer) margin + bottomInset; child.setLayoutParams(params);
+            }
+        }
+        if (child instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) child;
+            for (int i = 0; i < group.getChildCount(); i++) insetContent(group.getChildAt(i));
+        }
+    }
 
     InspectorNavigation(Context context, View rootPage, FrameLayout modalContainer, View workspace) {
         super(context); this.rootPage = rootPage; this.modalContainer = modalContainer; this.workspace = workspace;

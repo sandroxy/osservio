@@ -62,7 +62,9 @@ swipe/backdrop or an accessible dismiss action; Android also provides a draggabl
 handle. Filter drafts remain provisional
 until Apply. Copy and Back use icons with contextual
 accessibility labels; Reset, Apply, Cancel and Save retain concise text. The
-problem sheet places Cancel on the left and Save on the right. Titles
+problem sheet places Cancel on the left and Save on the right. Android sheet
+actions use neutral secondary capsules and filled primary capsules, with explicit
+disabled states. Titles
 name the page's function; URLs, event categories and observation states stay in
 the content instead of competing for navigation space.
 
@@ -87,7 +89,9 @@ Problems deletes saved evidence with a separate confirmation.
 Scrolling freezes the reading window while capture continues. View latest is a
 floating upward-arrow capsule above the tab bar, independent of the scrolling
 header. It reads the newest retained local snapshot, returns to the top and
-resumes updates without resetting the query. Ending a scroll at the top also
+resumes updates without resetting the query. The top stays anchored through
+self-sizing rows and deferred search results until the user scrolls again. An
+explicit jump stops any pending Android fling. Ending a scroll at the top also
 resumes updates. There is no separate unbounded queue or unread counter. Bounded stores may still evict
 content while a reader is paused. Hidden lists stop polling and cancel content
 search. Failed metadata reads keep the previous window with an explicit notice.
@@ -134,12 +138,18 @@ Time uses each observation's wall-clock timestamp. A paused window keeps its tim
 anchor fixed. Problems filters use record/recovery time; historical failure time
 remains separate in saved details. Problems refreshes on appearance, foregrounding,
 save and deletion, with Retry available after a read failure, rather than polling
-the archive or providing a permanent refresh control.
+the archive or providing a permanent refresh control. Reading existing incidents
+or saved runs shows activity inside an existing control area without inserting a
+loading paragraph above the rows. Initial empty reads and failures remain explicit.
 
 ## Details and content
 
 Dense event feeds use an inset continuous group with rounded outside corners and
-fine dividers. Metadata and settings use grouped cards. Text and JSON readers
+fine dividers. Android scrollable pages extend behind the floating tab bar with
+bottom scroll padding and a small canvas-colored gradient. The last item can be
+scrolled fully above the controls, and requested controls account for the same
+inset. Sheets cover the tabs and do not inherit this padding. This treatment does
+not sample or blur host content. Metadata and settings use grouped cards. Text and JSON readers
 share the page canvas with reading margins, rather than a full-height white panel.
 
 Live list searches include retained sanitized log content, HTTP request/response
@@ -162,6 +172,14 @@ group the record, environment, attached logs/network records and breadcrumbs;
 unattached evidence has no disclosure action. System diagnostics retain structured
 source facts and open address lists separately. Platform-specific evidence stays
 explicit rather than being replaced with a common placeholder value.
+
+Private descriptions use a localized privacy explanation instead of making
+`[private]` the problem title. The list retains the problem type, record time and
+available attachment counts, including explicitly attached empty windows. Private
+log and breadcrumb content is labeled consistently in live and saved views; a
+hidden body has no reader action. These are presentation choices based on typed
+privacy flags, not text matching. They do not recover discarded text, delete
+records or change sanitized storage and portable exports.
 
 Log details show a bounded message preview that opens the reader. The reader's
 search field is directly available; copy remains in the page navigation. A saved

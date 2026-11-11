@@ -62,7 +62,9 @@ public final class InspectorView extends FrameLayout {
     private TextView title;
     private InspectorToolbar rootBar;
     private android.widget.ImageButton close;
-    private final LinearLayout workspace;
+    private final FrameLayout workspace;
+    private LinearLayout tabBar;
+    private View bottomShade;
     private final LinearLayout rootPage;
     private InspectorDebugControl debugControl;
     private final Runnable debugTick = new Runnable() {
@@ -121,7 +123,7 @@ public final class InspectorView extends FrameLayout {
         this.socketRecorder = socketRecorder; this.socketHistory = socketHistory; this.environment = environment;
         this.breadcrumbRecorder = breadcrumbRecorder; this.breadcrumbHistory = breadcrumbHistory; this.breadcrumbArchive = breadcrumbArchive;
         this.incidentArchive = incidentArchive; this.exporter = exporter;
-        workspace = new LinearLayout(getContext()); workspace.setOrientation(LinearLayout.VERTICAL);
+        workspace = new FrameLayout(getContext());
         rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
         navigation = new InspectorNavigation(getContext(), rootPage, this, workspace);
         ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
@@ -151,7 +153,7 @@ public final class InspectorView extends FrameLayout {
     private void rebuild() {
         for (View page : pages) savePosition(page);
         rootPage.removeAllViews(); workspace.removeAllViews();
-        workspace.addView(navigation, new LinearLayout.LayoutParams(-1, 0, 1));
+        workspace.addView(navigation, new FrameLayout.LayoutParams(-1, -1));
         for (int i = 0; i < pages.length; i++) pages[i] = null;
         dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext()); palette = InspectorPreferences.palette(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
@@ -165,6 +167,7 @@ public final class InspectorView extends FrameLayout {
         rootPage.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(themed); rootPage.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         LinearLayout navigation = new LinearLayout(themed);
+        tabBar = navigation;
         navigation.setBackground(InspectorTheme.shape(themed, InspectorTheme.surface(themed), 32, false));
         int spacing = InspectorTheme.dp(themed, 4); navigation.setPadding(spacing, spacing, spacing, spacing);
         navigation.setElevation(InspectorTheme.dp(themed, 1));
@@ -187,8 +190,15 @@ public final class InspectorView extends FrameLayout {
             label.setPadding(InspectorTheme.dp(themed, 4), InspectorTheme.dp(themed, 3), InspectorTheme.dp(themed, 4), 0);
             tab.addView(label, new LinearLayout.LayoutParams(-1, -2)); tabs[i] = tab; navigation.addView(tab, new LinearLayout.LayoutParams(0, -2, 1));
         }
-        LinearLayout.LayoutParams navigationLayout = new LinearLayout.LayoutParams(-1, -2);
-        navigationLayout.setMargins(inset, InspectorTheme.dp(themed, 8), inset, InspectorTheme.dp(themed, 10));
+        bottomShade = new View(themed); bottomShade.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        InspectorAppearance.style(bottomShade, () -> {
+            int canvas = InspectorTheme.canvas(themed);
+            bottomShade.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] {canvas & 0x00FFFFFF, canvas}));
+        });
+        workspace.addView(bottomShade, new FrameLayout.LayoutParams(-1, 0, Gravity.BOTTOM));
+        FrameLayout.LayoutParams navigationLayout = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        navigationLayout.setMargins(inset, 0, inset, InspectorTheme.dp(themed, 10));
         workspace.addView(navigation, navigationLayout); select(selection);
         compactChrome(getHeight());
     }
@@ -239,7 +249,7 @@ public final class InspectorView extends FrameLayout {
         if (configurationChanged) { rebuild(); }
         else {
             palette = selectedPalette; themed = InspectorTheme.context(themed);
-            InspectorAppearance.refresh(rootPage); select(selection);
+            InspectorAppearance.refresh(workspace); select(selection);
         }
         navigation.refreshAppearance(themed); if (appearanceListener != null) appearanceListener.changed(dark);
     }
@@ -247,6 +257,16 @@ public final class InspectorView extends FrameLayout {
         if (MeasureSpec.getMode(height) != MeasureSpec.UNSPECIFIED)
             compactChrome(Math.max(0, MeasureSpec.getSize(height) - getPaddingTop() - getPaddingBottom()));
         super.onMeasure(width, height);
+    }
+    @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (tabBar == null) return;
+        int inset = tabBar.getHeight() + InspectorTheme.dp(themed, 18);
+        navigation.setBottomInset(inset);
+        int shadeHeight = inset + InspectorTheme.dp(themed, 24);
+        if (bottomShade.getLayoutParams().height != shadeHeight) {
+            bottomShade.getLayoutParams().height = shadeHeight; bottomShade.requestLayout();
+        }
     }
     private void compactChrome(int height) {
         if (rootBar == null || height == 0) return;

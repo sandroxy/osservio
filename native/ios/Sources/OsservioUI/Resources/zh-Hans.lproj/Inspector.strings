@@ -198,3 +198,5 @@
 "ui_palette_teal" = "青绿";
 "ui_palette_green" = "森林绿";
 "ui_palette_rose" = "玫瑰";
+
+"ui_private_content" = "正文已隐藏（隐私）";

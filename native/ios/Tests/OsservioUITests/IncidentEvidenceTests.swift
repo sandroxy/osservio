@@ -109,7 +109,7 @@ final class IncidentEvidenceTests: XCTestCase {
         try await settled(XCTUnwrap(group.navigationController))
         let detail = try XCTUnwrap(group.navigationController?.topViewController as? LogDetailViewController); detail.loadViewIfNeeded()
         let metadata = detail.sections.flatMap(\.rows).map { $0.label + ($0.value ?? "") }.joined(separator: "\n")
-        XCTAssertTrue(metadata.contains(id)); XCTAssertTrue(metadata.contains("#11")); XCTAssertTrue(metadata.contains("[private]"))
+        XCTAssertTrue(metadata.contains(id)); XCTAssertTrue(metadata.contains("#11")); XCTAssertTrue(metadata.contains(RuntimePresentation.text("ui_private_content")))
     }
     @MainActor private func show(_ controller: UIViewController) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))

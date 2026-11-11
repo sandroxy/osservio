@@ -59,7 +59,7 @@ final class InspectorFilterSheet {
         List<Choice> choices = new ArrayList<>();
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, 0);
-        ListView list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
+        ListView list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.setVerticalScrollBarEnabled(false); list.setSelector(android.R.color.transparent);
         list.setPadding(0, 0, 0, inset); list.setClipToPadding(false);
         InspectorFilterConditions conditions = payload ? new InspectorFilterConditions(context, draft, () -> {

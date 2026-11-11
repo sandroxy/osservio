@@ -23,13 +23,14 @@ final class BreadcrumbDetailViewController: InspectorDetailViewController {
         if let value = event.value { overview.append(Row(InspectorLocalization.text("crumb_value"), String(value))) }
         var result = [Section(title: InspectorLocalization.text("ui_overview"), rows: overview,
                               footer: InspectorLocalization.text("crumb_detail_hint"))]
-        if let message = event.message {
+        if let rawMessage = event.message {
+            let message = RuntimePresentation.message(rawMessage, isPrivate: event.isPrivate)
             let preview = String(message.prefix(320)) + (message.count > 320 ? "…" : "")
             let flags = [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · ")
-            result.append(Section(title: InspectorLocalization.text("ui_event_message"), rows: [Row(InspectorLocalization.text("ui_open_reader"), preview) { [weak self] in
+            result.append(Section(title: InspectorLocalization.text("ui_event_message"), rows: [Row(InspectorLocalization.text(event.isPrivate ? "ui_private_content" : "ui_open_reader"), event.isPrivate ? nil : preview, action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }
                 self.read(titleKey: "ui_event_message", content: InspectorReadContent(text: message, notice: flags, allowsJSON: !self.event.isPrivate && !self.event.isTruncated))
-            }], footer: flags.isEmpty ? nil : flags))
+            })], footer: flags.isEmpty ? nil : flags))
         }
         result.append(Section(title: InspectorLocalization.text("crumb_retention"), rows: [Row(InspectorLocalization.text(event.retention == .restartRelevant ? "crumb_restart_relevant" : "crumb_memory_only"))]))
         var technical = [Row(InspectorLocalization.text(technicalExpanded ? "ui_hide_identifiers" : "ui_show_identifiers")) { [weak self] in

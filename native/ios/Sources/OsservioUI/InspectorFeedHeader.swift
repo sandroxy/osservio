@@ -11,6 +11,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     let filters = UIButton(type: .system)
     let criteria = InspectorTheme.label(.caption1, secondary: true)
     let count = InspectorTheme.label(.caption1, secondary: true)
+    let activity = UIActivityIndicatorView(style: .medium)
     let extra = UIStackView()
     var onSearch: ((String) -> Void)?
     var onQueryChange: ((InspectorQuery) -> Void)?
@@ -20,6 +21,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     private let tokenScroll = UIScrollView()
     private var tokenQuery: InspectorQuery?
     private var tokenStyle = ""
+    private var latestStyle = ""
 
 
     init(compact: Bool = false, actionLabel: String = "clear") {
@@ -41,7 +43,13 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
         let searchRow = UIStackView(arrangedSubviews: [search, filters]); searchRow.spacing = 8
-        let summary = UIStackView(arrangedSubviews: compact ? [count, status] : [status]); summary.axis = .vertical; summary.spacing = 4
+        let activitySlot = UIView(); activitySlot.translatesAutoresizingMaskIntoConstraints = false
+        activity.translatesAutoresizingMaskIntoConstraints = false; activitySlot.addSubview(activity)
+        NSLayoutConstraint.activate([activitySlot.widthAnchor.constraint(equalToConstant: 20),
+            activitySlot.heightAnchor.constraint(equalToConstant: 20), activity.centerXAnchor.constraint(equalTo: activitySlot.centerXAnchor),
+            activity.centerYAnchor.constraint(equalTo: activitySlot.centerYAnchor)])
+        let countRow = UIStackView(arrangedSubviews: [count, activitySlot]); countRow.spacing = 8; countRow.alignment = .center
+        let summary = UIStackView(arrangedSubviews: compact ? [countRow, status] : [status]); summary.axis = .vertical; summary.spacing = 4
         let controls = UIStackView(arrangedSubviews: compact ? [summary] : [summary, pause, actions]); controls.spacing = 8; controls.alignment = .center
         status.setContentHuggingPriority(.defaultLow, for: .horizontal)
         if compact {
@@ -61,10 +69,16 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
     func relabel(paused: Bool, query: InspectorQuery) {
         if compact {
-            configure(pause, symbol: "arrow.up", title: InspectorLocalization.text("ui_follow_latest"))
-            pause.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
-            pause.titleLabel?.adjustsFontForContentSizeCategory = true
-            pause.titleLabel?.numberOfLines = 1; pause.isHidden = !paused
+            let style = InspectorLocalization.text("ui_follow_latest") + InspectorPreferences.shared.appearance.rawValue
+                + InspectorPreferences.shared.palette.rawValue + traitCollection.preferredContentSizeCategory.rawValue
+            if latestStyle != style {
+                latestStyle = style
+                configure(pause, symbol: "arrow.up", title: InspectorLocalization.text("ui_follow_latest"))
+                pause.titleLabel?.font = .preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection)
+                pause.titleLabel?.adjustsFontForContentSizeCategory = true
+                pause.titleLabel?.numberOfLines = 1
+            }
+            pause.isHidden = !paused
             pause.layer.shadowColor = UIColor.black.cgColor; pause.layer.shadowOpacity = 0.12
             pause.layer.shadowRadius = 8; pause.layer.shadowOffset = CGSize(width: 0, height: 3)
         } else { configure(pause, symbol: paused ? "play.fill" : "pause.fill", selected: paused) }
@@ -117,6 +131,11 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         configuration.image = UIImage(systemName: symbol)
         configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
         configuration.title = title; configuration.imagePadding = 5
+        configuration.titleLineBreakMode = .byTruncatingTail
+        let font = UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection)
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes; attributes.font = font; return attributes
+        }
         configuration.baseForegroundColor = InspectorTheme.accent
         configuration.background.backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.surface
         configuration.cornerStyle = .capsule

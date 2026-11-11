@@ -19,8 +19,9 @@ final class BreadcrumbDetailDialog {
         page.note(R.string.osservio_crumb_detail_hint);
         if (event.message != null) {
             page.section(R.string.osservio_ui_event_message);
-            String preview = event.message.length() > 320 ? event.message.substring(0, 320) + "…" : event.message;
-            page.disclosure(R.string.osservio_ui_open_reader, () -> preview, () -> page.read(R.string.osservio_ui_event_message,
+            String preview = RuntimePresentation.message(context, event.message.length() > 320 ? event.message.substring(0, 320) + "…" : event.message, event.isPrivate);
+            if (event.isPrivate) page.value(() -> context.getString(R.string.osservio_ui_private_content), null);
+            else page.disclosure(R.string.osservio_ui_open_reader, () -> preview, () -> page.read(R.string.osservio_ui_event_message,
                 new InspectorReadContent(event.message, () -> notice(context, event), !event.isPrivate && !event.isTruncated)));
             page.note(() -> notice(context, event));
         }

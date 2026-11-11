@@ -10,6 +10,20 @@ final class IncidentPresentation {
     static String title(Context context, SystemDiagnostic.Kind kind) {
         return kind == null ? context.getString(R.string.osservio_incident_manual) : SystemDiagnosticPresentation.kind(context, kind);
     }
+    static String listTitle(Context context, IncidentSummary summary) {
+        return summary.note != null && !summary.note.isPrivate && !summary.note.text.isEmpty()
+            ? summary.note.text : title(context, summary.diagnosticKind);
+    }
+    static String listSubtitle(Context context, IncidentSummary summary) {
+        java.util.List<String> evidence = new java.util.ArrayList<>();
+        if (summary.hasEnvironment) evidence.add(context.getString(R.string.osservio_runtime_environment));
+        int[] labels = {R.string.osservio_runtime_breadcrumbs, R.string.osservio_logs, R.string.osservio_ui_http, R.string.osservio_ws_title};
+        Integer[] counts = {summary.breadcrumbCount, summary.logCount, summary.httpCount, summary.webSocketCount};
+        for (int i = 0; i < labels.length; i++) if (counts[i] != null) evidence.add(context.getString(labels[i]) + ": " + counts[i]);
+        return (summary.note != null && summary.note.isPrivate ? context.getString(R.string.osservio_incident_private_note) + "\n" : "")
+            + (evidence.isEmpty() ? context.getString(R.string.osservio_incident_no_attachments) : android.text.TextUtils.join(" · ", evidence))
+            + "\n" + timeLabel(context, summary.diagnosticKind) + " · " + RuntimePresentation.date(context, summary.timestampMillis);
+    }
     static String timeLabel(Context context, SystemDiagnostic.Kind kind) {
         return context.getString(kind == null ? R.string.osservio_incident_frozen_time : R.string.osservio_diagnostic_recovered_at);
     }
@@ -23,7 +37,7 @@ final class IncidentPresentation {
     }
     static String note(Context context, IncidentSnapshot.Note note) {
         if (note == null) return context.getString(R.string.osservio_incident_no_note);
-        return note.text + (note.isPrivate ? "\n" + context.getString(R.string.osservio_crumb_private) : "")
+        return (note.isPrivate ? context.getString(R.string.osservio_incident_private_note) : note.text)
             + (note.isTruncated ? "\n" + context.getString(R.string.osservio_truncated) : "");
     }
     static String counts(Context context, IncidentSnapshot.Breadcrumbs breadcrumbs) {

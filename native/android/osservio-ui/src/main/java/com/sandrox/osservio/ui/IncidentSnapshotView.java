@@ -42,7 +42,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, goBack);
         copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> copy(IncidentPresentation.summary(context, snapshot)));
         controls.addView(back); controls.addView(copy); addView(controls, new LayoutParams(-1, -2));
-        ListView list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
+        ListView list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.setPadding(dp(16), 0, dp(16), dp(16)); list.setClipToPadding(false);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(0, dp(8), 0, 0);
         status = caption(() -> ""); status.setVisibility(GONE); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
@@ -160,7 +160,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
             InspectorWidgets.ValueRow row = recycled instanceof InspectorWidgets.ValueRow ? (InspectorWidgets.ValueRow) recycled : new InspectorWidgets.ValueRow(getContext());
             BreadcrumbEvent event = events.get(position);
             row.bind(RuntimePresentation.kind(getContext(), event.kind) + " · " + event.label,
-                RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + event.message), true);
+                RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + RuntimePresentation.message(getContext(), event.message, event.isPrivate)), true);
             row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
             InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1); return row;
         }

@@ -46,7 +46,7 @@ final class InspectorToolbarActions {
         Context context = bar.getContext();
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, 0, inset, inset);
-        android.widget.ScrollView scroll = new android.widget.ScrollView(context); scroll.addView(content);
+        android.widget.ScrollView scroll = new InspectorScroll.Page(context); scroll.addView(content);
         InspectorScreen menu = InspectorDialogs.panel(context, R.string.osservio_ui_actions, scroll); menu.compact();
         List<View> available = new ArrayList<>();
         for (View item : items) if (item.getVisibility() == View.VISIBLE) available.add(item);

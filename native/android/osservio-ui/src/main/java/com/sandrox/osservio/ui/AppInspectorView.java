@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbArchive;
 import com.sandrox.osservio.core.BreadcrumbHistory;
@@ -17,7 +16,7 @@ import com.sandrox.osservio.core.WebSocketRecorder;
 /** Host information and inspector-only preferences, outside the live reading streams. */
 // Dependencies require programmatic construction.
 @SuppressLint("ViewConstructor")
-final class AppInspectorView extends ScrollView {
+final class AppInspectorView extends InspectorScroll.Page {
     static final class State { int scrollY; }
     private final State state;
     private final LinearLayout content;

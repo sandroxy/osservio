@@ -42,7 +42,7 @@ final class SignalCrashView extends LinearLayout implements InspectorScreen.Cont
         title = text(); InspectorAppearance.text(title, images ? R.string.osservio_crash_images : R.string.osservio_crash_frames);
         if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         addView(title);
-        ListView list = new ListView(context); list.setPadding(dp(16), dp(20), dp(16), dp(16)); list.setClipToPadding(false); list.setDivider(null); list.setDividerHeight(0);
+        ListView list = new InspectorScroll.List(context); list.setPadding(dp(16), dp(20), dp(16), dp(16)); list.setClipToPadding(false); list.setDivider(null); list.setDividerHeight(0);
         TextView hint = InspectorWidgets.caption(context); hint.setPadding(dp(16), dp(12), dp(16), dp(16)); InspectorAppearance.text(hint, () -> context.getString(R.string.osservio_crash_browser_hint,
             context.getString(tombstone != null ? R.string.osservio_tombstone_frames_hint : images ? R.string.osservio_crash_images_hint : R.string.osservio_crash_frames_hint), context.getString(R.string.osservio_crash_copy_hint)));
         list.addFooterView(hint, null, false); Rows rows = new Rows(); list.setAdapter(rows); InspectorAppearance.content(this, rows::notifyDataSetChanged);

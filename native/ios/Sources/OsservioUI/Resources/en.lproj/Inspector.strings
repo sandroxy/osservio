@@ -198,3 +198,5 @@
 "ui_palette_teal" = "Teal";
 "ui_palette_green" = "Forest";
 "ui_palette_rose" = "Rose";
+
+"ui_private_content" = "Content hidden for privacy";

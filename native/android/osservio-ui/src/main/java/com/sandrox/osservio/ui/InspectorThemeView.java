@@ -8,10 +8,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckedTextView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 
 /** Theme selection updates SDK-owned preferences without replacing retained readers. */
-final class InspectorThemeView extends ScrollView implements InspectorScreen.Content {
+final class InspectorThemeView extends InspectorScroll.Page implements InspectorScreen.Content {
     InspectorThemeView(Context context) {
         super(context);
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);

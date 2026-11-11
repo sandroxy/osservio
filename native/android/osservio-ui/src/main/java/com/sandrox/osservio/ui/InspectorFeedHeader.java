@@ -24,6 +24,7 @@ final class InspectorFeedHeader extends LinearLayout {
     final ImageButton actions;
     private final boolean compact;
     private final Button latest;
+    private final android.widget.ProgressBar activity;
     private final android.widget.HorizontalScrollView tokenScroll;
     private final LinearLayout tokens;
     InspectorFilterSheet.Applied onQueryChange;
@@ -63,8 +64,17 @@ final class InspectorFeedHeader extends LinearLayout {
         latest.setCompoundDrawablePadding(InspectorTheme.dp(context, 6)); latest.setElevation(InspectorTheme.dp(context, 4));
         latest.setPadding(inset, InspectorTheme.dp(context, 10), inset, InspectorTheme.dp(context, 10));
         results = InspectorWidgets.caption(context);
+        activity = new android.widget.ProgressBar(context); activity.setVisibility(INVISIBLE);
+        activity.setContentDescription(context.getString(R.string.osservio_archive_reading));
+        InspectorAppearance.style(activity, () -> activity.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.accent(context))));
         LinearLayout summary = new LinearLayout(context); summary.setOrientation(VERTICAL);
-        if (compact) { summary.addView(results); results.setPadding(0, 0, 0, 0); status.setPadding(0, 0, 0, 0); }
+        if (compact) {
+            LinearLayout countRow = new LinearLayout(context); countRow.setGravity(android.view.Gravity.CENTER_VERTICAL); countRow.setBaselineAligned(false);
+            countRow.addView(results, new LayoutParams(0, -2, 1));
+            LayoutParams progress = new LayoutParams(InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 20)); progress.leftMargin = InspectorTheme.dp(context, 8);
+            countRow.addView(activity, progress); summary.addView(countRow);
+            results.setPadding(0, 0, 0, 0); status.setPadding(0, 0, 0, 0);
+        }
         summary.addView(status);
         bar.addView(summary, new LayoutParams(0, -2, 1)); bar.addView(pause);
         LayoutParams menuLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48));
@@ -100,9 +110,11 @@ final class InspectorFeedHeader extends LinearLayout {
             android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
         int inset = InspectorTheme.dp(getContext(), 16); floating.setMargins(inset, inset, inset, inset);
         viewport.addView(latest, floating);
+        latest.setTag(R.id.osservio_floating_margin, inset);
         return viewport;
     }
     void hideActions() { actions.setVisibility(GONE); }
+    void setReading(boolean reading) { activity.setVisibility(reading ? VISIBLE : INVISIBLE); }
     void setPaused(boolean paused) {
         if (compact) {
             pause.setVisibility(GONE); latest.setVisibility(paused ? VISIBLE : GONE);

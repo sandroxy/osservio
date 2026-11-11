@@ -64,7 +64,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         switch evidence {
         case .logs(let value):
             let event = value.events[index]
-            cell.configure(badge: InspectorFilterOptions.label(.level, event.level.rawValue), time: event.timestampMillis, title: event.message, subtitle: event.category)
+            cell.configure(badge: InspectorFilterOptions.label(.level, event.level.rawValue), time: event.timestampMillis, title: RuntimePresentation.message(event.message, isPrivate: event.isPrivate), subtitle: event.category)
         case .http(let value):
             let event = value.events[index]
             cell.configure(badge: event.method, time: event.timestampMillis, title: InspectorQuery.path(event.url),

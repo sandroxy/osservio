@@ -48,7 +48,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         header = new InspectorFeedHeader(context, R.string.osservio_crumb_search, "", value -> { query.text = value; dirty = true; refreshView(); },
             () -> setPaused(false), this::filters, this::actions, true, R.string.osservio_crumb_clear);
         header.onQueryChange = value -> { query = value; dirty = true; refreshView(); };
-        list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
+        list = new InspectorScroll.List(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setDivider(null);
         list.setDividerHeight(0);
         list.setOnItemClickListener((parent, view, position, id) -> {
@@ -111,6 +111,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
             header.setQuery(query, groups(), events.size(), latest == null ? 0 : latest.events.size());
             header.empty.setText(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_crumb_empty : R.string.osservio_ui_filtered_empty);
             rows.notifyDataSetChanged(); dirty = false;
+            if (!paused) list.setSelectionFromTop(0, 0);
         }
         String notice = stale ? getContext().getString(latest == null ? R.string.osservio_busy : R.string.osservio_ui_previous_window) : "";
         BreadcrumbRecorder.Status status = recorder.status();
@@ -118,7 +119,10 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
             notice += (notice.isEmpty() ? "" : " · ") + getContext().getString(R.string.osservio_ui_retention_loss);
         header.status.setText(notice); header.setPaused(paused);
     }
-    private void setPaused(boolean value) { paused = value; refreshView(); if (!value) list.setSelectionFromTop(0, 0); }
+    private void setPaused(boolean value) {
+        if (!value) list.smoothScrollBy(0, 0);
+        paused = value; refreshView(); if (!value) list.setSelectionFromTop(0, 0);
+    }
     private void showDetail(BreadcrumbEvent event) {
         if (detail != null) return;
         detail = BreadcrumbDetailDialog.create(getContext(), event); watchDialog(); detail.show();
@@ -135,7 +139,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         @Override public View getView(int position, View recycled, ViewGroup parent) {
             InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             BreadcrumbEvent event = getItem(position);
-            row.bind(RuntimePresentation.kind(getContext(), event.kind), event.label, event.message == null ? "#" + event.sequence : event.message,
+            row.bind(RuntimePresentation.kind(getContext(), event.kind), event.label, event.message == null ? "#" + event.sequence : RuntimePresentation.message(getContext(), event.message, event.isPrivate),
                 event.timestampMillis, InspectorTheme.accent(getContext())); row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

@@ -97,12 +97,14 @@ final class InspectorScreen implements DialogInterface {
     }
     Button action(int label, Runnable operation) {
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
+        if (panel) InspectorWidgets.sheetAction(action, true);
         bar.pageActions.add(action);
         return action;
     }
     Button leadingAction(int label, Runnable operation) {
         back.setVisibility(View.GONE);
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
+        if (panel) InspectorWidgets.sheetAction(action, false);
         bar.leading.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
         return action;
     }

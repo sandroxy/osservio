@@ -31,7 +31,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private var staleHTTP = false, staleSockets = false
     private var available = 0
     private(set) var query = InspectorQuery()
-    private(set) var paused = false
+    private(set) var paused = false { didSet { table.followsLatest = !paused } }
 
     init(http: HTTP? = nil, sockets: Socket? = nil, connectionID: String? = nil) {
         self.http = http; self.sockets = sockets; self.connectionID = connectionID; super.init()
@@ -43,7 +43,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         if connectionID != nil { header.extra.addArrangedSubview(InspectorTheme.label(.caption1, secondary: true)); header.actions.isHidden = true }
         header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }
         header.onQueryChange = { [weak self] in self?.apply($0) }
-        table.followLatestButton = header.pause
+        table.followLatestButton = header.pause; table.followsLatest = true
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
         style.changed()
@@ -119,7 +119,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     }
     @objc private func followLatest() {
         cancelSearch(); nextSearchAt = 0; paused = false; refresh()
-        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false)
+        table.showLatest()
     }
     @objc private func showFilters() {
         table.endEditing(true)

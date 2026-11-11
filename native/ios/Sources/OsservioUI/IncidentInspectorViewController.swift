@@ -66,7 +66,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private func read() {
         guard !reading else { return }
         reading = true; retryNeeded = false; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_reading"); render()
+        updateReadingState()
         archive.readIncidents { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -91,10 +91,16 @@ public final class IncidentInspectorViewController: UITableViewController {
         filtered = snapshots.filter { query.matches($0, now: updatedAt ?? 0) }
         header.status.text = notice; header.relabel(paused: false, query: query)
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
-        markButton.isEnabled = !reading; retryButton.isEnabled = !reading; retryButton.isHidden = !retryNeeded
-        inspectorPrimaryAction?.isEnabled = !reading && !snapshots.isEmpty
+        updateReadingState(); retryButton.isHidden = !retryNeeded
         table.reloadData()
-        table.setEmptyState(filtered.isEmpty ? InspectorTheme.empty(snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil)
+        table.setEmptyState(filtered.isEmpty ? InspectorTheme.empty(reading ? "archive_reading" : snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil)
+    }
+    private func updateReadingState() {
+        markButton.isEnabled = !reading; retryButton.isEnabled = !reading
+        inspectorPrimaryAction?.isEnabled = !reading && !snapshots.isEmpty
+        header.activity.accessibilityLabel = RuntimePresentation.text("archive_reading")
+        if reading { header.activity.startAnimating() } else { header.activity.stopAnimating() }
+        if snapshots.isEmpty { table.setEmptyState(InspectorTheme.empty(reading ? "archive_reading" : "incident_empty")) }
     }
     @objc private func markPressed() { if !reading { mark() } }
     @objc private func refreshPressed() { read() }
@@ -115,9 +121,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         let snapshot = filtered[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "incident") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "incident")
         cell.configure(badge: InspectorLocalization.text(snapshot.diagnosticKind == nil ? "ui_manual" : "ui_system"), time: snapshot.timestampMillis,
-            title: snapshot.note?.text ?? snapshot.diagnosticKind.map(SystemDiagnosticPresentation.kind) ?? InspectorLocalization.text("incident_manual"),
-            subtitle: IncidentPresentation.timeLabel(snapshot.diagnosticKind) + " · " + InspectorLocalization.date(snapshot.timestampMillis)
-                + "\n" + snapshot.id.prefix(8))
+            title: IncidentPresentation.listTitle(snapshot), subtitle: IncidentPresentation.listSubtitle(snapshot))
         cell.isUserInteractionEnabled = !reading
         return cell
     }
@@ -146,7 +150,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     }
     private func open(id: String) {
         reading = true; retryNeeded = false; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_reading"); render()
+        updateReadingState()
         archive.readIncident(id: id) { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
@@ -180,7 +184,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private func delete(id: String?) {
         guard !reading else { return }
         reading = true; generation += 1; let request = generation
-        notice = RuntimePresentation.text("archive_deleting"); render()
+        updateReadingState()
         let completed: @Sendable (Result<Void, PersistenceError>) -> Void = { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }

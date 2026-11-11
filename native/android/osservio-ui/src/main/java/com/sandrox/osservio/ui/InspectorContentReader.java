@@ -55,7 +55,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         super(context); setOrientation(VERTICAL);
         int inset = InspectorTheme.dp(context, 16), gap = InspectorTheme.dp(context, 8); setPadding(inset, gap, inset, 0);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
-        controls = new ScrollView(context); controls.addView(header); addView(controls, new LayoutParams(-1, -2));
+        controls = new InspectorScroll.Page(context); controls.addView(header); addView(controls, new LayoutParams(-1, -2));
         mode = (RadioGroup) InspectorWidgets.segments(context, new int[] {R.string.osservio_json_structure, R.string.osservio_json_raw}, 0,
             selected -> { structured = selected == 0; highlight(true); });
         LayoutParams modeLayout = new LayoutParams(-1, -2); modeLayout.bottomMargin = gap;
@@ -79,7 +79,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         navigation.addView(previous, new LayoutParams(InspectorTheme.dp(context, 48), -2));
         navigation.addView(next, new LayoutParams(InspectorTheme.dp(context, 48), -2)); searching.addView(navigation); header.addView(searching);
         text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(0, inset, 0, inset);
-        text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new ScrollView(context); scroll.addView(text);
+        text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new InspectorScroll.Page(context); scroll.addView(text);
         tree = new InspectorJsonTreeView(context); tree.setVisibility(GONE);
         InspectorAppearance.content(this, () -> {
             previous.setContentDescription(context.getString(R.string.osservio_ui_previous_match));

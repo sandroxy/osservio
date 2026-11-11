@@ -35,6 +35,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     private final TextView summary;
     private final TextView empty;
     private final Button refresh;
+    private final android.widget.ProgressBar activity;
     private final android.widget.ImageButton back;
     private final android.widget.ImageButton copy;
     private final EditText search;
@@ -70,9 +71,16 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         controls.addView(back); controls.addView(copy);
         header.addView(controls, new LayoutParams(-1, -2));
         refresh.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
-        refresh.setPadding(dp(16), dp(12), dp(16), dp(12));
+        refresh.setPadding(dp(16), dp(12), dp(48), dp(12));
         InspectorAppearance.style(refresh, () -> { refresh.setTextColor(InspectorTheme.accent(context)); InspectorTheme.surface(refresh, true, 24); });
-        header.addView(refresh, new LayoutParams(-1, -2));
+        android.widget.FrameLayout refreshRow = new android.widget.FrameLayout(context);
+        refreshRow.addView(refresh, new android.widget.FrameLayout.LayoutParams(-1, -2));
+        activity = new android.widget.ProgressBar(context); activity.setVisibility(INVISIBLE);
+        activity.setContentDescription(context.getString(R.string.osservio_archive_reading));
+        InspectorAppearance.style(activity, () -> activity.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.accent(context))));
+        android.widget.FrameLayout.LayoutParams progress = new android.widget.FrameLayout.LayoutParams(dp(20), dp(20), android.view.Gravity.END | android.view.Gravity.CENTER_VERTICAL);
+        progress.rightMargin = dp(16); refreshRow.addView(activity, progress);
+        header.addView(refreshRow, new LayoutParams(-1, -2));
         actions = InspectorWidgets.icon(context, R.drawable.osservio_trash, R.string.osservio_archive_delete_all, this::confirmDeletion);
         controls.addView(actions, new LayoutParams(dp(48), -2));
         search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> filter());
@@ -80,7 +88,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         notice = caption(); notice.setPadding(dp(16), dp(8), dp(16), dp(8)); header.addView(notice, new LayoutParams(-1, -2));
         summary = caption(); summary.setPadding(dp(16), dp(8), dp(16), dp(8)); summary.setTextIsSelectable(true); header.addView(summary, new LayoutParams(-1, -2));
         empty = caption(); empty.setPadding(0, dp(24), 0, dp(24)); header.addView(empty, new LayoutParams(-1, -2));
-        list = new ListView(context); list.setPadding(dp(16), 0, dp(16), dp(16)); list.setClipToPadding(false);
+        list = new InspectorScroll.List(context); list.setPadding(dp(16), 0, dp(16), dp(16)); list.setClipToPadding(false);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         footer = caption(); footer.setPadding(dp(16), dp(10), dp(16), dp(16)); list.addFooterView(footer, null, false); list.setAdapter(rows);
         list.setDivider(null); list.setDividerHeight(0);
@@ -116,7 +124,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     }
     private int begin() {
         reading = true; attempted = true; generation++;
-        notice.setText(R.string.osservio_archive_reading); render(); return generation;
+        render(); return generation;
     }
     private void read() {
         if (reading) return;
@@ -153,10 +161,11 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     }
     private void render() {
         refresh.setEnabled(!reading); list.setEnabled(!reading); back.setEnabled(!reading);
+        activity.setVisibility(reading ? VISIBLE : INVISIBLE);
         actions.setEnabled(!reading && (selected != null || !runs.isEmpty()));
         actions.setContentDescription(getContext().getString(selected == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run));
         back.setVisibility(selected == null ? GONE : VISIBLE); copy.setVisibility(selected == null ? GONE : VISIBLE);
-        refresh.setVisibility(selected == null ? VISIBLE : GONE); search.setVisibility(selected == null ? GONE : VISIBLE);
+        ((View) refresh.getParent()).setVisibility(selected == null ? VISIBLE : GONE); search.setVisibility(selected == null ? GONE : VISIBLE);
         if (screen != null) screen.title(selected == null ? R.string.osservio_ui_saved_runs : R.string.osservio_archive_title);
         notice.setVisibility(notice.length() == 0 ? GONE : VISIBLE);
         summary.setText(selected == null ? PersistencePresentation.status(getContext(), archive.persistenceStatus()) : PersistencePresentation.run(getContext(), selected.run));
@@ -173,7 +182,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void delete(String id) {
-        int request = begin(); notice.setText(R.string.osservio_archive_deleting); Handler handler = main;
+        int request = begin(); Handler handler = main;
         WeakReference<BreadcrumbArchiveView> reference = new WeakReference<>(this);
         BreadcrumbArchive.Completion completed = error -> handler.post(() -> {
             BreadcrumbArchiveView view = reference.get(); if (view == null || view.generation != request) return;
@@ -224,7 +233,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
             } else {
                 BreadcrumbEvent event = events.get(position);
                 row.bind(RuntimePresentation.kind(getContext(), event.kind) + " · " + event.label,
-                    RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + event.message), true);
+                    RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + RuntimePresentation.message(getContext(), event.message, event.isPrivate)), true);
             }
             row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3);
             row.value.setEllipsize(android.text.TextUtils.TruncateAt.END); InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1);

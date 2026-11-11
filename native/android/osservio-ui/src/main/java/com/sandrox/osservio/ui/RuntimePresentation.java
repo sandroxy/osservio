@@ -9,6 +9,9 @@ import java.util.Date;
 
 final class RuntimePresentation {
     private RuntimePresentation() { }
+    static String message(Context context, String value, boolean isPrivate) {
+        return isPrivate ? context.getString(R.string.osservio_ui_private_content) : value;
+    }
     static String date(Context context, long millis) {
         return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM,
             InspectorPreferences.english(context) ? java.util.Locale.ENGLISH : java.util.Locale.SIMPLIFIED_CHINESE).format(new Date(millis));

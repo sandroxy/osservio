@@ -10,7 +10,6 @@ import android.text.style.ForegroundColorSpan;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Native row reuse and full-row activation; no disclosure icon or key/value columns. */
-final class InspectorJsonTreeView extends ListView {
+final class InspectorJsonTreeView extends InspectorScroll.List {
     private InspectorJsonDocument document;
     private final Set<Integer> expanded = new HashSet<>();
     private List<InspectorJsonDocument.Row> rows = new ArrayList<>();

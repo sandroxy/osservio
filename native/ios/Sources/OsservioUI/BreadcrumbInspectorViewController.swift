@@ -9,7 +9,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true, actionLabel: "crumb_clear")
     private var query = InspectorQuery()
-    private var paused = false
+    private var paused = false { didSet { table.followsLatest = !paused } }
     private var anchor: Int64 = 0
     private lazy var loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
@@ -29,7 +29,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
         header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
-        table.followLatestButton = header.pause
+        table.followLatestButton = header.pause; table.followsLatest = true
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
         style.changed()
@@ -72,7 +72,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     }
     @objc private func followLatest() {
         paused = false; dirty = true; refresh()
-        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false)
+        table.showLatest()
     }
     @objc private func showFilters() {
         let group = InspectorFilterGroup(.kind, values: (latest?.events ?? []).map { $0.kind.rawValue })
@@ -92,7 +92,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "crumb") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "crumb")
-        cell.configure(badge: RuntimePresentation.kind(event), time: event.timestampMillis, title: event.label, subtitle: event.message ?? "#\(event.sequence)")
+        cell.configure(badge: RuntimePresentation.kind(event), time: event.timestampMillis, title: event.label, subtitle: event.message.map { RuntimePresentation.message($0, isPrivate: event.isPrivate) } ?? "#\(event.sequence)")
         return cell
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

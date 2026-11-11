@@ -65,6 +65,22 @@ final class InspectorWidgets {
                 InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 1000, false), null));
         });
     }
+    static void sheetAction(Button button, boolean primary) {
+        Context context = button.getContext();
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(InspectorTheme.dp(context, 18), InspectorTheme.dp(context, 10), InspectorTheme.dp(context, 18), InspectorTheme.dp(context, 10));
+        InspectorAppearance.style(button, () -> {
+            int accent = InspectorTheme.accent(context);
+            // Dark palettes use light accents, which need dark text for contrast.
+            int foreground = primary ? (InspectorPreferences.dark(context) ? 0xFF16161D : android.graphics.Color.WHITE) : accent;
+            button.setTextColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[] {}},
+                new int[] {InspectorTheme.secondary(context), foreground}));
+            android.graphics.drawable.GradientDrawable fill = InspectorTheme.shape(context, primary ? accent : InspectorTheme.surface(context), 1000, false);
+            fill.setColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[] {}},
+                new int[] {InspectorTheme.surface(context), primary ? accent : InspectorTheme.surface(context)}));
+            button.setBackgroundTintList(null); button.setBackground(InspectorTheme.ripple(context, fill, null));
+        });
+    }
     static CharSequence actionTitle(Context context, int label, int icon) {
         android.text.SpannableString text = new android.text.SpannableString("\uFFFC\u00A0 " + context.getString(label));
         // Center the icon in the text line on API 23+, without raising the text baseline.

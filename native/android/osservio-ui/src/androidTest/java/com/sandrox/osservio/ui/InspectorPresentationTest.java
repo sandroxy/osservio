@@ -69,6 +69,31 @@ public final class InspectorPresentationTest {
             assertEquals("42", draft.fieldValue); assertEquals("main search", draft.text);
         });
     }
+    @Test public void privatePresentationUsesFlagsAndKeepsAvailableEvidence() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            com.sandrox.osservio.core.IncidentSnapshot mark = com.sandrox.osservio.core.IncidentSnapshot.capture(
+                com.sandrox.osservio.core.LogMessage.privateText("must not be retained"), null, null);
+            com.sandrox.osservio.core.IncidentSummary summary = new com.sandrox.osservio.core.IncidentSummary(
+                mark.id, mark.timestampMillis, mark.note, true, 3, 0, 2, null);
+            assertEquals("[private]", mark.note.text);
+            assertEquals(context.getString(R.string.osservio_incident_manual), IncidentPresentation.listTitle(context, summary));
+            String subtitle = IncidentPresentation.listSubtitle(context, summary);
+            assertTrue(subtitle.contains(context.getString(R.string.osservio_incident_private_note)));
+            assertTrue(subtitle.contains("HTTP: 2")); assertTrue(subtitle.contains(": 0"));
+            assertFalse(subtitle.contains("[private]")); assertFalse(subtitle.contains("must not be retained"));
+            assertEquals(context.getString(R.string.osservio_incident_private_note), IncidentPresentation.note(context, mark.note));
+            assertEquals("[private]", RuntimePresentation.message(context, "[private]", false));
+            assertEquals(context.getString(R.string.osservio_ui_private_content), RuntimePresentation.message(context, "[private]", true));
+            com.sandrox.osservio.core.IncidentSnapshot literal = com.sandrox.osservio.core.IncidentSnapshot.capture(
+                com.sandrox.osservio.core.LogMessage.publicText("[private]"), null, null);
+            com.sandrox.osservio.core.IncidentSummary publicSummary = new com.sandrox.osservio.core.IncidentSummary(
+                literal.id, literal.timestampMillis, literal.note, false, null);
+            assertEquals("[private]", IncidentPresentation.listTitle(context, publicSummary));
+            assertTrue(IncidentPresentation.listSubtitle(context, publicSummary).contains(context.getString(R.string.osservio_incident_no_attachments)));
+        });
+    }
+
     private static boolean visible(View view, View root) {
         while (view != null) { if (view.getVisibility() != View.VISIBLE) return false; if (view == root) return true; view = view.getParent() instanceof View ? (View) view.getParent() : null; } return false;
     }

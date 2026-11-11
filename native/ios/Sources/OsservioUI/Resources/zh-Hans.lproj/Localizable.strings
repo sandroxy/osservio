@@ -372,3 +372,6 @@
 "incident_discard_hint" = "未保存的备注和附件选择将被丢弃。";
 "incident_keep_editing" = "继续编辑";
 "incident_discard" = "放弃记录";
+
+"incident_private_note" = "说明已隐藏（隐私）";
+"incident_no_attachments" = "未附带现场记录";

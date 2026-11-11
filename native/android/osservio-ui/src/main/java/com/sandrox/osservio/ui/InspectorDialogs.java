@@ -27,7 +27,7 @@ final class InspectorDialogs {
                                    android.content.DialogInterface.OnClickListener action) {
         android.widget.LinearLayout content = new android.widget.LinearLayout(context); content.setOrientation(android.widget.LinearLayout.VERTICAL);
         content.addView(messageText(context, message));
-        android.widget.ScrollView scroll = new android.widget.ScrollView(context); scroll.addView(content);
+        android.widget.ScrollView scroll = new InspectorScroll.Page(context); scroll.addView(content);
         InspectorScreen screen = panel(context, title, scroll);
         screen.compact();
         android.widget.Button button = InspectorWidgets.button(context, confirm,
@@ -46,7 +46,7 @@ final class InspectorDialogs {
     }
     static InspectorScreen choices(Context context, int title, String[] labels, int selected, boolean panel,
                                    android.content.DialogInterface.OnClickListener chosen) {
-        android.widget.ListView list = new android.widget.ListView(context);
+        android.widget.ListView list = new InspectorScroll.List(context);
         int inset = InspectorTheme.dp(context, 16); list.setPadding(inset, InspectorTheme.dp(context, 8), inset, inset);
         list.setClipToPadding(false); list.setDivider(null); list.setDividerHeight(0);
         list.setSelector(android.R.color.transparent); list.setVerticalScrollBarEnabled(false);
@@ -66,7 +66,7 @@ final class InspectorDialogs {
         screen.show(); return screen;
     }
     private static View messageView(Context context, String message) {
-        android.widget.ScrollView scroll = new android.widget.ScrollView(context);
+        android.widget.ScrollView scroll = new InspectorScroll.Page(context);
         scroll.addView(messageText(context, message)); return scroll;
     }
     private static TextView messageText(Context context, String message) {
