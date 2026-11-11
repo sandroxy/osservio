@@ -11,6 +11,7 @@ import java.util.List;
 
 /** Page actions keep their identity when the visible toolbar folds them into a menu. */
 final class InspectorToolbarActions {
+    interface Provider { View navigationAction(); }
     private final LinearLayout bar;
     private final List<View> items = new ArrayList<>();
     private final View more;

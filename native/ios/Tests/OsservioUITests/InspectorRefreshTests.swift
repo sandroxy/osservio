@@ -110,6 +110,11 @@ final class InspectorRefreshTests: XCTestCase {
         viewer.scrollViewWillBeginDragging(viewer.tableView)
         let pause = try XCTUnwrap(button(in: viewer.view, title: RuntimePresentation.text("ui_follow_latest")))
         XCTAssertEqual(pause.accessibilityLabel, RuntimePresentation.text("ui_follow_latest"))
+        viewer.tableView.layoutIfNeeded()
+        let origin = pause.convert(pause.bounds, to: window).minY
+        viewer.tableView.setContentOffset(CGPoint(x: 0, y: 300), animated: false); viewer.tableView.layoutIfNeeded()
+        XCTAssertEqual(pause.convert(pause.bounds, to: window).minY, origin, accuracy: 1)
+        XCTAssertFalse(pause.isHidden)
         let frozen = probe.readCount("log")
         NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -119,6 +124,8 @@ final class InspectorRefreshTests: XCTestCase {
         XCTAssertEqual(pause.accessibilityLabel, RuntimePresentation.text("ui_follow_latest"))
         try activate(pause)
         XCTAssertGreaterThan(probe.readCount("log"), frozen)
+        XCTAssertEqual(viewer.tableView.contentOffset.y, -viewer.tableView.adjustedContentInset.top, accuracy: 1)
+        XCTAssertTrue(pause.isHidden)
     }
 
     @MainActor

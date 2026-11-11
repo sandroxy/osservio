@@ -6,14 +6,20 @@ import UIKit
 enum InspectorTheme {
     static let canvas = pair(0xF5F6FA, 0x131720)
     static let surface = pair(0xFFFFFF, 0x1D2330)
-    static let accent = pair(0x5146D8, 0xB4ADFF)
-    static let filledAccent = pair(0x5146D8, 0x5146D8)
+    static var accent: UIColor {
+        let colors = InspectorPreferences.shared.palette.colors; return pair(colors.light, colors.dark)
+    }
+    static var filledAccent: UIColor {
+        let colors = InspectorPreferences.shared.palette.colors; return pair(colors.light, colors.light)
+    }
     static let secondary = pair(0x626978, 0xAEB7C7)
-    static let tint = pair(0xEEECFF, 0x302C48)
+    static var tint: UIColor {
+        let colors = InspectorPreferences.shared.palette.colors; return pair(colors.lightTint, colors.darkTint)
+    }
     static let jsonString = pair(0x26734F, 0x8BDDAE)
     static let jsonNumber = pair(0x215FAD, 0x98C6FF)
     static let jsonLiteral = pair(0x934625, 0xF0B38D)
-    private static func pair(_ light: UInt32, _ dark: UInt32) -> UIColor {
+    static func pair(_ light: UInt32, _ dark: UInt32) -> UIColor {
         UIColor { traits in
             let value = traits.userInterfaceStyle == .dark ? dark : light
             return UIColor(red: CGFloat((value >> 16) & 255) / 255, green: CGFloat((value >> 8) & 255) / 255,
@@ -139,6 +145,7 @@ extension UIViewController {
     func inspectorPresent(_ controller: UIViewController, retainingPage: Bool = false) {
         view.endEditing(true)
         let navigation = InspectorNavigationController(rootViewController: controller)
+        navigation.overrideUserInterfaceStyle = InspectorPreferences.shared.appearance == .dark ? .dark : .light
         navigation.transientPanel = !retainingPage
         navigation.session = inspectorSession
         navigation.modalPresentationStyle = retainingPage ? .fullScreen : .pageSheet

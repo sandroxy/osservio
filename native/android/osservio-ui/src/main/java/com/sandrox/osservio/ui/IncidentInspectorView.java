@@ -38,7 +38,8 @@ import java.util.Objects;
 
 /** Saved incident browsing and manual marking. The host owns persistence, histories, and presentation. */
 @SuppressLint("ViewConstructor")
-public final class IncidentInspectorView extends FrameLayout {
+public final class IncidentInspectorView extends FrameLayout implements InspectorToolbarActions.Provider {
+    @Override public View navigationAction() { return header.navigationAction(); }
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
         InspectorKeyboardDismissal.outside(this, event); return super.dispatchTouchEvent(event);
     }
@@ -300,7 +301,7 @@ public final class IncidentInspectorView extends FrameLayout {
                 snapshot.note == null || snapshot.note.text.isEmpty() ? type : snapshot.note.text,
                 IncidentPresentation.timeLabel(getContext(), snapshot.diagnosticKind) + " · " + RuntimePresentation.date(getContext(), snapshot.timestampMillis)
                     + "\n" + snapshot.id.substring(0, Math.min(8, snapshot.id.length())), snapshot.timestampMillis, InspectorTheme.accent(getContext()));
-            return row;
+            row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }
 }

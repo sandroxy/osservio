@@ -18,12 +18,12 @@
 "ui_environment" = "运行环境";
 "ui_inspector" = "调试器";
 "ui_language" = "语言";
-"ui_appearance" = "外观";
+"ui_appearance" = "主题";
 "ui_chinese" = "简体中文";
 "ui_english" = "English";
 "ui_light" = "浅色";
 "ui_dark" = "深色";
-"ui_preferences_hint" = "语言和外观仅影响 Osservio，关闭面板不会停止采集。";
+"ui_preferences_hint" = "语言和主题仅影响 Osservio，关闭面板不会停止采集。";
 "ui_filters" = "筛选";
 "ui_filter_options" = "搜索筛选选项";
 "ui_apply" = "确定";
@@ -62,7 +62,7 @@
 "ui_baseline" = "基础采集";
 "ui_detailed" = "详细采集";
 "ui_paused" = "阅读已暂停更新";
-"ui_follow_latest" = "回到最新";
+"ui_follow_latest" = "查看最新";
 "ui_pause" = "暂停更新";
 "ui_inactive_empty" = "调试尚未开启。可使用首页左上角的调试按钮，观察之后发生的日志与网络活动。";
 "ui_filtered_empty" = "没有符合条件的记录。可以修改搜索词或重置筛选。";
@@ -191,3 +191,10 @@
 "ui_connection_records" = "连接记录";
 "ui_event_details" = "事件详情";
 "ui_problem_details" = "问题详情";
+"ui_display_mode" = "显示模式";
+"ui_palette" = "调色盘";
+"ui_palette_purple" = "紫罗兰";
+"ui_palette_blue" = "海蓝";
+"ui_palette_teal" = "青绿";
+"ui_palette_green" = "森林绿";
+"ui_palette_rose" = "玫瑰";

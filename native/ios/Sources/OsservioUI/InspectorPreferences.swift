@@ -17,6 +17,14 @@ final class InspectorPreferences {
             NotificationCenter.default.post(name: Self.didChange, object: self)
         }
     }
+    var palette: InspectorPalette {
+        get { defaults.string(forKey: "osservio.ui.palette").flatMap(InspectorPalette.init) ?? .purple }
+        set {
+            guard newValue != palette else { return }
+            defaults.set(newValue.rawValue, forKey: "osservio.ui.palette")
+            NotificationCenter.default.post(name: Self.didChange, object: self)
+        }
+    }
     var appearance: Appearance {
         get { defaults.string(forKey: "osservio.ui.appearance").flatMap(Appearance.init) ?? .light }
         set {

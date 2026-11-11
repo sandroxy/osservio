@@ -5,6 +5,13 @@ import UIKit
 @MainActor
 final class InspectorTableView: UITableView {
     private var emptyFooter: UIStackView?
+    var followLatestButton: UIButton? {
+        didSet {
+            oldValue?.removeFromSuperview()
+            if let followLatestButton { addSubview(followLatestButton) }
+            setNeedsLayout()
+        }
+    }
 
     func setEmptyState(_ label: UILabel?) {
         emptyFooter = label.map {
@@ -39,6 +46,15 @@ final class InspectorTableView: UITableView {
             }
         }
         super.layoutSubviews()
+        if let button = followLatestButton {
+            let available = max(0, bounds.width - safeAreaInsets.left - safeAreaInsets.right - 32)
+            let fitted = button.sizeThatFits(CGSize(width: available, height: 100))
+            let size = CGSize(width: min(available, max(44, fitted.width)), height: max(44, fitted.height))
+            button.frame = CGRect(x: bounds.midX - size.width / 2,
+                y: max(bounds.minY + adjustedContentInset.top, bounds.maxY - adjustedContentInset.bottom - size.height - 16),
+                width: size.width, height: size.height)
+            bringSubviewToFront(button)
+        }
     }
 }
 

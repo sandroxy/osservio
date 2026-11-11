@@ -78,7 +78,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         next.setContentDescription(context.getString(R.string.osservio_ui_next_match));
         navigation.addView(previous, new LayoutParams(InspectorTheme.dp(context, 48), -2));
         navigation.addView(next, new LayoutParams(InspectorTheme.dp(context, 48), -2)); searching.addView(navigation); header.addView(searching);
-        text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(inset, inset, inset, inset);
+        text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(0, inset, 0, inset);
         text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new ScrollView(context); scroll.addView(text);
         tree = new InspectorJsonTreeView(context); tree.setVisibility(GONE);
         InspectorAppearance.content(this, () -> {
@@ -87,7 +87,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
             highlight(false);
         });
         FrameLayout reading = new FrameLayout(context);
-        InspectorAppearance.style(reading, () -> InspectorTheme.surface(reading, false, 20)); reading.setClipToOutline(true);
+        InspectorAppearance.style(reading, () -> reading.setBackgroundColor(InspectorTheme.canvas(context)));
         reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         reading.addView(tree, new FrameLayout.LayoutParams(-1, -1));
         LayoutParams readingLayout = new LayoutParams(-1, 0, 1); readingLayout.topMargin = gap; addView(reading, readingLayout);

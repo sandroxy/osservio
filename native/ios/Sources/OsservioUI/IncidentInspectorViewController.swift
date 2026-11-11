@@ -12,7 +12,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private let http: (any HTTPHistory)?
     private let webSockets: (any WebSocketHistory)?
     private let exporter: (any IncidentExporter)?
-    private let table = InspectorTableView(frame: .zero, style: .plain)
+    private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true, actionLabel: "incident_delete_all")
     private let markButton = InspectorCapsuleButton(type: .system), retryButton = UIButton(type: .system)
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
@@ -50,11 +50,11 @@ public final class IncidentInspectorViewController: UITableViewController {
         header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
-        header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
         style.changed()
     }
     private func relabel() {
         InspectorTheme.apply(self); title = InspectorLocalization.text("incident_title")
+        inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(showActions), label: "incident_delete_all")
         header.search.placeholder = InspectorLocalization.text("ui_problem_search")
         markButton.backgroundColor = InspectorTheme.tint
         markButton.setTitle("  " + InspectorLocalization.text("ui_record_problem"), for: .normal)
@@ -92,7 +92,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         header.status.text = notice; header.relabel(paused: false, query: query)
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
         markButton.isEnabled = !reading; retryButton.isEnabled = !reading; retryButton.isHidden = !retryNeeded
-        header.actions.isEnabled = !reading && !snapshots.isEmpty
+        inspectorPrimaryAction?.isEnabled = !reading && !snapshots.isEmpty
         table.reloadData()
         table.setEmptyState(filtered.isEmpty ? InspectorTheme.empty(snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil)
     }

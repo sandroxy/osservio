@@ -18,7 +18,8 @@ import java.util.List;
 
 /** One query spans HTTP exchanges and Socket observations; content search is bounded and cancellable. */
 @SuppressLint("ViewConstructor")
-class NetworkInspectorView extends LinearLayout {
+class NetworkInspectorView extends LinearLayout implements InspectorToolbarActions.Provider {
+    @Override public View navigationAction() { return header.navigationAction(); }
     static final class State {
         InspectorQuery query = new InspectorQuery();
         HTTPSnapshot http; WebSocketSnapshot sockets;
@@ -61,7 +62,7 @@ class NetworkInspectorView extends LinearLayout {
             value -> { InspectorQuery query = state.query.copy(); query.text = value; apply(query); }, this::followLatest, this::filters, this::confirmClear, true, R.string.osservio_ui_network_clear);
         header.onQueryChange = this::apply;
         if (connectionID != null) {
-            android.widget.TextView hint = InspectorWidgets.caption(context); InspectorAppearance.text(hint, R.string.osservio_ui_connection_hint);
+            android.widget.TextView hint = InspectorWidgets.caption(context); InspectorAppearance.text(hint, () -> context.getString(R.string.osservio_ui_connection_hint) + "\n" + connectionID);
             header.addView(hint, 0, new LayoutParams(-1, -2)); header.actions.setVisibility(GONE);
         }
         list = new ListView(context); list.setDivider(null); list.setDividerHeight(0);
@@ -76,7 +77,7 @@ class NetworkInspectorView extends LinearLayout {
             }
             @Override public void onScroll(AbsListView view, int first, int visible, int total) { }
         });
-        addView(list, new LayoutParams(-1, -1));
+        addView(header.viewport(list), new LayoutParams(-1, -1));
         InspectorAppearance.content(this, () -> { list.setDivider(null); display(); });
         if ((state.http != null || state.sockets != null) && !state.query.searchesPayload()) search(); else display();
         list.setSelectionFromTop(state.position, state.offset);
@@ -176,7 +177,12 @@ class NetworkInspectorView extends LinearLayout {
         handler.removeCallbacks(tick); cancelSearch(); InspectorScreen watched = dialog;
         watched.setOnDismissListener(ignored -> { if (dialog == watched) { dialog = null; schedule(); } });
     }
-    private void followLatest() { state.paused = false; dirty = true; list.setSelection(0); refresh(); }
+    private void followLatest() {
+        cancelSearch(); nextSearchAt = 0; state.paused = false;
+        refresh();
+        // Set the anchor after notifying the adapter, which otherwise restores the old row.
+        list.setSelectionFromTop(0, 0);
+    }
     void saveReadingPosition() { state.position = list.getFirstVisiblePosition(); View first = list.getChildAt(0); state.offset = first == null ? 0 : first.getTop(); }
     private int dp(int value) { return InspectorTheme.dp(getContext(), value); }
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) { InspectorKeyboardDismissal.outside(this, event); return super.dispatchTouchEvent(event); }
@@ -212,7 +218,7 @@ class NetworkInspectorView extends LinearLayout {
                     + "\n" + event.connectionId.substring(0, 8) + " · #" + event.sequence + preview, event.timestampMillis,
                     event.kind == WebSocketEvent.Kind.FAILED || event.outcome == WebSocketEvent.Outcome.FAILED || event.outcome == WebSocketEvent.Outcome.REJECTED ? InspectorTheme.color(context, R.color.osservio_error) : InspectorTheme.accent(context));
             }
-            return row;
+            row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }
 }

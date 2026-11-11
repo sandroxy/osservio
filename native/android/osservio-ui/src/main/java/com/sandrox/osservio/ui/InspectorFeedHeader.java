@@ -1,6 +1,7 @@
 package com.sandrox.osservio.ui;
 
 import android.content.Context;
+import android.view.View;
 import android.annotation.SuppressLint;
 import android.widget.Button;
 import android.widget.EditText;
@@ -37,7 +38,7 @@ final class InspectorFeedHeader extends LinearLayout {
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
                         Runnable togglePause, Runnable showFilters, Runnable actions, boolean compact, int actionLabel) {
         super(context); this.compact = compact; setOrientation(VERTICAL);
-        int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 8), inset, 0);
+        int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 12), inset, 0);
         LinearLayout searchRow = new LinearLayout(context); searchRow.setGravity(android.view.Gravity.CENTER_VERTICAL); searchRow.setBaselineAligned(false);
         search = InspectorWidgets.search(context, searchHint, text, changed);
         searchRow.addView(search, new LayoutParams(0, -2, 1));
@@ -45,19 +46,27 @@ final class InspectorFeedHeader extends LinearLayout {
         LayoutParams filterLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48)); filterLayout.leftMargin = InspectorTheme.dp(context, 8);
         searchRow.addView(filters, filterLayout); addView(searchRow, new LayoutParams(-1, -2));
         LinearLayout bar = new LinearLayout(context); bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        bar.setBaselineAligned(false); bar.setPadding(inset, InspectorTheme.dp(context, 4), 0, InspectorTheme.dp(context, 4));
+        bar.setBaselineAligned(false); bar.setPadding(0, InspectorTheme.dp(context, 8), 0, InspectorTheme.dp(context, 12));
         status = InspectorWidgets.caption(context); InspectorAppearance.style(status, () -> status.setTextColor(InspectorTheme.accent(context)));
         pause = InspectorWidgets.icon(context, R.drawable.osservio_pause, R.string.osservio_ui_pause, togglePause);
         ImageButton menu = InspectorWidgets.icon(context, compact ? R.drawable.osservio_trash : R.drawable.osservio_more,
             compact ? actionLabel : R.string.osservio_ui_actions, actions);
         this.actions = menu;
         latest = InspectorWidgets.button(context, R.string.osservio_ui_follow_latest, togglePause);
-        latest.setMaxWidth(InspectorTheme.dp(context, 100)); latest.setVisibility(GONE);
+        latest.setVisibility(GONE); latest.setGravity(android.view.Gravity.CENTER);
+        InspectorAppearance.text(latest, () -> getContext().getString(R.string.osservio_ui_follow_latest));
+        InspectorAppearance.style(latest, () -> {
+            latest.setTextColor(InspectorTheme.accent(context)); latest.setBackgroundTintList(null);
+            InspectorTheme.surface(latest, true, 1000);
+            latest.setCompoundDrawablesRelative(InspectorWidgets.symbol(context, R.drawable.osservio_arrow_up, 18, InspectorTheme.accent(context)), null, null, null);
+        });
+        latest.setCompoundDrawablePadding(InspectorTheme.dp(context, 6)); latest.setElevation(InspectorTheme.dp(context, 4));
+        latest.setPadding(inset, InspectorTheme.dp(context, 10), inset, InspectorTheme.dp(context, 10));
         results = InspectorWidgets.caption(context);
         LinearLayout summary = new LinearLayout(context); summary.setOrientation(VERTICAL);
         if (compact) { summary.addView(results); results.setPadding(0, 0, 0, 0); status.setPadding(0, 0, 0, 0); }
         summary.addView(status);
-        bar.addView(summary, new LayoutParams(0, -2, 1)); bar.addView(pause); if (compact) bar.addView(latest);
+        bar.addView(summary, new LayoutParams(0, -2, 1)); bar.addView(pause);
         LayoutParams menuLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48));
         menuLayout.leftMargin = InspectorTheme.dp(context, 8); bar.addView(menu, menuLayout);
         tokens = new LinearLayout(context); tokenScroll = new android.widget.HorizontalScrollView(context);
@@ -79,6 +88,19 @@ final class InspectorFeedHeader extends LinearLayout {
         if (compact) updateTokens(query, groups);
         results.setText(getContext().getString(R.string.osservio_ui_result_count, visible, total));
         empty.setVisibility(visible == 0 ? VISIBLE : GONE);
+    }
+    View navigationAction() {
+        if (actions.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) actions.getParent()).removeView(actions);
+        return actions;
+    }
+    View viewport(android.widget.ListView list) {
+        android.widget.FrameLayout viewport = new android.widget.FrameLayout(getContext());
+        viewport.addView(list, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        android.widget.FrameLayout.LayoutParams floating = new android.widget.FrameLayout.LayoutParams(-2, -2,
+            android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+        int inset = InspectorTheme.dp(getContext(), 16); floating.setMargins(inset, inset, inset, inset);
+        viewport.addView(latest, floating);
+        return viewport;
     }
     void hideActions() { actions.setVisibility(GONE); }
     void setPaused(boolean paused) {

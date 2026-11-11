@@ -67,6 +67,13 @@ func inspectorCopyItem(target: Any, action: Selector, label: String) -> UIBarBut
 }
 
 @MainActor
+func inspectorDeleteItem(target: Any, action: Selector, label: String) -> UIBarButtonItem {
+    let item = UIBarButtonItem(image: UIImage(systemName: "trash"), style: .plain, target: target, action: action)
+    item.accessibilityLabel = InspectorLocalization.text(label)
+    return item
+}
+
+@MainActor
 func inspectorDismissItem(target: Any, action: Selector, label: String = "archive_cancel") -> UIBarButtonItem {
     let item = UIBarButtonItem(image: UIImage(systemName: "xmark"), style: .plain, target: target, action: action)
     item.accessibilityLabel = InspectorLocalization.text(label)

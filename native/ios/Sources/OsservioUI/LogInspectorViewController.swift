@@ -7,7 +7,7 @@ import UIKit
 public final class LogInspectorViewController: UITableViewController {
     private let recorder: LogRecorder
     private let history: any LogHistory
-    private let table = InspectorTableView(frame: .zero, style: .plain)
+    private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true)
     private lazy var refreshLoop: InspectorRefreshLoop = {
         let loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
@@ -40,13 +40,14 @@ public final class LogInspectorViewController: UITableViewController {
         table.keyboardDismissMode = .onDrag
         header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }
         header.onQueryChange = { [weak self] in self?.apply($0) }
+        table.followLatestButton = header.pause
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
-        header.actions.addTarget(self, action: #selector(clear), for: .touchUpInside)
         style.changed()
     }
     private func relabel() {
         InspectorTheme.apply(self); title = InspectorLocalization.text("logs")
+        inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(clear), label: "clear")
         header.search.placeholder = InspectorLocalization.text("search"); display()
     }
     public override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); refreshLoop.show(in: view) }
@@ -102,8 +103,8 @@ public final class LogInspectorViewController: UITableViewController {
         table.setEmptyState(events.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()
     }
     @objc private func followLatest() {
-        paused = false; dirty = true
-        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false); refresh()
+        cancelSearch(); nextSearchAt = 0; paused = false; refresh()
+        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false)
     }
     @objc private func showFilters() {
         view.endEditing(true)
@@ -149,7 +150,7 @@ final class LogDetailViewController: InspectorDetailViewController {
             Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
         ]), Section(title: InspectorLocalization.text("ui_read_content"), rows: [
             Row(String(event.message.prefix(600)), action: { [weak self] in
-                guard let self else { return }; self.read(InspectorLocalization.text("ui_log_content"), content: InspectorReadContent(text: self.event.message,
+                guard let self else { return }; self.read(titleKey: "ui_log_content", content: InspectorReadContent(text: self.event.message,
                     notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate))
             })
         ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · "))]

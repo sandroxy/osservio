@@ -59,7 +59,10 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         includeEnvironment.accessibilityLabel = RuntimePresentation.text("incident_include_environment")
         includeBreadcrumbs.accessibilityLabel = RuntimePresentation.text("incident_include_breadcrumbs")
         includeNote.accessibilityLabel = RuntimePresentation.text("incident_include_note")
-        for control in controls { control.addTarget(self, action: #selector(optionsChanged), for: .valueChanged) }
+        for control in controls {
+            control.onTintColor = InspectorTheme.filledAccent
+            control.addTarget(self, action: #selector(optionsChanged), for: .valueChanged)
+        }
         editor.delegate = self; editor.font = .preferredFont(forTextStyle: .body); editor.adjustsFontForContentSizeCategory = true
         editor.isScrollEnabled = false; editor.accessibilityLabel = RuntimePresentation.text("incident_note")
         editor.autocorrectionType = .no; editor.spellCheckingType = .no

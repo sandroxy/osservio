@@ -22,7 +22,7 @@ final class InspectorTheme {
         for (int i = 0; i < 16 && candidate instanceof android.content.ContextWrapper; i++) {
             if (candidate instanceof ScopedContext) {
                 ScopedContext scoped = (ScopedContext) candidate;
-                if (scoped.dark == dark && scoped.english == english) return host;
+                if (scoped.dark == dark && scoped.english == english) { scoped.updatePalette(); return host; }
                 break;
             }
             Context base = ((android.content.ContextWrapper) candidate).getBaseContext();
@@ -30,7 +30,7 @@ final class InspectorTheme {
         }
         if (host instanceof ScopedContext) {
             ScopedContext scoped = (ScopedContext) host;
-            if (scoped.dark == dark && scoped.english == english) return host;
+            if (scoped.dark == dark && scoped.english == english) { scoped.updatePalette(); return host; }
             host = scoped.getBaseContext();
         }
         return new ScopedContext(host, dark, english);
@@ -39,6 +39,7 @@ final class InspectorTheme {
         final boolean dark;
         final boolean english;
         private Resources localized;
+        private InspectorPalette palette;
         // Both languages are retained in a generated, unqualified resource table.
         @SuppressLint("AppBundleLocaleChanges")
         ScopedContext(Context host, boolean dark, boolean english) {
@@ -54,7 +55,12 @@ final class InspectorTheme {
             configuration.setLocale(english ? Locale.ENGLISH : Locale.SIMPLIFIED_CHINESE);
             configuration.uiMode = (configuration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
                 | (dark ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
-            applyOverrideConfiguration(configuration);
+            applyOverrideConfiguration(configuration); updatePalette();
+        }
+        private void updatePalette() {
+            InspectorPalette selected = InspectorPreferences.palette(this);
+            if (selected == palette) return;
+            palette = selected; getTheme().applyStyle(selected.style, true);
         }
         @Override public Resources getResources() {
             if (localized == null) localized = new InspectorResources(super.getResources(), english);
@@ -62,7 +68,17 @@ final class InspectorTheme {
         }
     }
     static int dp(Context context, int value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
-    static int color(Context context, int resource) { return context.getResources().getColor(resource, context.getTheme()); }
+    static int color(Context context, int resource) {
+        if (resource == R.color.osservio_accent || resource == R.color.osservio_tint || resource == R.color.osservio_press) {
+            InspectorPalette palette = InspectorPreferences.palette(context);
+            boolean dark = (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+            int accent = dark ? palette.dark : palette.light;
+            if (resource == R.color.osservio_accent) return accent;
+            if (resource == R.color.osservio_tint) return dark ? palette.darkTint : palette.lightTint;
+            return (accent & 0xFFFFFF) | (dark ? 0x28000000 : 0x18000000);
+        }
+        return context.getResources().getColor(resource, context.getTheme());
+    }
     static int canvas(Context context) { return color(context, R.color.osservio_canvas); }
     static int surface(Context context) { return color(context, R.color.osservio_surface); }
     static int primary(Context context) { return color(context, R.color.osservio_primary); }

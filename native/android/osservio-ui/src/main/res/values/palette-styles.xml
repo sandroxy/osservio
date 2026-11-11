@@ -1,0 +1,17 @@
+<resources>
+    <style name="OsservioPalettePurple" parent="">
+        <item name="android:colorAccent">@color/osservio_palette_purple</item>
+    </style>
+    <style name="OsservioPaletteBlue" parent="">
+        <item name="android:colorAccent">@color/osservio_palette_blue</item>
+    </style>
+    <style name="OsservioPaletteTeal" parent="">
+        <item name="android:colorAccent">@color/osservio_palette_teal</item>
+    </style>
+    <style name="OsservioPaletteGreen" parent="">
+        <item name="android:colorAccent">@color/osservio_palette_green</item>
+    </style>
+    <style name="OsservioPaletteRose" parent="">
+        <item name="android:colorAccent">@color/osservio_palette_rose</item>
+    </style>
+</resources>

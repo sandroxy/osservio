@@ -24,7 +24,8 @@ import java.util.Objects;
 /** Native live logs. Visibility, reading pause, and filters never change capture. */
 // Histories are explicit dependencies; XML inflation is not supported.
 @SuppressLint("ViewConstructor")
-public final class LogInspectorView extends LinearLayout {
+public final class LogInspectorView extends LinearLayout implements InspectorToolbarActions.Provider {
+    @Override public View navigationAction() { return header.navigationAction(); }
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
         InspectorKeyboardDismissal.outside(this, event); return super.dispatchTouchEvent(event);
     }
@@ -85,7 +86,7 @@ public final class LogInspectorView extends LinearLayout {
             }
             @Override public void onScroll(AbsListView view, int first, int visible, int total) { }
         });
-        addView(list, new LayoutParams(-1, -1));
+        addView(header.viewport(list), new LayoutParams(-1, -1));
         header.setPaused(state.paused);
         InspectorAppearance.content(this, this::display);
         if (state.snapshot != null && !state.query.searchesPayload()) search(); else display();
@@ -148,7 +149,12 @@ public final class LogInspectorView extends LinearLayout {
             });
         watchDialog();
     }
-    private void followLatest() { state.paused = false; dirty = true; list.setSelection(0); refresh(); }
+    private void followLatest() {
+        cancelSearch(); nextSearchAt = 0; state.paused = false;
+        refresh();
+        // Set the anchor after notifying the adapter, which otherwise restores the old row.
+        list.setSelectionFromTop(0, 0);
+    }
     private void watchDialog() {
         handler.removeCallbacks(tick); cancelSearch(); InspectorScreen watched = dialog;
         watched.setOnDismissListener(ignored -> { if (dialog == watched) { dialog = null; schedule(); } });
@@ -183,7 +189,7 @@ public final class LogInspectorView extends LinearLayout {
             String marker = event.isTruncated ? " · " + getContext().getString(R.string.osservio_truncated) : "";
             String preview = result == null ? null : result.previews.get(new InspectorRecordSearch.Record(event).key());
             row.bind(event.level == LogLevel.WARNING ? "WARN" : event.level.name(), preview == null ? event.message.substring(0, Math.min(600, event.message.length())) : preview, event.category + marker, event.timestampMillis, tone);
-            return row;
+            row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }
 }

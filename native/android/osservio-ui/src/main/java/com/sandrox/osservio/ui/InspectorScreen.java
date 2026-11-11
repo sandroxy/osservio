@@ -108,6 +108,7 @@ final class InspectorScreen implements DialogInterface {
     void addAction(View action) {
         bar.pageActions.add(action);
     }
+    void refreshActions() { bar.pageActions.render(); }
     void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); bar.pageActions.render(); }
     void show() {
         if (showing) return;

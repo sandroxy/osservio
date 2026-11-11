@@ -27,7 +27,7 @@ final class InspectorJsonTreeView extends ListView {
     private int focused = -1;
     InspectorJsonTreeView(Context context) {
         super(context); setDivider(null); setDividerHeight(0); setAdapter(adapter);
-        InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.surface(context)));
+        InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.canvas(context)));
         InspectorAppearance.content(this, adapter::notifyDataSetChanged);
         setPadding(0, InspectorTheme.dp(context, 12), 0, InspectorTheme.dp(context, 16)); setClipToPadding(false);
         setOnItemClickListener((parent, view, position, id) -> toggle(position));
@@ -85,9 +85,9 @@ final class InspectorJsonTreeView extends ListView {
             if (!key.isEmpty()) line.setSpan(new ForegroundColorSpan(InspectorTheme.accent(context)), 0, key.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             line.setSpan(new ForegroundColorSpan(InspectorTheme.color(context, color)), key.length(), line.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             text.setText(line); text.setMinHeight(InspectorTheme.dp(context, toggle ? 44 : 28));
-            text.setPadding(InspectorTheme.dp(context, 16 + Math.min(node.depth, 8) * 14), InspectorTheme.dp(context, 3), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 3));
+            text.setPadding(InspectorTheme.dp(context, Math.min(node.depth, 8) * 14), InspectorTheme.dp(context, 3), 0, InspectorTheme.dp(context, 3));
             text.setBackground(InspectorTheme.ripple(context, new android.graphics.drawable.ColorDrawable(
-                InspectorTheme.color(context, focused == row.node && !row.closing ? R.color.osservio_tint : R.color.osservio_surface)), null));
+                InspectorTheme.color(context, focused == row.node && !row.closing ? R.color.osservio_tint : R.color.osservio_canvas)), null));
             text.setContentDescription(line + (toggle ? ", " + context.getString(expanded.contains(row.node) ? R.string.osservio_json_expanded : R.string.osservio_json_collapsed) : "")
                 + ", " + context.getString(toggle ? R.string.osservio_json_toggle_hint : R.string.osservio_json_copy_hint));
             return text;

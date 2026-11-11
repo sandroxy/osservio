@@ -12,7 +12,7 @@ final class InspectorJSONTreeView: UITableView, UITableViewDataSource, UITableVi
         super.init(frame: .zero, style: .plain)
         dataSource = self; delegate = self; separatorStyle = .none
         rowHeight = UITableView.automaticDimension; estimatedRowHeight = 32
-        backgroundColor = InspectorTheme.surface; keyboardDismissMode = .onDrag
+        backgroundColor = InspectorTheme.canvas; keyboardDismissMode = .onDrag
         contentInset = UIEdgeInsets(top: 12, left: 0, bottom: 16, right: 0)
         register(JSONCell.self, forCellReuseIdentifier: "node")
         accessibilityIdentifier = "Osservio.JSON.Tree"
@@ -65,7 +65,7 @@ final class InspectorJSONTreeView: UITableView, UITableViewDataSource, UITableVi
         cell.code.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 14, weight: .regular))
         cell.code.attributedText = value; cell.indent.constant = 16 + CGFloat(min(node.depth, 8)) * 14
         cell.minimum.constant = toggle ? 44 : 28
-        cell.backgroundColor = focusedNode == row.node && !row.closing ? InspectorTheme.tint : InspectorTheme.surface
+        cell.backgroundColor = focusedNode == row.node && !row.closing ? InspectorTheme.tint : InspectorTheme.canvas
         cell.accessibilityLabel = value.string
         cell.accessibilityTraits = toggle ? .button : .staticText
         cell.accessibilityValue = toggle ? InspectorLocalization.text(expanded.contains(row.node) ? "json_expanded" : "json_collapsed") : nil

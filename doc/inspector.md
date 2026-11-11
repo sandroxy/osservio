@@ -18,8 +18,8 @@ initialize a collector or enable persistence.
 
 The full-screen workspace separates Back from Minimize. Search and its filter
 button share one row. Removable criteria and a compact result summary keep the
-active query visible; the trash action clears the destination with confirmation.
-Language and appearance open dedicated settings pages. Filters use a temporary
+active query visible; the navigation trash action clears the destination with confirmation.
+Language and Theme open dedicated settings pages. Filters use a temporary
 sheet with Reset and Apply: Reset edits the draft, and only Apply changes the
 active query. Swipe the handle, tap outside, or use the platform's dismissal
 mechanism to discard it. Problem composition uses a retained full-screen page
@@ -52,20 +52,34 @@ polling and pending parsing. Temporary panels and full-screen editing tasks cove
 the tab bar. More panels dismiss by native swipe/backdrop or an accessible dismiss
 action; Android also provides a draggable handle. Filter drafts remain provisional
 until Apply. Copy and Back use icons with contextual
-accessibility labels; Apply and Save retain their primary-action text.
+accessibility labels; Reset, Apply and Save retain concise text. A full-screen editor
+uses Cancel (an X) on the left, rather than the hierarchical Back arrow. Titles
+name the page's function; URLs, event categories and observation states stay in
+the content instead of competing for navigation space.
+
+Minimize is always the rightmost visible action. Beside it, one page action is
+shown directly; two or more are collected together under More. Without a fixed
+exit, up to two page actions are visible; three or more all move into More.
+A standalone combined inspector's Close is also a fixed exit. Disabled actions
+keep their place and state. Temporary menus have no Minimize or retained draft.
 
 ## Reading and filtering
 
 Logs, Network and the current runtime timeline show search, filters, result counts and a direct trash action.
-They have no permanent play/pause or More controls. Controls scroll with the feed
-so short windows and large text retain reading space. Capacity eviction and rate
+They have no permanent play/pause controls. Search, filters and summaries scroll
+with the feed so short windows and large text retain reading space. Clearing
+stays in the navigation bar. Saved runs also exposes deletion directly,
+with confirmation; it does not open a one-item More menu. Capacity eviction and rate
 limits appear as loss notices when relevant. Clearing affects the destination's
 entire live history, including hidden records, independently of filters. Network
 clears both supplied histories. Connection-only pages do not offer clearing.
 Problems deletes saved evidence with a separate confirmation.
 
-Scrolling freezes the reading window while capture continues. Back to latest,
-or ending a scroll at the top, resumes updates. Bounded stores may still evict
+Scrolling freezes the reading window while capture continues. View latest is a
+floating upward-arrow capsule above the tab bar, independent of the scrolling
+header. It reads the newest retained local snapshot, returns to the top and
+resumes updates without resetting the query. Ending a scroll at the top also
+resumes updates. There is no separate unbounded queue or unread counter. Bounded stores may still evict
 content while a reader is paused. Hidden lists stop polling and cancel content
 search. Failed metadata reads keep the previous window with an explicit notice.
 Network details preserve the selected entry-time record, without a refresh action.
@@ -114,6 +128,10 @@ save and deletion, with Retry available after a read failure, rather than pollin
 the archive or providing a permanent refresh control.
 
 ## Details and content
+
+Dense event feeds use an inset continuous group with rounded outside corners and
+fine dividers. Metadata and settings use grouped cards. Text and JSON readers
+share the page canvas with reading margins, rather than a full-height white panel.
 
 Live list searches include retained sanitized log content, HTTP request/response
 bodies and Socket payloads. Matches can show a short content excerpt. Search is
@@ -186,17 +204,23 @@ explicitly. Network content and the description each require opt-in. See the
 [problem workflow](incidents.md) for frozen windows and retention, and
 [file export](incident-export.md) for optional sharing.
 
-## Language, appearance and accessibility
+## Language, theme and accessibility
 
-App > Inspector offers Simplified Chinese and English, and Light and Dark.
-The defaults are **Simplified Chinese and Light**, independently of the host's
+App > Inspector offers Simplified Chinese and English. Theme separates Display
+mode (Light or Dark) from Palette (Violet, Blue, Teal, Forest or Rose).
+The defaults are **Simplified Chinese, Light and Violet**, independently of the host's
 language or appearance. Preferences persist locally for subsequent inspector
 openings. Switching them does not change capture, retention, host defaults or
-host UI configuration. Diagnostic values such as URLs, identifiers, platform
+host UI configuration. Each palette has light/dark accent, tint and pressed
+colors. Error/warning/success and JSON value-type colors keep their semantic
+meaning. Palette swatches use a ring and checkmark, localized accessible names,
+and full-size touch targets; the grid wraps on narrow viewports. Switching
+palette updates retained pages without restarting capture or reparsing JSON.
+Diagnostic values such as URLs, identifiers, platform
 names and submitted text are preserved rather than translated.
 
 Controls support native text scaling, readable multiline labels and accessibility
-names. At larger text sizes, action groups arrange vertically. Content remains
+names. Navigation titles stay centered, with bounded action slots; longer form controls reflow at larger text sizes. Content remains
 scrollable with the keyboard visible; the reader keeps search controls and text
 in separate scrollable areas. Platform navigation, focus, keyboard and screen
 reader behavior still require acceptance in the integrating host.

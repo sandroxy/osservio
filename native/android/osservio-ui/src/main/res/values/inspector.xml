@@ -20,12 +20,12 @@
     <string name="osservio_ui_environment">Environment</string>
     <string name="osservio_ui_inspector">Inspector</string>
     <string name="osservio_ui_language">Language</string>
-    <string name="osservio_ui_appearance">Appearance</string>
+    <string name="osservio_ui_appearance">Theme</string>
     <string name="osservio_ui_chinese">简体中文</string>
     <string name="osservio_ui_english">English</string>
     <string name="osservio_ui_light">Light</string>
     <string name="osservio_ui_dark">Dark</string>
-    <string name="osservio_ui_preferences_hint">Language and appearance apply only to Osservio. Closing the inspector does not stop capture.</string>
+    <string name="osservio_ui_preferences_hint">Language and theme settings apply only to Osservio. Closing the inspector does not stop capture.</string>
     <string name="osservio_ui_filters">Filters</string>
     <string name="osservio_ui_filter_options">Search filter options</string>
     <string name="osservio_ui_apply">Apply</string>
@@ -64,7 +64,7 @@
     <string name="osservio_ui_baseline">Baseline capture</string>
     <string name="osservio_ui_detailed">Detailed capture</string>
     <string name="osservio_ui_paused">Updates paused for reading</string>
-    <string name="osservio_ui_follow_latest">Back to latest</string>
+    <string name="osservio_ui_follow_latest">View latest</string>
     <string name="osservio_ui_pause">Pause updates</string>
     <string name="osservio_ui_inactive_empty">Debugging is off. Use the debug button at the top left of a root tab to inspect subsequent logs and network activity.</string>
     <string name="osservio_ui_filtered_empty">No records match. Try another search or reset the filters.</string>
@@ -162,4 +162,11 @@
     <string name="osservio_ui_connection_records">Connection records</string>
     <string name="osservio_ui_event_details">Event details</string>
     <string name="osservio_ui_problem_details">Problem details</string>
+    <string name="osservio_ui_display_mode">Display mode</string>
+    <string name="osservio_ui_palette">Palette</string>
+    <string name="osservio_ui_palette_purple">Violet</string>
+    <string name="osservio_ui_palette_blue">Blue</string>
+    <string name="osservio_ui_palette_teal">Teal</string>
+    <string name="osservio_ui_palette_green">Forest</string>
+    <string name="osservio_ui_palette_rose">Rose</string>
 </resources>

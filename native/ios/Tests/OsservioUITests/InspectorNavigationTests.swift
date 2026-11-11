@@ -8,8 +8,8 @@ import XCTest
 final class InspectorNavigationTests: XCTestCase {
     @MainActor
     func testFourDestinationsKeepIndependentQueriesAcrossPreferenceChanges() throws {
-        let preferences = InspectorPreferences.shared, language = preferences.language, appearance = preferences.appearance
-        defer { preferences.language = language; preferences.appearance = appearance }
+        let preferences = InspectorPreferences.shared, language = preferences.language, appearance = preferences.appearance, palette = preferences.palette
+        defer { preferences.language = language; preferences.appearance = appearance; preferences.palette = palette }
         preferences.language = .chinese; preferences.appearance = .light
         let hostLanguage = UserDefaults.standard.stringArray(forKey: "AppleLanguages")
         let capture = CaptureController(); try capture.startDetailed()
@@ -45,7 +45,7 @@ final class InspectorNavigationTests: XCTestCase {
         XCTAssertEqual(network.content.query.text, "connection query"); XCTAssertNil(network.content.query.values[.status])
         network.content.scrollViewWillBeginDragging(network.tableView)
         root.selectedIndex = 3
-        preferences.language = .english; preferences.appearance = .dark
+        preferences.language = .english; preferences.appearance = .dark; preferences.palette = .blue
         XCTAssertEqual(root.selectedIndex, 3); XCTAssertEqual(root.overrideUserInterfaceStyle, .dark)
         XCTAssertEqual(root.viewControllers?.map { $0.tabBarItem.title ?? "" }, ["Logs", "Network", "Problems", "App"])
         root.selectedIndex = 1

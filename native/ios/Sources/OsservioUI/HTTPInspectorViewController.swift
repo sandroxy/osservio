@@ -54,7 +54,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         if selection.selectedIndex == 0 {
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
                 field("ui_http_method", event.method), field("ui_state", HTTPPresentation.state(event.state)), field("http_final_url", event.responseURL),
-                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(InspectorLocalization.text("ui_request_url"), content: self.event.url) }),
+                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(titleKey: "ui_request_url", content: self.event.url) }),
                 field("http_status", event.statusCode.map(String.init)), field("http_duration", event.durationMillis.map { "\($0) ms" }),
                 field("http_failure", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) })
             ], footer: noticeKey.map(InspectorLocalization.text)),
@@ -83,7 +83,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         else if let history { content = HTTPPresentation.body(reference, history: history) }
         else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
         if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
-        read(InspectorLocalization.text(selection.selectedIndex == 1 ? "http_request_body" : "http_response_body"),
+        read(titleKey: selection.selectedIndex == 1 ? "http_request_body" : "http_response_body",
             content: content)
     }
     @objc private func copyMetadata() { UIPasteboard.general.string = HTTPPresentation.overview(event) }

@@ -7,7 +7,7 @@ import UIKit
 final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableViewDelegate {
     typealias HTTP = (recorder: HTTPRecorder, history: any HTTPHistory)
     typealias Socket = (recorder: WebSocketRecorder, history: any WebSocketHistory)
-    let table = InspectorTableView(frame: .zero, style: .plain)
+    let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true, actionLabel: "ui_network_clear")
     private let http: HTTP?
     private let sockets: Socket?
@@ -43,9 +43,9 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         if connectionID != nil { header.extra.addArrangedSubview(InspectorTheme.label(.caption1, secondary: true)); header.actions.isHidden = true }
         header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }
         header.onQueryChange = { [weak self] in self?.apply($0) }
+        table.followLatestButton = header.pause
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
-        header.actions.addTarget(self, action: #selector(clear), for: .touchUpInside)
         style.changed()
     }
     func show() { loop.show(in: table) }
@@ -53,8 +53,9 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private func relabel() {
         guard let owner else { return }; InspectorTheme.apply(owner)
         owner.title = InspectorLocalization.text(connectionID == nil ? "network" : "ui_connection_records")
+        if connectionID == nil { owner.inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(clear), label: "ui_network_clear") }
         header.search.placeholder = InspectorLocalization.text("ui_network_search")
-        (header.extra.arrangedSubviews.first as? UILabel)?.text = InspectorLocalization.text("ui_connection_hint")
+        (header.extra.arrangedSubviews.first as? UILabel)?.text = [InspectorLocalization.text("ui_connection_hint"), connectionID ?? ""].joined(separator: "\n")
         display()
     }
     private func cancelSearch() { generation &+= 1; task?.cancel(); task = nil; dirty = true }
@@ -117,8 +118,8 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         table.setEmptyState(rows.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()
     }
     @objc private func followLatest() {
-        paused = false; dirty = true
-        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false); refresh()
+        cancelSearch(); nextSearchAt = 0; paused = false; refresh()
+        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false)
     }
     @objc private func showFilters() {
         table.endEditing(true)

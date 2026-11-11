@@ -37,7 +37,6 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     private final Button refresh;
     private final android.widget.ImageButton back;
     private final android.widget.ImageButton copy;
-    private final Button delete;
     private final EditText search;
     private final ListView list;
     private final LinearLayout controls;
@@ -74,18 +73,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         refresh.setPadding(dp(16), dp(12), dp(16), dp(12));
         InspectorAppearance.style(refresh, () -> { refresh.setTextColor(InspectorTheme.accent(context)); InspectorTheme.surface(refresh, true, 24); });
         header.addView(refresh, new LayoutParams(-1, -2));
-        delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
-        actions = InspectorWidgets.icon(context, R.drawable.osservio_more, R.string.osservio_ui_actions, () -> {
-            detail = InspectorDialogs.menu(context, R.string.osservio_ui_actions, new String[] {context.getString(R.string.osservio_ui_capture_details), delete.getText().toString()}, (dialog, which) -> {
-                    dialog.dismiss(); detail = null;
-                    if (which == 1) confirmDeletion();
-                    else {
-                        detail = InspectorDialogs.message(context, R.string.osservio_ui_capture_details, PersistencePresentation.status(context, archive.persistenceStatus()));
-                        detail.setOnDismissListener(ignored -> detail = null);
-                    }
-                });
-            InspectorScreen shown = detail; shown.setOnDismissListener(ignored -> { if (detail == shown) detail = null; });
-        });
+        actions = InspectorWidgets.icon(context, R.drawable.osservio_trash, R.string.osservio_archive_delete_all, this::confirmDeletion);
         controls.addView(actions, new LayoutParams(dp(48), -2));
         search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> filter());
         header.addView(search, new LayoutParams(-1, -2));
@@ -165,14 +153,15 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     }
     private void render() {
         refresh.setEnabled(!reading); list.setEnabled(!reading); back.setEnabled(!reading);
-        delete.setEnabled(!reading); delete.setText(selected == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run);
+        actions.setEnabled(!reading && (selected != null || !runs.isEmpty()));
+        actions.setContentDescription(getContext().getString(selected == null ? R.string.osservio_archive_delete_all : R.string.osservio_archive_delete_run));
         back.setVisibility(selected == null ? GONE : VISIBLE); copy.setVisibility(selected == null ? GONE : VISIBLE);
         refresh.setVisibility(selected == null ? VISIBLE : GONE); search.setVisibility(selected == null ? GONE : VISIBLE);
         if (screen != null) screen.title(selected == null ? R.string.osservio_ui_saved_runs : R.string.osservio_archive_title);
         notice.setVisibility(notice.length() == 0 ? GONE : VISIBLE);
         summary.setText(selected == null ? PersistencePresentation.status(getContext(), archive.persistenceStatus()) : PersistencePresentation.run(getContext(), selected.run));
         footer.setText(selected == null ? R.string.osservio_archive_hint : R.string.osservio_archive_snapshot);
-        filter();
+        filter(); if (screen != null) screen.refreshActions();
     }
     private void confirmDeletion() {
         if (reading || detail != null) return;

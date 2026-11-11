@@ -122,7 +122,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
                 WebSocketEvent event = sockets.events.get(index);
                 row.bind("WebSocket", WebSocketPresentation.summary(context, event), event.url + " · " + event.connectionId.substring(0, Math.min(8, event.connectionId.length())), event.timestampMillis, InspectorTheme.accent(context));
             }
-            return row;
+            row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }
 }

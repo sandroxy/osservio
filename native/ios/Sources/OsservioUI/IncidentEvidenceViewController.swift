@@ -7,8 +7,8 @@ import UIKit
 final class IncidentEvidenceViewController: UITableViewController {
     enum Evidence { case logs(IncidentLogs), http(IncidentHTTP), webSockets(IncidentWebSockets) }
     private let evidence: Evidence
-    private let table = InspectorTableView(frame: .zero, style: .plain)
-    private let header = InspectorFeedHeader()
+    private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
+    private let header = InspectorFeedHeader(compact: true)
     private var query = InspectorQuery()
     private var indices: [Int] = []
     init(_ evidence: Evidence) { self.evidence = evidence; super.init(style: .plain) }

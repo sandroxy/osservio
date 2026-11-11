@@ -6,7 +6,7 @@ import UIKit
 final class BreadcrumbInspectorViewController: UITableViewController {
     private let recorder: BreadcrumbRecorder
     private let history: any BreadcrumbHistory
-    private let table = InspectorTableView(frame: .zero, style: .plain)
+    private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true, actionLabel: "crumb_clear")
     private var query = InspectorQuery()
     private var paused = false
@@ -29,13 +29,14 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
         header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
-        header.pause.addTarget(self, action: #selector(togglePause), for: .touchUpInside)
+        table.followLatestButton = header.pause
+        header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
         header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
-        header.actions.addTarget(self, action: #selector(showActions), for: .touchUpInside)
         style.changed()
     }
     private func relabel() {
         InspectorTheme.apply(self); title = InspectorLocalization.text("ui_current_timeline")
+        inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(showActions), label: "crumb_clear")
         header.search.placeholder = InspectorLocalization.text("crumb_search"); render()
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); loop.show(in: view) }
@@ -69,10 +70,9 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         header.status.text = notes.joined(separator: " · ")
         header.relabel(paused: paused, query: query); table.setNeedsLayout()
     }
-    @objc private func togglePause() {
-        paused.toggle(); dirty = true
-        if !paused { table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false) }
-        refresh()
+    @objc private func followLatest() {
+        paused = false; dirty = true; refresh()
+        table.setContentOffset(CGPoint(x: 0, y: -table.adjustedContentInset.top), animated: false)
     }
     @objc private func showFilters() {
         let group = InspectorFilterGroup(.kind, values: (latest?.events ?? []).map { $0.kind.rawValue })
@@ -87,7 +87,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { if !paused { paused = true; updateStatus() } }
     override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { resumeAtTop() } }
     override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { resumeAtTop() }
-    private func resumeAtTop() { if paused && table.contentOffset.y <= -table.adjustedContentInset.top + 1 { togglePause() } }
+    private func resumeAtTop() { if paused && table.contentOffset.y <= -table.adjustedContentInset.top + 1 { followLatest() } }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]

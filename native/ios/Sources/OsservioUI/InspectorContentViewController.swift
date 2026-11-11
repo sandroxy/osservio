@@ -9,6 +9,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     private let text = UITextView()
     private let search = UISearchTextField()
     private let controls = UIScrollView()
+    private var titleKey: String?
     private let mode = InspectorScopeControl(titles: ["", ""])
     private let notice = InspectorTheme.label(.caption1, secondary: true)
     private let tree = InspectorJSONTreeView()
@@ -34,6 +35,12 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         self.value = value; code = true
         super.init(nibName: nil, bundle: nil); self.title = title
     }
+    convenience init(titleKey: String, content: String, code: Bool) {
+        self.init(title: InspectorLocalization.text(titleKey), content: content, code: code); self.titleKey = titleKey
+    }
+    convenience init(titleKey: String, value: InspectorReadContent) {
+        self.init(title: InspectorLocalization.text(titleKey), value: value); self.titleKey = titleKey
+    }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     deinit { work?.cancel(); parsing?.cancel(); NotificationCenter.default.removeObserver(self) }
@@ -57,7 +64,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         stack.translatesAutoresizingMaskIntoConstraints = false; controls.addSubview(stack)
         controls.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(controls)
         text.isEditable = false; text.isSelectable = true; text.adjustsFontForContentSizeCategory = true
-        text.backgroundColor = InspectorTheme.surface; text.keyboardDismissMode = .onDrag
+        text.backgroundColor = InspectorTheme.canvas; text.keyboardDismissMode = .onDrag
         text.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 16, right: 12)
         text.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(text)
         text.accessibilityIdentifier = "Osservio.JSON.Raw"
@@ -91,6 +98,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); active = true; InspectorTheme.apply(self)
+        if let titleKey { title = InspectorLocalization.text(titleKey) }
         inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("ui_copy_all")
         search.placeholder = InspectorLocalization.text("ui_search_content")
         previous.setTitle(InspectorLocalization.text("ui_previous_match"), for: .normal)

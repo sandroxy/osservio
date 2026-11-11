@@ -290,14 +290,15 @@ final class InspectorWidgets {
         return new java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.ROOT).format(new java.util.Date(millis));
     }
     static final class EventRow extends LinearLayout {
+        private final LinearLayout card;
         private final TextView badge;
         private final TextView time;
         private final TextView title;
         private final TextView metadata;
         EventRow(Context context) {
             super(context); setOrientation(VERTICAL);
-            int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 3), inset, InspectorTheme.dp(context, 3));
-            LinearLayout card = new LinearLayout(context); card.setOrientation(VERTICAL); card.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
+            int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
+            card = new LinearLayout(context); card.setOrientation(VERTICAL); card.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
             InspectorAppearance.style(card, () -> InspectorTheme.surface(card, true, 18));
             card.setDuplicateParentStateEnabled(true);
             addView(card, new LayoutParams(-1, -2));
@@ -312,6 +313,9 @@ final class InspectorWidgets {
             metadata = InspectorTheme.text(context, 12, false); InspectorAppearance.style(metadata, () -> metadata.setTextColor(InspectorTheme.secondary(context)));
             metadata.setMaxLines(3); metadata.setEllipsize(android.text.TextUtils.TruncateAt.END);
             card.addView(metadata, new LayoutParams(-1, -2));
+        }
+        void grouped(boolean first, boolean last) {
+            InspectorAppearance.style(card, () -> groupedRow(card, first, last));
         }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {
             badge.setText(label); badge.setTextColor(tone); title.setText(primary); metadata.setText(secondary);

@@ -78,9 +78,10 @@ public final class InspectorView extends FrameLayout {
     private AppearanceListener appearanceListener;
     private boolean dark;
     private boolean english;
+    private InspectorPalette palette;
     private final Runnable refreshPreferences = this::preferencesChanged;
     private final SharedPreferences.OnSharedPreferenceChangeListener preferences = (storage, key) -> {
-        if (InspectorPreferences.LANGUAGE.equals(key) || InspectorPreferences.APPEARANCE.equals(key)) {
+        if (InspectorPreferences.LANGUAGE.equals(key) || InspectorPreferences.APPEARANCE.equals(key) || InspectorPreferences.PALETTE.equals(key)) {
             removeCallbacks(refreshPreferences); post(refreshPreferences);
         }
     };
@@ -152,7 +153,7 @@ public final class InspectorView extends FrameLayout {
         rootPage.removeAllViews(); workspace.removeAllViews();
         workspace.addView(navigation, new LinearLayout.LayoutParams(-1, 0, 1));
         for (int i = 0; i < pages.length; i++) pages[i] = null;
-        dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext());
+        dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext()); palette = InspectorPreferences.palette(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
         InspectorToolbar bar = new InspectorToolbar(themed); rootBar = bar;
         int inset = InspectorTheme.dp(themed, 16);
@@ -214,6 +215,8 @@ public final class InspectorView extends FrameLayout {
                 InspectorTheme.shape(themed, i == index ? InspectorTheme.canvas(themed) : android.graphics.Color.TRANSPARENT, 25, false),
                 InspectorTheme.shape(themed, android.graphics.Color.WHITE, 25, false)));
         }
+        rootBar.pageActions.replace(pages[index] instanceof InspectorToolbarActions.Provider
+            ? java.util.Collections.singletonList(((InspectorToolbarActions.Provider) pages[index]).navigationAction()) : java.util.Collections.emptyList());
         title.setText(labels[index]); navigation.select(index); updateDebugPolling();
     }
     private View unavailable() {
@@ -230,8 +233,15 @@ public final class InspectorView extends FrameLayout {
         else if (page instanceof IncidentInspectorView) ((IncidentInspectorView) page).saveReadingPosition();
     }
     private void preferencesChanged() {
-        if (dark == InspectorPreferences.dark(getContext()) && english == InspectorPreferences.english(getContext())) return;
-        rebuild(); navigation.refreshAppearance(themed); if (appearanceListener != null) appearanceListener.changed(dark);
+        boolean configurationChanged = dark != InspectorPreferences.dark(getContext()) || english != InspectorPreferences.english(getContext());
+        InspectorPalette selectedPalette = InspectorPreferences.palette(getContext());
+        if (!configurationChanged && palette == selectedPalette) return;
+        if (configurationChanged) { rebuild(); }
+        else {
+            palette = selectedPalette; themed = InspectorTheme.context(themed);
+            InspectorAppearance.refresh(rootPage); select(selection);
+        }
+        navigation.refreshAppearance(themed); if (appearanceListener != null) appearanceListener.changed(dark);
     }
     @Override protected void onMeasure(int width, int height) {
         if (MeasureSpec.getMode(height) != MeasureSpec.UNSPECIFIED)

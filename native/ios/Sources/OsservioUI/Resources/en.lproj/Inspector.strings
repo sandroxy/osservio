@@ -18,12 +18,12 @@
 "ui_environment" = "Environment";
 "ui_inspector" = "Inspector";
 "ui_language" = "Language";
-"ui_appearance" = "Appearance";
+"ui_appearance" = "Theme";
 "ui_chinese" = "简体中文";
 "ui_english" = "English";
 "ui_light" = "Light";
 "ui_dark" = "Dark";
-"ui_preferences_hint" = "Language and appearance apply only to Osservio. Closing the inspector does not stop capture.";
+"ui_preferences_hint" = "Language and theme settings apply only to Osservio. Closing the inspector does not stop capture.";
 "ui_filters" = "Filters";
 "ui_filter_options" = "Search filter options";
 "ui_apply" = "Apply";
@@ -62,7 +62,7 @@
 "ui_baseline" = "Baseline capture";
 "ui_detailed" = "Detailed capture";
 "ui_paused" = "Updates paused for reading";
-"ui_follow_latest" = "Back to latest";
+"ui_follow_latest" = "View latest";
 "ui_pause" = "Pause updates";
 "ui_inactive_empty" = "Debugging is off. Use the debug button at the top left of a root tab to inspect subsequent logs and network activity.";
 "ui_filtered_empty" = "No records match. Try another search or reset the filters.";
@@ -191,3 +191,10 @@
 "ui_connection_records" = "Connection records";
 "ui_event_details" = "Event details";
 "ui_problem_details" = "Problem details";
+"ui_display_mode" = "Display mode";
+"ui_palette" = "Palette";
+"ui_palette_purple" = "Violet";
+"ui_palette_blue" = "Blue";
+"ui_palette_teal" = "Teal";
+"ui_palette_green" = "Forest";
+"ui_palette_rose" = "Rose";

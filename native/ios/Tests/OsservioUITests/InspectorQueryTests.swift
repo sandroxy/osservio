@@ -83,10 +83,12 @@ final class InspectorQueryTests: XCTestCase {
         let preferences = InspectorPreferences(defaults: defaults)
         XCTAssertEqual(preferences.language, .chinese)
         XCTAssertEqual(preferences.appearance, .light)
-        preferences.language = .english; preferences.appearance = .dark
+        XCTAssertEqual(preferences.palette, .purple)
+        preferences.language = .english; preferences.appearance = .dark; preferences.palette = .teal
         let reopened = InspectorPreferences(defaults: defaults)
         XCTAssertEqual(reopened.language, .english)
         XCTAssertEqual(reopened.appearance, .dark)
+        XCTAssertEqual(reopened.palette, .teal)
         XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["ja"])
     }
 

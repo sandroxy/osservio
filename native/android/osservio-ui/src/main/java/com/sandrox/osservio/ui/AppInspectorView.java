@@ -61,14 +61,11 @@ final class AppInspectorView extends ScrollView {
     }
     private void choose(boolean appearance) {
         Context context = getContext();
-        String[] choices = appearance ? new String[] {context.getString(R.string.osservio_ui_light), context.getString(R.string.osservio_ui_dark)}
-            : new String[] {context.getString(R.string.osservio_ui_chinese), context.getString(R.string.osservio_ui_english)};
-        int selected = (appearance ? InspectorPreferences.dark(context) : InspectorPreferences.english(context)) ? 1 : 0;
-        dialog = InspectorDialogs.choices(context, appearance ? R.string.osservio_ui_appearance : R.string.osservio_ui_language,
-            choices, selected, false, (selection, which) -> {
-                if (appearance) InspectorPreferences.setDark(context, which == 1);
-                else InspectorPreferences.setEnglish(context, which == 1);
-            });
+        if (appearance) { open(R.string.osservio_ui_appearance, new InspectorThemeView(context)); return; }
+        String[] choices = {context.getString(R.string.osservio_ui_chinese), context.getString(R.string.osservio_ui_english)};
+        int selected = InspectorPreferences.english(context) ? 1 : 0;
+        dialog = InspectorDialogs.choices(context, R.string.osservio_ui_language, choices, selected, false,
+            (selection, which) -> InspectorPreferences.setEnglish(context, which == 1));
         clearOnDismiss();
     }
     private void captureStatus() {

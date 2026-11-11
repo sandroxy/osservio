@@ -1,7 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 
-/// All controls scroll with the feed, including at accessibility sizes or with the keyboard open.
+/// Search and summaries scroll with the feed; navigation and the latest shortcut have separate owners.
 @MainActor
 final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     let status = InspectorTheme.label(.caption1, secondary: true)
@@ -42,9 +42,10 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         }
         let searchRow = UIStackView(arrangedSubviews: [search, filters]); searchRow.spacing = 8
         let summary = UIStackView(arrangedSubviews: compact ? [count, status] : [status]); summary.axis = .vertical; summary.spacing = 4
-        let controls = UIStackView(arrangedSubviews: [summary, pause, actions]); controls.spacing = 8; controls.alignment = .center
+        let controls = UIStackView(arrangedSubviews: compact ? [summary] : [summary, pause, actions]); controls.spacing = 8; controls.alignment = .center
         status.setContentHuggingPriority(.defaultLow, for: .horizontal)
         if compact {
+            actions.isHidden = true
             tokens.spacing = 6; tokens.translatesAutoresizingMaskIntoConstraints = false
             tokenScroll.addSubview(tokens); tokenScroll.showsHorizontalScrollIndicator = false
             NSLayoutConstraint.activate([tokens.leadingAnchor.constraint(equalTo: tokenScroll.contentLayoutGuide.leadingAnchor),
@@ -60,10 +61,12 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
     func relabel(paused: Bool, query: InspectorQuery) {
         if compact {
-            if #available(iOS 15, *) { pause.configuration = nil }
-            pause.setImage(nil, for: .normal); pause.setTitle(InspectorLocalization.text("ui_follow_latest"), for: .normal)
-            pause.titleLabel?.font = .preferredFont(forTextStyle: .caption1); pause.titleLabel?.adjustsFontForContentSizeCategory = true
-            pause.titleLabel?.numberOfLines = 2; pause.isHidden = !paused
+            configure(pause, symbol: "arrow.up", title: InspectorLocalization.text("ui_follow_latest"))
+            pause.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
+            pause.titleLabel?.adjustsFontForContentSizeCategory = true
+            pause.titleLabel?.numberOfLines = 1; pause.isHidden = !paused
+            pause.layer.shadowColor = UIColor.black.cgColor; pause.layer.shadowOpacity = 0.12
+            pause.layer.shadowRadius = 8; pause.layer.shadowOffset = CGSize(width: 0, height: 3)
         } else { configure(pause, symbol: paused ? "play.fill" : "pause.fill", selected: paused) }
         pause.accessibilityLabel = InspectorLocalization.text(paused ? "ui_follow_latest" : "ui_pause")
         configure(actions, symbol: compact ? "trash" : "ellipsis")
@@ -78,7 +81,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     }
     private func updateTokens(_ query: InspectorQuery) {
         tokenScroll.isHidden = query.activeCount == 0
-        let style = InspectorLocalization.text("ui_remove_filter") + InspectorPreferences.shared.appearance.rawValue
+        let style = InspectorLocalization.text("ui_remove_filter") + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue
         guard tokenQuery != query || tokenStyle != style else { return }
         tokenQuery = query; tokenStyle = style
         for view in tokens.arrangedSubviews { tokens.removeArrangedSubview(view); view.removeFromSuperview() }

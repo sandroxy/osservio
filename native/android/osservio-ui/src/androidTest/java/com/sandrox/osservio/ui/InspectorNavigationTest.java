@@ -92,6 +92,7 @@ public final class InspectorNavigationTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
             boolean wasEnglish = InspectorPreferences.english(base), wasDark = InspectorPreferences.dark(base);
+            InspectorPalette wasPalette = InspectorPreferences.palette(base);
             try {
                 InspectorPreferences.setEnglish(base, false); InspectorPreferences.setDark(base, false);
                 android.widget.FrameLayout container = new android.widget.FrameLayout(base);
@@ -111,7 +112,7 @@ public final class InspectorNavigationTest {
                 description(reader, R.string.osservio_ui_search_content).performClick();
                 first(reader, EditText.class).setText("city");
                 InspectorScreen screen = InspectorDialogs.screen(context, R.string.osservio_http_response_body, reader); screen.show();
-                InspectorPreferences.setEnglish(base, true); InspectorPreferences.setDark(base, true);
+                InspectorPreferences.setEnglish(base, true); InspectorPreferences.setDark(base, true); InspectorPreferences.setPalette(base, InspectorPalette.BLUE);
                 navigation.refreshAppearance(InspectorTheme.context(base));
                 assertEquals("city", first(reader, EditText.class).getText().toString());
                 assertEquals(expanded, tree.getAdapter().getCount());
@@ -119,7 +120,7 @@ public final class InspectorNavigationTest {
                 assertEquals("Copy all", description(screen.view, R.string.osservio_ui_copy_all).getContentDescription().toString());
                 assertEquals(InspectorTheme.canvas(InspectorTheme.context(base)), InspectorTheme.canvas(context));
                 assertTrue(screen.isShowing()); navigation.dispose();
-            } finally { InspectorPreferences.setEnglish(base, wasEnglish); InspectorPreferences.setDark(base, wasDark); }
+            } finally { InspectorPreferences.setEnglish(base, wasEnglish); InspectorPreferences.setDark(base, wasDark); InspectorPreferences.setPalette(base, wasPalette); }
         });
     }
     private static <T extends View> void collectAll(View view, Class<T> type, List<T> result) {

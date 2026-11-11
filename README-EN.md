@@ -29,7 +29,7 @@ React Native, Uni and Flutter adapters are not implemented.
 - An Android View and an iOS UIKit inspector organized into Logs, Network,
   Problems and App, with unified filters, log/network content search,
   cross-connection Socket message lookup and layered details. Language defaults to Simplified Chinese, with English
-  available; appearance defaults to Light, with Dark available. Both preferences
+  available; Theme offers Light/Dark modes and five accent palettes, defaulting to Light and Violet. These preferences
   are independent of the host. See [the native inspector guide](doc/inspector.md).
 - Independent capture and presentation lifetimes: closing the inspector does
   not stop capture, and stopping capture does not clear history.

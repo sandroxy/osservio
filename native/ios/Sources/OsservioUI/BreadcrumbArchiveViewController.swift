@@ -7,7 +7,7 @@ import UIKit
 final class BreadcrumbArchiveViewController: UITableViewController {
     private let archive: any BreadcrumbArchive
     private var runs: [RetainedRun] = []
-    private var reading = false
+    private var reading = false { didSet { updateDeleteAction() } }
     private var generation = 0
     private var updatedAt: Int64?
     private var notice = RuntimePresentation.text("archive_hint")
@@ -16,12 +16,15 @@ final class BreadcrumbArchiveViewController: UITableViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self); tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 76
-        inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), style: .plain, target: self, action: #selector(showActions))
-        inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("ui_actions")
+        inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(deleteAll), label: "archive_delete_all")
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); InspectorTheme.apply(self); title = InspectorLocalization.text("ui_saved_runs"); read() }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated); generation += 1; reading = false
+    }
+    private func updateDeleteAction() {
+        inspectorPrimaryAction?.isEnabled = !reading && !runs.isEmpty
+        inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("archive_delete_all")
     }
     private func read() {
         guard !reading else { return }
@@ -37,7 +40,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
                     self.notice = RuntimePresentation.text("archive_loaded") + " · " + RuntimePresentation.date(self.updatedAt!)
                 case .failure(let error): self.failed(error)
                 }
-                self.tableView.reloadData()
+                self.updateDeleteAction(); self.tableView.reloadData()
             }
         }
     }
@@ -87,7 +90,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
                     else { self.notice = RuntimePresentation.text("archive_missing") }
                 case .failure(let error): self.failed(error)
                 }
-                self.tableView.reloadData()
+                self.updateDeleteAction(); self.tableView.reloadData()
             }
         }
     }
@@ -100,12 +103,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
         let configuration = UISwipeActionsConfiguration(actions: [action]); configuration.performsFirstActionWithFullSwipe = false
         return configuration
     }
-    @objc private func showActions() {
-        let menu = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: PersistencePresentation.status(archive.persistenceStatus()))
-        var clear = InspectorActionPanel.Action(title: InspectorLocalization.text("archive_delete_all"), style: .destructive) { [weak self] _ in self?.confirmDeletion(id: nil) }
-        clear.isEnabled = !reading && !runs.isEmpty; menu.addAction(clear)
-        inspectorPresent(menu)
-    }
+    @objc private func deleteAll() { if !runs.isEmpty { confirmDeletion(id: nil) } }
     private func confirmDeletion(id: String?) {
         guard !reading else { return }
         let alert = UIAlertController(title: RuntimePresentation.text(id == nil ? "archive_delete_all" : "archive_delete_run"),
@@ -124,7 +122,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
                 self.reading = false
                 switch result {
                 case .success: self.read()
-                case .failure(let error): self.failed(error); self.tableView.reloadData()
+                case .failure(let error): self.failed(error); self.updateDeleteAction(); self.tableView.reloadData()
                 }
             }
         }

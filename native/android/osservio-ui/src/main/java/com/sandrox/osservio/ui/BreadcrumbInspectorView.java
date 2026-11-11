@@ -20,7 +20,7 @@ import java.util.List;
 
 // Capture and histories are supplied by the host; this view is never inflated from XML.
 @SuppressLint("ViewConstructor")
-final class BreadcrumbInspectorView extends LinearLayout {
+final class BreadcrumbInspectorView extends LinearLayout implements InspectorScreen.Content {
     private final BreadcrumbRecorder recorder;
     private final BreadcrumbHistory history;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -61,7 +61,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
             }
             @Override public void onScroll(AbsListView view, int first, int visible, int total) { }
         });
-        addView(list, new LayoutParams(-1, -1));
+        addView(header.viewport(list), new LayoutParams(-1, -1));
         InspectorAppearance.style(this, () -> setBackgroundColor(InspectorTheme.canvas(context)));
         InspectorAppearance.content(this, () -> {
             header.search.setHint(R.string.osservio_crumb_search);
@@ -118,7 +118,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
             notice += (notice.isEmpty() ? "" : " · ") + getContext().getString(R.string.osservio_ui_retention_loss);
         header.status.setText(notice); header.setPaused(paused);
     }
-    private void setPaused(boolean value) { paused = value; refreshView(); if (!value) list.setSelection(0); }
+    private void setPaused(boolean value) { paused = value; refreshView(); if (!value) list.setSelectionFromTop(0, 0); }
     private void showDetail(BreadcrumbEvent event) {
         if (detail != null) return;
         detail = BreadcrumbDetailDialog.create(getContext(), event); watchDialog(); detail.show();
@@ -127,6 +127,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
         handler.removeCallbacks(refresh); InspectorScreen watched = detail;
         watched.setOnDismissListener(ignored -> { if (detail == watched) { detail = null; schedule(); } });
     }
+    @Override public void bindScreen(InspectorScreen screen) { screen.addAction(header.navigationAction()); }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return events.size(); }
         @Override public BreadcrumbEvent getItem(int position) { return events.get(position); }
@@ -135,7 +136,7 @@ final class BreadcrumbInspectorView extends LinearLayout {
             InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             BreadcrumbEvent event = getItem(position);
             row.bind(RuntimePresentation.kind(getContext(), event.kind), event.label, event.message == null ? "#" + event.sequence : event.message,
-                event.timestampMillis, InspectorTheme.accent(getContext())); return row;
+                event.timestampMillis, InspectorTheme.accent(getContext())); row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }
 }

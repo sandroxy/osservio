@@ -51,7 +51,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         if selection.selectedIndex == 0 {
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
                 Row(WebSocketPresentation.summary(event)),
-                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(InspectorLocalization.text("ui_request_url"), content: self.event.url) }),
+                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(titleKey: "ui_request_url", content: self.event.url) }),
                 field("ws_time", InspectorLocalization.date(event.timestampMillis)),
                 field("http_status", event.statusCode.map(String.init)), field("ws_close_code", event.closeCode.map(String.init)),
                 field("http_failure", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) })
@@ -77,7 +77,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         else if let history { content = WebSocketPresentation.payload(event.payload, history: history) }
         else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
         if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
-        read(InspectorLocalization.text("ws_payload"), content: content)
+        read(titleKey: "ws_payload", content: content)
     }
     @objc private func copyMetadata() { UIPasteboard.general.string = WebSocketPresentation.overview(event) }
 }
