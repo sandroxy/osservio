@@ -43,6 +43,28 @@ final class IncidentEvidenceTests: XCTestCase {
         XCTAssertEqual(find(reader.view, UITextView.self)?.text, "content")
     }
     @MainActor
+    func testCompleteHeaderValueUsesBoundedPreviewAndExactReader() async throws {
+        let token = "Bearer " + String(repeating: "synthetic-token.", count: 90)
+        let url = "https://example.com/api?token=synthetic-only&name=%E6%B6%88%E6%81%AF"
+        let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 1, revision: 2, timestampMillis: 123, method: "POST", source: .host,
+            url: url, responseURL: nil, requestHeaders: [HTTPHeader(name: "authorization", value: token)], responseHeaders: [],
+            headersLimited: false, statusCode: 401, state: .completed, failure: nil, durationMillis: 4,
+            requestBody: .restore(state: .omitted, blobID: nil, observedBytes: 0), responseBody: .restore(state: .omitted, blobID: nil, observedBytes: 0))
+        let detail = HTTPDetailViewController(event: event, savedPayloads: [:]), window = show(detail)
+        defer { window.isHidden = true; window.rootViewController = nil }
+        XCTAssertTrue(HTTPPresentation.overview(event).contains(token)); XCTAssertTrue(HTTPPresentation.overview(event).contains(url))
+        try activate(detail.view, title: InspectorLocalization.text("ui_request"))
+        let header = try XCTUnwrap(detail.sections.last?.rows.first)
+        XCTAssertEqual(header.label, "authorization"); XCTAssertLessThan(try XCTUnwrap(header.value).count, 200)
+        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 0, section: 1))
+        try await settled(XCTUnwrap(detail.navigationController))
+        let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
+        XCTAssertEqual(find(reader.view, UITextView.self)?.text, token)
+        XCTAssertTrue(labels(reader.view).contains("authorization"))
+        let processed = try HTTPBodyReference.restore(state: .available, blobID: id + ".request", observedBytes: 2, isProcessed: true)
+        XCTAssertTrue(HTTPPresentation.bodyDescription(processed).contains(InspectorLocalization.text("ui_content_processed")))
+    }
+    @MainActor
     func testSavedHTTPNavigationSearchAndContentHaveNoLiveRefresh() async throws {
         let bodyID = id + ".response"
         let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 7, revision: 2, timestampMillis: 123, method: "GET", source: .host,

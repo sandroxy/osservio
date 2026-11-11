@@ -152,7 +152,7 @@ inset. Sheets cover the tabs and do not inherit this padding. This treatment doe
 not sample or blur host content. Metadata and settings use grouped cards. Text and JSON readers
 share the page canvas with reading margins, rather than a full-height white panel.
 
-Live list searches include retained sanitized log content, HTTP request/response
+Live list searches include retained, host-policy-processed log content, HTTP request/response
 bodies and Socket payloads. Matches can show a short content excerpt. Search is
 literal and case-insensitive; optional JSON Pointer conditions match an explicitly
 specified scalar exactly without guessing its business meaning. A partial-coverage
@@ -179,7 +179,7 @@ Addresses have a separate display representation: safe visible characters are
 decoded once, while encoded separators, controls and malformed escapes remain
 escaped. Hidden paths and queries are labeled instead of displaying encoded
 redaction markers. Opening or copying the exact URL preserves the admitted,
-sanitized source. Display formatting does not change filtering, storage or export.
+source after host policy. Display formatting does not change filtering, storage or export.
 
 Visible Socket message rows may load short previews in the background. At most
 16 visible rows are considered per job and 64 previews are cached; each preview
@@ -197,12 +197,12 @@ unattached evidence has no disclosure action. System diagnostics retain structur
 source facts and open address lists separately. Platform-specific evidence stays
 explicit rather than being replaced with a common placeholder value.
 
-Private descriptions use a localized privacy explanation instead of making
+Explicitly private descriptions explain that the content was omitted at capture instead of making
 `[private]` the problem title. The list retains the problem type, record time and
 positive attachment counts. Attached empty windows remain distinct from missing
 attachments in details. Private
 log and breadcrumb content is labeled consistently in live and saved views; a
-hidden body has no reader action. These are presentation choices based on typed
+body whose original was discarded has no reader action. These are presentation choices based on typed
 privacy flags, not text matching. They do not recover discarded text, delete
 records or change sanitized storage and portable exports.
 
@@ -218,7 +218,9 @@ The reader holds that one bounded, sanitized content result. Capture and saved
 inclusion notices appear separately from the payload, including truncated,
 omitted, missing, busy and empty states. Copy all copies the payload text, not
 those explanations or the parent record context shown above the reader. Long
-metadata values can also open the reader. Technical fields expand on demand.
+header values use bounded previews and open exact, searchable, copyable readers.
+Host-transformed bodies carry a processing notice separately from their content.
+Other long metadata values can also open the reader. Technical fields expand on demand.
 Environment sizes use readable binary units, with exact byte counts available
 separately; unavailable platform metrics are grouped without inventing values.
 

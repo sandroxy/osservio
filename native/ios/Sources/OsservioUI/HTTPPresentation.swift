@@ -67,6 +67,6 @@ enum HTTPPresentation {
     }
     static func bodyDescription(_ reference: HTTPBodyReference) -> String {
         let key = reference.state == .invalidText ? "invalid_text" : reference.state.rawValue
-        return text("http_body_" + key) + (reference.observedBytes > 0 ? "\n" + text("http_observed_bytes") + ": " + InspectorValuePresentation.bytes(reference.observedBytes) : "")
+        return (reference.isProcessed ? text("ui_content_processed") + "\n" : "") + text("http_body_" + key) + (reference.observedBytes > 0 ? "\n" + text("http_observed_bytes") + ": " + InspectorValuePresentation.bytes(reference.observedBytes) : "")
     }
 }

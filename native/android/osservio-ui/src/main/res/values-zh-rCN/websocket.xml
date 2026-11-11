@@ -20,7 +20,7 @@
     <string name="osservio_ws_bytes">已知消息字节数</string>
     <string name="osservio_ws_incoming">接收</string>
     <string name="osservio_ws_outgoing">发送</string>
-    <string name="osservio_ws_payload_omitted">消息正文已按隐私策略省略。</string>
+    <string name="osservio_ws_payload_omitted">消息正文已按采集配置或宿主策略省略。</string>
     <string name="osservio_ws_payload_binary">不采集二进制正文，仅记录已知字节数。</string>
     <string name="osservio_ws_payload_available">已采集文本</string>
     <string name="osservio_ws_payload_truncated">仅保留限定长度的文本前缀，完整消息大小未知。</string>

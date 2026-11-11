@@ -73,7 +73,7 @@ final class HTTPDetailDialog {
             page.section(section == 1 ? R.string.osservio_http_request_headers : R.string.osservio_http_response_headers);
             List<HTTPHeader> headers = section == 1 ? event.requestHeaders : event.responseHeaders;
             if (headers.isEmpty()) page.value(() -> context.getString(R.string.osservio_ui_headers_empty));
-            for (HTTPHeader header : headers) page.field(header.name, header.value);
+            for (HTTPHeader header : headers) page.header(header);
             if (event.headersLimited) page.note(R.string.osservio_http_headers_limited);
         }
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));

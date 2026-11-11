@@ -20,7 +20,7 @@
     <string name="osservio_ws_bytes">Known message bytes</string>
     <string name="osservio_ws_incoming">Incoming</string>
     <string name="osservio_ws_outgoing">Outgoing</string>
-    <string name="osservio_ws_payload_omitted">Message content was omitted by privacy policy.</string>
+    <string name="osservio_ws_payload_omitted">Message content was omitted by the capture configuration or host policy.</string>
     <string name="osservio_ws_payload_binary">Binary content is not captured; only its known byte count is recorded.</string>
     <string name="osservio_ws_payload_available">Captured text</string>
     <string name="osservio_ws_payload_truncated">Only a bounded text prefix was retained. The full message size is unknown.</string>

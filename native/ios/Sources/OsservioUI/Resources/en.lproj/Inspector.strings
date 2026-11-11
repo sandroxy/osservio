@@ -135,7 +135,7 @@
 
 "ui_field_value" = "Exact field value (may be empty)";
 
-"ui_field_hint" = "Searches retained, sanitized content only. Field values match exactly; business meaning is not inferred. Paths are case-sensitive.";
+"ui_field_hint" = "Searches retained content only. Field values match exactly; business meaning is not inferred. Paths are case-sensitive.";
 
 "ui_field_invalid" = "Enter a valid JSON Pointer starting with /, with at most 16 components. Duration must be a nonnegative integer.";
 
@@ -199,7 +199,7 @@
 "ui_palette_green" = "Forest";
 "ui_palette_rose" = "Rose";
 
-"ui_private_content" = "Content hidden for privacy";
+"ui_private_content" = "Content omitted at capture";
 
 // Record reading and evidence context.
 "ui_url_unavailable" = "Address unavailable";
@@ -260,3 +260,6 @@
 "ui_exit_reason_16" = "Package updated";
 "ui_record_count" = "Records: %d";
 "ui_event_recorded" = "Recorded at";
+
+"ui_header_value" = "Header value";
+"ui_content_processed" = "Content modified by the host policy. Byte counts refer to the original observation.";

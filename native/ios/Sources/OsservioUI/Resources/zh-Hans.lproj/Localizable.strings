@@ -53,11 +53,11 @@
 "http_refresh" = "刷新";
 "http_copy" = "复制当前文本";
 "http_none" = "未观察到";
-"http_headers_limited" = "部分请求头或响应头因采集限制而省略。";
+"http_headers_limited" = "部分请求头因采集上限被截断或省略。";
 "http_missing" = "这条请求已不在历史记录中。当前显示上次查看的元数据，正文可能已不可用。";
 "http_stale" = "历史记录暂忙，当前显示上次查看的元数据。";
 "http_body_pending" = "正文尚未确定；观察结束后可返回列表重新打开。";
-"http_body_omitted" = "隐私策略未采集正文内容。";
+"http_body_omitted" = "正文已按采集配置或宿主策略省略。";
 "http_body_unsupported" = "此媒体类型、编码或压缩格式不支持正文采集。";
 "http_body_incomplete" = "观察不完整，未保留不完整的正文。";
 "http_body_invalid_text" = "内容不是受支持的有效 UTF-8 文本。";
@@ -97,7 +97,7 @@
 "ws_bytes" = "已知消息字节数";
 "ws_incoming" = "接收";
 "ws_outgoing" = "发送";
-"ws_payload_omitted" = "消息正文已按隐私策略省略。";
+"ws_payload_omitted" = "消息正文已按采集配置或宿主策略省略。";
 "ws_payload_binary" = "不采集二进制正文，仅记录已知字节数。";
 "ws_payload_available" = "已采集文本";
 "ws_payload_truncated" = "仅保留限定长度的文本前缀，完整消息大小未知。";
@@ -153,7 +153,7 @@
 "crumb_restart_relevant" = "重启相关；是否落盘取决于存储配置";
 "crumb_memory_only" = "仅内存";
 "crumb_value" = "平台代码或测量值";
-"crumb_private" = "隐私内容已省略";
+"crumb_private" = "宿主在采集时将此内容标为私有，原文未留存。";
 "crumb_detail_hint" = "打开时的事件快照，不随历史记录变化。";
 "env_osVersion" = "系统版本";
 "env_appIdentifier" = "应用标识";
@@ -234,7 +234,7 @@
 "incident_note" = "说明";
 "incident_no_note" = "未附带说明";
 "incident_include_note" = "保留说明文字";
-"incident_note_hint" = "请只填写允许保存在本机的诊断说明。敏感内容和个人信息不会被自动识别或删除。";
+"incident_note_hint" = "说明将与所选附件一起保存，并包含在此快照的导出文件中。";
 "incident_note_limit" = "说明最多可输入 4,096 个 UTF-8 字节。";
 "incident_include_environment" = "附带环境信息";
 "incident_include_breadcrumbs" = "附带最近的运行线索";
@@ -373,5 +373,5 @@
 "incident_keep_editing" = "继续编辑";
 "incident_discard" = "放弃记录";
 
-"incident_private_note" = "说明已隐藏（隐私）";
+"incident_private_note" = "采集时已省略说明";
 "incident_no_attachments" = "未附带现场记录";

@@ -40,11 +40,11 @@
     <string name="osservio_http_refresh">Refresh</string>
     <string name="osservio_http_copy">Copy displayed text</string>
     <string name="osservio_http_none">Not observed</string>
-    <string name="osservio_http_headers_limited">Some header entries were omitted by capture limits.</string>
+    <string name="osservio_http_headers_limited">Some headers were truncated or omitted by capture limits.</string>
     <string name="osservio_http_missing">This request is no longer retained. Showing the last viewed metadata; bodies may be unavailable.</string>
     <string name="osservio_http_stale">History is busy. Showing the last viewed metadata.</string>
     <string name="osservio_http_body_pending">Content was not finalized in this record. Reopen it from the list after observation completes.</string>
-    <string name="osservio_http_body_omitted">Body content was not captured by privacy policy.</string>
+    <string name="osservio_http_body_omitted">Body content was omitted by the capture configuration or host policy.</string>
     <string name="osservio_http_body_unsupported">This media type, encoding, or compression is not supported for body capture.</string>
     <string name="osservio_http_body_incomplete">Observation was incomplete. No partial body was retained.</string>
     <string name="osservio_http_body_invalid_text">Content was not valid supported UTF-8 text.</string>

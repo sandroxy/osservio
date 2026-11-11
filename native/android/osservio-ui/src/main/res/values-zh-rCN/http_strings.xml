@@ -38,11 +38,11 @@
     <string name="osservio_http_refresh">刷新</string>
     <string name="osservio_http_copy">复制当前文本</string>
     <string name="osservio_http_none">未观察到</string>
-    <string name="osservio_http_headers_limited">部分请求头或响应头因采集限制而省略。</string>
+    <string name="osservio_http_headers_limited">部分请求头因采集上限被截断或省略。</string>
     <string name="osservio_http_missing">这条请求已不在历史记录中。当前显示上次查看的元数据，正文可能已不可用。</string>
     <string name="osservio_http_stale">历史记录暂忙，当前显示上次查看的元数据。</string>
     <string name="osservio_http_body_pending">正文尚未确定；观察结束后可返回列表重新打开。</string>
-    <string name="osservio_http_body_omitted">隐私策略未采集正文内容。</string>
+    <string name="osservio_http_body_omitted">正文已按采集配置或宿主策略省略。</string>
     <string name="osservio_http_body_unsupported">此媒体类型、编码或压缩格式不支持正文采集。</string>
     <string name="osservio_http_body_incomplete">观察不完整，未保留不完整的正文。</string>
     <string name="osservio_http_body_invalid_text">内容不是受支持的有效 UTF-8 文本。</string>

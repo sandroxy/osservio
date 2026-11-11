@@ -104,7 +104,7 @@ final class WebSocketPresentation {
             case INVALID_TEXT: key = R.string.osservio_ws_payload_invalid_text; break;
             default: throw new IllegalArgumentException("Unknown WebSocket payload state");
         }
-        return context.getString(key) + (reference.byteCount == null ? "" : " · " + InspectorValuePresentation.bytes(reference.byteCount));
+        return (reference.isProcessed ? context.getString(R.string.osservio_ui_content_processed) + "\n" : "") + context.getString(key) + (reference.byteCount == null ? "" : " · " + InspectorValuePresentation.bytes(reference.byteCount));
     }
     static InspectorReadContent payload(Context context, WebSocketEvent.PayloadReference reference, Map<String, IncidentPayload> savedPayloads) {
         InspectorAppearance.Value<String> notice = () -> payloadDescription(context, reference);

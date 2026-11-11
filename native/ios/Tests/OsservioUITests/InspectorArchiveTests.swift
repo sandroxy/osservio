@@ -11,11 +11,11 @@ final class InspectorArchiveTests: XCTestCase {
         let previous = InspectorPreferences.shared.language
         defer { InspectorPreferences.shared.language = previous }
         InspectorPreferences.shared.language = .chinese
-        XCTAssertEqual(RuntimePresentation.message("[private]", isPrivate: true), "正文已隐藏（隐私）")
-        XCTAssertEqual(RuntimePresentation.text("incident_private_note"), "说明已隐藏（隐私）")
+        XCTAssertEqual(RuntimePresentation.message("[private]", isPrivate: true), "采集时已省略正文")
+        XCTAssertEqual(RuntimePresentation.text("incident_private_note"), "采集时已省略说明")
         InspectorPreferences.shared.language = .english
-        XCTAssertEqual(RuntimePresentation.message("[private]", isPrivate: true), "Content hidden for privacy")
-        XCTAssertEqual(RuntimePresentation.text("incident_private_note"), "Description hidden for privacy")
+        XCTAssertEqual(RuntimePresentation.message("[private]", isPrivate: true), "Content omitted at capture")
+        XCTAssertEqual(RuntimePresentation.text("incident_private_note"), "Description omitted at capture")
     }
 
     @MainActor

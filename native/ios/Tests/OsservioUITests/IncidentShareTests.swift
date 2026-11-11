@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import Foundation
 import OsservioCore
+import OsservioStore
 @testable import OsservioUI
 import UIKit
 import XCTest
@@ -81,6 +82,32 @@ final class IncidentShareTests: XCTestCase {
         exporter.finish(0, .failure(.unavailable))
         for _ in 0..<5 { await Task.yield() }
         XCTAssertNil(status(viewer)); XCTAssertNil(viewer.presentedViewController)
+    }
+
+    @MainActor
+    func testRetiringAccountInspectorCancelsPreparationAndRejectsLateDelivery() async throws {
+        let exporter = ControlledExporter(), capture = CaptureController(debugEnabled: true)
+        let logs = try MemoryLogStore(), requests = try MemoryHTTPStore()
+        let logger = try LogRecorder(sink: logs, captureController: capture)
+        let http = try HTTPRecorder(sink: requests, captureController: capture, privacy: HTTPPrivacyPolicy())
+        let host = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        host.rootViewController = UIViewController(); host.makeKeyAndVisible()
+        let inspector = InspectorViewController(logRecorder: logger, logHistory: logs, httpRecorder: http, httpHistory: requests)
+        let session = InspectorSession(window: host) { inspector }
+        defer { session.dispose(); _ = capture.close(); host.isHidden = true; host.rootViewController = nil }
+        XCTAssertTrue(session.expand())
+        let navigation = try XCTUnwrap(inspector.viewControllers?.first as? UINavigationController)
+        let viewer = IncidentSnapshotViewController(snapshot: try IncidentSnapshot.capture(), exporter: exporter)
+        navigation.pushViewController(viewer, animated: false); viewer.loadViewIfNeeded()
+        inspector.view.window?.layoutIfNeeded()
+        try await waitUntil { viewer.view.window != nil && navigation.transitionCoordinator == nil }
+        try send(XCTUnwrap(viewer.inspectorActions?.first))
+        try await waitUntil { exporter.count == 1 }
+        session.dispose(); XCTAssertTrue(capture.close()); XCTAssertTrue(exporter.cancelled(at: 0))
+        XCTAssertFalse(session.expand()); XCTAssertTrue(host.isKeyWindow)
+        exporter.finish(0, .success(try IncidentExportFile(url: URL(fileURLWithPath: "/unopened-fixture.zip"), byteCount: 1)))
+        for _ in 0..<5 { await Task.yield() }
+        XCTAssertNil(viewer.presentedViewController); XCTAssertNil(host.rootViewController?.presentedViewController)
     }
 
     @MainActor private func status(_ viewer: IncidentSnapshotViewController) -> String? {

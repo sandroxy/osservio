@@ -58,7 +58,7 @@ final class WebSocketDetailDialog {
             page.note(R.string.osservio_ws_evidence_note);
             if (!event.headers.isEmpty() || event.headersLimited) {
                 page.section(R.string.osservio_ws_headers);
-                for (com.sandrox.osservio.core.HTTPHeader header : event.headers) page.field(header.name, header.value);
+                for (com.sandrox.osservio.core.HTTPHeader header : event.headers) page.header(header);
                 if (event.headersLimited) page.note(R.string.osservio_http_headers_limited);
             }
         } else payloadSection(page);

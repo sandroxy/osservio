@@ -73,7 +73,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
                     field("http_session", event.sessionID + " · #\(event.sequence)")
                 ], footer: InspectorLocalization.text("ws_evidence_note"), collapsible: true)]
             if !event.headers.isEmpty || event.headersLimited {
-                sections.append(Section(title: InspectorLocalization.text("ws_headers"), rows: event.headers.map { Row($0.name, $0.value) },
+                sections.append(Section(title: InspectorLocalization.text("ws_headers"), rows: event.headers.map(headerRow),
                     footer: event.headersLimited ? InspectorLocalization.text("http_headers_limited") : nil))
             }
         } else {
@@ -83,6 +83,11 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
                     action: content.isAvailable ? { [weak self] in self?.openPayload() } : nil)
             ], footer: content.isAvailable ? content.notice : nil)]
         }
+    }
+    private func headerRow(_ header: HTTPHeader) -> Row {
+        Row(header.name, InspectorRecordPresentation.compact(header.value, limit: 180), action: { [weak self] in
+            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }))
+        })
     }
     private func payloadContent() -> InspectorReadContent {
         var content: InspectorReadContent

@@ -135,7 +135,7 @@
 
 "ui_field_value" = "字段值（精确匹配，可留空）";
 
-"ui_field_hint" = "仅检索已留存的脱敏正文。字段值按原文精确匹配，不解释业务含义；路径区分大小写。";
+"ui_field_hint" = "仅检索已留存的内容。字段值按完整值匹配，不推断业务含义；路径区分大小写。";
 
 "ui_field_invalid" = "请输入有效的 JSON 字段路径，以 / 开头，最多 16 层；时长须为非负整数。";
 
@@ -199,7 +199,7 @@
 "ui_palette_green" = "森林绿";
 "ui_palette_rose" = "玫瑰";
 
-"ui_private_content" = "正文已隐藏（隐私）";
+"ui_private_content" = "采集时已省略正文";
 
 // Record reading and evidence context.
 "ui_url_unavailable" = "地址不可用";
@@ -260,3 +260,6 @@
 "ui_exit_reason_16" = "应用包已更新";
 "ui_record_count" = "%d 条记录";
 "ui_event_recorded" = "记录时间";
+
+"ui_header_value" = "请求头内容";
+"ui_content_processed" = "内容已由宿主策略处理，字节数仍指原始观测数据。";

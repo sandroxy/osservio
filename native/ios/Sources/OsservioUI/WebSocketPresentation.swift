@@ -43,6 +43,6 @@ enum WebSocketPresentation {
         return .saved(savedPayloads[id], notice: notice, complete: reference.state == .available)
     }
     static func payloadDescription(_ reference: WebSocketPayloadReference) -> String {
-        text("ws_payload_" + reference.state.rawValue) + (reference.byteCount.map { "\n" + text("ws_bytes") + ": " + InspectorValuePresentation.bytes($0) } ?? "")
+        (reference.isProcessed ? text("ui_content_processed") + "\n" : "") + text("ws_payload_" + reference.state.rawValue) + (reference.byteCount.map { "\n" + text("ws_bytes") + ": " + InspectorValuePresentation.bytes($0) } ?? "")
     }
 }

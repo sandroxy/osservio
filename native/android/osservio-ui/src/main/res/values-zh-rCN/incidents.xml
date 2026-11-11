@@ -17,7 +17,7 @@
     <string name="osservio_incident_note">说明</string>
     <string name="osservio_incident_no_note">未附带说明</string>
     <string name="osservio_incident_include_note">保留说明文字</string>
-    <string name="osservio_incident_note_hint">请只填写允许保存在本机的诊断说明。敏感内容和个人信息不会被自动识别或删除。</string>
+    <string name="osservio_incident_note_hint">说明将与所选附件一起保存，并包含在此快照的导出文件中。</string>
     <string name="osservio_incident_note_limit">说明最多可输入 4,096 个 UTF-8 字节。</string>
     <string name="osservio_incident_include_environment">附带环境信息</string>
     <string name="osservio_incident_include_breadcrumbs">附带最近的运行线索</string>
@@ -71,7 +71,7 @@
     <string name="osservio_incident_discard_hint">未保存的备注和附件选择将被丢弃。</string>
     <string name="osservio_incident_keep_editing">继续编辑</string>
     <string name="osservio_incident_discard">放弃记录</string>
-    <string name="osservio_ui_private_content">正文已隐藏（隐私）</string>
-    <string name="osservio_incident_private_note">说明已隐藏（隐私）</string>
+    <string name="osservio_ui_private_content">采集时已省略正文</string>
+    <string name="osservio_incident_private_note">采集时已省略说明</string>
     <string name="osservio_incident_no_attachments">未附带现场记录</string>
 </resources>

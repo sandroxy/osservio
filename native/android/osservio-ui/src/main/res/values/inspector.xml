@@ -122,7 +122,7 @@
     <string name="osservio_ui_exclude">Exclude text</string>
     <string name="osservio_ui_field_path">JSON Pointer, e.g. /data/id</string>
     <string name="osservio_ui_field_value">Exact field value (may be empty)</string>
-    <string name="osservio_ui_field_hint">Searches retained, sanitized content only. Field values match exactly; business meaning is not inferred. Paths are case-sensitive.</string>
+    <string name="osservio_ui_field_hint">Searches retained content only. Field values match exactly; business meaning is not inferred. Paths are case-sensitive.</string>
     <string name="osservio_ui_field_invalid">Enter a valid JSON Pointer starting with /, with at most 16 components. Duration must be a nonnegative integer.</string>
     <string name="osservio_ui_duration">Minimum HTTP duration (ms)</string>
     <string name="osservio_ui_network_filter_hint">Choices within a group are alternatives; groups intersect. Protocol-specific conditions select HTTP or Socket. All clears protocol-specific conditions.</string>
@@ -169,4 +169,6 @@
     <string name="osservio_ui_palette_teal">Teal</string>
     <string name="osservio_ui_palette_green">Forest</string>
     <string name="osservio_ui_palette_rose">Rose</string>
+    <string name="osservio_ui_header_value">Header value</string>
+    <string name="osservio_ui_content_processed">Content modified by the host policy. Byte counts refer to the original observation.</string>
 </resources>

@@ -78,9 +78,14 @@ final class HTTPDetailViewController: InspectorDetailViewController {
                 Row(preview, action: content.isAvailable ? { [weak self] in self?.openBody() } : nil)
             ], footer: content.isAvailable ? content.notice : nil),
                 Section(title: InspectorLocalization.text(selection.selectedIndex == 1 ? "http_request_headers" : "http_response_headers"), rows: headers.isEmpty
-                    ? [Row(InspectorLocalization.text("ui_headers_empty"))] : headers.map { Row($0.name, $0.value) },
+                    ? [Row(InspectorLocalization.text("ui_headers_empty"))] : headers.map(headerRow),
                     footer: event.headersLimited ? InspectorLocalization.text("http_headers_limited") : nil)]
         }
+    }
+    private func headerRow(_ header: HTTPHeader) -> Row {
+        Row(header.name, InspectorRecordPresentation.compact(header.value, limit: 180), action: { [weak self] in
+            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }))
+        })
     }
     private func openAddress() {
         read(titleKey: "ui_request_url", content: InspectorReadContent(text: event.url, context: { [event] in InspectorRecordPresentation.context(event) }))

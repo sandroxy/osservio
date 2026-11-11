@@ -28,7 +28,7 @@
     <string name="osservio_crumb_restart_relevant">Restart-relevant; saving depends on the configured store</string>
     <string name="osservio_crumb_memory_only">Memory only</string>
     <string name="osservio_crumb_value">Platform code or measured value</string>
-    <string name="osservio_crumb_private">Private content omitted</string>
+    <string name="osservio_crumb_private">The host marked this content private at capture. The original was not retained.</string>
     <string name="osservio_crumb_detail_hint">Snapshot at opening; later history changes do not affect this page.</string>
     <string name="osservio_env_os_version">OS version</string>
     <string name="osservio_env_app_identifier">App identifier</string>

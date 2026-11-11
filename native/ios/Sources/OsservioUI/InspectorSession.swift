@@ -71,6 +71,8 @@ public final class InspectorSession: NSObject {
     public func dispose() {
         guard !isDisposed else { return }
         isDisposed = true; presentation = .hidden; endEditing(); cancelAnimation()
+        if let contentWindow { NotificationCenter.default.post(name: Self.willCollapse, object: contentWindow) }
+        inspector?.dismiss(animated: false)
         restoreHostFocus(); contentWindow?.isHidden = true; entryWindow?.isHidden = true
         inspector?.session = nil
         contentWindow?.rootViewController = nil; entryWindow?.rootViewController = nil

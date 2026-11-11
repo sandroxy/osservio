@@ -4,6 +4,10 @@ import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.sandrox.osservio.core.*;
+import com.sandrox.osservio.store.*;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
 import java.util.Collections;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,6 +50,36 @@ public final class InspectorReadabilityTest {
             assertTrue(hidden.contains(context.getString(R.string.osservio_ui_private_content)));
             assertFalse(hidden.contains("discarded secret"));
         });
+    }
+    @Test public void completeHeaderUsesBoundedPreviewAndExactReader() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController(); MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore http = new MemoryHTTPStore();
+            InspectorView inspector = new InspectorView(context, new LogRecorder(logs, capture), logs,
+                new HTTPRecorder(http, capture, new HTTPPrivacyPolicy()), http);
+            InspectorNavigation navigation = InspectorNavigation.from(inspector.getContext());
+            try {
+                String token = "Bearer " + String.join("", Collections.nCopies(90, "synthetic-token."));
+                InspectorDetailPage page = new InspectorDetailPage(inspector.getContext());
+                page.header(new HTTPHeader("authorization", token));
+                InspectorDialogs.screen(inspector.getContext(), "Detail", page).show();
+                TextView label = text(page, "authorization"); assertNotNull(label);
+                ViewGroup row = (ViewGroup) label.getParent();
+                assertTrue(((TextView) row.getChildAt(1)).getText().length() < 200);
+                assertTrue(row.performClick());
+                assertNotNull(text(inspector, token));
+                HTTPEvent.BodyReference processed = HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.AVAILABLE, ID + ".request", 2, true);
+                assertTrue(HTTPPresentation.bodyDescription(inspector.getContext(), processed).contains(inspector.getContext().getString(R.string.osservio_ui_content_processed)));
+            } finally { navigation.dispose(); capture.close(); }
+        });
+    }
+    private static TextView text(View view, String value) {
+        if (view.getVisibility() != View.VISIBLE) return null;
+        if (view instanceof TextView && ((TextView) view).getText().toString().equals(value)) return (TextView) view;
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
+            TextView found = text(((ViewGroup) view).getChildAt(i), value); if (found != null) return found;
+        }
+        return null;
     }
     @Test public void frozenMissingContentIsExplainedWithoutPretendingItIsReadable() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {

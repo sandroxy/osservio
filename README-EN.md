@@ -12,11 +12,18 @@ inspection. No SDK artifacts have been published. OS coverage and prerequisites
 differ between platforms; see [native capability coverage](doc/native-capabilities.md).
 React Native, Uni and Flutter adapters are not implemented.
 
+The inspector trusts the local operator authorized by the host. While debugging
+is enabled, observed parameters, headers (including authentication tokens),
+supported text bodies and Socket messages are readable by default. Hosts can
+selectively omit or process data. Compact previews do not alter records; saving
+and sharing remain separate actions. See [data policy](doc/data-policy.md) for
+account isolation, resource limits and system-diagnostic boundaries.
+
 ## Available now
 
-- Explicit host logging with levels, static categories, and a choice between
-  public text and private text replaced with `[private]`. Public classification
-  does not automatically detect or remove sensitive data.
+- Explicit host logging with levels and categories. `publicText` permits
+  diagnostic retention; `privateText` deliberately discards the original and
+  records `[private]`. Neither choice scans the content for secrets.
 - Complete JSON log messages and network content support hierarchical expansion,
   syntax coloring, search, source viewing and copying. Original number tokens and
   member order are preserved; truncated, invalid or over-budget content remains

@@ -28,6 +28,9 @@ native behavior and interaction validation. No artifacts have been published.
 
 ## Sources of truth
 
+- [Diagnostic data policy](doc/data-policy.md) defines local trust, host processing,
+  account transitions and explicit output ownership.
+
 - [Native capability coverage](doc/native-capabilities.md) summarizes implemented
   behavior, OS prerequisites and explicit gaps across both platforms.
 - [Native inspector](doc/inspector.md) describes navigation, filters, content

@@ -94,7 +94,7 @@ final class HTTPPresentation {
             case TRUNCATED: key = R.string.osservio_http_body_truncated; break;
             default: throw new IllegalArgumentException("Unknown body state");
         }
-        return context.getString(key) + (reference.observedBytes > 0 ? "\n" + context.getString(R.string.osservio_http_observed_bytes)
+        return (reference.isProcessed ? context.getString(R.string.osservio_ui_content_processed) + "\n" : "") + context.getString(key) + (reference.observedBytes > 0 ? "\n" + context.getString(R.string.osservio_http_observed_bytes)
             + ": " + InspectorValuePresentation.bytes(reference.observedBytes) : "");
     }
     static InspectorReadContent body(Context context, HTTPEvent.BodyReference reference, Map<String, IncidentPayload> savedPayloads) {
