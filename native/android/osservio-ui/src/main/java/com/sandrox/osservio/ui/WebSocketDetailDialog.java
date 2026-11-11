@@ -26,7 +26,7 @@ final class WebSocketDetailDialog {
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams tabs = new LinearLayout.LayoutParams(-1, -2);
         int inset = InspectorTheme.dp(context, 16); tabs.setMargins(inset, InspectorTheme.dp(context, 8), inset, 0);
-        content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), tabs);
+        if (event.payload != null) content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog = InspectorDialogs.screen(context, "WebSocket", content);
         dialog.title(event.kind == WebSocketEvent.Kind.MESSAGE || event.kind == WebSocketEvent.Kind.MESSAGE_RESULT ? R.string.osservio_ui_message_details : R.string.osservio_ui_connection_event);
@@ -38,32 +38,43 @@ final class WebSocketDetailDialog {
     private void render() {
         body.removeAllViews(); InspectorDetailPage page = new InspectorDetailPage(context);
         if (section == 0) {
+            if (event.kind == WebSocketEvent.Kind.MESSAGE) payloadSection(page);
             page.section(R.string.osservio_ui_overview);
             page.value(() -> WebSocketPresentation.summary(context, event));
-            page.disclosure(R.string.osservio_ui_request_url, () -> event.url, () -> page.read(R.string.osservio_ui_request_url, event.url, true));
-            page.field(R.string.osservio_ws_time, () -> RuntimePresentation.date(context, event.timestampMillis));
-            page.field(R.string.osservio_http_status, event.statusCode); page.field(R.string.osservio_ws_close_code, event.closeCode);
-            page.field(R.string.osservio_http_failure, () -> event.failure == null ? null : WebSocketPresentation.failure(context, event.failure));
-            page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
-            page.section(R.string.osservio_ui_metadata);
-            page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
+            page.disclosure(R.string.osservio_ui_request_url, () -> InspectorRecordPresentation.address(context, event.url), () -> page.read(R.string.osservio_ui_request_url,
+                new InspectorReadContent(event.url, "", false).withContext(() -> InspectorRecordPresentation.context(context, event))));
+            page.field(R.string.osservio_ws_time, () -> InspectorValuePresentation.eventTime(event.timestampMillis, true));
             if (connection != null) page.disclosure(R.string.osservio_ui_connection_context, () -> event.connectionId, connection);
             else page.field(R.string.osservio_ws_connection, event.connectionId);
-            page.field(R.string.osservio_ws_event, event.id); page.field(R.string.osservio_ws_related, event.relatedMessageId);
-            page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence); page.note(R.string.osservio_ws_evidence_note);
-            page.section(R.string.osservio_ws_headers);
-            for (com.sandrox.osservio.core.HTTPHeader header : event.headers) page.field(header.name, header.value);
-            if (event.headers.isEmpty()) page.value(() -> context.getString(R.string.osservio_http_none));
-            if (event.headersLimited) page.note(R.string.osservio_http_headers_limited);
-        } else {
-            page.section(R.string.osservio_ws_payload); page.value(() -> WebSocketPresentation.payloadDescription(context, event.payload));
-            page.action(R.string.osservio_ui_open_reader, () -> {
-                InspectorReadContent text = savedPayloads != null ? WebSocketPresentation.payload(context, event.payload, savedPayloads)
-                    : WebSocketPresentation.payload(context, event.payload, history);
-                page.read(R.string.osservio_ws_payload, text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail)));
-            });
+            if (event.statusCode != null) page.field(R.string.osservio_http_status, event.statusCode);
+            if (event.closeCode != null) page.field(R.string.osservio_ws_close_code, event.closeCode);
+            if (event.failure != null) page.field(R.string.osservio_http_failure, () -> WebSocketPresentation.failure(context, event.failure));
+            if (event.relatedMessageId != null) page.field(R.string.osservio_ws_related, event.relatedMessageId);
             page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
-        }
+            page.expandable(R.string.osservio_ui_technical_details, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details, () -> {
+                page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
+                page.field(R.string.osservio_ws_event, event.id); page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence);
+            });
+            page.note(R.string.osservio_ws_evidence_note);
+            if (!event.headers.isEmpty() || event.headersLimited) {
+                page.section(R.string.osservio_ws_headers);
+                for (com.sandrox.osservio.core.HTTPHeader header : event.headers) page.field(header.name, header.value);
+                if (event.headersLimited) page.note(R.string.osservio_http_headers_limited);
+            }
+        } else payloadSection(page);
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));
     }
+    private InspectorReadContent payloadContent() {
+        InspectorReadContent text = savedPayloads != null ? WebSocketPresentation.payload(context, event.payload, savedPayloads) : WebSocketPresentation.payload(context, event.payload, history);
+        return text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail))
+            .withContext(() -> InspectorRecordPresentation.context(context, event));
+    }
+    private void payloadSection(InspectorDetailPage page) {
+        InspectorReadContent content = payloadContent();
+        page.section(R.string.osservio_ws_payload);
+        page.value(() -> content.available ? content.text.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : InspectorRecordPresentation.compact(content.text, 600) : content.notice(),
+            content.available ? () -> page.read(R.string.osservio_ws_payload, payloadContent()) : null, content.available ? R.string.osservio_ui_open_reader : 0);
+        if (content.available) page.note(content::notice);
+    }
+
 }

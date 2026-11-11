@@ -42,7 +42,7 @@ final class HTTPPresentation {
         field(text, context, R.string.osservio_http_final_url, event.responseURL);
         field(text, context, R.string.osservio_http_status, event.statusCode);
         field(text, context, R.string.osservio_http_duration, event.durationMillis == null ? null : event.durationMillis + " ms");
-        field(text, context, R.string.osservio_http_time, RuntimePresentation.date(context, event.timestampMillis));
+        field(text, context, R.string.osservio_http_time, InspectorValuePresentation.eventTime(event.timestampMillis, true));
         String source;
         int note;
         switch (event.source) {
@@ -94,8 +94,8 @@ final class HTTPPresentation {
             case TRUNCATED: key = R.string.osservio_http_body_truncated; break;
             default: throw new IllegalArgumentException("Unknown body state");
         }
-        return context.getString(key) + "\n" + context.getString(R.string.osservio_http_observed_bytes)
-            + ": " + reference.observedBytes;
+        return context.getString(key) + (reference.observedBytes > 0 ? "\n" + context.getString(R.string.osservio_http_observed_bytes)
+            + ": " + InspectorValuePresentation.bytes(reference.observedBytes) : "");
     }
     static InspectorReadContent body(Context context, HTTPEvent.BodyReference reference, Map<String, IncidentPayload> savedPayloads) {
         InspectorAppearance.Value<String> notice = () -> bodyDescription(context, reference);
@@ -109,8 +109,8 @@ final class HTTPPresentation {
         switch (lookup.state) {
             case AVAILABLE:
                 return new InspectorReadContent(lookup.body.text, () -> notice.get() + (lookup.body.text.isEmpty() ? "\n" + context.getString(R.string.osservio_http_body_empty) : ""), reference.state == HTTPEvent.BodyState.AVAILABLE);
-            case BUSY: return InspectorReadContent.unavailable(() -> notice.get() + "\n" + context.getString(R.string.osservio_http_body_busy));
-            case UNAVAILABLE: return InspectorReadContent.unavailable(() -> notice.get() + "\n" + context.getString(R.string.osservio_http_body_unavailable));
+            case BUSY: return InspectorReadContent.unavailable(() -> context.getString(R.string.osservio_http_body_busy));
+            case UNAVAILABLE: return InspectorReadContent.unavailable(() -> context.getString(R.string.osservio_http_body_unavailable));
             default: throw new IllegalArgumentException("Unknown body lookup state");
         }
     }

@@ -52,6 +52,12 @@ tests separately check host defaults, configured deadlines, invalid limits,
 body admission after disable and native crash permission without handler installation. Contention and shared
 recorder ordering are verified separately with bounded concurrency tests.
 
+`readable-urls.tsv` covers display-only URL decoding, hidden path/query markers,
+ports, Unicode, encoded separators, malformed escapes and control characters.
+Both native viewers consume the same cases; readability tests additionally check
+exact sanitized copying, labeled connection identity, unavailable saved content
+and frozen search without live-store fallback.
+
 `json-reader-cases.tsv` covers strict container syntax, exact number tokens,
 duplicate members, Unicode, escapes, incomplete input and non-JSON text. Its
 columns are a case name, expected result (`ok`, `invalid`, `notJSON`), and Base64

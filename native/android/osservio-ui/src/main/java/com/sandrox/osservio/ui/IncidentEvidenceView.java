@@ -9,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.IncidentPayload;
 import com.sandrox.osservio.core.IncidentHTTP;
 import com.sandrox.osservio.core.IncidentLogs;
 import com.sandrox.osservio.core.IncidentWebSockets;
@@ -30,23 +31,30 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private final List<Integer> indices = new ArrayList<>();
     private final Rows rows = new Rows();
     private InspectorScreen detail;
+    private InspectorRecordSearchTask task;
+    private InspectorRecordSearch.Result result;
+    private boolean searchBusy;
+    private long generation;
+    private String connectionID;
+    void scopeConnection(String id) { connectionID = id; query.select(InspectorQuery.Field.CONNECTION, id); filter(); }
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final List<InspectorRecordSearch.Record> records = new ArrayList<>();
     IncidentEvidenceView(Context context, IncidentLogs logs, Runnable back) { this(context, logs, null, null, back); }
     IncidentEvidenceView(Context context, IncidentHTTP http, Runnable back) { this(context, null, http, null, back); }
     IncidentEvidenceView(Context context, IncidentWebSockets sockets, Runnable back) { this(context, null, null, sockets, back); }
     private IncidentEvidenceView(Context context, IncidentLogs logs, IncidentHTTP http, IncidentWebSockets sockets, Runnable back) {
         super(context); this.logs = logs; this.http = http; this.sockets = sockets; setOrientation(VERTICAL);
+        if (logs != null) for (LogEvent event : logs.events) records.add(new InspectorRecordSearch.Record(event));
+        else if (http != null) for (HTTPEvent event : http.events) records.add(new InspectorRecordSearch.Record(event));
+        else for (WebSocketEvent event : sockets.events) records.add(new InspectorRecordSearch.Record(event));
         goBack = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, back); addView(goBack);
-        header = new InspectorFeedHeader(context, R.string.osservio_incident_evidence_search, "", value -> { query.text = value; filter(); }, () -> { }, () -> {
-            detail = InspectorFilterSheet.show(context, query, groups(), value -> { query = value; filter(); });
+        header = new InspectorFeedHeader(context, R.string.osservio_ui_search_saved, "", value -> { query.text = value; filter(); }, () -> { }, () -> {
+            detail = InspectorFilterSheet.show(context, query, groups(), true, value -> { query = value; filter(); });
             detail.setOnDismissListener(ignored -> detail = null);
         }, () -> { }, true); header.hideActions();
         header.onQueryChange = value -> { query = value; filter(); };
         ListView list = new InspectorScroll.List(context); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
-        InspectorAppearance.Value<String> info = () -> logs != null ? IncidentPresentation.window(context, logs.observedAtMillis, logs.events.size(), logs.omittedEventCount, logs.sourceEvictedCount, null)
-            : http != null ? IncidentPresentation.window(context, http.observedAtMillis, http.events.size(), http.omittedEventCount, http.sourceEvictedEvents, http.sourceEvictedBodies)
-            : IncidentPresentation.window(context, sockets.observedAtMillis, sockets.events.size(), sockets.omittedEventCount, sockets.sourceEvictedEvents, sockets.sourceEvictedPayloads);
-        InspectorAppearance.text(header.status, () -> info.get() + "\n" + context.getString(R.string.osservio_incident_frozen_detail));
         InspectorAppearance.style(header.status, () -> header.status.setTextColor(InspectorTheme.secondary(context)));
         list.addHeaderView(header, null, false); footer = caption(""); footer.setPadding(dp(16), dp(8), dp(16), dp(16)); list.addFooterView(footer, null, false);
         list.setAdapter(rows); list.setOnItemClickListener((parent, view, position, id) -> {
@@ -60,7 +68,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         filter();
     }
     @Override public void bindScreen(InspectorScreen screen) {
-        goBack.setVisibility(GONE); screen.title(logs != null ? R.string.osservio_logs : http != null ? R.string.osservio_ui_http : R.string.osservio_ws_title);
+        goBack.setVisibility(GONE); screen.title(logs != null ? R.string.osservio_logs : http != null ? R.string.osservio_ui_http : connectionID == null ? R.string.osservio_ws_title : R.string.osservio_ui_connection_records);
     }
     private int count() { return logs != null ? logs.events.size() : http != null ? http.events.size() : sockets.events.size(); }
     private List<InspectorFilterSheet.Group> groups() {
@@ -73,31 +81,61 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
             }
             return groups;
         }
-        return InspectorFilterOptions.timeline(getContext());
+        return InspectorFilterOptions.network(getContext(), java.util.Collections.emptyList(), sockets.events, query, false, true);
     }
     private void filter() {
         if (footer == null) return;
-        indices.clear();
-        for (int i = count() - 1; i >= 0; i--) {
-            boolean matches = logs != null ? query.matches(logs.events.get(i), logs.observedAtMillis)
-                : http != null ? query.matches(http.events.get(i), http.observedAtMillis) : query.matches(sockets.events.get(i), sockets.observedAtMillis);
-            if (matches) indices.add(i);
+        cancelSearch(); result = null; searchBusy = false; indices.clear();
+        long now = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
+        for (int i = count() - 1; i >= 0; i--) if (records.get(i).matchesFacets(query, now)) indices.add(i);
+        if (query.searchesPayload()) {
+            indices.clear(); long current = generation; InspectorQuery selected = query.copy();
+            java.util.Map<String, IncidentPayload> saved = http != null ? http.payloads : sockets != null ? sockets.payloads : java.util.Collections.emptyMap();
+            List<InspectorRecordSearch.Record> searchRecords = new ArrayList<>(records); java.util.Collections.reverse(searchRecords);
+            InspectorRecordPresentation.prepareSearch(getContext(), searchRecords);
+            handler.postDelayed(() -> {
+                if (current != generation) return;
+                task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(searchRecords, selected, now, null, null, saved, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
+                    if (current != generation) return; task = null; result = found; indices.clear();
+                    for (int i = count() - 1; i >= 0; i--) if (found.keys.contains(records.get(i).key())) indices.add(i);
+                    display();
+                });
+                if (task == null) { searchBusy = true; display(); }
+            }, 200);
         }
-        header.setQuery(query, groups(), indices.size(), count()); header.setPaused(false); header.empty.setVisibility(GONE);
-        footer.setText(query.text.isEmpty() && query.activeCount() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty);
+        display();
+    }
+    private void cancelSearch() { generation++; handler.removeCallbacksAndMessages(null); if (task != null) task.cancel(); task = null; }
+    private void display() {
+        header.setQuery(query, groups(), indices.size(), count()); header.empty.setVisibility(GONE);
+        footer.setText(query.searchesPayload() && result == null ? searchBusy ? R.string.osservio_busy : R.string.osservio_ui_searching : count() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty);
         footer.setVisibility(indices.isEmpty() ? VISIBLE : GONE);
-        rows.notifyDataSetChanged();
+        long time = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
+        String note = getContext().getString(R.string.osservio_ui_evidence_saved) + " · " + InspectorValuePresentation.eventTime(time, true);
+        boolean loss = logs != null ? logs.omittedEventCount > 0 || logs.sourceEvictedCount > 0
+            : http != null ? http.omittedEventCount > 0 || http.sourceEvictedEvents > 0 || http.sourceEvictedBodies > 0
+            : sockets.omittedEventCount > 0 || sockets.sourceEvictedEvents > 0 || sockets.sourceEvictedPayloads > 0;
+        if (loss) note += "\n" + getContext().getString(R.string.osservio_ui_retention_loss);
+        if (result != null && (result.unavailable > 0 || result.truncated > 0 || result.limited)) note += "\n" + getContext().getString(R.string.osservio_ui_search_partial);
+        header.status.setText(note); header.setPaused(false); rows.notifyDataSetChanged();
     }
     private void show(int index) {
         if (detail != null) return;
         InspectorWidgets.hideKeyboard(this);
         if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index));
         else if (http != null) detail = new HTTPDetailDialog(getContext(), http.events.get(index), http.payloads).dialog;
-        else detail = new WebSocketDetailDialog(getContext(), sockets.events.get(index), sockets.payloads).dialog;
+        else {
+            WebSocketDetailDialog message = new WebSocketDetailDialog(getContext(), sockets.events.get(index), sockets.payloads);
+            message.showConnection(() -> {
+                IncidentEvidenceView connection = new IncidentEvidenceView(getContext(), sockets, () -> { }); connection.scopeConnection(sockets.events.get(index).connectionId);
+                InspectorDialogs.screen(getContext(), R.string.osservio_ui_connection_records, connection).show();
+            }); detail = message.dialog;
+        }
         detail.setOnDismissListener(ignored -> detail = null); detail.show();
     }
     void dismissDialogs() { if (InspectorNavigation.owns(getContext())) return; if (detail != null) detail.dismiss(); }
-    @Override protected void onDetachedFromWindow() { dismissDialogs(); super.onDetachedFromWindow(); }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (query.searchesPayload() && result == null) filter(); }
+    @Override protected void onDetachedFromWindow() { cancelSearch(); dismissDialogs(); super.onDetachedFromWindow(); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView caption(String value) { return caption(() -> value); }
     private TextView caption(InspectorAppearance.Value<String> value) {
@@ -111,16 +149,19 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         @Override public View getView(int position, View recycled, ViewGroup parent) {
             InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             int index = indices.get(position); Context context = getContext();
-            if (logs != null) {
-                LogEvent event = logs.events.get(index);
-                row.bind(event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name(), RuntimePresentation.message(context, event.message, event.isPrivate), event.category, event.timestampMillis, InspectorTheme.accent(context));
-            } else if (http != null) {
-                HTTPEvent event = http.events.get(index);
-                row.bind(event.method, InspectorQuery.path(event.url),
-                    InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(context, event), event.timestampMillis, InspectorTheme.accent(context));
-            } else {
+            InspectorRecordSearch.Record record = records.get(index);
+            String preview = result == null ? null : result.previews.get(record.key());
+            if (logs != null) InspectorRecordPresentation.log(context, logs.events.get(index), preview).bind(row, context);
+            else if (http != null) InspectorRecordPresentation.http(context, http.events.get(index), InspectorRecordPresentation.matchPreview(context, result, record.key())).bind(row, context);
+            else {
                 WebSocketEvent event = sockets.events.get(index);
-                row.bind("WebSocket", WebSocketPresentation.summary(context, event), event.url + " · " + event.connectionId.substring(0, Math.min(8, event.connectionId.length())), event.timestampMillis, InspectorTheme.accent(context));
+                if (preview == null && event.kind == WebSocketEvent.Kind.MESSAGE && event.payload != null && event.payload.blobId != null) {
+                    IncidentPayload payload = sockets.payloads.get(event.payload.blobId);
+                    preview = payload != null && payload.state == IncidentPayload.State.AVAILABLE && payload.text != null
+                        ? payload.text.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : InspectorRecordSearch.preview(payload.text, "")
+                        : IncidentPayloadPresentation.content(context, payload);
+                }
+                InspectorRecordPresentation.socket(context, event, preview, false).bind(row, context);
             }
             row.grouped(position == 0, position == getCount() - 1); return row;
         }

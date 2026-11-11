@@ -41,7 +41,7 @@
     <string name="osservio_http_headers_limited">部分请求头或响应头因采集限制而省略。</string>
     <string name="osservio_http_missing">这条请求已不在历史记录中。当前显示上次查看的元数据，正文可能已不可用。</string>
     <string name="osservio_http_stale">历史记录暂忙，当前显示上次查看的元数据。</string>
-    <string name="osservio_http_body_pending">正文尚未确定，请在观察完成后刷新。</string>
+    <string name="osservio_http_body_pending">正文尚未确定；观察结束后可返回列表重新打开。</string>
     <string name="osservio_http_body_omitted">隐私策略未采集正文内容。</string>
     <string name="osservio_http_body_unsupported">此媒体类型、编码或压缩格式不支持正文采集。</string>
     <string name="osservio_http_body_incomplete">观察不完整，未保留不完整的正文。</string>
@@ -49,7 +49,7 @@
     <string name="osservio_http_body_available">已采集文本</string>
     <string name="osservio_http_body_truncated">仅保留了长度限制内的正文开头，并非完整内容。</string>
     <string name="osservio_http_body_unavailable">正文已不可用，可能已被清空或单独淘汰。</string>
-    <string name="osservio_http_body_busy">正文存储暂忙，请刷新重试。</string>
+    <string name="osservio_http_body_busy">正文存储暂忙，请稍后重新打开。</string>
     <string name="osservio_http_body_empty">采集到的正文为空。</string>
     <string name="osservio_http_observed_bytes">观察到的字节数</string>
     <string name="osservio_http_urlsession_note">来自 URLSession 完成回调。时长可能包含任务创建后等待启动的时间。不覆盖流式、上传、下载和后台代理任务。</string>

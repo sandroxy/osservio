@@ -1,0 +1,9 @@
+query-mask	https://example.test/exchange?[redacted]	example.test	/exchange	true	false
+encoded-mask	wss://example.test:443/chat?%5Bredacted%5D	example.test	/chat	true	false
+port	http://example.test:8080/a	example.test:8080	/a	false	false
+unicode	https://example.test/%E4%BD%A0%E5%A5%BD/%F0%9F%98%80	example.test	/你好/😀	false	false
+delimiters	https://example.test/a%2Fb?q=a%26b%3Dc+z%252F	example.test	/a%2Fb?q=a%26b%3Dc+z%252F	false	false
+controls	https://example.test/%0A%E2%80%AE%7F	example.test	/%0A%E2%80%AE%7F	false	false
+invalid-utf8	https://example.test/%C0%AF%ED%A0%80	example.test	/%C0%AF%ED%A0%80	false	false
+unreserved	https://example.test/%41%7e%5f	example.test	/A~_	false	false
+path-mask	https://example.test/[redacted]?[redacted]	example.test	/%5Bredacted%5D	true	true

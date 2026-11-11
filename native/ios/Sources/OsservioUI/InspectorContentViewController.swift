@@ -11,6 +11,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     private let controls = UIScrollView()
     private var titleKey: String?
     private let mode = InspectorScopeControl(titles: ["", ""])
+    private let origin = InspectorTheme.label(.caption1, secondary: true)
     private let notice = InspectorTheme.label(.caption1, secondary: true)
     private let tree = InspectorJSONTreeView()
     private let count = InspectorTheme.label(.caption1, secondary: true)
@@ -58,7 +59,8 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         previous.addTarget(self, action: #selector(previousMatch), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextMatch), for: .touchUpInside)
         mode.isHidden = true; mode.onSelect = { [weak self] _ in self?.render(reveal: true) }
-        let stack = UIStackView(arrangedSubviews: [mode, notice, search, count, matchNavigation])
+        origin.numberOfLines = 3
+        let stack = UIStackView(arrangedSubviews: [origin, mode, notice, search, count, matchNavigation])
         stack.axis = .vertical; stack.spacing = 6; stack.isLayoutMarginsRelativeArrangement = true
         stack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false; controls.addSubview(stack)
@@ -157,6 +159,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     @objc private func previousMatch() { guard !matches.ranges.isEmpty else { return }; position = (position + matches.ranges.count - 1) % matches.ranges.count; render(reveal: true) }
     @objc private func nextMatch() { guard !matches.ranges.isEmpty else { return }; position = (position + 1) % matches.ranges.count; render(reveal: true) }
     private func render(reveal: Bool = false) {
+        origin.text = value.context(); origin.isHidden = origin.text?.isEmpty != false
         mode.setTitles(["json_structure", "json_raw"].map(InspectorLocalization.text))
         let structured = tree.document != nil && mode.selectedIndex == 0
         tree.isHidden = !structured; text.isHidden = structured

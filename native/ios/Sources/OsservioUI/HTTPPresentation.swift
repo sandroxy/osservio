@@ -38,7 +38,7 @@ enum HTTPPresentation {
         case .okHttp: source = "OkHttp"; note = "http_okhttp_note"
         case .urlSession: source = "URLSession"; note = "http_urlsession_note"
         }
-        let date = InspectorLocalization.date(event.timestampMillis)
+        let date = InspectorValuePresentation.eventTime(event.timestampMillis, full: true)
         return [event.method + " " + event.url, state(event.state),
                 field("final_url", event.responseURL), field("status", event.statusCode.map(String.init)),
                 field("duration", event.durationMillis.map { "\($0) ms" }), field("time", date),
@@ -56,8 +56,8 @@ enum HTTPPresentation {
         switch history.body(id: id) {
         case .available(let body):
             return InspectorReadContent(text: body.text, notice: notice + (body.text.isEmpty ? "\n" + text("http_body_empty") : ""), allowsJSON: reference.state == .available)
-        case .unavailable: return InspectorReadContent(notice: notice + "\n" + text("http_body_unavailable"))
-        case .busy: return InspectorReadContent(notice: notice + "\n" + text("http_body_busy"))
+        case .unavailable: return InspectorReadContent(notice: text("http_body_unavailable"))
+        case .busy: return InspectorReadContent(notice: text("http_body_busy"))
         }
     }
     static func body(_ reference: HTTPBodyReference, savedPayloads: [String: IncidentPayload]) -> InspectorReadContent {
@@ -67,6 +67,6 @@ enum HTTPPresentation {
     }
     static func bodyDescription(_ reference: HTTPBodyReference) -> String {
         let key = reference.state == .invalidText ? "invalid_text" : reference.state.rawValue
-        return text("http_body_" + key) + "\n" + text("http_observed_bytes") + ": \(reference.observedBytes)"
+        return text("http_body_" + key) + (reference.observedBytes > 0 ? "\n" + text("http_observed_bytes") + ": " + InspectorValuePresentation.bytes(reference.observedBytes) : "")
     }
 }

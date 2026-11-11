@@ -274,7 +274,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         updateReadingState(); retry.setVisibility(retryNeeded ? VISIBLE : GONE);
         visible.clear();
         long now = updatedAt == null ? System.currentTimeMillis() : updatedAt;
-        for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now)) visible.add(snapshot);
+        for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now, IncidentPresentation.title(getContext(), snapshot.diagnosticKind))) visible.add(snapshot);
         header.setQuery(state.query, filterGroups(), visible.size(), snapshots.size()); header.setPaused(false);
         list.setEnabled(!reading);
         empty.setVisibility(visible.isEmpty() ? VISIBLE : GONE);
@@ -304,6 +304,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
             row.bind(getContext().getString(snapshot.diagnosticKind == null ? R.string.osservio_ui_manual : R.string.osservio_ui_system),
                 IncidentPresentation.listTitle(getContext(), snapshot), IncidentPresentation.listSubtitle(getContext(), snapshot),
                 snapshot.timestampMillis, InspectorTheme.accent(getContext()));
+            row.timestamp(IncidentPresentation.listTime(getContext(), snapshot));
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

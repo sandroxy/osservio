@@ -23,7 +23,7 @@ final class IncidentComposerTests: XCTestCase {
         try await waitUntil { composer.inspectorPrimaryAction?.isEnabled == true }
         XCTAssertTrue(composer.presentationControllerShouldDismiss(presentation), "Provider delivery is not a draft edit")
         let note = try control(composer, row: 7); note.isOn = true; try sendChange(note)
-        let cell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: 0, section: 2)))
+        let cell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: 1, section: 4)))
         let editor = try XCTUnwrap(cell.contentView.subviews.compactMap { $0 as? UITextView }.first)
         editor.text = "Keep this observation"
         XCTAssertFalse(composer.presentationControllerShouldDismiss(presentation))
@@ -46,7 +46,7 @@ final class IncidentComposerTests: XCTestCase {
         let noteSwitch = try control(composer, row: 7)
         noteSwitch.isOn = true; try sendChange(noteSwitch)
         composer.tableView.layoutIfNeeded()
-        let editorCell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: 0, section: 2)))
+        let editorCell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: 1, section: 4)))
         let editor = try XCTUnwrap(editorCell.contentView.subviews.compactMap { $0 as? UITextView }.first)
         editor.text = "Synthetic diagnostic note"
         let facts = Dictionary(uniqueKeysWithValues: EnvironmentKey.allCases.map { ($0, EnvironmentFact.unavailable) })
@@ -144,7 +144,7 @@ final class IncidentComposerTests: XCTestCase {
     }
     @MainActor
     private func control(_ composer: IncidentComposerViewController, row: Int) throws -> UISwitch {
-        let cell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: row, section: 1)))
+        let cell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: [IndexPath(row: 0, section: 1), IndexPath(row: 1, section: 1), IndexPath(row: 2, section: 1), IndexPath(row: 0, section: 2), IndexPath(row: 1, section: 2), IndexPath(row: 0, section: 3), IndexPath(row: 1, section: 3), IndexPath(row: 0, section: 4)][row]))
         return try XCTUnwrap(cell.accessoryView as? UISwitch)
     }
     // Package tests have no UIApplication event dispatcher. Invoke the actual registered

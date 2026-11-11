@@ -124,9 +124,7 @@ public final class LogInspectorViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "log") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "log")
-        cell.configure(badge: InspectorFilterOptions.label(.level, event.level.rawValue), time: event.timestampMillis,
-            title: event.isPrivate ? InspectorLocalization.text("ui_private_content") : result?.previews[InspectorSearchRecord.log(event).key] ?? String(event.message.prefix(600)), subtitle: event.category + (event.isTruncated ? " · " + InspectorLocalization.text("truncated") : ""),
-            color: event.level == .error ? .systemRed : event.level == .warning ? .systemOrange : InspectorTheme.accent)
+        cell.configure(InspectorRecordPresentation.log(event, preview: result?.previews[InspectorSearchRecord.log(event).key]))
         return cell
     }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -143,17 +141,20 @@ final class LogDetailViewController: InspectorDetailViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); title = InspectorLocalization.text("ui_log_details")
         inspectorPrimaryAction = inspectorCopyItem(target: self, action: #selector(copyMessage), label: "copy")
-        sections = [Section(title: InspectorLocalization.text("ui_metadata"), rows: [
-            Row(InspectorLocalization.text("ui_level"), InspectorFilterOptions.label(.level, event.level.rawValue)),
-            Row(InspectorLocalization.text("ui_category"), event.category),
-            Row(InspectorLocalization.text("http_time"), InspectorLocalization.date(event.timestampMillis)),
-            Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
-        ]), Section(title: InspectorLocalization.text("ui_read_content"), rows: [
+        sections = [Section(title: InspectorLocalization.text("ui_read_content"), rows: [
             Row(RuntimePresentation.message(String(event.message.prefix(600)), isPrivate: event.isPrivate), action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }; self.read(titleKey: "ui_log_content", content: InspectorReadContent(text: self.event.message,
-                    notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate))
+                    notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate,
+                    context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
             })
-        ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · "))]
+        ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · ")),
+            Section(title: InspectorLocalization.text("ui_overview"), rows: [
+                Row(InspectorLocalization.text("ui_level"), InspectorFilterOptions.label(.level, event.level.rawValue)),
+                Row(InspectorLocalization.text("ui_category"), event.category),
+                Row(InspectorLocalization.text("ui_event_recorded"), InspectorValuePresentation.eventTime(event.timestampMillis, full: true))
+            ]), Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
+                Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
+            ], collapsible: true)]
     }
     @objc private func copyMessage() { UIPasteboard.general.string = event.message }
 }

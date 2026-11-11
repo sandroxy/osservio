@@ -17,7 +17,8 @@ activity uses its last retained observation, not its first retained observation.
 It cannot establish whether an unobserved connection is still active. Incident
 time means record/recovery time, not an inferred historical failure time.
 
-Literal text matches metadata or retained content, ignoring case. HTTP metadata
+Literal text matches metadata, localized visible labels or retained content,
+ignoring case. HTTP metadata
 includes sanitized headers; content includes request and response bodies. An
 excluded term removes a record when observed in either metadata or content.
 Unavailable content cannot establish that an excluded term was absent; search
@@ -45,6 +46,11 @@ a 750 ms elapsed-work budget between records; an individual bounded lookup or
 scan can complete after that check. JSON parsing keeps the reader's 65,536-unit,
 4,096-node and 48-level limits. Results retain IDs and at most a 180-unit preview
 per matching record, not a second body store or an unbounded search index.
+
+Body matches identify the request, response or message content that supplied the
+excerpt. Saved attachments use their immutable payload map, never a current live
+history, even when a saved body is absent. This preserves the meaning of a frozen
+snapshot after live records have changed or been evicted.
 
 Missing, omitted, busy, truncated and uninspectable content, and exhausted query
 budgets, must be reported as incomplete coverage. A result count is not a claim

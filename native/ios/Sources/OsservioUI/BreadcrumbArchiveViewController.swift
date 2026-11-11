@@ -163,7 +163,11 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
         search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
         search.addTarget(self, action: #selector(endSearch), for: .editingDidEndOnExit)
-        let header = UIStackView(arrangedSubviews: [search]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
+        let details = UIButton(type: .system); details.setTitle(RuntimePresentation.text("ui_run_details"), for: .normal)
+        details.titleLabel?.font = .preferredFont(forTextStyle: .body); details.titleLabel?.adjustsFontForContentSizeCategory = true
+        details.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        details.addTarget(self, action: #selector(openRunDetails), for: .touchUpInside)
+        let header = UIStackView(arrangedSubviews: [search, details]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
         inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copySummary))
@@ -177,6 +181,7 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
     override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .plain) }
     @objc private func endSearch() { search.resignFirstResponder() }
     @objc private func copySummary() { UIPasteboard.general.string = PersistencePresentation.run(history.run) }
+    @objc private func openRunDetails() { inspectorPush(InspectorContentViewController(titleKey: "ui_run_details", content: PersistencePresentation.run(history.run), code: false)) }
     @objc private func searchChanged() {
         guard search.markedTextRange == nil else { return }
         let query = String((search.text ?? "").prefix(512)); if query != search.text { search.text = query }
@@ -185,7 +190,7 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
         tableView.reloadData()
     }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { PersistencePresentation.run(history.run) }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { PersistencePresentation.title(history.run) + "\n" + PersistencePresentation.counts(history.run) }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         (events.isEmpty ? RuntimePresentation.text("ws_no_matches") + "\n" : "") + RuntimePresentation.text("archive_snapshot")
     }
@@ -193,8 +198,8 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "saved-event") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "saved-event")
         PersistencePresentation.style(cell)
         let event = events[indexPath.row]
-        cell.textLabel?.text = RuntimePresentation.kind(event) + " · " + event.label
-        cell.detailTextLabel?.text = RuntimePresentation.date(event.timestampMillis) + " · #\(event.sequence)" + (event.message.map { "\n" + RuntimePresentation.message($0, isPrivate: event.isPrivate) } ?? "")
+        cell.textLabel?.text = RuntimePresentation.breadcrumbTitle(event)
+        cell.detailTextLabel?.text = InspectorValuePresentation.eventTime(event.timestampMillis) + "\n" + RuntimePresentation.breadcrumbSubtitle(event)
         cell.textLabel?.numberOfLines = 2; cell.detailTextLabel?.numberOfLines = 3; cell.accessoryType = .disclosureIndicator
         return cell
     }
@@ -210,7 +215,7 @@ enum PersistencePresentation {
         RuntimePresentation.date(run.recordingStartedAtMillis) + " · " + RuntimePresentation.text(run.isCurrent ? "archive_current" : "archive_previous_run")
     }
     static func counts(_ run: RetainedRun) -> String {
-        String(format: RuntimePresentation.text("archive_counts"), run.eventCount, run.evictedEvents)
+        run.evictedEvents > 0 ? String(format: RuntimePresentation.text("archive_counts"), run.eventCount, run.evictedEvents) : String(format: RuntimePresentation.text("ui_record_count"), run.eventCount)
     }
     static func run(_ run: RetainedRun) -> String {
         title(run) + "\n" + counts(run) + "\n" + String(format: RuntimePresentation.text("archive_run_info"),

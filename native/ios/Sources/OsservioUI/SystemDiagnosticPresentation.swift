@@ -11,15 +11,25 @@ enum SystemDiagnosticPresentation {
         case .appleSignal: return RuntimePresentation.text("crash_hint")
         }
     }
-    static func fields(_ diagnostic: SystemDiagnostic) -> [(title: String, value: String)] {
-        func field(_ key: String, _ value: String?) -> (String, String) {
-            (RuntimePresentation.text(key), value ?? RuntimePresentation.text("runtime_unavailable"))
+    struct Field {
+        let key: String
+        let value: String
+        var title: String { RuntimePresentation.text(key) }
+        var primary: Bool { ["diagnostic_source", "diagnostic_kind", "diagnostic_exit_time", "diagnostic_reason", "diagnostic_signal", "diagnostic_interval_start", "diagnostic_interval_end", "diagnostic_hang_duration", "crash_time", "tombstone_state"].contains(key) }
+    }
+    static func exitReason(_ code: Int) -> String {
+        guard (0...16).contains(code) else { return String(code) }
+        return RuntimePresentation.text("ui_exit_reason_" + String(code)) + " (" + String(code) + ")"
+    }
+    static func fields(_ diagnostic: SystemDiagnostic) -> [Field] {
+        func field(_ key: String, _ value: String?) -> Field {
+            Field(key: key, value: value ?? RuntimePresentation.text("runtime_unavailable"))
         }
         var result = [field("diagnostic_source", RuntimePresentation.text("diagnostic_source_" + diagnostic.source.rawValue)),
                       field("diagnostic_kind", kind(diagnostic.kind))]
         if let exit = diagnostic.androidExit {
             result += [field("diagnostic_exit_time", RuntimePresentation.date(diagnostic.intervalStartMillis)),
-                       field("diagnostic_reason", String(exit.reasonCode)), field("diagnostic_status", String(exit.status)),
+                       field("diagnostic_reason", exitReason(Int(exit.reasonCode))), field("diagnostic_status", String(exit.status)),
                        field("env_processID", String(exit.processID)), field("diagnostic_importance", String(exit.importance)),
                        field("diagnostic_pss", exit.pssKiB.map { "\($0) KiB" }), field("diagnostic_rss", exit.rssKiB.map { "\($0) KiB" })]
             result.append(field("tombstone_state", TombstonePresentation.state(exit.tombstoneState)))

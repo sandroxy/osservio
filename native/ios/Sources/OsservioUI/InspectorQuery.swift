@@ -92,7 +92,7 @@ struct InspectorQuery: Equatable {
     func matches(_ incident: IncidentSummary, now: Int64) -> Bool {
         allows(.record, incident.diagnosticKind?.rawValue ?? "manual")
             && includesTime(incident.timestampMillis, now: now)
-            && contains(incident.id, incident.note?.text ?? "", incident.diagnosticKind?.rawValue ?? "manual")
+            && contains(incident.id, incident.note?.isPrivate == false ? incident.note?.text ?? "" : "", incident.diagnosticKind?.rawValue ?? "manual", InspectorFilterOptions.label(.record, incident.diagnosticKind?.rawValue ?? "manual"))
     }
     static func host(_ url: String) -> String { URLComponents(string: url)?.host?.lowercased() ?? "" }
     /// A timestamp tie must preserve capture order within a session. Session IDs

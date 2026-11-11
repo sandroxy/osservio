@@ -43,7 +43,7 @@
     <string name="osservio_http_headers_limited">Some header entries were omitted by capture limits.</string>
     <string name="osservio_http_missing">This request is no longer retained. Showing the last viewed metadata; bodies may be unavailable.</string>
     <string name="osservio_http_stale">History is busy. Showing the last viewed metadata.</string>
-    <string name="osservio_http_body_pending">Not finalized. Refresh after observation completes.</string>
+    <string name="osservio_http_body_pending">Content was not finalized in this record. Reopen it from the list after observation completes.</string>
     <string name="osservio_http_body_omitted">Body content was not captured by privacy policy.</string>
     <string name="osservio_http_body_unsupported">This media type, encoding, or compression is not supported for body capture.</string>
     <string name="osservio_http_body_incomplete">Observation was incomplete. No partial body was retained.</string>
@@ -51,7 +51,7 @@
     <string name="osservio_http_body_available">Captured text</string>
     <string name="osservio_http_body_truncated">Only a bounded prefix was retained. This is not the complete body.</string>
     <string name="osservio_http_body_unavailable">Body is no longer available; it may have been cleared or evicted independently.</string>
-    <string name="osservio_http_body_busy">Body storage is busy. Try refreshing.</string>
+    <string name="osservio_http_body_busy">Content storage is busy. Reopen this record in a moment.</string>
     <string name="osservio_http_body_empty">The captured body is empty.</string>
     <string name="osservio_http_observed_bytes">Observed bytes</string>
     <string name="osservio_http_urlsession_note">URLSession completion observation. Duration may include time before a created task was resumed. Streaming, upload, download, and background delegate tasks are not covered.</string>

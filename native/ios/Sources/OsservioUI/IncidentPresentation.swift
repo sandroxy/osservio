@@ -15,11 +15,14 @@ enum IncidentPresentation {
         if summary.hasEnvironment { evidence.append(RuntimePresentation.text("runtime_environment")) }
         for (key, count) in [("runtime_breadcrumbs", summary.breadcrumbCount), ("logs", summary.logCount),
                              ("HTTP", summary.httpCount), ("ws_title", summary.webSocketCount)] {
-            if let count { evidence.append((key == "HTTP" ? key : RuntimePresentation.text(key)) + ": \(count)") }
+            if let count, count > 0 { evidence.append((key == "HTTP" ? key : RuntimePresentation.text(key)) + ": \(count)") }
         }
         return (summary.note?.isPrivate == true ? RuntimePresentation.text("incident_private_note") + "\n" : "")
             + (evidence.isEmpty ? RuntimePresentation.text("incident_no_attachments") : evidence.joined(separator: " · "))
-            + "\n" + timeLabel(summary.diagnosticKind) + " · " + RuntimePresentation.date(summary.timestampMillis)
+    }
+    static func listTime(_ summary: IncidentSummary) -> String {
+        (summary.diagnosticKind == nil ? "" : timeLabel(summary.diagnosticKind) + "\n")
+            + String(InspectorValuePresentation.eventTime(summary.timestampMillis, full: true).prefix(19))
     }
     static func timeLabel(_ kind: SystemDiagnosticKind?) -> String {
         RuntimePresentation.text(kind == nil ? "incident_frozen_time" : "diagnostic_recovered_at")
@@ -41,6 +44,13 @@ enum IncidentPresentation {
         guard let context else { return RuntimePresentation.text("incident_not_attached") }
         return String(format: RuntimePresentation.text("incident_counts"), context.events.count, context.omittedEventCount, context.sourceEvictedCount)
     }
+    static func breadcrumbSummary(_ context: IncidentBreadcrumbs?) -> String {
+        guard let context else { return RuntimePresentation.text("incident_not_attached") }
+        if context.omittedEventCount > 0 || context.sourceEvictedCount > 0 {
+            return String(format: RuntimePresentation.text("incident_evidence_counts"), context.events.count, context.omittedEventCount, context.sourceEvictedCount)
+        }
+        return String(format: RuntimePresentation.text("ui_record_count"), context.events.count)
+    }
     static func attachments(_ summary: IncidentSummary) -> String {
         let environment = RuntimePresentation.text("runtime_environment") + ": "
             + RuntimePresentation.text(summary.hasEnvironment ? "runtime_yes" : "incident_not_attached")
@@ -50,6 +60,10 @@ enum IncidentPresentation {
             + " · HTTP: " + count(summary.httpCount) + " · " + RuntimePresentation.text("ws_title") + ": " + count(summary.webSocketCount)
     }
     static func count(_ value: Int?) -> String { value.map(String.init) ?? RuntimePresentation.text("incident_not_attached") }
+    static func selectionWindow(time: Int64, count: Int, omitted: Int, evicted: Int64, payloadEvicted: Int64? = nil) -> String {
+        InspectorValuePresentation.eventTime(time) + " · " + String(format: RuntimePresentation.text("ui_record_count"), count)
+            + (omitted > 0 || evicted > 0 || (payloadEvicted ?? 0) > 0 ? "\n" + RuntimePresentation.text("ui_retention_loss") : "")
+    }
     static func window(time: Int64, count: Int, omitted: Int, evicted: Int64, payloadEvicted: Int64? = nil) -> String {
         var value = String(format: RuntimePresentation.text("incident_evidence_time"), RuntimePresentation.date(time)) + "\n"
             + String(format: RuntimePresentation.text("incident_evidence_counts"), count, omitted, evicted)

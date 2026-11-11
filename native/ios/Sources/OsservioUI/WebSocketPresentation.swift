@@ -14,7 +14,7 @@ enum WebSocketPresentation {
     }
     static func overview(_ event: WebSocketEvent) -> String {
         func field(_ key: String, _ value: String?) -> String { text(key) + ": " + (value ?? text("http_none")) }
-        let date = InspectorLocalization.date(event.timestampMillis)
+        let date = InspectorValuePresentation.eventTime(event.timestampMillis, full: true)
         let source = event.source == .okHttp ? "OkHttp" : event.source == .urlSession ? "URLSession" : text("ws_host")
         return [event.url, summary(event), field("ws_time", date), field("http_source", source),
                 field("ws_connection", event.connectionID), field("ws_event", event.id),
@@ -32,8 +32,8 @@ enum WebSocketPresentation {
         switch history.payload(id: id) {
         case .available(let payload):
             return InspectorReadContent(text: payload.text, notice: notice + (payload.text.isEmpty ? "\n" + text("http_body_empty") : ""), allowsJSON: reference.state == .available)
-        case .unavailable: return InspectorReadContent(notice: notice + "\n" + text("http_body_unavailable"))
-        case .busy: return InspectorReadContent(notice: notice + "\n" + text("http_body_busy"))
+        case .unavailable: return InspectorReadContent(notice: text("http_body_unavailable"))
+        case .busy: return InspectorReadContent(notice: text("http_body_busy"))
         }
     }
     static func payload(_ reference: WebSocketPayloadReference?, savedPayloads: [String: IncidentPayload]) -> InspectorReadContent {
@@ -43,6 +43,6 @@ enum WebSocketPresentation {
         return .saved(savedPayloads[id], notice: notice, complete: reference.state == .available)
     }
     static func payloadDescription(_ reference: WebSocketPayloadReference) -> String {
-        text("ws_payload_" + reference.state.rawValue) + "\n" + text("ws_bytes") + ": " + (reference.byteCount.map(String.init) ?? text("http_none"))
+        text("ws_payload_" + reference.state.rawValue) + (reference.byteCount.map { "\n" + text("ws_bytes") + ": " + InspectorValuePresentation.bytes($0) } ?? "")
     }
 }

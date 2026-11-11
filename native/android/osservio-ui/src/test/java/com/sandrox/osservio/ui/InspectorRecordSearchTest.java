@@ -15,6 +15,10 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class InspectorRecordSearchTest {
+    @Test public void shortSearchPreviewKeepsTheWholeMessage() {
+        String text = "{\"type\":\"beta\",\"data\":{\"lookup\":\"lookup-42\",\"sequence\":2}}";
+        assertEquals(text, InspectorRecordSearch.preview(text, "lookup-42"));
+    }
     private static String id(int value) { return String.format(Locale.ROOT, "00000000-0000-0000-0000-%012d", value); }
     @Test public void sharedFieldsPreserveEvidence() throws Exception {
         for (String line : Files.readAllLines(Paths.get(System.getProperty("osservio.fixtures"), "json-field-cases.tsv"), StandardCharsets.UTF_8)) {
@@ -74,6 +78,17 @@ public final class InspectorRecordSearchTest {
         assertTrue(logSearch(partial, query).keys.isEmpty()); assertEquals(1, logSearch(partial, query).truncated);
         assertEquals(1, logSearch(LogEvent.restore(id(100), 1, 100, LogLevel.INFO, "transport", "[private]", true, false), query).unavailable);
         query.fieldPath = ""; query.text = "42"; assertEquals(1, logSearch(partial, query).keys.size());
+    }
+    @Test public void frozenSearchNeverFallsBackToLiveContent() {
+        History history = new History(); WebSocketEvent event = message(1, 10, "live-only", history, 100);
+        List<InspectorRecordSearch.Record> records = Collections.singletonList(new InspectorRecordSearch.Record(event));
+        Map<String, IncidentPayload> saved = Collections.singletonMap(event.id, IncidentPayload.restore(event.id, IncidentPayload.State.AVAILABLE, "saved-only"));
+        InspectorQuery query = new InspectorQuery(); query.text = "saved-only";
+        InspectorRecordSearch.Result result = InspectorRecordSearch.run(records, query, 100, null, history, saved, InspectorRecordSearch.MAX_UNITS, () -> false);
+        assertEquals(Collections.singleton(records.get(0).key()), result.keys); assertEquals("message", result.previewSources.get(records.get(0).key())); assertEquals(0, history.reads);
+        query.text = "live-only";
+        assertTrue(InspectorRecordSearch.run(records, query, 100, null, history, Collections.emptyMap(), InspectorRecordSearch.MAX_UNITS, () -> false).keys.isEmpty());
+        assertEquals(0, history.reads);
     }
     private static InspectorRecordSearch.Result logSearch(LogEvent event, InspectorQuery query) {
         return InspectorRecordSearch.run(Collections.singletonList(new InspectorRecordSearch.Record(event)), query, 100, null, null,

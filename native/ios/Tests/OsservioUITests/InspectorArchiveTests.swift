@@ -67,7 +67,7 @@ final class InspectorArchiveTests: XCTestCase {
         XCTAssertEqual(IncidentPresentation.listTitle(summary), RuntimePresentation.text("incident_manual"))
         let subtitle = IncidentPresentation.listSubtitle(summary)
         XCTAssertTrue(subtitle.contains(RuntimePresentation.text("incident_private_note")))
-        XCTAssertTrue(subtitle.contains("HTTP: 2")); XCTAssertTrue(subtitle.contains(": 0"))
+        XCTAssertTrue(subtitle.contains("HTTP: 2")); XCTAssertFalse(subtitle.contains(": 0"))
         XCTAssertFalse(subtitle.contains("[private]")); XCTAssertFalse(subtitle.contains("not retained"))
         XCTAssertEqual(IncidentPresentation.note(privateNote), RuntimePresentation.text("incident_private_note"))
         let literal = IncidentSummary(id: UUID().uuidString, timestampMillis: 1_000,

@@ -19,10 +19,13 @@ final class IncidentPresentation {
         if (summary.hasEnvironment) evidence.add(context.getString(R.string.osservio_runtime_environment));
         int[] labels = {R.string.osservio_runtime_breadcrumbs, R.string.osservio_logs, R.string.osservio_ui_http, R.string.osservio_ws_title};
         Integer[] counts = {summary.breadcrumbCount, summary.logCount, summary.httpCount, summary.webSocketCount};
-        for (int i = 0; i < labels.length; i++) if (counts[i] != null) evidence.add(context.getString(labels[i]) + ": " + counts[i]);
+        for (int i = 0; i < labels.length; i++) if (counts[i] != null && counts[i] > 0) evidence.add(context.getString(labels[i]) + ": " + counts[i]);
         return (summary.note != null && summary.note.isPrivate ? context.getString(R.string.osservio_incident_private_note) + "\n" : "")
-            + (evidence.isEmpty() ? context.getString(R.string.osservio_incident_no_attachments) : android.text.TextUtils.join(" · ", evidence))
-            + "\n" + timeLabel(context, summary.diagnosticKind) + " · " + RuntimePresentation.date(context, summary.timestampMillis);
+            + (evidence.isEmpty() ? context.getString(R.string.osservio_incident_no_attachments) : android.text.TextUtils.join(" · ", evidence));
+    }
+    static String listTime(Context context, IncidentSummary summary) {
+        return (summary.diagnosticKind == null ? "" : timeLabel(context, summary.diagnosticKind) + "\n")
+            + InspectorValuePresentation.eventTime(summary.timestampMillis, true).substring(0, 19);
     }
     static String timeLabel(Context context, SystemDiagnostic.Kind kind) {
         return context.getString(kind == null ? R.string.osservio_incident_frozen_time : R.string.osservio_diagnostic_recovered_at);
@@ -44,6 +47,12 @@ final class IncidentPresentation {
         return breadcrumbs == null ? context.getString(R.string.osservio_incident_not_attached)
             : context.getString(R.string.osservio_incident_counts, breadcrumbs.events.size(), breadcrumbs.omittedEventCount, breadcrumbs.sourceEvictedCount);
     }
+    static String breadcrumbSummary(Context context, IncidentSnapshot.Breadcrumbs breadcrumbs) {
+        if (breadcrumbs == null) return context.getString(R.string.osservio_incident_not_attached);
+        return breadcrumbs.omittedEventCount > 0 || breadcrumbs.sourceEvictedCount > 0
+            ? context.getString(R.string.osservio_incident_evidence_counts, breadcrumbs.events.size(), breadcrumbs.omittedEventCount, breadcrumbs.sourceEvictedCount)
+            : context.getString(R.string.osservio_ui_record_count, breadcrumbs.events.size());
+    }
     static String attachments(Context context, IncidentSummary summary) {
         return context.getString(R.string.osservio_runtime_environment) + ": "
             + context.getString(summary.hasEnvironment ? R.string.osservio_runtime_yes : R.string.osservio_incident_not_attached)
@@ -52,6 +61,10 @@ final class IncidentPresentation {
             + " · HTTP: " + count(context, summary.httpCount) + " · " + context.getString(R.string.osservio_ws_title) + ": " + count(context, summary.webSocketCount);
     }
     static String count(Context context, Integer count) { return count == null ? context.getString(R.string.osservio_incident_not_attached) : count.toString(); }
+    static String selectionWindow(Context context, long time, int count, int omitted, long evicted, Long payloadEvicted) {
+        return InspectorValuePresentation.eventTime(time, false) + " · " + context.getString(R.string.osservio_ui_record_count, count)
+            + (omitted > 0 || evicted > 0 || payloadEvicted != null && payloadEvicted > 0 ? "\n" + context.getString(R.string.osservio_ui_retention_loss) : "");
+    }
     static String window(Context context, long time, int count, int omitted, long evicted, Long payloadEvicted) {
         return context.getString(R.string.osservio_incident_evidence_time, RuntimePresentation.date(context, time)) + "\n"
             + context.getString(R.string.osservio_incident_evidence_counts, count, omitted, evicted)

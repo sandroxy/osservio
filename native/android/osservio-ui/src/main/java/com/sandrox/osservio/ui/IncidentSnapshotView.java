@@ -47,8 +47,8 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(0, dp(8), 0, 0);
         status = caption(() -> ""); status.setVisibility(GONE); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         header.addView(status, new LayoutParams(-1, -2));
-        search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> filter());
-        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE); header.addView(search, new LayoutParams(-1, -2));
+        search = InspectorWidgets.search(context, R.string.osservio_ui_search_breadcrumbs, "", ignored -> filter());
+        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE);
         if (exporter != null) {
             share = InspectorWidgets.icon(context, R.drawable.osservio_share, R.string.osservio_incident_share, () -> { }); controls.addView(share);
             sharing = new IncidentSharePresentation(this, share, exporter, snapshot, message -> status(message == 0 ? "" : context.getString(message)));
@@ -56,9 +56,10 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
         LinearLayout metadata = section(header, () -> IncidentPresentation.title(context, kind));
         field(metadata, () -> IncidentPresentation.timeLabel(context, kind), () -> RuntimePresentation.date(context, snapshot.timestampMillis), null);
-        field(metadata, () -> "ID", () -> snapshot.id, null);
+        field(metadata, () -> context.getString(R.string.osservio_ui_record_identity), () -> InspectorRecordPresentation.identity(snapshot.id),
+            () -> showText(R.string.osservio_ui_record_identity, snapshot.id));
         field(metadata, () -> context.getString(R.string.osservio_incident_note), () -> IncidentPresentation.note(context, snapshot.note),
-            snapshot.note == null ? null : () -> showText(R.string.osservio_incident_note, IncidentPresentation.note(context, snapshot.note)));
+            snapshot.note == null || snapshot.note.isPrivate ? null : () -> showText(R.string.osservio_incident_note, IncidentPresentation.note(context, snapshot.note)));
         if (snapshot.systemDiagnostic != null) field(metadata, () -> context.getString(R.string.osservio_diagnostic_title),
             () -> SystemDiagnosticPresentation.kind(context, snapshot.systemDiagnostic.kind),
             () -> open(R.string.osservio_diagnostic_title, new SystemDiagnosticView(context, snapshot.systemDiagnostic)));
@@ -76,7 +77,8 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         attachment(attachments, R.string.osservio_ws_title, snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
             () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
         TextView eventsTitle = InspectorWidgets.sectionLabel(context); InspectorAppearance.text(eventsTitle, R.string.osservio_runtime_breadcrumbs); header.addView(eventsTitle);
-        header.addView(caption(() -> IncidentPresentation.counts(context, snapshot.breadcrumbs)));
+        header.addView(caption(() -> IncidentPresentation.breadcrumbSummary(context, snapshot.breadcrumbs)));
+        header.addView(search, new LayoutParams(-1, -2));
         list.addHeaderView(header, null, false);
         LinearLayout ending = new LinearLayout(context); ending.setOrientation(VERTICAL);
         footer = caption(() -> ""); ending.addView(footer);
@@ -142,7 +144,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         footer.setVisibility(footer.length() == 0 ? GONE : VISIBLE); rows.notifyDataSetChanged();
     }
     private void showText(int title, String value) {
-        InspectorContentReader content = new InspectorContentReader(getContext()); content.display(value, false); open(title, content);
+        InspectorContentReader content = new InspectorContentReader(getContext()); content.display(new InspectorReadContent(value, "", false).withContext(() -> IncidentPresentation.title(getContext(), snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind) + " · " + InspectorValuePresentation.eventTime(snapshot.timestampMillis, true)), false); open(title, content);
     }
     private void copy(String value) {
         ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
@@ -159,8 +161,8 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         @Override public View getView(int position, View recycled, ViewGroup parent) {
             InspectorWidgets.ValueRow row = recycled instanceof InspectorWidgets.ValueRow ? (InspectorWidgets.ValueRow) recycled : new InspectorWidgets.ValueRow(getContext());
             BreadcrumbEvent event = events.get(position);
-            row.bind(RuntimePresentation.kind(getContext(), event.kind) + " · " + event.label,
-                RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + RuntimePresentation.message(getContext(), event.message, event.isPrivate)), true);
+            row.bind(RuntimePresentation.breadcrumbTitle(getContext(), event),
+                InspectorValuePresentation.eventTime(event.timestampMillis, false) + "\n" + RuntimePresentation.breadcrumbSubtitle(getContext(), event), true);
             row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
             InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1); return row;
         }

@@ -77,23 +77,29 @@ final class IncidentComposer {
         includeEnvironment = option(R.string.osservio_incident_include_environment, true);
         environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); addOption(options, includeEnvironment, environmentStatus);
         includeBreadcrumbs = option(R.string.osservio_incident_include_breadcrumbs, true);
-        addOption(options, includeBreadcrumbs, label(mark.breadcrumbs == null ? context.getString(R.string.osservio_incident_breadcrumbs_failed) : IncidentPresentation.counts(context, mark.breadcrumbs)));
+        addOption(options, includeBreadcrumbs, label(mark.breadcrumbs == null ? context.getString(R.string.osservio_incident_breadcrumbs_failed) : IncidentPresentation.breadcrumbSummary(context, mark.breadcrumbs)));
         includeLogs = option(R.string.osservio_incident_include_logs, mark.logs != null);
         addOption(options, includeLogs, label(mark.logs == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.window(context, mark.logs.observedAtMillis, mark.logs.events.size(), mark.logs.omittedEventCount, mark.logs.sourceEvictedCount, null)));
+            : IncidentPresentation.selectionWindow(context, mark.logs.observedAtMillis, mark.logs.events.size(), mark.logs.omittedEventCount, mark.logs.sourceEvictedCount, null)));
+        TextView httpTitle = InspectorWidgets.sectionLabel(context); httpTitle.setText(R.string.osservio_ui_http); content.addView(httpTitle);
+        LinearLayout httpOptions = InspectorWidgets.group(context); content.addView(httpOptions, params());
         includeHTTP = option(R.string.osservio_incident_include_http, mark.http != null);
-        addOption(options, includeHTTP, label(mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.window(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount, mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies)));
+        addOption(httpOptions, includeHTTP, label(mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.selectionWindow(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount, mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies)));
         includeHTTPBodies = option(R.string.osservio_incident_include_http_bodies, false);
         httpBodiesStatus = label(context.getString(mark.http != null && !mark.http.payloads.isEmpty() && httpHistory != null
-            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(options, includeHTTPBodies, httpBodiesStatus);
+            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(httpOptions, includeHTTPBodies, httpBodiesStatus);
+        TextView socketTitle = InspectorWidgets.sectionLabel(context); socketTitle.setText(R.string.osservio_ws_title); content.addView(socketTitle);
+        LinearLayout socketOptions = InspectorWidgets.group(context); content.addView(socketOptions, params());
         includeWebSockets = option(R.string.osservio_incident_include_websockets, mark.webSockets != null);
-        addOption(options, includeWebSockets, label(mark.webSockets == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.window(context, mark.webSockets.observedAtMillis, mark.webSockets.events.size(), mark.webSockets.omittedEventCount, mark.webSockets.sourceEvictedEvents, mark.webSockets.sourceEvictedPayloads)));
+        addOption(socketOptions, includeWebSockets, label(mark.webSockets == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.selectionWindow(context, mark.webSockets.observedAtMillis, mark.webSockets.events.size(), mark.webSockets.omittedEventCount, mark.webSockets.sourceEvictedEvents, mark.webSockets.sourceEvictedPayloads)));
         includeWebSocketPayloads = option(R.string.osservio_incident_include_ws_payloads, false);
         socketPayloadsStatus = label(context.getString(mark.webSockets != null && !mark.webSockets.payloads.isEmpty() && webSocketHistory != null
-            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(options, includeWebSocketPayloads, socketPayloadsStatus);
-        includeNote = option(R.string.osservio_incident_include_note, false); addOption(options, includeNote, null);
+            ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(socketOptions, includeWebSocketPayloads, socketPayloadsStatus);
+        TextView noteTitle = InspectorWidgets.sectionLabel(context); noteTitle.setText(R.string.osservio_incident_note); content.addView(noteTitle);
+        LinearLayout noteOptions = InspectorWidgets.group(context); content.addView(noteOptions, params());
+        includeNote = option(R.string.osservio_incident_include_note, false); addOption(noteOptions, includeNote, null);
         editor = new EditText(context); editor.setHint(R.string.osservio_incident_note); editor.setMinLines(3); editor.setMaxLines(6);
         InspectorTheme.typography(editor, 16, false); editor.setPadding(dp(16), dp(12), dp(16), dp(12));
         InspectorAppearance.style(editor, () -> { editor.setTextColor(InspectorTheme.primary(context)); editor.setHintTextColor(InspectorTheme.secondary(context)); InspectorTheme.surface(editor, false, 20); });

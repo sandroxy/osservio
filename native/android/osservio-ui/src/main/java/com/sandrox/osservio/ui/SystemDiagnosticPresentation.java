@@ -37,7 +37,7 @@ final class SystemDiagnosticPresentation {
         SystemDiagnostic.AndroidExit exit = diagnostic.androidExit;
         if (exit != null) {
             field(text, context, R.string.osservio_diagnostic_exit_time, RuntimePresentation.date(context, diagnostic.intervalStartMillis));
-            field(text, context, R.string.osservio_diagnostic_reason, Integer.toString(exit.reasonCode));
+            field(text, context, R.string.osservio_diagnostic_reason, exitReason(context, exit.reasonCode));
             field(text, context, R.string.osservio_diagnostic_status, Integer.toString(exit.status));
             field(text, context, R.string.osservio_env_process_id, Integer.toString(exit.processID));
             field(text, context, R.string.osservio_diagnostic_importance, Integer.toString(exit.importance));
@@ -92,6 +92,13 @@ final class SystemDiagnosticPresentation {
     static final class Field {
         final int label; final String value;
         Field(int label, String value) { this.label = label; this.value = value; }
+        boolean primary() { return label == R.string.osservio_diagnostic_source || label == R.string.osservio_diagnostic_kind || label == R.string.osservio_diagnostic_exit_time
+            || label == R.string.osservio_diagnostic_reason || label == R.string.osservio_diagnostic_signal || label == R.string.osservio_diagnostic_interval_start
+            || label == R.string.osservio_diagnostic_interval_end || label == R.string.osservio_diagnostic_hang_duration || label == R.string.osservio_crash_time || label == R.string.osservio_tombstone_state; }
+    }
+    static String exitReason(Context context, int code) {
+        int[] keys = {R.string.osservio_ui_exit_reason_0, R.string.osservio_ui_exit_reason_1, R.string.osservio_ui_exit_reason_2, R.string.osservio_ui_exit_reason_3, R.string.osservio_ui_exit_reason_4, R.string.osservio_ui_exit_reason_5, R.string.osservio_ui_exit_reason_6, R.string.osservio_ui_exit_reason_7, R.string.osservio_ui_exit_reason_8, R.string.osservio_ui_exit_reason_9, R.string.osservio_ui_exit_reason_10, R.string.osservio_ui_exit_reason_11, R.string.osservio_ui_exit_reason_12, R.string.osservio_ui_exit_reason_13, R.string.osservio_ui_exit_reason_14, R.string.osservio_ui_exit_reason_15, R.string.osservio_ui_exit_reason_16};
+        return code >= 0 && code < keys.length ? context.getString(keys[code]) + " (" + code + ")" : Integer.toString(code);
     }
     private static void field(java.util.List<Field> fields, Context context, int label, String value) {
         fields.add(new Field(label, value == null ? context.getString(R.string.osservio_runtime_unavailable) : value));

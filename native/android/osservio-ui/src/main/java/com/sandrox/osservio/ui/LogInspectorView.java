@@ -127,6 +127,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             result = null; dirty = false; display(); return;
         }
         long current = generation; java.lang.ref.WeakReference<LogInspectorView> owner = new java.lang.ref.WeakReference<>(this);
+        InspectorRecordPresentation.prepareSearch(getContext(), records);
         task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(records, query, anchor, null, null, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
             LogInspectorView view = owner.get(); if (view == null || view.generation != current) return;
             view.task = null; view.result = found; view.events.clear();
@@ -186,11 +187,8 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow
                 ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             LogEvent event = events.get(position);
-            int tone = event.level == LogLevel.ERROR ? InspectorTheme.color(getContext(), R.color.osservio_error)
-                : event.level == LogLevel.WARNING ? InspectorTheme.color(getContext(), R.color.osservio_warning) : InspectorTheme.secondary(getContext());
-            String marker = event.isTruncated ? " · " + getContext().getString(R.string.osservio_truncated) : "";
             String preview = result == null ? null : result.previews.get(new InspectorRecordSearch.Record(event).key());
-            row.bind(event.level == LogLevel.WARNING ? "WARN" : event.level.name(), event.isPrivate ? getContext().getString(R.string.osservio_ui_private_content) : preview == null ? event.message.substring(0, Math.min(600, event.message.length())) : preview, event.category + marker, event.timestampMillis, tone);
+            InspectorRecordPresentation.log(getContext(), event, preview).bind(row, getContext());
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

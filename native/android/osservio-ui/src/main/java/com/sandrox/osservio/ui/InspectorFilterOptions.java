@@ -76,7 +76,7 @@ final class InspectorFilterOptions {
     }
     private static InspectorFilterSheet.Group strings(Context context, InspectorQuery.Field field, int title, Set<String> values) {
         InspectorFilterSheet.Group group = group(context, field, title);
-        for (String value : values) group.option(value, value.isEmpty() ? context.getString(R.string.osservio_ui_unknown) : value);
+        for (String value : values) group.option(value, value.isEmpty() ? context.getString(R.string.osservio_ui_unknown) : field == InspectorQuery.Field.CONNECTION ? InspectorRecordPresentation.connection(context, value) : value);
         return group;
     }
     static String source(Context context, String value) {

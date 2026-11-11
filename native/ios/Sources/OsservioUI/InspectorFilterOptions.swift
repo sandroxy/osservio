@@ -58,6 +58,7 @@ enum InspectorFilterOptions {
             if value == "okHttp" { return "OkHttp" }
             if value == "urlSession" { return "URLSession" }
             return InspectorLocalization.text("ui_" + value)
+        case .connection: return InspectorRecordPresentation.connection(value)
         case .record: return value == "manual" ? InspectorLocalization.text("ui_manual") : InspectorLocalization.text("diagnostic_kind_" + value)
         default: return value
         }

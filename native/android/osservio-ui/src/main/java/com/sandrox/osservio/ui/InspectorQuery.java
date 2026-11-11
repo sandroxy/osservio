@@ -110,10 +110,11 @@ final class InspectorQuery {
             && allows(Field.SOURCE, connection.latest.source.name()) && includesTime(connection.latest.timestampMillis, now)
             && contains(connection.latest.url, connection.latest.connectionId);
     }
-    boolean matches(IncidentSummary incident, long now) {
+    boolean matches(IncidentSummary incident, long now) { return matches(incident, now, ""); }
+    boolean matches(IncidentSummary incident, long now, String visibleKind) {
         return allows(Field.RECORD, incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name())
             && includesTime(incident.timestampMillis, now)
-            && contains(incident.id, incident.note == null ? null : incident.note.text,
+            && contains(incident.id, incident.note == null || incident.note.isPrivate ? null : incident.note.text, visibleKind,
                 incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name());
     }
     static boolean hasText(String text, String query) {

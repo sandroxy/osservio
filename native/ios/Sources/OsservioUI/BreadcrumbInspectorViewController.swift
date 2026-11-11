@@ -92,7 +92,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "crumb") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "crumb")
-        cell.configure(badge: RuntimePresentation.kind(event), time: event.timestampMillis, title: event.label, subtitle: event.message.map { RuntimePresentation.message($0, isPrivate: event.isPrivate) } ?? "#\(event.sequence)")
+        cell.configure(badge: event.kind == .hostMarker ? RuntimePresentation.kind(event) : "", time: event.timestampMillis, title: RuntimePresentation.breadcrumbTitle(event), subtitle: RuntimePresentation.breadcrumbSubtitle(event))
         return cell
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

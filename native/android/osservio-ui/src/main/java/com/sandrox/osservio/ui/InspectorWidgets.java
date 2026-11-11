@@ -333,6 +333,7 @@ final class InspectorWidgets {
         void grouped(boolean first, boolean last) {
             InspectorAppearance.style(card, () -> groupedRow(card, first, last));
         }
+        void timestamp(String value) { time.setText(value); }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {
             badge.setText(label); badge.setTextColor(tone); title.setText(primary); metadata.setText(secondary);
             time.setText(time(timestamp));

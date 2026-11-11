@@ -113,7 +113,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             guard let values = query.values[field], !values.isEmpty else { continue }
             var changed = query
             if field == .transport { changed.select(.transport, value: nil) } else { changed.values[field] = nil }
-            add(values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), changed: changed)
+            add(InspectorLocalization.text("ui_" + field.rawValue) + ": " + values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), changed: changed)
         }
         if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorLocalization.text("ui_time_\(query.recentMinutes)"), changed: changed) }
         if !query.excludedText.isEmpty { var changed = query; changed.excludedText = ""; add(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText, changed: changed) }
@@ -185,9 +185,14 @@ final class InspectorEventCell: UITableViewCell {
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
+    func setTimestamp(_ value: String) { timestamp.text = value; accessibilityLabel = [badge.text, primary.text, secondary.text, value].compactMap { $0 }.joined(separator: ", ") }
+    func configure(_ row: InspectorRecordPresentation.Row) {
+        configure(badge: row.badge, time: row.time, title: row.title, subtitle: row.subtitle,
+            color: row.tone == .error ? .systemRed : row.tone == .warning ? .systemOrange : .secondaryLabel)
+    }
     func configure(badge: String, time: Int64, title: String, subtitle: String, color: UIColor? = nil) {
         self.badge.text = badge; self.badge.textColor = color ?? InspectorTheme.accent
-        timestamp.text = InspectorLocalization.date(time, timeOnly: true)
+        timestamp.text = InspectorValuePresentation.eventTime(time)
         primary.text = title; secondary.text = subtitle
         accessibilityLabel = [badge, title, subtitle, timestamp.text ?? ""].joined(separator: ", ")
     }

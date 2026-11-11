@@ -78,7 +78,7 @@ final class EnvironmentInspectorView extends LinearLayout implements InspectorSc
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_snapshot_time);
         page.value(() -> RuntimePresentation.date(context, snapshot.timestampMillis));
-        page.note(R.string.osservio_runtime_environment_hint);
+        page.note(snapshot.platform == EnvironmentSnapshot.Platform.IOS ? R.string.osservio_runtime_environment_hint : R.string.osservio_ui_environment_android_hint);
         EnvironmentSnapshot.Key[][] groups = {
             {EnvironmentSnapshot.Key.APP_IDENTIFIER, EnvironmentSnapshot.Key.APP_VERSION, EnvironmentSnapshot.Key.APP_BUILD},
             {EnvironmentSnapshot.Key.OS_VERSION, EnvironmentSnapshot.Key.MANUFACTURER, EnvironmentSnapshot.Key.DEVICE_MODEL,
@@ -88,10 +88,21 @@ final class EnvironmentInspectorView extends LinearLayout implements InspectorSc
             {EnvironmentSnapshot.Key.BATTERY_PERCENT, EnvironmentSnapshot.Key.LOW_POWER_MODE, EnvironmentSnapshot.Key.THERMAL_STATE}
         };
         int[] labels = {R.string.osservio_ui_app, R.string.osservio_ui_device, R.string.osservio_ui_process, R.string.osservio_ui_power};
+        java.util.List<EnvironmentSnapshot.Key> unsupported = new java.util.ArrayList<>(), exact = new java.util.ArrayList<>();
         for (int i = 0; i < groups.length; i++) {
-            page.section(labels[i]);
-            for (EnvironmentSnapshot.Key key : groups[i]) page.field(RuntimePresentation.keyLabel(key), () -> RuntimePresentation.value(context, snapshot.values.get(key), key));
+            boolean started = false;
+            for (EnvironmentSnapshot.Key key : groups[i]) {
+                EnvironmentSnapshot.Value value = snapshot.values.get(key);
+                if (value.fact.type == EnvironmentSnapshot.Fact.Type.UNSUPPORTED) { unsupported.add(key); continue; }
+                if (!started) { page.section(labels[i]); started = true; }
+                page.field(RuntimePresentation.keyLabel(key), () -> RuntimePresentation.value(context, value, key, true));
+                if (key.name().endsWith("_BYTES") && value.fact.type == EnvironmentSnapshot.Fact.Type.NUMBER) exact.add(key);
+            }
         }
+        if (!exact.isEmpty()) page.expandable(R.string.osservio_ui_original_value, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details,
+            () -> { for (EnvironmentSnapshot.Key key : exact) page.field(RuntimePresentation.keyLabel(key), snapshot.values.get(key).fact.number + " B"); });
+        if (!unsupported.isEmpty()) page.expandable(R.string.osservio_ui_unsupported_fields, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details,
+            () -> { for (EnvironmentSnapshot.Key key : unsupported) page.field(RuntimePresentation.keyLabel(key), () -> context.getString(R.string.osservio_runtime_unsupported)); });
         return page;
     }
 }

@@ -14,7 +14,7 @@
     <string name="osservio_runtime_environment_hint">这些信息是读取时的快照，各平台的内存指标含义不同。iOS 宿主未开启电量监测时，电量会显示为暂不可用。</string>
     <string name="osservio_crumb_baseline_hint">关闭调试时，仍采集轻量运行信号。关闭基础采集不会中断已开启的调试；是否留存仍取决于宿主的存储配置。</string>
     <string name="osservio_crumb_search">搜索类型、标签或内容</string>
-    <string name="osservio_crumb_empty">暂无运行线索。开启基础采集或详细采集后，可记录宿主标记与系统运行事件。</string>
+    <string name="osservio_crumb_empty">暂无运行线索。基础记录或调试已开启时，会记录受支持的运行状态变化和宿主标记。</string>
     <string name="osservio_crumb_clear">清空线索</string>
     <string name="osservio_crumb_copy">复制事件</string>
     <string name="osservio_crumb_session">采集会话</string>

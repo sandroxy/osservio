@@ -26,12 +26,13 @@ final class SystemDiagnosticView extends FrameLayout implements InspectorScreen.
     }
     private void render() {
         int position = page == null ? 0 : page.getScrollY(); removeAllViews();
-        page = new InspectorDetailPage(getContext()); page.section("");
-        for (SystemDiagnosticPresentation.Field field : SystemDiagnosticPresentation.fields(getContext(), diagnostic)) page.row(field.label, () -> field.value, null);
+        page = new InspectorDetailPage(getContext()); page.section(R.string.osservio_ui_overview);
+        java.util.List<SystemDiagnosticPresentation.Field> fields = SystemDiagnosticPresentation.fields(getContext(), diagnostic);
+        for (SystemDiagnosticPresentation.Field field : fields) if (field.primary()) page.field(field.label, field.value);
         page.note(() -> SystemDiagnosticPresentation.hint(getContext(), diagnostic));
         AppleSignalCrash crash = diagnostic.appleSignal;
         AndroidTombstone trace = diagnostic.androidExit == null ? null : diagnostic.androidExit.tombstone;
-        if (crash != null || trace != null) page.section("");
+        if (crash != null || trace != null) page.section(R.string.osservio_ui_evidence_details);
         if (crash != null) {
             for (boolean images : new boolean[] {false, true}) {
                 int count = images ? crash.images.size() : crash.frames.size();
@@ -42,6 +43,8 @@ final class SystemDiagnosticView extends FrameLayout implements InspectorScreen.
         } else if (trace != null) page.row(R.string.osservio_crash_frames,
             () -> SignalCrashPresentation.count(getContext(), trace.frames.size(), trace.frameLimitReached()),
             trace.frames.isEmpty() ? null : () -> open(R.string.osservio_crash_frames, new SignalCrashView(getContext(), trace, () -> { })));
+        page.expandable(R.string.osservio_ui_technical_details, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details,
+            () -> { for (SystemDiagnosticPresentation.Field field : fields) if (!field.primary()) page.field(field.label, field.value); });
         addView(page, new LayoutParams(-1, -1)); page.post(() -> page.scrollTo(0, position));
     }
     private void open(int title, SignalCrashView content) {

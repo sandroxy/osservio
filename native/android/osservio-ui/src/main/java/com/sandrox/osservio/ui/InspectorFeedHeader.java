@@ -132,7 +132,7 @@ final class InspectorFeedHeader extends LinearLayout {
             for (String value : new java.util.TreeSet<>(values)) labels.add(group.options.containsKey(value) ? group.options.get(value) : value);
             InspectorQuery changed = query.copy();
             if (group.field == InspectorQuery.Field.TRANSPORT) changed.select(group.field, null); else changed.values.remove(group.field);
-            token(android.text.TextUtils.join(", ", labels), changed);
+            token(group.title + ": " + android.text.TextUtils.join(", ", labels), changed);
         }
         if (query.recentMinutes > 0) { InspectorQuery changed = query.copy(); changed.recentMinutes = 0;
             token(getContext().getString(query.recentMinutes == 5 ? R.string.osservio_ui_time_5 : query.recentMinutes == 30 ? R.string.osservio_ui_time_30 : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440), changed); }

@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.content.Context;
-import android.text.format.Formatter;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import java.text.DateFormat;
@@ -16,13 +15,16 @@ final class RuntimePresentation {
         return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM,
             InspectorPreferences.english(context) ? java.util.Locale.ENGLISH : java.util.Locale.SIMPLIFIED_CHINESE).format(new Date(millis));
     }
-    static String value(Context context, EnvironmentSnapshot.Value value, EnvironmentSnapshot.Key key) {
+    static String value(Context context, EnvironmentSnapshot.Value value, EnvironmentSnapshot.Key key) { return value(context, value, key, false); }
+    static String value(Context context, EnvironmentSnapshot.Value value, EnvironmentSnapshot.Key key, boolean compact) {
         String result;
         switch (value.fact.type) {
-            case TEXT: result = value.fact.text; break;
+            case TEXT: result = value.fact.text;
+                if (compact && key == EnvironmentSnapshot.Key.THERMAL_STATE) result = thermal(context, result);
+                break;
             case NUMBER:
                 result = key.name().endsWith("_BYTES")
-                    ? Formatter.formatFileSize(context, value.fact.number) + " (" + value.fact.number + " B)"
+                    ? InspectorValuePresentation.bytes(value.fact.number) + (compact ? "" : " (" + value.fact.number + " B)")
                     : value.fact.number + (key == EnvironmentSnapshot.Key.BATTERY_PERCENT ? "%" : "");
                 break;
             case FLAG: result = context.getString(value.fact.flag ? R.string.osservio_runtime_yes : R.string.osservio_runtime_no); break;
@@ -32,6 +34,23 @@ final class RuntimePresentation {
         }
         return result + (value.isTruncated ? " · " + context.getString(R.string.osservio_truncated) : "");
     }
+    private static String thermal(Context context, String value) {
+        int label;
+        switch (value) {
+            case "nominal": label = R.string.osservio_ui_thermal_nominal; break;
+            case "fair": label = R.string.osservio_ui_thermal_fair; break;
+            case "serious": label = R.string.osservio_ui_thermal_serious; break;
+            case "critical": label = R.string.osservio_ui_thermal_critical; break;
+            case "none": label = R.string.osservio_ui_thermal_none; break;
+            case "light": label = R.string.osservio_ui_thermal_light; break;
+            case "moderate": label = R.string.osservio_ui_thermal_moderate; break;
+            case "severe": label = R.string.osservio_ui_thermal_severe; break;
+            case "emergency": label = R.string.osservio_ui_thermal_emergency; break;
+            case "shutdown": label = R.string.osservio_ui_thermal_shutdown; break;
+            default: return value;
+        }
+        return context.getString(label) + " (" + value + ")";
+    }
     static String environment(Context context, EnvironmentSnapshot snapshot) {
         StringBuilder text = new StringBuilder(context.getString(R.string.osservio_runtime_environment));
         text.append(" · ").append(snapshot.platform).append('\n').append(date(context, snapshot.timestampMillis));
@@ -39,6 +58,14 @@ final class RuntimePresentation {
             text.append('\n').append(context.getString(keyLabel(key))).append(": ").append(value(context, snapshot.values.get(key), key));
         }
         return text.toString();
+    }
+    static String breadcrumbTitle(Context context, BreadcrumbEvent event) { return event.kind == BreadcrumbEvent.Kind.HOST_MARKER ? event.label : kind(context, event.kind); }
+    static String breadcrumbSubtitle(Context context, BreadcrumbEvent event) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        if (event.message != null) parts.add(event.message.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : message(context, InspectorRecordPresentation.compact(event.message, 180), event.isPrivate));
+        if (event.kind.name().startsWith("ACTIVITY_")) parts.add(event.label);
+        if (event.sessionElapsedMillis != null) parts.add(context.getString(R.string.osservio_ui_since_start, event.sessionElapsedMillis));
+        return android.text.TextUtils.join(" · ", parts);
     }
     static String breadcrumb(Context context, BreadcrumbEvent event) {
         StringBuilder text = new StringBuilder(kind(context, event.kind));

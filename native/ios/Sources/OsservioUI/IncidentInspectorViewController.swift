@@ -122,6 +122,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         let cell = table.dequeueReusableCell(withIdentifier: "incident") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "incident")
         cell.configure(badge: InspectorLocalization.text(snapshot.diagnosticKind == nil ? "ui_manual" : "ui_system"), time: snapshot.timestampMillis,
             title: IncidentPresentation.listTitle(snapshot), subtitle: IncidentPresentation.listSubtitle(snapshot))
+        cell.setTimestamp(IncidentPresentation.listTime(snapshot))
         cell.isUserInteractionEnabled = !reading
         return cell
     }

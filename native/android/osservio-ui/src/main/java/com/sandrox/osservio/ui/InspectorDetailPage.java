@@ -28,8 +28,15 @@ final class InspectorDetailPage extends InspectorScroll.Page {
     void field(int title, Object value) { field(title, () -> value); }
     void value(InspectorAppearance.Value<String> value) { value(value, null); }
     InspectorWidgets.ValueRow value(InspectorAppearance.Value<String> value, Runnable action) {
+        return value(value, action, 0);
+    }
+    InspectorWidgets.ValueRow value(InspectorAppearance.Value<String> value, Runnable action, int actionLabel) {
         InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(getContext());
-        Runnable render = () -> row.bind(value.get(), "", action != null); InspectorAppearance.content(row, render); render.run(); row.action(action);
+        Runnable render = () -> {
+            row.bind(value.get(), "", action != null);
+            if (actionLabel != 0) row.setContentDescription(getContext().getString(actionLabel));
+        };
+        InspectorAppearance.content(row, render); render.run(); row.action(action);
         if (action != null) { row.title.setMaxLines(4); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); InspectorAppearance.style(row.title, () -> row.title.setTextColor(InspectorTheme.accent(getContext()))); }
         InspectorWidgets.addGrouped(group, row); return row;
     }

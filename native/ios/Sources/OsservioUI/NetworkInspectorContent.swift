@@ -23,6 +23,9 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private var rows: [InspectorSearchRecord] = []
     private var result: InspectorRecordSearch.Result?
     private var task: InspectorRecordSearchTask?
+    private var previewTask: InspectorRecordSearchTask?
+    private var previews: [String: String] = [:]
+    private var previewOrder: [String] = []
     private var generation: UInt64 = 0
     private var nextSearchAt: TimeInterval = 0
     private var timeCheck: TimeInterval = 0
@@ -51,14 +54,14 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func show() { loop.show(in: table) }
     func hide() { loop.hide(); table.endEditing(true) }
     private func relabel() {
-        guard let owner else { return }; InspectorTheme.apply(owner)
+        guard let owner else { return }; previews.removeAll(); previewOrder.removeAll(); cancelSearch(); InspectorTheme.apply(owner)
         owner.title = InspectorLocalization.text(connectionID == nil ? "network" : "ui_connection_records")
         if connectionID == nil { owner.inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(clear), label: "ui_network_clear") }
         header.search.placeholder = InspectorLocalization.text("ui_network_search")
-        (header.extra.arrangedSubviews.first as? UILabel)?.text = [InspectorLocalization.text("ui_connection_hint"), connectionID ?? ""].joined(separator: "\n")
+        (header.extra.arrangedSubviews.first as? UILabel)?.text = [InspectorLocalization.text("ws_connection") + ": " + (connectionID ?? ""), InspectorLocalization.text("ui_connection_hint")].joined(separator: "\n")
         display()
     }
-    private func cancelSearch() { generation &+= 1; task?.cancel(); task = nil; dirty = true }
+    private func cancelSearch() { previewTask?.cancel(); previewTask = nil; generation &+= 1; task?.cancel(); task = nil; dirty = true }
     private func apply(_ query: InspectorQuery) {
         cancelSearch(); self.query = query; result = nil; rows = []
         nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.2; display(); refresh()
@@ -75,7 +78,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             if query.recentMinutes > 0 && now - timeCheck >= 5 { dirty = true; timeCheck = now }
         }
         if dirty && task == nil && now >= nextSearchAt { search() }
-        updateStatus()
+        updateStatus(); requestPreviews()
     }
     private var records: [InspectorSearchRecord] {
         let requests = connectionID == nil ? (latestHTTP?.events ?? []).map(InspectorSearchRecord.http) : []
@@ -116,6 +119,41 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         let key = dirty && query.searchesPayload ? "ui_searching" : available > 0 ? "ui_filtered_empty" : !attemptedRead ? "ui_reading"
             : staleHTTP || staleSockets ? "busy" : active ? "ui_waiting" : "ui_inactive_empty"
         table.setEmptyState(rows.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()
+        DispatchQueue.main.async { [weak self] in self?.requestPreviews() }
+    }
+    // Only visible message rows are read. Cache text is capped at 64 × 180 UTF-16 units.
+    private func requestPreviews() {
+        guard previewTask == nil, task == nil, table.window != nil, !table.isDragging, !table.isDecelerating,
+              owner?.presentedViewController == nil, let history = sockets?.history else { return }
+        let positions = table.indexPathsForVisibleRows ?? []
+        let events = positions.prefix(16).compactMap { index -> WebSocketEvent? in
+            guard index.row < rows.count, case .socket(let event) = rows[index.row], event.kind == .message,
+                  event.payload?.blobID != nil, previews[event.id] == nil else { return nil }; return event
+        }
+        guard !events.isEmpty else { return }
+        let current = generation, missing = InspectorLocalization.text("ui_content_missing"), empty = InspectorLocalization.text("ui_content_empty")
+        previewTask = InspectorRecordSearchTask.submit(search: { cancelled in
+            var result = InspectorRecordSearch.Result()
+            for event in events {
+                if cancelled() { return nil }
+                guard let id = event.payload?.blobID else { continue }
+                switch history.payload(id: id) {
+                case .available(let body): result.previews[event.id] = body.text.isEmpty ? empty : InspectorRecordSearch.preview(body.text, term: "")
+                case .unavailable: result.previews[event.id] = missing
+                case .busy: break
+                }
+            }
+            return result
+        }, completion: { [weak self] result in
+            guard let self, current == self.generation else { return }; self.previewTask = nil
+            guard !result.previews.isEmpty else { return }
+            for (key, value) in result.previews {
+                self.previews[key] = value; self.previewOrder.removeAll { $0 == key }; self.previewOrder.append(key)
+            }
+            while self.previewOrder.count > 64 { self.previews.removeValue(forKey: self.previewOrder.removeFirst()) }
+            let offset = self.table.contentOffset
+            UIView.performWithoutAnimation { self.table.reloadData(); self.table.layoutIfNeeded(); self.table.setContentOffset(offset, animated: false) }
+        })
     }
     @objc private func followLatest() {
         cancelSearch(); nextSearchAt = 0; paused = false; refresh()
@@ -139,22 +177,17 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { paused = true; cancelSearch(); dirty = false; updateStatus() }
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { resumeAtTop() } }
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { resumeAtTop() }
-    private func resumeAtTop() { if table.contentOffset.y + table.adjustedContentInset.top <= 1 { paused = false; refresh() } }
+    private func resumeAtTop() { if table.contentOffset.y + table.adjustedContentInset.top <= 1 { paused = false; refresh() }; requestPreviews() }
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let record = rows[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "network") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "network")
-        let preview = result?.previews[record.key].map { "\n" + $0 } ?? ""
+        let preview = result?.previews[record.key]
         switch record {
         case .http(let event):
-            cell.configure(badge: event.method + (event.statusCode.map { " · \($0)" } ?? ""), time: event.timestampMillis,
-                title: InspectorQuery.path(event.url), subtitle: InspectorQuery.host(event.url) + " · " + HTTPPresentation.summary(event) + preview,
-                color: event.state == .failed || (event.statusCode ?? 0) >= 400 ? .systemRed : InspectorTheme.accent)
-        case .socket(let event):
-            cell.configure(badge: "Socket · " + (event.direction.map { InspectorLocalization.text("ws_" + $0.rawValue) } ?? WebSocketPresentation.kind(event)),
-                time: event.timestampMillis, title: InspectorQuery.path(event.url),
-                subtitle: WebSocketPresentation.summary(event) + " · " + InspectorQuery.host(event.url) + "\n" + event.connectionID.prefix(8) + " · #\(event.sequence)" + preview,
-                color: event.kind == .failed || event.outcome == .failed || event.outcome == .rejected ? .systemRed : InspectorTheme.accent)
+            let source = result?.previewSources[record.key].map(InspectorLocalization.text)
+            cell.configure(InspectorRecordPresentation.http(event, preview: preview.map { (source ?? "") + ": " + $0 }))
+        case .socket(let event): cell.configure(InspectorRecordPresentation.socket(event, preview: preview ?? previews[event.id], scoped: connectionID != nil))
         case .log: break
         }
         return cell

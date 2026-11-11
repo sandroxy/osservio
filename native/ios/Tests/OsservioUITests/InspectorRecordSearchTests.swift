@@ -4,6 +4,10 @@ import OsservioCore
 import XCTest
 
 final class InspectorRecordSearchTests: XCTestCase {
+    func testShortSearchPreviewKeepsTheWholeMessage() {
+        let text = "{\"type\":\"beta\",\"data\":{\"lookup\":\"lookup-42\",\"sequence\":2}}"
+        XCTAssertEqual(InspectorRecordSearch.preview(text, term: "lookup-42"), text)
+    }
     private func id(_ value: Int) -> String { String(format: "00000000-0000-0000-0000-%012d", value) }
     func testSharedJSONFieldsPreserveEvidence() throws {
         var root = URL(fileURLWithPath: #filePath)
@@ -95,6 +99,28 @@ final class InspectorRecordSearchTests: XCTestCase {
         XCTAssertEqual(run()?.keys, [record.key]); XCTAssertEqual(history.reads, 2)
         query.minimumDurationMillis = 21; XCTAssertTrue(run()?.keys.isEmpty == true); XCTAssertEqual(history.reads, 2)
         query.minimumDurationMillis = 0; query.excludedText = "a"; XCTAssertTrue(run()?.keys.isEmpty == true)
+    }
+    func testFrozenSearchNeverFallsBackToLiveContent() throws {
+        let history = History(), event = try message(1, connection: 10, text: "live-only", history: history)
+        let records = [InspectorSearchRecord.socket(event)]
+        let saved = [event.id: try IncidentPayload.restore(id: event.id, state: .available, text: "saved-only")]
+        var query = InspectorQuery(); query.text = "saved-only"
+        let result = try XCTUnwrap(InspectorRecordSearch.run(records, query: query, now: 100, http: nil, sockets: history, savedPayloads: saved, cancelled: { false }))
+        XCTAssertEqual(result.keys, [records[0].key]); XCTAssertEqual(result.previewSources[records[0].key], "ui_search_message"); XCTAssertEqual(history.reads, 0)
+        query.text = "live-only"
+        XCTAssertTrue(InspectorRecordSearch.run(records, query: query, now: 100, http: nil, sockets: history, savedPayloads: [:], cancelled: { false })?.keys.isEmpty == true)
+        XCTAssertEqual(history.reads, 0)
+    }
+    func testReadableURLAndVisibleDirectionAreSearchableWithoutBodyReads() throws {
+        let history = History(), event = try message(1, connection: 10, text: "body", history: history)
+        var query = InspectorQuery(); query.text = InspectorLocalization.text("ws_incoming")
+        XCTAssertEqual(search([.socket(event)], query, history)?.keys.count, 1); XCTAssertEqual(history.reads, 0)
+        let log = try LogEvent.restore(sessionID: event.sessionID, sequence: 2, timestampMillis: 100, level: .info,
+            category: "fixture", message: "[private]", isPrivate: true, isTruncated: false)
+        query.text = InspectorLocalization.text("ui_private_content")
+        XCTAssertEqual(search([.log(log)], query, history)?.keys.count, 1)
+        query.text = "discarded secret"
+        XCTAssertTrue(search([.log(log)], query, history)?.keys.isEmpty == true)
     }
     private final class Requests: HTTPHistory, @unchecked Sendable {
         var bodies: [String: HTTPBody] = [:], reads = 0

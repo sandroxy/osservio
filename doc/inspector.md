@@ -160,9 +160,33 @@ notice distinguishes missing, truncated or budget-limited content from a complet
 no-match result. Search does not collect additional content or create a persistent
 body index. See [query semantics and limits](inspector-query.md).
 
-HTTP details separate Overview, Request and Response. WebSocket details separate event
-metadata and payload. Selecting a section displays metadata and content state;
-Open reader performs the explicit body or payload lookup.
+HTTP details separate Overview, Request and Response. Opening a content section
+reads a bounded preview before the headers. Socket message details start with
+their content; lifecycle observations show only relevant connection facts. A
+readable preview opens the full reader. Missing, omitted or unselected content
+has an explanation instead of a dead reader link. Details keep the entry-time
+metadata; reopening a reader may observe payload eviction but never refreshes
+or replays a request.
+
+Live and saved lists use the same record summaries. Logs emphasize their message;
+HTTP emphasizes method, status, path, host and duration; Socket messages emphasize
+the captured content, direction and connection identity. Millisecond timestamps
+use the same format on both platforms. Connection identities are labeled and
+abbreviated in the feed, with exact identifiers in details. An abbreviation is a
+reading aid, not a unique lookup key.
+
+Addresses have a separate display representation: safe visible characters are
+decoded once, while encoded separators, controls and malformed escapes remain
+escaped. Hidden paths and queries are labeled instead of displaying encoded
+redaction markers. Opening or copying the exact URL preserves the admitted,
+sanitized source. Display formatting does not change filtering, storage or export.
+
+Visible Socket message rows may load short previews in the background. At most
+16 visible rows are considered per job and 64 previews are cached; each preview
+holds about 180 UTF-16 units. They share the bounded search worker and cancel on
+navigation, scrolling or query changes. No JSON parsing or full-history body
+index is needed for this preview. HTTP bodies are read on demand in details or
+content search rather than prefetched for every list row.
 
 Reading pages share the same information hierarchy on Android and iOS: page
 titles identify the selected evidence, navigation owns Back and copy/share
@@ -175,7 +199,8 @@ explicit rather than being replaced with a common placeholder value.
 
 Private descriptions use a localized privacy explanation instead of making
 `[private]` the problem title. The list retains the problem type, record time and
-available attachment counts, including explicitly attached empty windows. Private
+positive attachment counts. Attached empty windows remain distinct from missing
+attachments in details. Private
 log and breadcrumb content is labeled consistently in live and saved views; a
 hidden body has no reader action. These are presentation choices based on typed
 privacy flags, not text matching. They do not recover discarded text, delete
@@ -184,12 +209,18 @@ records or change sanitized storage and portable exports.
 Log details show a bounded message preview that opens the reader. The reader's
 search field is directly available; copy remains in the page navigation. A saved
 attachment uses the same search/filter row as live lists, without a live capture
-or clear control. Native address and evidence lists reuse rows as they scroll.
+or clear control. Its content search consults only the saved payload map, including
+when that map is empty; it never falls back to current live history. Native address
+and evidence lists reuse rows as they scroll. Breadcrumb search in a saved problem
+is placed beside that specific evidence group.
 
 The reader holds that one bounded, sanitized content result. Capture and saved
 inclusion notices appear separately from the payload, including truncated,
 omitted, missing, busy and empty states. Copy all copies the payload text, not
-those explanations. Long metadata values can also open the reader.
+those explanations or the parent record context shown above the reader. Long
+metadata values can also open the reader. Technical fields expand on demand.
+Environment sizes use readable binary units, with exact byte counts available
+separately; unavailable platform metrics are grouped without inventing values.
 
 Complete JSON objects and arrays in HTTP bodies, WebSocket text and log messages
 open in Structure mode after on-demand background parsing. Tap a nonempty

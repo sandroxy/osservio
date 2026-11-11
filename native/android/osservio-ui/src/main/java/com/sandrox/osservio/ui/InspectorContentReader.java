@@ -32,7 +32,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     private final Button previous;
     private final Button next;
     private final RadioGroup mode;
-    private final TextView notice;
+    private final TextView notice, origin;
     private final LinearLayout actions, matchNavigation;
     private final android.widget.ImageButton copy;
     private final InspectorJsonTreeView tree;
@@ -60,6 +60,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
             selected -> { structured = selected == 0; highlight(true); });
         LayoutParams modeLayout = new LayoutParams(-1, -2); modeLayout.bottomMargin = gap;
         mode.setVisibility(GONE); header.addView(mode, modeLayout);
+        origin = InspectorWidgets.caption(context); origin.setMaxLines(3); origin.setPadding(inset, gap, inset, gap); header.addView(origin, 0);
         notice = InspectorWidgets.caption(context); notice.setPadding(inset, gap, inset, gap); header.addView(notice);
         actions = new LinearLayout(context);
         copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, this::copy);
@@ -122,6 +123,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     private void highlight(boolean reveal) {
         matchNavigation.setVisibility(search.length() == 0 ? GONE : VISIBLE);
         boolean showTree = structured && tree.hasDocument(); tree.setVisibility(showTree ? VISIBLE : GONE); scroll.setVisibility(showTree ? GONE : VISIBLE);
+        origin.setText(value.context()); origin.setVisibility(value.context().isEmpty() ? GONE : VISIBLE);
         String message = value.notice();
         if (parserNotice != 0) message += (message.isEmpty() ? "" : "\n") + getContext().getString(parserNotice);
         if (showTree) message += (message.isEmpty() ? "" : "\n") + getContext().getString(R.string.osservio_json_hint);

@@ -12,7 +12,7 @@ final class BreadcrumbDetailDialog {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_overview);
         page.field(R.string.osservio_ui_event_type, () -> RuntimePresentation.kind(context, event.kind));
-        page.field(R.string.osservio_ui_event_time, () -> RuntimePresentation.date(context, event.timestampMillis));
+        page.field(R.string.osservio_ui_event_time, () -> InspectorValuePresentation.eventTime(event.timestampMillis, true));
         page.field(R.string.osservio_crumb_label, event.label);
         page.field(R.string.osservio_crumb_elapsed, () -> event.sessionElapsedMillis == null ? context.getString(R.string.osservio_runtime_unavailable) : event.sessionElapsedMillis + " ms");
         if (event.value != null) page.field(R.string.osservio_crumb_value, event.value);
@@ -22,7 +22,7 @@ final class BreadcrumbDetailDialog {
             String preview = RuntimePresentation.message(context, event.message.length() > 320 ? event.message.substring(0, 320) + "…" : event.message, event.isPrivate);
             if (event.isPrivate) page.value(() -> context.getString(R.string.osservio_ui_private_content), null);
             else page.disclosure(R.string.osservio_ui_open_reader, () -> preview, () -> page.read(R.string.osservio_ui_event_message,
-                new InspectorReadContent(event.message, () -> notice(context, event), !event.isPrivate && !event.isTruncated)));
+                new InspectorReadContent(event.message, () -> notice(context, event), !event.isPrivate && !event.isTruncated).withContext(() -> RuntimePresentation.breadcrumbTitle(context, event) + " · " + InspectorValuePresentation.eventTime(event.timestampMillis, false))));
             page.note(() -> notice(context, event));
         }
         page.section(R.string.osservio_crumb_retention);

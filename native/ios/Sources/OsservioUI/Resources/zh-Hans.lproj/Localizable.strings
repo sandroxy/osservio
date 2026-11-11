@@ -56,7 +56,7 @@
 "http_headers_limited" = "部分请求头或响应头因采集限制而省略。";
 "http_missing" = "这条请求已不在历史记录中。当前显示上次查看的元数据，正文可能已不可用。";
 "http_stale" = "历史记录暂忙，当前显示上次查看的元数据。";
-"http_body_pending" = "正文尚未确定，请在观察完成后刷新。";
+"http_body_pending" = "正文尚未确定；观察结束后可返回列表重新打开。";
 "http_body_omitted" = "隐私策略未采集正文内容。";
 "http_body_unsupported" = "此媒体类型、编码或压缩格式不支持正文采集。";
 "http_body_incomplete" = "观察不完整，未保留不完整的正文。";
@@ -64,7 +64,7 @@
 "http_body_available" = "已采集文本";
 "http_body_truncated" = "仅保留了长度限制内的正文开头，并非完整内容。";
 "http_body_unavailable" = "正文已不可用，可能已被清空或单独淘汰。";
-"http_body_busy" = "正文存储暂忙，请刷新重试。";
+"http_body_busy" = "正文存储暂忙，请稍后重新打开。";
 "http_body_empty" = "采集到的正文为空。";
 "http_observed_bytes" = "观察到的字节数";
 "http_urlsession_note" = "来自 URLSession 完成回调。时长可能包含任务创建后等待启动的时间。不覆盖流式、上传、下载和后台代理任务。";
@@ -142,7 +142,7 @@
 "runtime_environment_hint" = "这些信息是读取时的快照，各平台的内存指标含义不同。iOS 宿主未开启电量监测时，电量会显示为暂不可用。";
 "crumb_baseline_hint" = "关闭调试时，仍采集轻量运行信号。关闭基础采集不会中断已开启的调试；是否留存仍取决于宿主的存储配置。";
 "crumb_search" = "搜索类型、标签或内容";
-"crumb_empty" = "暂无运行线索。开启基础采集或详细采集后，可记录宿主标记与系统运行事件。";
+"crumb_empty" = "暂无运行线索。基础记录或调试已开启时，会记录受支持的运行状态变化和宿主标记。";
 "crumb_clear" = "清空线索";
 "crumb_copy" = "复制事件";
 "crumb_session" = "采集会话";

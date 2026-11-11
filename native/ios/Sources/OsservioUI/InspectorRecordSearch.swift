@@ -16,12 +16,12 @@ enum InspectorSearchRecord: Sendable {
         if text.isEmpty { return true }
         let fields: [String]
         switch self {
-        case .log(let event): fields = [event.category]
+        case .log(let event): fields = [event.category, InspectorFilterOptions.label(.level, event.level.rawValue), event.isPrivate ? InspectorLocalization.text("ui_private_content") : ""]
         case .http(let event):
-            fields = [event.url, event.responseURL ?? "", event.method, event.id, event.statusCode.map(String.init) ?? ""]
+            fields = [event.url, InspectorRecordPresentation.address(event.url), event.responseURL ?? "", event.method, event.id, HTTPPresentation.state(event.state), event.statusCode.map(String.init) ?? "", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) } ?? ""]
                 + (event.requestHeaders + event.responseHeaders).flatMap { [$0.name, $0.value] }
         case .socket(let event):
-            fields = [event.url, event.id, event.connectionID, event.kind.rawValue, event.outcome?.rawValue ?? ""]
+            fields = [event.url, InspectorRecordPresentation.address(event.url), event.id, event.connectionID, event.kind.rawValue, event.outcome?.rawValue ?? "", WebSocketPresentation.kind(event), event.direction.map { InspectorLocalization.text("ws_" + $0.rawValue) } ?? "", event.outcome.map { InspectorLocalization.text("ws_outcome_" + $0.rawValue) } ?? "", event.kind == .message ? InspectorRecordPresentation.payloadLabel(event.payload) : "", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) } ?? ""]
         }
         return fields.contains { InspectorQuery.contains(text, in: $0) }
     }
@@ -37,13 +37,14 @@ enum InspectorRecordSearch {
     struct Result {
         var keys: Set<String> = []
         var previews: [String: String] = [:]
+        var previewSources: [String: String] = [:]
         var unavailable = 0, truncated = 0
         var limited = false
     }
-    private struct Payload { let text: String?; let truncated: Bool }
+    private struct Payload { let text: String?; let truncated: Bool; var source: String = "" }
     static func run(_ records: [InspectorSearchRecord], query: InspectorQuery, now: Int64,
                     http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?,
-                    unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool) -> Result? {
+                    savedPayloads: [String: IncidentPayload]? = nil, unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool) -> Result? {
         var result = Result(), spent = 0
         let started = DispatchTime.now().uptimeNanoseconds
         for (position, record) in records.enumerated() {
@@ -55,7 +56,7 @@ enum InspectorRecordSearch {
             if metadata && query.fieldPath.isEmpty && query.excludedText.isEmpty { result.keys.insert(record.key); continue }
             if spent >= unitLimit { result.limited = true; continue }
             var matched = metadata && query.fieldPath.isEmpty, excluded = false, exclusionUnknown = false
-            for payload in payloads(record, http: http, sockets: sockets) {
+            for payload in payloads(record, http: http, sockets: sockets, saved: savedPayloads) {
                 if cancelled() { return nil }
                 guard let text = payload.text else { result.unavailable += 1; exclusionUnknown = true; continue }
                 let count = text.utf16.count
@@ -76,31 +77,41 @@ enum InspectorRecordSearch {
                 }
                 if fieldMatches && (metadata || InspectorQuery.contains(query.text, in: text)) {
                     matched = true
-                    if result.previews[record.key] == nil { result.previews[record.key] = preview(text, term: query.text) }
+                    if result.previews[record.key] == nil { result.previews[record.key] = preview(text, term: query.text); result.previewSources[record.key] = payload.source }
                 }
             }
             if matched && !excluded && (query.excludedText.isEmpty || !exclusionUnknown) { result.keys.insert(record.key) } else { result.previews[record.key] = nil }
         }
         return cancelled() ? nil : result
     }
-    private static func payloads(_ record: InspectorSearchRecord, http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?) -> [Payload] {
+    private static func payloads(_ record: InspectorSearchRecord, http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?, saved: [String: IncidentPayload]?) -> [Payload] {
         switch record {
         case .log(let event): return [Payload(text: event.isPrivate ? nil : event.message, truncated: event.isTruncated)]
         case .http(let event):
-            return [event.requestBody, event.responseBody].map { reference in
-                guard let id = reference.blobID, let http, case .available(let body) = http.body(id: id) else { return Payload(text: nil, truncated: false) }
-                return Payload(text: body.text, truncated: reference.state == .truncated)
+            let references: [HTTPBodyReference] = [event.requestBody, event.responseBody]
+            return references.enumerated().map { index, reference in
+                let source = index == 0 ? "ui_search_request_body" : "ui_search_response_body"
+                var text: String?
+                if let id = reference.blobID {
+                    if let saved { if let payload = saved[id], payload.state == .available { text = payload.text } }
+                    else if let http, case .available(let body) = http.body(id: id) { text = body.text }
+                }
+                return Payload(text: text, truncated: reference.state == .truncated, source: source)
             }
         case .socket(let event):
             guard let reference = event.payload else { return [] }
-            guard let id = reference.blobID, let sockets, case .available(let body) = sockets.payload(id: id) else { return [Payload(text: nil, truncated: false)] }
-            return [Payload(text: body.text, truncated: reference.state == .truncated)]
+            var text: String?
+            if let id = reference.blobID {
+                if let saved { if let payload = saved[id], payload.state == .available { text = payload.text } }
+                else if let sockets, case .available(let body) = sockets.payload(id: id) { text = body.text }
+            }
+            return [Payload(text: text, truncated: reference.state == .truncated, source: "ui_search_message")]
         }
     }
-    private static func preview(_ text: String, term: String) -> String {
+    static func preview(_ text: String, term: String) -> String {
         let source = text as NSString
         let hit = term.isEmpty ? NSRange(location: 0, length: 0) : source.range(of: term, options: [.caseInsensitive, .literal])
-        var start = hit.location == NSNotFound ? 0 : max(0, hit.location - 30)
+        var start = source.length <= 180 || hit.location == NSNotFound ? 0 : max(0, hit.location - 30)
         if start > 0 && (0xDC00...0xDFFF).contains(source.character(at: start)) { start -= 1 }
         var end = min(source.length, start + 180)
         if end < source.length && (0xD800...0xDBFF).contains(source.character(at: end - 1)) { end -= 1 }

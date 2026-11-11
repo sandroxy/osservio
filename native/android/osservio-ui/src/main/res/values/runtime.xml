@@ -17,7 +17,7 @@
     <string name="osservio_runtime_environment_hint">This is a point-in-time sample. Memory measurements differ by platform. On iOS, battery level is unavailable unless the host already monitors it.</string>
     <string name="osservio_crumb_baseline_hint">Keeps lightweight runtime signals available when debug mode is off. Turning baseline capture off does not stop an active debug session. Saving still depends on the host’s storage configuration.</string>
     <string name="osservio_crumb_search">Search kind, label, or message</string>
-    <string name="osservio_crumb_empty">No breadcrumbs yet. Enable baseline or detailed capture to record host and runtime observations.</string>
+    <string name="osservio_crumb_empty">No runtime events yet. Baseline recording or debugging captures supported runtime changes and host markers.</string>
     <string name="osservio_crumb_clear">Clear breadcrumbs</string>
     <string name="osservio_crumb_copy">Copy event</string>
     <string name="osservio_crumb_session">Capture session</string>

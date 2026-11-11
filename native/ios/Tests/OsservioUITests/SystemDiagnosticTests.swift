@@ -19,7 +19,7 @@ final class SystemDiagnosticTests: XCTestCase {
         XCTAssertEqual(fields[RuntimePresentation.text("crash_frame_count")], "128 · " + RuntimePresentation.text("crash_limit_reached"))
         XCTAssertNil(fields[RuntimePresentation.text("crash_report_id")])
         let overview = SystemDiagnosticViewController(diagnostic); overview.loadViewIfNeeded()
-        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 2)
+        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 3)
         XCTAssertEqual(overview.tableView(overview.tableView, numberOfRowsInSection: 1), 1)
         XCTAssertEqual(overview.tableView(overview.tableView, cellForRowAt: IndexPath(row: 0, section: 1)).accessoryType, .disclosureIndicator)
         let frames = SignalCrashViewController(trace); frames.loadViewIfNeeded()
@@ -36,7 +36,7 @@ final class SystemDiagnosticTests: XCTestCase {
         let absent = try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 5, status: 6, processID: 123,
             importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: .unavailable, tombstone: nil)
         let overview = SystemDiagnosticViewController(absent); overview.loadViewIfNeeded()
-        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 1)
+        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 2)
         let trace = try AndroidTombstone.restore(architectureCode: 1, signalNumber: 11, signalCode: 1, threadID: 99, faultAddress: 0, frames: [])
         let noFrames = try SystemDiagnostic.androidExit(timestampMillis: 1000, reasonCode: 5, status: 11, processID: 123,
             importance: 100, pssKiB: nil, rssKiB: nil, tombstoneState: .available, tombstone: trace)
@@ -60,18 +60,15 @@ final class SystemDiagnosticTests: XCTestCase {
         XCTAssertNil(viewer.navigationItem.searchController, "No breadcrumb search for an absent attachment")
         let time = viewer.tableView(viewer.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
         XCTAssertEqual(time.textLabel?.text, RuntimePresentation.text("diagnostic_recovered_at"))
-        XCTAssertEqual(time.detailTextLabel?.text, RuntimePresentation.date(snapshot.timestampMillis))
+        XCTAssertEqual(time.detailTextLabel?.text, InspectorValuePresentation.eventTime(snapshot.timestampMillis, full: true))
         viewer.tableView(viewer.tableView, didSelectRowAt: IndexPath(row: 3, section: 0))
         for _ in 0..<100 {
             if navigation.transitionCoordinator == nil { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         let detail = try XCTUnwrap(navigation.topViewController as? SystemDiagnosticViewController); detail.loadViewIfNeeded()
-        var fields: [String: String] = [:]
-        for row in 0..<detail.tableView(detail.tableView, numberOfRowsInSection: 0) {
-            let cell = detail.tableView(detail.tableView, cellForRowAt: IndexPath(row: row, section: 0))
-            fields[try XCTUnwrap(cell.textLabel?.text)] = try XCTUnwrap(cell.detailTextLabel?.text)
-        }
+        let fields = Dictionary(uniqueKeysWithValues: detail.sections.flatMap(\.rows).compactMap { row in row.value.map { (row.label, $0) } })
+        XCTAssertEqual(detail.tableView(detail.tableView, numberOfRowsInSection: detail.sections.count - 1), 1, "Technical fields start collapsed")
         XCTAssertEqual(fields[RuntimePresentation.text("diagnostic_interval_start")], RuntimePresentation.date(diagnostic.intervalStartMillis))
         XCTAssertEqual(fields[RuntimePresentation.text("diagnostic_interval_end")], RuntimePresentation.date(diagnostic.intervalEndMillis))
         XCTAssertEqual(fields[RuntimePresentation.text("diagnostic_exception_code")], "18446744073709551615")
@@ -134,7 +131,7 @@ final class SystemDiagnosticTests: XCTestCase {
         XCTAssertNil(fields[RuntimePresentation.text("diagnostic_interval_start")])
         XCTAssertEqual(SystemDiagnosticPresentation.hint(diagnostic), RuntimePresentation.text("crash_hint"))
         let overview = SystemDiagnosticViewController(diagnostic); overview.loadViewIfNeeded()
-        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 2)
+        XCTAssertEqual(overview.numberOfSections(in: overview.tableView), 3)
         for row in 0..<2 {
             let cell = overview.tableView(overview.tableView, cellForRowAt: IndexPath(row: row, section: 1))
             XCTAssertEqual(cell.accessoryType, .disclosureIndicator)

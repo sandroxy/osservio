@@ -38,19 +38,19 @@ final class EnvironmentInspectorViewController: InspectorDetailViewController {
     }
     private func render() {
         title = InspectorLocalization.text("runtime_environment")
-        inspectorPrimaryAction = refreshButton; refreshButton.tintColor = InspectorTheme.accent
-        inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("http_refresh")
-        inspectorPrimaryAction?.isEnabled = !reading
+        let copy = inspectorCopyItem(target: self, action: #selector(copySnapshot), label: "runtime_copy_environment")
+        copy.isEnabled = snapshot != nil; inspectorActions = [refreshButton, copy]; refreshButton.tintColor = InspectorTheme.accent
+        refreshButton.accessibilityLabel = InspectorLocalization.text("http_refresh")
+        refreshButton.isEnabled = !reading
         sections = [Section(title: InspectorLocalization.text("ui_snapshot_time"), rows: [
             Row(snapshot.map { InspectorLocalization.date($0.timestampMillis) } ?? InspectorLocalization.text("runtime_unavailable"))
         ], footer: InspectorLocalization.text(noticeKey))]
         if let snapshot {
             sections += EnvironmentPresentation.sections(snapshot)
-            sections.append(Section(title: "", rows: [
-                Row(InspectorLocalization.text("runtime_copy_environment"), action: { UIPasteboard.general.string = RuntimePresentation.environment(snapshot) })
-            ]))
+
         }
     }
+    @objc private func copySnapshot() { if let snapshot { UIPasteboard.general.string = RuntimePresentation.environment(snapshot) } }
     @objc private func refresh() { read() }
 }
 #endif

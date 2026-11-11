@@ -52,39 +52,51 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         if selection.selectedIndex == 0 {
-            sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
-                field("ui_http_method", event.method), field("ui_state", HTTPPresentation.state(event.state)), field("http_final_url", event.responseURL),
-                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(titleKey: "ui_request_url", content: self.event.url) }),
-                field("http_status", event.statusCode.map(String.init)), field("http_duration", event.durationMillis.map { "\($0) ms" }),
-                field("http_failure", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) })
-            ], footer: noticeKey.map(InspectorLocalization.text)),
-            Section(title: InspectorLocalization.text("ui_metadata"), rows: [
-                field("http_time", InspectorLocalization.date(event.timestampMillis)),
-                field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)),
-                field("http_id", event.id), field("http_session", event.sessionID + " · #\(event.sequence)")
-            ], footer: InspectorLocalization.text(event.source == .host ? "http_host_note" : event.source == .okHttp ? "http_okhttp_note" : "http_urlsession_note")
-                + "\n\n" + InspectorLocalization.text("http_result_note"))]
+            var overview = [
+                Row(InspectorLocalization.text("ui_request_url"), InspectorRecordPresentation.address(event.url), action: { [weak self] in self?.openAddress() }),
+                field("ui_http_method", event.method), field("ui_state", HTTPPresentation.state(event.state)),
+                field("http_time", InspectorValuePresentation.eventTime(event.timestampMillis, full: true))
+            ]
+            if let status = event.statusCode { overview.append(field("http_status", String(status))) }
+            if let duration = event.durationMillis { overview.append(field("http_duration", "\(duration) ms")) }
+            if let failure = event.failure { overview.append(field("http_failure", InspectorLocalization.text("http_" + failure.rawValue))) }
+            if let final = event.responseURL, final != event.url {
+                overview.append(Row(InspectorLocalization.text("http_final_url"), InspectorRecordPresentation.address(final), action: { [weak self] in
+                    guard let self else { return }; self.read(titleKey: "http_final_url", content: InspectorReadContent(text: final, context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
+                }))
+            }
+            sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: overview, footer: noticeKey.map(InspectorLocalization.text)),
+                Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
+                    field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)),
+                    field("http_id", event.id), field("http_session", event.sessionID + " · #\(event.sequence)")
+                ], footer: InspectorLocalization.text("http_result_note"), collapsible: true)]
         } else {
             let headers = selection.selectedIndex == 1 ? event.requestHeaders : event.responseHeaders
-            let reference = selection.selectedIndex == 1 ? event.requestBody : event.responseBody
-            sections = [Section(title: InspectorLocalization.text("ui_headers"), rows: headers.isEmpty
-                ? [Row(InspectorLocalization.text("http_none"))] : headers.map { fieldHeader in Row(fieldHeader.name, fieldHeader.value) },
-                footer: event.headersLimited ? InspectorLocalization.text("http_headers_limited") : nil),
-                Section(title: InspectorLocalization.text("ui_body"), rows: [
-                    Row(HTTPPresentation.bodyDescription(reference)),
-                    Row(InspectorLocalization.text("ui_open_reader"), action: { [weak self] in self?.openBody() })
-                ], footer: noticeKey.map(InspectorLocalization.text))]
+            let content = bodyContent()
+            let preview = content.isAvailable ? content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600)) : content.notice
+            sections = [Section(title: InspectorLocalization.text("ui_body"), rows: [
+                Row(preview, action: content.isAvailable ? { [weak self] in self?.openBody() } : nil)
+            ], footer: content.isAvailable ? content.notice : nil),
+                Section(title: InspectorLocalization.text(selection.selectedIndex == 1 ? "http_request_headers" : "http_response_headers"), rows: headers.isEmpty
+                    ? [Row(InspectorLocalization.text("ui_headers_empty"))] : headers.map { Row($0.name, $0.value) },
+                    footer: event.headersLimited ? InspectorLocalization.text("http_headers_limited") : nil)]
         }
     }
-    private func openBody() {
+    private func openAddress() {
+        read(titleKey: "ui_request_url", content: InspectorReadContent(text: event.url, context: { [event] in InspectorRecordPresentation.context(event) }))
+    }
+    private func bodyContent() -> InspectorReadContent {
         let reference = selection.selectedIndex == 1 ? event.requestBody : event.responseBody
         var content: InspectorReadContent
         if let savedPayloads { content = HTTPPresentation.body(reference, savedPayloads: savedPayloads) }
         else if let history { content = HTTPPresentation.body(reference, history: history) }
         else { content = InspectorReadContent(notice: InspectorLocalization.text("incident_payload_missing")) }
         if let noticeKey { content.notice = InspectorLocalization.text(noticeKey) + "\n" + content.notice }
-        read(titleKey: selection.selectedIndex == 1 ? "http_request_body" : "http_response_body",
-            content: content)
+        content.context = { [event] in InspectorRecordPresentation.context(event) }
+        return content
+    }
+    private func openBody() {
+        read(titleKey: selection.selectedIndex == 1 ? "http_request_body" : "http_response_body", content: bodyContent())
     }
     @objc private func copyMetadata() { UIPasteboard.general.string = HTTPPresentation.overview(event) }
 }

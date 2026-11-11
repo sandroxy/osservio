@@ -139,7 +139,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         @Override public View getView(int position, View recycled, ViewGroup parent) {
             InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             BreadcrumbEvent event = getItem(position);
-            row.bind(RuntimePresentation.kind(getContext(), event.kind), event.label, event.message == null ? "#" + event.sequence : RuntimePresentation.message(getContext(), event.message, event.isPrivate),
+            row.bind(event.kind == BreadcrumbEvent.Kind.HOST_MARKER ? RuntimePresentation.kind(getContext(), event.kind) : "", RuntimePresentation.breadcrumbTitle(getContext(), event), RuntimePresentation.breadcrumbSubtitle(getContext(), event),
                 event.timestampMillis, InspectorTheme.accent(getContext())); row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

@@ -47,6 +47,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     private final Rows rows = new Rows();
     private List<RetainedRun> runs = Collections.emptyList();
     private final List<BreadcrumbEvent> events = new ArrayList<>();
+    private Button runDetails;
     private RetainedBreadcrumbs selected;
     private boolean reading;
     private boolean attempted;
@@ -87,6 +88,11 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         header.addView(search, new LayoutParams(-1, -2));
         notice = caption(); notice.setPadding(dp(16), dp(8), dp(16), dp(8)); header.addView(notice, new LayoutParams(-1, -2));
         summary = caption(); summary.setPadding(dp(16), dp(8), dp(16), dp(8)); summary.setTextIsSelectable(true); header.addView(summary, new LayoutParams(-1, -2));
+        runDetails = InspectorWidgets.button(context, R.string.osservio_ui_run_details, () -> {
+            if (selected == null || detail != null) return;
+            InspectorContentReader content = new InspectorContentReader(context); content.display(PersistencePresentation.run(context, selected.run), false);
+            detail = InspectorDialogs.screen(context, R.string.osservio_ui_run_details, content); detail.setOnDismissListener(ignored -> detail = null); detail.show();
+        }); header.addView(runDetails, new LayoutParams(-1, -2));
         empty = caption(); empty.setPadding(0, dp(24), 0, dp(24)); header.addView(empty, new LayoutParams(-1, -2));
         list = new InspectorScroll.List(context); list.setPadding(dp(16), 0, dp(16), dp(16)); list.setClipToPadding(false);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
@@ -168,7 +174,8 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         ((View) refresh.getParent()).setVisibility(selected == null ? VISIBLE : GONE); search.setVisibility(selected == null ? GONE : VISIBLE);
         if (screen != null) screen.title(selected == null ? R.string.osservio_ui_saved_runs : R.string.osservio_archive_title);
         notice.setVisibility(notice.length() == 0 ? GONE : VISIBLE);
-        summary.setText(selected == null ? PersistencePresentation.status(getContext(), archive.persistenceStatus()) : PersistencePresentation.run(getContext(), selected.run));
+        summary.setText(selected == null ? PersistencePresentation.status(getContext(), archive.persistenceStatus()) : PersistencePresentation.title(getContext(), selected.run) + "\n" + PersistencePresentation.counts(getContext(), selected.run));
+        runDetails.setVisibility(selected == null ? GONE : VISIBLE);
         footer.setText(selected == null ? R.string.osservio_archive_hint : R.string.osservio_archive_snapshot);
         filter(); if (screen != null) screen.refreshActions();
     }
@@ -232,8 +239,8 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
                 row.bind(PersistencePresentation.title(getContext(), run), PersistencePresentation.counts(getContext(), run), true);
             } else {
                 BreadcrumbEvent event = events.get(position);
-                row.bind(RuntimePresentation.kind(getContext(), event.kind) + " · " + event.label,
-                    RuntimePresentation.date(getContext(), event.timestampMillis) + " · #" + event.sequence + (event.message == null ? "" : "\n" + RuntimePresentation.message(getContext(), event.message, event.isPrivate)), true);
+                row.bind(RuntimePresentation.breadcrumbTitle(getContext(), event),
+                    InspectorValuePresentation.eventTime(event.timestampMillis, false) + "\n" + RuntimePresentation.breadcrumbSubtitle(getContext(), event), true);
             }
             row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3);
             row.value.setEllipsize(android.text.TextUtils.TruncateAt.END); InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1);

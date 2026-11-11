@@ -12,7 +12,7 @@ final class IncidentEvidenceTests: XCTestCase {
         ((view as? UILabel)?.text.map { [$0] } ?? []) + view.subviews.flatMap(labels)
     }
     @MainActor
-    func testLiveSectionsDoNotReadBodiesUntilReaderIsOpened() async throws {
+    func testLiveOverviewDoesNotReadBodiesAndSelectedContentDoesNotRefreshMetadata() async throws {
         let bodyID = id + ".response"
         let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 1, revision: 2, timestampMillis: 123, method: "GET", source: .host,
             url: "https://example.com/fixture", responseURL: nil, requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 200,
@@ -21,12 +21,15 @@ final class IncidentEvidenceTests: XCTestCase {
         let history = BodyHistory(event: event, body: try HTTPBody.restore(id: bodyID, text: "content"))
         let detail = HTTPDetailViewController(event: event, history: history), window = show(detail)
         defer { window.isHidden = true; window.rootViewController = nil }
+        XCTAssertEqual(history.reads, 0)
+        XCTAssertNil(detail.tableView(detail.tableView, contextMenuConfigurationForRowAt: IndexPath(row: 0, section: 0), point: .zero),
+            "A readable address opens an exact-source reader instead of copying its display projection")
         try activate(detail.view, title: InspectorLocalization.text("ui_response"))
-        XCTAssertEqual(history.reads, 0); XCTAssertEqual(history.snapshots, 0)
+        XCTAssertEqual(history.reads, 1); XCTAssertEqual(history.snapshots, 0)
         XCTAssertEqual(detail.inspectorActions?.count, 1)
-        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 1))
+        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
         try await settled(XCTUnwrap(detail.navigationController))
-        XCTAssertEqual(history.reads, 1)
+        XCTAssertEqual(history.reads, 2)
         let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
         XCTAssertTrue(try XCTUnwrap(find(reader.view, UITextView.self)).text.contains("content"))
     }
@@ -48,16 +51,16 @@ final class IncidentEvidenceTests: XCTestCase {
         let search = try XCTUnwrap(find(group.view, UISearchTextField.self))
         XCTAssertEqual(group.tableView(group.tableView, numberOfRowsInSection: 0), 1)
         search.text = "BODY_ONLY_TOKEN"; try changed(search, event: .editingChanged)
-        XCTAssertEqual(group.tableView(group.tableView, numberOfRowsInSection: 0), 0)
+        try await waitForRows(group, count: 1)
         search.text = "frozen"; try changed(search, event: .editingChanged)
-        XCTAssertEqual(group.tableView(group.tableView, numberOfRowsInSection: 0), 1)
+        try await waitForRows(group, count: 1)
         group.tableView(group.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
         try await settled(XCTUnwrap(group.navigationController))
         let detail = try XCTUnwrap(group.navigationController?.topViewController as? HTTPDetailViewController); detail.loadViewIfNeeded()
         XCTAssertEqual(detail.navigationItem.rightBarButtonItems?.count, 1)
         try activate(detail.view, title: InspectorLocalization.text("ui_response"))
-        XCTAssertNil(find(detail.view, UITextView.self), "Selecting a section must not open or read a body")
-        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 1))
+        XCTAssertNil(find(detail.view, UITextView.self), "Selecting a section previews content without pushing a reader")
+        detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
         try await settled(XCTUnwrap(detail.navigationController))
         let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
         let text = try XCTUnwrap(find(reader.view, UITextView.self))
@@ -79,15 +82,16 @@ final class IncidentEvidenceTests: XCTestCase {
             XCTAssertEqual(detail.navigationItem.rightBarButtonItems?.count, 1)
             try activate(detail.view, title: InspectorLocalization.text("ws_payload"))
             XCTAssertNil(find(detail.view, UITextView.self))
-            detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
-            try await settled(XCTUnwrap(detail.navigationController))
-            let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
-            let text = try XCTUnwrap(find(reader.view, UITextView.self))
-            XCTAssertEqual(text.text, "", "Status explanations must not become payload text")
-            let notes = labels(reader.view).joined(separator: "\n")
-            XCTAssertTrue(notes.contains(IncidentPayloadPresentation.content(payload)))
-            XCTAssertEqual(notes.contains(HTTPPresentation.text("http_body_empty")), state == .available)
-            XCTAssertTrue(notes.contains(HTTPPresentation.text("incident_frozen_detail")))
+            let notes = detail.sections.flatMap { $0.rows.map(\.label) + [$0.footer ?? ""] }.joined(separator: "\n")
+            XCTAssertTrue(notes.contains(state == .available ? HTTPPresentation.text("http_body_empty") : IncidentPayloadPresentation.content(payload)))
+            XCTAssertEqual(detail.sections[0].rows[0].action != nil, state == .available)
+            if state == .available {
+                detail.tableView(detail.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+                try await settled(XCTUnwrap(detail.navigationController))
+                let reader = try XCTUnwrap(detail.navigationController?.topViewController as? InspectorContentViewController)
+                XCTAssertEqual(try XCTUnwrap(find(reader.view, UITextView.self)).text, "", "Explanations must not become payload text")
+                XCTAssertTrue(labels(reader.view).joined(separator: "\n").contains(HTTPPresentation.text("incident_frozen_detail")))
+            }
         }
     }
     @MainActor
@@ -110,6 +114,13 @@ final class IncidentEvidenceTests: XCTestCase {
         let detail = try XCTUnwrap(group.navigationController?.topViewController as? LogDetailViewController); detail.loadViewIfNeeded()
         let metadata = detail.sections.flatMap(\.rows).map { $0.label + ($0.value ?? "") }.joined(separator: "\n")
         XCTAssertTrue(metadata.contains(id)); XCTAssertTrue(metadata.contains("#11")); XCTAssertTrue(metadata.contains(RuntimePresentation.text("ui_private_content")))
+    }
+    @MainActor private func waitForRows(_ controller: IncidentEvidenceViewController, count: Int) async throws {
+        for _ in 0..<100 {
+            if controller.tableView(controller.tableView, numberOfRowsInSection: 0) == count { return }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTFail("Saved evidence search did not finish")
     }
     @MainActor private func show(_ controller: UIViewController) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))

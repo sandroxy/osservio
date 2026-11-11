@@ -80,7 +80,7 @@ public final class InspectorPresentationTest {
             assertEquals(context.getString(R.string.osservio_incident_manual), IncidentPresentation.listTitle(context, summary));
             String subtitle = IncidentPresentation.listSubtitle(context, summary);
             assertTrue(subtitle.contains(context.getString(R.string.osservio_incident_private_note)));
-            assertTrue(subtitle.contains("HTTP: 2")); assertTrue(subtitle.contains(": 0"));
+            assertTrue(subtitle.contains("HTTP: 2")); assertFalse(subtitle.contains(": 0"));
             assertFalse(subtitle.contains("[private]")); assertFalse(subtitle.contains("must not be retained"));
             assertEquals(context.getString(R.string.osservio_incident_private_note), IncidentPresentation.note(context, mark.note));
             assertEquals("[private]", RuntimePresentation.message(context, "[private]", false));

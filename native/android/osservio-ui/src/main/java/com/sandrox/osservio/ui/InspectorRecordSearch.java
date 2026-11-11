@@ -1,6 +1,7 @@
 package com.sandrox.osservio.ui;
 
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.IncidentPayload;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.LogEvent;
@@ -18,6 +19,7 @@ import java.util.Set;
 final class InspectorRecordSearch {
     static final int MAX_RECORDS = 4_000, MAX_UNITS = 2_097_152;
     static final class Record {
+        String displayText = "";
         final LogEvent log;
         final HTTPEvent http;
         final WebSocketEvent socket;
@@ -28,7 +30,7 @@ final class InspectorRecordSearch {
         long time() { return log != null ? log.timestampMillis : http != null ? http.timestampMillis : socket.timestampMillis; }
         boolean matchesFacets(InspectorQuery query, long now) { return log != null ? query.matchesFacets(log, now) : http != null ? query.matchesFacets(http, now) : query.matchesFacets(socket, now); }
         boolean contains(String term) {
-            if (term.isEmpty()) return true;
+            if (term.isEmpty() || has(term, displayText)) return true;
             if (log != null) return has(term, log.category);
             if (http != null) {
                 if (has(term, http.url, http.responseURL, http.method, http.id, http.statusCode == null ? "" : http.statusCode.toString())) return true;
@@ -46,13 +48,15 @@ final class InspectorRecordSearch {
     static final class Result {
         final Set<String> keys = new HashSet<>();
         final Map<String, String> previews = new HashMap<>();
+        final Map<String, String> previewSources = new HashMap<>();
         int unavailable, truncated;
         boolean limited;
     }
     private static final class Payload {
         final String text;
-        final boolean truncated;
-        Payload(String text, boolean truncated) { this.text = text; this.truncated = truncated; }
+        final boolean truncated; final String source;
+        Payload(String text, boolean truncated) { this(text, truncated, ""); }
+        Payload(String text, boolean truncated, String source) { this.text = text; this.truncated = truncated; this.source = source; }
     }
     private InspectorRecordSearch() { }
     static int newestFirst(Record left, Record right) {
@@ -61,6 +65,10 @@ final class InspectorRecordSearch {
     }
     static Result run(List<Record> records, InspectorQuery query, long now, HTTPHistory http, WebSocketHistory sockets,
                       int unitLimit, InspectorJsonDocument.Cancellation cancelled) {
+        return run(records, query, now, http, sockets, null, unitLimit, cancelled);
+    }
+    static Result run(List<Record> records, InspectorQuery query, long now, HTTPHistory http, WebSocketHistory sockets,
+                      Map<String, IncidentPayload> saved, int unitLimit, InspectorJsonDocument.Cancellation cancelled) {
         Result result = new Result(); int spent = 0; long started = System.nanoTime();
         for (int position = 0; position < records.size(); position++) {
             if (cancelled.isCancelled()) return null;
@@ -72,7 +80,7 @@ final class InspectorRecordSearch {
             if (metadata && query.fieldPath.isEmpty() && query.excludedText.isEmpty()) { result.keys.add(record.key()); continue; }
             if (spent >= unitLimit) { result.limited = true; continue; }
             boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = false;
-            for (Payload payload : payloads(record, http, sockets)) {
+            for (Payload payload : payloads(record, http, sockets, saved)) {
                 if (cancelled.isCancelled()) return null;
                 String text = payload.text;
                 if (text == null) { result.unavailable++; exclusionUnknown = true; continue; }
@@ -92,36 +100,42 @@ final class InspectorRecordSearch {
                 }
                 if (fieldMatches && (metadata || InspectorQuery.hasText(text, query.text))) {
                     matched = true;
-                    if (!result.previews.containsKey(record.key())) result.previews.put(record.key(), preview(text, query.text));
+                    if (!result.previews.containsKey(record.key())) { result.previews.put(record.key(), preview(text, query.text)); result.previewSources.put(record.key(), payload.source); }
                 }
             }
             if (matched && !excluded && (query.excludedText.isEmpty() || !exclusionUnknown)) result.keys.add(record.key()); else result.previews.remove(record.key());
         }
         return cancelled.isCancelled() ? null : result;
     }
-    private static List<Payload> payloads(Record record, HTTPHistory http, WebSocketHistory sockets) {
+    private static List<Payload> payloads(Record record, HTTPHistory http, WebSocketHistory sockets, Map<String, IncidentPayload> saved) {
         if (record.log != null) return Collections.singletonList(new Payload(record.log.isPrivate ? null : record.log.message, record.log.isTruncated));
         if (record.http != null) {
-            List<Payload> result = new ArrayList<>(2);
+            List<Payload> result = new ArrayList<>(2); int index = 0;
             for (HTTPEvent.BodyReference reference : new HTTPEvent.BodyReference[] {record.http.requestBody, record.http.responseBody}) {
-                HTTPHistory.BodyLookup lookup = reference.blobId == null || http == null ? null : http.body(reference.blobId);
-                result.add(new Payload(lookup == null || lookup.state != HTTPHistory.BodyLookup.State.AVAILABLE ? null : lookup.body.text,
-                    reference.state == HTTPEvent.BodyState.TRUNCATED));
+                String text = null;
+                if (reference.blobId != null) {
+                    if (saved != null) { IncidentPayload payload = saved.get(reference.blobId); if (payload != null && payload.state == IncidentPayload.State.AVAILABLE) text = payload.text; }
+                    else if (http != null) { HTTPHistory.BodyLookup lookup = http.body(reference.blobId); if (lookup.state == HTTPHistory.BodyLookup.State.AVAILABLE) text = lookup.body.text; }
+                }
+                result.add(new Payload(text, reference.state == HTTPEvent.BodyState.TRUNCATED, index++ == 0 ? "request" : "response"));
             }
             return result;
         }
         WebSocketEvent.PayloadReference reference = record.socket.payload;
         if (reference == null) return Collections.emptyList();
-        WebSocketHistory.PayloadLookup lookup = reference.blobId == null || sockets == null ? null : sockets.payload(reference.blobId);
-        return Collections.singletonList(new Payload(lookup == null || lookup.state != WebSocketHistory.PayloadLookup.State.AVAILABLE ? null : lookup.payload.text,
-            reference.state == WebSocketEvent.PayloadState.TRUNCATED));
+        String text = null;
+        if (reference.blobId != null) {
+            if (saved != null) { IncidentPayload payload = saved.get(reference.blobId); if (payload != null && payload.state == IncidentPayload.State.AVAILABLE) text = payload.text; }
+            else if (sockets != null) { WebSocketHistory.PayloadLookup lookup = sockets.payload(reference.blobId); if (lookup.state == WebSocketHistory.PayloadLookup.State.AVAILABLE) text = lookup.payload.text; }
+        }
+        return Collections.singletonList(new Payload(text, reference.state == WebSocketEvent.PayloadState.TRUNCATED, "message"));
     }
-    private static String preview(String text, String term) {
+    static String preview(String text, String term) {
         int hit = 0;
         if (!term.isEmpty()) for (int i = 0; i <= text.length() - term.length(); i++) {
             if (text.regionMatches(true, i, term, 0, term.length())) { hit = i; break; }
         }
-        int start = Math.max(0, hit - 30), end;
+        int start = text.length() <= 180 ? 0 : Math.max(0, hit - 30), end;
         if (start > 0 && Character.isLowSurrogate(text.charAt(start))) start--;
         end = Math.min(text.length(), start + 180);
         if (end < text.length() && Character.isHighSurrogate(text.charAt(end - 1))) end--;

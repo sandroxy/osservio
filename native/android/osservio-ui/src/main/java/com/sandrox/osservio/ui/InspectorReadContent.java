@@ -8,23 +8,30 @@ final class InspectorReadContent {
     final String text;
     private final InspectorAppearance.Value<String> notice;
     final boolean allowsJson;
+    final boolean available;
+    private InspectorAppearance.Value<String> context = () -> "";
     InspectorReadContent(String text, String notice, boolean allowsJson) { this(text, () -> notice, allowsJson); }
     InspectorReadContent(String text, InspectorAppearance.Value<String> notice, boolean allowsJson) {
-        this.text = text; this.notice = notice; this.allowsJson = allowsJson;
+        this(text, notice, allowsJson, true);
     }
+    private InspectorReadContent(String text, InspectorAppearance.Value<String> notice, boolean allowsJson, boolean available) {
+        this.text = text; this.notice = notice; this.allowsJson = allowsJson; this.available = available;
+    }
+    String context() { return context.get(); }
+    InspectorReadContent withContext(InspectorAppearance.Value<String> context) { this.context = context; return this; }
     String notice() { return notice.get(); }
     InspectorReadContent withNoticePrefix(InspectorAppearance.Value<String> prefix) {
         return new InspectorReadContent(text, () -> {
             String heading = prefix.get(); return (heading.isEmpty() ? "" : heading + "\n") + notice();
-        }, allowsJson);
+        }, allowsJson, available).withContext(context);
     }
-    static InspectorReadContent unavailable(String notice) { return new InspectorReadContent("", notice, false); }
-    static InspectorReadContent unavailable(InspectorAppearance.Value<String> notice) { return new InspectorReadContent("", notice, false); }
+    static InspectorReadContent unavailable(String notice) { return new InspectorReadContent("", () -> notice, false, false); }
+    static InspectorReadContent unavailable(InspectorAppearance.Value<String> notice) { return new InspectorReadContent("", notice, false, false); }
     static InspectorReadContent saved(Context context, IncidentPayload payload, String notice, boolean complete) {
         return saved(context, payload, () -> notice, complete);
     }
     static InspectorReadContent saved(Context context, IncidentPayload payload, InspectorAppearance.Value<String> notice, boolean complete) {
-        if (payload == null || payload.state != IncidentPayload.State.AVAILABLE) return unavailable(() -> notice.get() + "\n" + IncidentPayloadPresentation.content(context, payload));
+        if (payload == null || payload.state != IncidentPayload.State.AVAILABLE) return unavailable(() -> IncidentPayloadPresentation.content(context, payload));
         return new InspectorReadContent(payload.text, () -> notice.get() + (payload.text.isEmpty() ? "\n" + context.getString(R.string.osservio_http_body_empty) : ""), complete);
     }
 }

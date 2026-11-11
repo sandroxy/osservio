@@ -39,7 +39,7 @@ final class WebSocketPresentation {
         }
         return context.getString(key);
     }
-    private static String outcome(Context context, WebSocketEvent.Outcome outcome) {
+    static String outcome(Context context, WebSocketEvent.Outcome outcome) {
         int key;
         switch (outcome) {
             case RECEIVED: key = R.string.osservio_ws_outcome_received; break;
@@ -61,7 +61,7 @@ final class WebSocketPresentation {
     }
     static String overview(Context context, WebSocketEvent event) {
         StringBuilder text = new StringBuilder(event.url).append("\n\n").append(summary(context, event));
-        field(text, context, R.string.osservio_ws_time, RuntimePresentation.date(context, event.timestampMillis));
+        field(text, context, R.string.osservio_ws_time, InspectorValuePresentation.eventTime(event.timestampMillis, true));
         field(text, context, R.string.osservio_http_source, event.source == WebSocketEvent.Source.OKHTTP ? "OkHttp"
             : event.source == WebSocketEvent.Source.URL_SESSION ? "URLSession" : context.getString(R.string.osservio_ws_host));
         field(text, context, R.string.osservio_ws_connection, event.connectionId);
@@ -104,8 +104,7 @@ final class WebSocketPresentation {
             case INVALID_TEXT: key = R.string.osservio_ws_payload_invalid_text; break;
             default: throw new IllegalArgumentException("Unknown WebSocket payload state");
         }
-        return context.getString(key) + "\n" + context.getString(R.string.osservio_ws_bytes) + ": "
-            + (reference.byteCount == null ? context.getString(R.string.osservio_http_none) : reference.byteCount);
+        return context.getString(key) + (reference.byteCount == null ? "" : " · " + InspectorValuePresentation.bytes(reference.byteCount));
     }
     static InspectorReadContent payload(Context context, WebSocketEvent.PayloadReference reference, Map<String, IncidentPayload> savedPayloads) {
         InspectorAppearance.Value<String> notice = () -> payloadDescription(context, reference);
@@ -118,8 +117,8 @@ final class WebSocketPresentation {
         WebSocketHistory.PayloadLookup lookup = history.payload(reference.blobId);
         switch (lookup.state) {
             case AVAILABLE: return new InspectorReadContent(lookup.payload.text, () -> notice.get() + (lookup.payload.text.isEmpty() ? "\n" + context.getString(R.string.osservio_http_body_empty) : ""), reference.state == WebSocketEvent.PayloadState.AVAILABLE);
-            case BUSY: return InspectorReadContent.unavailable(() -> notice.get() + "\n" + context.getString(R.string.osservio_http_body_busy));
-            case UNAVAILABLE: return InspectorReadContent.unavailable(() -> notice.get() + "\n" + context.getString(R.string.osservio_http_body_unavailable));
+            case BUSY: return InspectorReadContent.unavailable(() -> context.getString(R.string.osservio_http_body_busy));
+            case UNAVAILABLE: return InspectorReadContent.unavailable(() -> context.getString(R.string.osservio_http_body_unavailable));
             default: throw new IllegalArgumentException("Unknown WebSocket payload lookup state");
         }
     }
