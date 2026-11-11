@@ -72,7 +72,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         header.addView(controls, new LayoutParams(-1, -2));
         refresh.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
         refresh.setPadding(dp(16), dp(12), dp(16), dp(12));
-        InspectorAppearance.style(refresh, () -> { refresh.setTextColor(InspectorTheme.accent(context)); InspectorTheme.surface(refresh, false, 24); });
+        InspectorAppearance.style(refresh, () -> { refresh.setTextColor(InspectorTheme.accent(context)); InspectorTheme.surface(refresh, true, 24); });
         header.addView(refresh, new LayoutParams(-1, -2));
         delete = button(R.string.osservio_archive_delete_all); delete.setOnClickListener(view -> confirmDeletion());
         actions = InspectorWidgets.icon(context, R.drawable.osservio_more, R.string.osservio_ui_actions, () -> {

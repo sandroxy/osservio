@@ -114,7 +114,7 @@ final class InspectorFilterSheet {
             }
             adapter.notifyDataSetChanged();
         };
-        LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL); header.setPadding(0, InspectorTheme.dp(context, 8), 0, 0);
         header.addView(InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", filter), new LinearLayout.LayoutParams(-1, -2));
         TextView hint = InspectorWidgets.caption(context); hint.setText(network ? R.string.osservio_ui_network_filter_hint : R.string.osservio_ui_filter_hint);
         hint.setTextSize(12); hint.setPadding(inset, InspectorTheme.dp(context, 6), inset, 0);

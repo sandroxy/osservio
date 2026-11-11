@@ -32,7 +32,7 @@ final class HTTPDetailDialog {
         this.context = context; this.event = event; this.history = history; this.savedPayloads = savedPayloads;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams tabs = new LinearLayout.LayoutParams(-1, -2);
-        int inset = InspectorTheme.dp(context, 16); tabs.setMargins(inset, InspectorTheme.dp(context, 4), inset, 0);
+        int inset = InspectorTheme.dp(context, 16); tabs.setMargins(inset, InspectorTheme.dp(context, 8), inset, 0);
         content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ui_request, R.string.osservio_ui_response}, 0,
             index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));

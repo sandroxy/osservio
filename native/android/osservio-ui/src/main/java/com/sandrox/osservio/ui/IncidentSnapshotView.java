@@ -81,7 +81,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         LinearLayout ending = new LinearLayout(context); ending.setOrientation(VERTICAL);
         footer = caption(() -> ""); ending.addView(footer);
         delete = InspectorWidgets.button(context, R.string.osservio_incident_delete, deleteSnapshot);
-        InspectorAppearance.style(delete, () -> { delete.setTextColor(InspectorTheme.color(context, R.color.osservio_error)); InspectorTheme.surface(delete, false, 22); });
+        InspectorAppearance.style(delete, () -> { delete.setTextColor(InspectorTheme.color(context, R.color.osservio_error)); InspectorTheme.surface(delete, true, 22); });
         LayoutParams deletion = new LayoutParams(-1, -2); deletion.topMargin = dp(24); ending.addView(delete, deletion);
         list.addFooterView(ending, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {

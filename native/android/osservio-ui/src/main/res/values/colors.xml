@@ -6,6 +6,7 @@
     <color name="osservio_separator">#E7E8EF</color>
     <color name="osservio_accent">#5146D8</color>
     <color name="osservio_tint">#ECEAFD</color>
+    <color name="osservio_press">#185146D8</color>
     <color name="osservio_error">#B82D47</color>
     <color name="osservio_warning">#865000</color>
     <color name="osservio_success">#26734F</color>

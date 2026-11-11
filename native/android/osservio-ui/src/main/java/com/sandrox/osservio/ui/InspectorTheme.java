@@ -77,7 +77,14 @@ final class InspectorTheme {
     static void surface(View view, boolean interactive, int radius) {
         Context context = view.getContext();
         GradientDrawable fill = shape(context, surface(context), radius, false);
-        view.setBackground(interactive ? new RippleDrawable(ColorStateList.valueOf(color(context, R.color.osservio_tint)), fill, null) : fill);
+        view.setBackground(interactive ? ripple(context, fill, null) : fill);
+    }
+    static RippleDrawable ripple(Context context, android.graphics.drawable.Drawable content, android.graphics.drawable.Drawable mask) {
+        return new RippleDrawable(ColorStateList.valueOf(color(context, R.color.osservio_press)), content, mask);
+    }
+    static void feedback(View view, int radius) {
+        Context context = view.getContext();
+        view.setBackground(ripple(context, null, shape(context, android.graphics.Color.WHITE, radius, false)));
     }
     static void typography(TextView text, int size, boolean strong) {
         text.setTextSize(size); text.setIncludeFontPadding(false);

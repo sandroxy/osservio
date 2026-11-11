@@ -16,11 +16,15 @@ final class InspectorToolbar extends ViewGroup {
         leading = actions(context); trailing = actions(context);
         title = InspectorTheme.text(context, 17, true); title.setGravity(Gravity.CENTER);
         title.setMaxLines(2); title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        if (android.os.Build.VERSION.SDK_INT >= 29) title.setBreakStrategy(android.graphics.text.LineBreaker.BREAK_STRATEGY_BALANCED);
         addView(leading); addView(title); addView(trailing);
-        int inset = InspectorTheme.dp(context, 8); setPadding(inset, 0, inset, 0);
+        int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
     }
     private static LinearLayout actions(Context context) {
-        LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL); return row;
+        LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL); row.setBaselineAligned(false);
+        row.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
+        android.graphics.drawable.GradientDrawable gap = new android.graphics.drawable.GradientDrawable();
+        gap.setColor(android.graphics.Color.TRANSPARENT); gap.setSize(InspectorTheme.dp(context, 8), 1); row.setDividerDrawable(gap); return row;
     }
     @Override protected void onMeasure(int widthSpec, int heightSpec) {
         int width = MeasureSpec.getSize(widthSpec), available = Math.max(0, width - getPaddingLeft() - getPaddingRight());
@@ -30,7 +34,7 @@ final class InspectorToolbar extends ViewGroup {
         int gap = InspectorTheme.dp(getContext(), 8);
         int titleWidth = Math.max(0, available - leading.getMeasuredWidth() - trailing.getMeasuredWidth() - gap * 2);
         title.measure(MeasureSpec.makeMeasureSpec(titleWidth, MeasureSpec.AT_MOST), height);
-        int contentHeight = Math.max(InspectorTheme.dp(getContext(), 52), Math.max(title.getMeasuredHeight() + gap,
+        int contentHeight = Math.max(InspectorTheme.dp(getContext(), 56), Math.max(title.getMeasuredHeight() + gap,
             Math.max(leading.getMeasuredHeight(), trailing.getMeasuredHeight())));
         setMeasuredDimension(resolveSize(width, widthSpec), resolveSize(contentHeight + getPaddingTop() + getPaddingBottom(), heightSpec));
     }

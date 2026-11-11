@@ -210,8 +210,9 @@ public final class InspectorView extends FrameLayout {
             int color = i == index ? InspectorTheme.accent(themed) : InspectorTheme.secondary(themed);
             tabs[i].setSelected(i == index); ((ImageView) tabs[i].getChildAt(0)).setImageTintList(ColorStateList.valueOf(color));
             ((TextView) tabs[i].getChildAt(1)).setTextColor(color);
-            tabs[i].setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(InspectorTheme.color(themed, R.color.osservio_separator)),
-                InspectorTheme.shape(themed, i == index ? InspectorTheme.canvas(themed) : android.graphics.Color.TRANSPARENT, 25, false), null));
+            tabs[i].setBackground(InspectorTheme.ripple(themed,
+                InspectorTheme.shape(themed, i == index ? InspectorTheme.canvas(themed) : android.graphics.Color.TRANSPARENT, 25, false),
+                InspectorTheme.shape(themed, android.graphics.Color.WHITE, 25, false)));
         }
         title.setText(labels[index]); navigation.select(index); updateDebugPolling();
     }

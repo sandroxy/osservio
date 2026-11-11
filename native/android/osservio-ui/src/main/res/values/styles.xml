@@ -8,6 +8,8 @@
         <item name="android:windowNoTitle">true</item>
     </style>
     <style name="OsservioInspectorLight" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorControlHighlight">@color/osservio_press</item>
+        <item name="android:listViewStyle">@style/OsservioInspectorList</item>
         <item name="android:colorAccent">@color/osservio_accent</item>
         <item name="android:colorBackground">@color/osservio_canvas</item>
         <item name="android:textColorPrimary">@color/osservio_primary</item>
@@ -17,6 +19,8 @@
         <item name="android:buttonStyle">@style/OsservioInspectorButton</item>
     </style>
     <style name="OsservioInspectorDark" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:colorControlHighlight">@color/osservio_press</item>
+        <item name="android:listViewStyle">@style/OsservioInspectorList</item>
         <item name="android:colorAccent">@color/osservio_accent</item>
         <item name="android:colorBackground">@color/osservio_canvas</item>
         <item name="android:textColorPrimary">@color/osservio_primary</item>
@@ -26,16 +30,24 @@
         <item name="android:buttonStyle">@style/OsservioInspectorButton</item>
     </style>
     <style name="OsservioInspectorDialogLight" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorControlHighlight">@color/osservio_press</item>
+        <item name="android:listViewStyle">@style/OsservioInspectorList</item>
         <item name="android:colorAccent">@color/osservio_accent</item>
         <item name="android:colorBackground">@color/osservio_surface</item>
         <item name="android:textColorPrimary">@color/osservio_primary</item>
         <item name="android:textColorSecondary">@color/osservio_secondary</item>
     </style>
     <style name="OsservioInspectorDialogDark" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:colorControlHighlight">@color/osservio_press</item>
+        <item name="android:listViewStyle">@style/OsservioInspectorList</item>
         <item name="android:colorAccent">@color/osservio_accent</item>
         <item name="android:colorBackground">@color/osservio_surface</item>
         <item name="android:textColorPrimary">@color/osservio_primary</item>
         <item name="android:textColorSecondary">@color/osservio_secondary</item>
+    </style>
+    <!-- Rows own their bounded feedback; a list-wide selector would paint the gutters. -->
+    <style name="OsservioInspectorList" parent="android:style/Widget.Material.ListView">
+        <item name="android:listSelector">@android:color/transparent</item>
     </style>
     <style name="OsservioInspectorButton" parent="android:style/Widget.Material.Button.Borderless">
         <item name="android:textAllCaps">false</item>

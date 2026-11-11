@@ -12,6 +12,7 @@ import android.widget.LinearLayout;
 final class InspectorControls extends LinearLayout {
     InspectorControls(Context context, Button... buttons) {
         super(context);
+        setBaselineAligned(false); setGravity(android.view.Gravity.CENTER_VERTICAL);
         for (Button button : buttons) {
             button.setSingleLine(false);
             button.setEllipsize(null);

@@ -34,7 +34,7 @@ final class InspectorDialogs {
             () -> { screen.dismiss(); action.onClick(screen, android.content.DialogInterface.BUTTON_POSITIVE); });
         InspectorAppearance.style(button, () -> {
             button.setTextColor(InspectorTheme.color(context, R.color.osservio_error));
-            InspectorTheme.surface(button, false, 24);
+            InspectorTheme.surface(button, true, 24);
         });
         android.widget.LinearLayout.LayoutParams layout = new android.widget.LinearLayout.LayoutParams(-1, -2);
         int inset = InspectorTheme.dp(context, 16); layout.setMargins(inset, 0, inset, inset);

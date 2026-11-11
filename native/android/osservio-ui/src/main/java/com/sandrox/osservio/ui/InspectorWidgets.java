@@ -22,7 +22,7 @@ final class InspectorWidgets {
         ImageButton button = new ImageButton(context);
         button.setImageResource(symbol);
         InspectorAppearance.style(button, () -> styleIcon(button, label));
-        int size = InspectorTheme.dp(context, 48), inset = InspectorTheme.dp(context, 14);
+        int size = InspectorTheme.dp(context, 48), inset = InspectorTheme.dp(context, 13);
         button.setLayoutParams(new LinearLayout.LayoutParams(size, size)); button.setPadding(inset, inset, inset, inset);
         button.setStateListAnimator(null);
         button.setOnClickListener(ignored -> action.run()); return button;
@@ -34,10 +34,8 @@ final class InspectorWidgets {
         if (android.os.Build.VERSION.SDK_INT >= 26) button.setTooltipText(context.getString(label));
     }
     static void iconBackground(ImageButton button) {
-        Context context = button.getContext();
-        button.setBackground(new android.graphics.drawable.InsetDrawable(new android.graphics.drawable.RippleDrawable(
-            android.content.res.ColorStateList.valueOf(InspectorTheme.color(context, R.color.osservio_tint)),
-            InspectorTheme.shape(context, InspectorTheme.surface(context), 24, false), null), InspectorTheme.dp(context, 4)));
+        button.setBackgroundTintList(null);
+        InspectorTheme.surface(button, true, 24);
     }
     static void hideKeyboard(View view) {
         View focused = view.findFocus(); if (focused != null) focused.clearFocus();
@@ -53,8 +51,7 @@ final class InspectorWidgets {
         InspectorAppearance.style(button, () -> {
             button.setTextColor(InspectorTheme.accent(context));
             button.setBackgroundTintList(null);
-            button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
-                InspectorTheme.color(context, R.color.osservio_tint)), null, InspectorTheme.shape(context, android.graphics.Color.WHITE, 20, false)));
+            InspectorTheme.feedback(button, 20);
         });
         button.setOnClickListener(ignored -> action.run()); return button;
     }
@@ -64,16 +61,37 @@ final class InspectorWidgets {
         button.setPadding(horizontal, vertical, horizontal, vertical);
         InspectorAppearance.style(button, () -> {
             button.setBackgroundTintList(null); button.setTextColor(InspectorTheme.accent(context));
-            button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
-                InspectorTheme.color(context, R.color.osservio_separator)),
+            button.setBackground(InspectorTheme.ripple(context,
                 InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 1000, false), null));
         });
+    }
+    static CharSequence actionTitle(Context context, int label, int icon) {
+        android.text.SpannableString text = new android.text.SpannableString("\uFFFC\u00A0 " + context.getString(label));
+        // Center the icon in the text line on API 23+, without raising the text baseline.
+        android.text.style.ImageSpan span = new android.text.style.ImageSpan(symbol(context, icon, 20, InspectorTheme.accent(context))) {
+            @Override public int getSize(android.graphics.Paint paint, CharSequence text, int start, int end, android.graphics.Paint.FontMetricsInt metrics) {
+                if (metrics != null) {
+                    paint.getFontMetricsInt(metrics);
+                    int extra = Math.max(0, getDrawable().getBounds().height() - (metrics.descent - metrics.ascent));
+                    metrics.ascent -= extra / 2; metrics.descent += extra - extra / 2;
+                    metrics.top = Math.min(metrics.top, metrics.ascent); metrics.bottom = Math.max(metrics.bottom, metrics.descent);
+                }
+                return getDrawable().getBounds().width();
+            }
+            @Override public void draw(android.graphics.Canvas canvas, CharSequence text, int start, int end, float x,
+                                       int top, int baseline, int bottom, android.graphics.Paint paint) {
+                canvas.save(); canvas.translate(x, (top + bottom - getDrawable().getBounds().height()) / 2f);
+                getDrawable().draw(canvas); canvas.restore();
+            }
+        };
+        text.setSpan(span, 0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE); return text;
     }
     static EditText search(Context context, int hint, String value, TextChange changed) {
         EditText search = new EditText(context); search.setSingleLine(true); InspectorTheme.typography(search, 15, false);
         InspectorAppearance.style(search, () -> styleSearch(search, hint));
         search.setFilters(new InputFilter[] {new InputFilter.LengthFilter(512)});
-        search.setMinHeight(InspectorTheme.dp(context, 48)); search.setPadding(InspectorTheme.dp(context, 14), 0, InspectorTheme.dp(context, 14), 0);
+        search.setMinHeight(InspectorTheme.dp(context, 48)); search.setGravity(Gravity.CENTER_VERTICAL);
+        search.setPadding(InspectorTheme.dp(context, 14), InspectorTheme.dp(context, 8), InspectorTheme.dp(context, 14), InspectorTheme.dp(context, 8));
         search.setText(value);
         search.setCompoundDrawablePadding(InspectorTheme.dp(context, 8));
         search.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -88,7 +106,8 @@ final class InspectorWidgets {
         Context context = search.getContext();
         search.setTextColor(InspectorTheme.primary(context)); search.setHintTextColor(InspectorTheme.secondary(context));
         search.setHint(context.getString(hint)); search.setContentDescription(context.getString(hint));
-        search.setBackground(new android.graphics.drawable.InsetDrawable(InspectorTheme.shape(context, InspectorTheme.surface(context), 22, false), 0, InspectorTheme.dp(context, 3), 0, InspectorTheme.dp(context, 3)));
+        search.setBackgroundTintList(null);
+        search.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 24, false));
         search.setCompoundDrawablesRelative(symbol(context, R.drawable.osservio_search, 19, InspectorTheme.secondary(context)), null, null, null);
     }
     static TextView caption(Context context) {
@@ -107,15 +126,21 @@ final class InspectorWidgets {
         group.setClipToOutline(true); return group;
     }
     static void addGrouped(LinearLayout group, View row) {
-        if (group.getChildCount() > 0) group.addView(divider(group.getContext()));
+        if (group.getChildCount() > 0) {
+            View separator = divider(group.getContext());
+            if (row instanceof ValueRow) ((LinearLayout.LayoutParams) separator.getLayoutParams()).leftMargin = ((ValueRow) row).textInset;
+            group.addView(separator);
+        }
         group.addView(row, new LinearLayout.LayoutParams(-1, -2));
     }
     static final class ValueRow extends LinearLayout {
         final TextView title, value;
         private final android.widget.ImageView arrow;
+        private int textInset;
         ValueRow(Context context) {
-            super(context); setGravity(Gravity.CENTER_VERTICAL);
+            super(context); setGravity(Gravity.CENTER_VERTICAL); setBaselineAligned(false);
             int inset = InspectorTheme.dp(context, 16);
+            textInset = inset;
             setPadding(inset, InspectorTheme.dp(context, 12), inset, InspectorTheme.dp(context, 12));
             setMinimumHeight(InspectorTheme.dp(context, 52));
             LinearLayout labels = new LinearLayout(context); labels.setOrientation(VERTICAL);
@@ -129,6 +154,7 @@ final class InspectorWidgets {
             InspectorAppearance.style(this, () -> {
                 value.setTextColor(InspectorTheme.secondary(context));
                 arrow.setImageDrawable(symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)));
+                if (isClickable()) InspectorTheme.feedback(this, 0);
             });
         }
         void bind(String heading, String detail, boolean navigates) {
@@ -136,13 +162,15 @@ final class InspectorWidgets {
             arrow.setVisibility(navigates ? VISIBLE : GONE);
         }
         void action(Runnable action) {
+            setOnClickListener(action == null ? null : view -> action.run());
             setFocusable(action != null); setClickable(action != null);
-            if (action != null) { setBackgroundResource(android.R.drawable.list_selector_background); setOnClickListener(view -> action.run()); }
+            if (action != null) InspectorTheme.feedback(this, 0); else setBackground(null);
         }
         void icon(int resource) {
             android.widget.ImageView icon = new android.widget.ImageView(getContext()); icon.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             InspectorAppearance.style(icon, () -> icon.setImageDrawable(symbol(getContext(), resource, 22, InspectorTheme.accent(getContext()))));
             LayoutParams layout = new LayoutParams(InspectorTheme.dp(getContext(), 24), InspectorTheme.dp(getContext(), 24)); layout.rightMargin = InspectorTheme.dp(getContext(), 16); addView(icon, 0, layout);
+            textInset = getPaddingLeft() + layout.width + layout.rightMargin;
         }
     }
     static android.graphics.drawable.Drawable symbol(Context context, int resource, int size, int color) {
@@ -163,8 +191,7 @@ final class InspectorWidgets {
             layers.setLayerGravity(1, Gravity.BOTTOM); layers.setLayerHeight(1, 1);
             layers.setLayerInset(1, InspectorTheme.dp(context, 16), 0, InspectorTheme.dp(context, 16), 0); background = layers;
         }
-        row.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
-            InspectorTheme.color(context, R.color.osservio_tint)), background, fill));
+        row.setBackground(InspectorTheme.ripple(context, background, fill));
     }
     static CheckedTextView choice(Context context) {
         CheckedTextView row = new CheckedTextView(context); InspectorTheme.typography(row, 16, false);
@@ -205,7 +232,7 @@ final class InspectorWidgets {
             fill.setSize(InspectorTheme.dp(context, 50), InspectorTheme.dp(context, 30));
             track.addState(checked ? new int[] {android.R.attr.state_checked} : new int[0], fill);
         }
-        control.setTrackDrawable(track); InspectorTheme.surface(control, false, 20);
+        control.setTrackDrawable(track); InspectorTheme.surface(control, true, 20);
     }
     static View segments(Context context, int[] labels, int selected, Selection changed) {
         String[] text = new String[labels.length];
@@ -231,8 +258,8 @@ final class InspectorWidgets {
             android.graphics.drawable.StateListDrawable fill = new android.graphics.drawable.StateListDrawable();
             fill.addState(states[0], InspectorTheme.shape(context, InspectorTheme.surface(context), 16, false));
             fill.addState(states[1], new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
-            button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(
-                InspectorTheme.color(context, R.color.osservio_separator)), fill, null));
+            button.setBackgroundTintList(null); button.setBackground(InspectorTheme.ripple(context, fill,
+                InspectorTheme.shape(context, android.graphics.Color.WHITE, 16, false)));
             });
             android.widget.RadioGroup.LayoutParams layout = new android.widget.RadioGroup.LayoutParams(0, -2, 1);
             bar.addView(button, layout);
@@ -253,8 +280,7 @@ final class InspectorWidgets {
         Context context = button.getContext();
         button.setBackgroundTintList(null);
         button.setTextColor(selected ? InspectorTheme.accent(context) : InspectorTheme.secondary(context));
-        button.setBackground(new android.graphics.drawable.InsetDrawable(new android.graphics.drawable.RippleDrawable(
-            android.content.res.ColorStateList.valueOf(InspectorTheme.color(context, R.color.osservio_separator)),
+        button.setBackground(new android.graphics.drawable.InsetDrawable(InspectorTheme.ripple(context,
             InspectorTheme.shape(context, selected ? InspectorTheme.color(context, R.color.osservio_tint) : InspectorTheme.surface(context), 20, false), null),
             0, InspectorTheme.dp(context, 4), 0, InspectorTheme.dp(context, 4)));
         button.setPadding(InspectorTheme.dp(context, 12), 0, InspectorTheme.dp(context, 12), 0);
@@ -272,7 +298,7 @@ final class InspectorWidgets {
             super(context); setOrientation(VERTICAL);
             int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 3), inset, InspectorTheme.dp(context, 3));
             LinearLayout card = new LinearLayout(context); card.setOrientation(VERTICAL); card.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
-            InspectorAppearance.style(card, () -> card.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 18, false)));
+            InspectorAppearance.style(card, () -> InspectorTheme.surface(card, true, 18));
             card.setDuplicateParentStateEnabled(true);
             addView(card, new LayoutParams(-1, -2));
             LinearLayout top = new LinearLayout(context); top.setGravity(Gravity.CENTER_VERTICAL);
@@ -286,7 +312,6 @@ final class InspectorWidgets {
             metadata = InspectorTheme.text(context, 12, false); InspectorAppearance.style(metadata, () -> metadata.setTextColor(InspectorTheme.secondary(context)));
             metadata.setMaxLines(3); metadata.setEllipsize(android.text.TextUtils.TruncateAt.END);
             card.addView(metadata, new LayoutParams(-1, -2));
-            setBackgroundResource(android.R.drawable.list_selector_background);
         }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {
             badge.setText(label); badge.setTextColor(tone); title.setText(primary); metadata.setText(secondary);

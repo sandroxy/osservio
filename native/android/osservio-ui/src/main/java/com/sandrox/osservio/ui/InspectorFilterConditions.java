@@ -65,7 +65,7 @@ final class InspectorFilterConditions {
         TextView summary = InspectorTheme.text(context, 12, false); summary.setTextColor(InspectorTheme.secondary(context)); summary.setMaxLines(2);
         summary.setPadding(0, InspectorTheme.dp(context, 4), 0, 0);
         row.addView(title); row.addView(summary); row.setFocusable(true);
-        row.setBackgroundResource(android.R.drawable.list_selector_background);
+        InspectorAppearance.style(row, () -> InspectorTheme.feedback(row, 0));
         row.setOnClickListener(ignored -> {
             if (editor.getVisibility() == View.VISIBLE) InspectorWidgets.hideKeyboard(editor);
             editor.setVisibility(editor.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);

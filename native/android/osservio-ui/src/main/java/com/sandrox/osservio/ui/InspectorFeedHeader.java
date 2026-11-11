@@ -37,15 +37,15 @@ final class InspectorFeedHeader extends LinearLayout {
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
                         Runnable togglePause, Runnable showFilters, Runnable actions, boolean compact, int actionLabel) {
         super(context); this.compact = compact; setOrientation(VERTICAL);
-        int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 4), inset, 0);
-        LinearLayout searchRow = new LinearLayout(context); searchRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 8), inset, 0);
+        LinearLayout searchRow = new LinearLayout(context); searchRow.setGravity(android.view.Gravity.CENTER_VERTICAL); searchRow.setBaselineAligned(false);
         search = InspectorWidgets.search(context, searchHint, text, changed);
         searchRow.addView(search, new LayoutParams(0, -2, 1));
         filters = InspectorWidgets.icon(context, R.drawable.osservio_filter, R.string.osservio_ui_filters, showFilters);
-        LayoutParams filterLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48)); filterLayout.leftMargin = InspectorTheme.dp(context, 4);
+        LayoutParams filterLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48)); filterLayout.leftMargin = InspectorTheme.dp(context, 8);
         searchRow.addView(filters, filterLayout); addView(searchRow, new LayoutParams(-1, -2));
         LinearLayout bar = new LinearLayout(context); bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        bar.setPadding(InspectorTheme.dp(context, 4), 0, 0, 0);
+        bar.setBaselineAligned(false); bar.setPadding(inset, InspectorTheme.dp(context, 4), 0, InspectorTheme.dp(context, 4));
         status = InspectorWidgets.caption(context); InspectorAppearance.style(status, () -> status.setTextColor(InspectorTheme.accent(context)));
         pause = InspectorWidgets.icon(context, R.drawable.osservio_pause, R.string.osservio_ui_pause, togglePause);
         ImageButton menu = InspectorWidgets.icon(context, compact ? R.drawable.osservio_trash : R.drawable.osservio_more,

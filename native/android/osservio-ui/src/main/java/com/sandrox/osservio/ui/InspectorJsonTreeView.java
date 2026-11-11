@@ -86,7 +86,8 @@ final class InspectorJsonTreeView extends ListView {
             line.setSpan(new ForegroundColorSpan(InspectorTheme.color(context, color)), key.length(), line.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             text.setText(line); text.setMinHeight(InspectorTheme.dp(context, toggle ? 44 : 28));
             text.setPadding(InspectorTheme.dp(context, 16 + Math.min(node.depth, 8) * 14), InspectorTheme.dp(context, 3), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 3));
-            text.setBackgroundColor(InspectorTheme.color(context, focused == row.node && !row.closing ? R.color.osservio_tint : R.color.osservio_surface));
+            text.setBackground(InspectorTheme.ripple(context, new android.graphics.drawable.ColorDrawable(
+                InspectorTheme.color(context, focused == row.node && !row.closing ? R.color.osservio_tint : R.color.osservio_surface)), null));
             text.setContentDescription(line + (toggle ? ", " + context.getString(expanded.contains(row.node) ? R.string.osservio_json_expanded : R.string.osservio_json_collapsed) : "")
                 + ", " + context.getString(toggle ? R.string.osservio_json_toggle_hint : R.string.osservio_json_copy_hint));
             return text;

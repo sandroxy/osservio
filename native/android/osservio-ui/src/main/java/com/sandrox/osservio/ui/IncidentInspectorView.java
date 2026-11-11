@@ -108,14 +108,12 @@ public final class IncidentInspectorView extends FrameLayout {
         mark = InspectorWidgets.button(context, R.string.osservio_ui_record_problem, this::mark); InspectorWidgets.primaryAction(mark);
         Runnable markLabel = () -> {
             String label = context.getString(R.string.osservio_ui_record_problem);
-            android.text.SpannableString text = new android.text.SpannableString("+  " + label);
-            text.setSpan(new android.text.style.ImageSpan(InspectorWidgets.symbol(context, R.drawable.osservio_add, 20, InspectorTheme.accent(context)),
-                android.text.style.ImageSpan.ALIGN_BASELINE), 0, 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            mark.setText(text); mark.setContentDescription(label);
+            mark.setText(InspectorWidgets.actionTitle(context, R.string.osservio_ui_record_problem, R.drawable.osservio_add)); mark.setContentDescription(label);
         };
         InspectorAppearance.content(mark, markLabel); markLabel.run();
         retry = InspectorWidgets.button(context, R.string.osservio_ui_retry, this::read);
-        header.addView(mark, 0, new LinearLayout.LayoutParams(-1, -2)); header.addView(retry, 1, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams markLayout = new LinearLayout.LayoutParams(-1, -2); markLayout.bottomMargin = dp(12);
+        header.addView(mark, 0, markLayout); header.addView(retry, 1, new LinearLayout.LayoutParams(-1, -2));
         notice = header.status; notice.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         empty = header.empty; actions = header.actions;
         list = new ListView(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);

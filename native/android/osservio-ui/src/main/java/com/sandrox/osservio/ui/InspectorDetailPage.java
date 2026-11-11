@@ -53,7 +53,7 @@ final class InspectorDetailPage extends ScrollView {
         text.setTextIsSelectable(action == null); row.addView(text); group.addView(row);
         if (action != null) {
             text.setMaxLines(3); row.setFocusable(true); row.setOnClickListener(ignored -> action.run());
-            row.setBackgroundResource(android.R.drawable.list_selector_background);
+            InspectorAppearance.style(row, () -> InspectorTheme.feedback(row, 0));
             InspectorAppearance.style(label, () -> {
                 label.setTextColor(InspectorTheme.accent(context));
                 label.setCompoundDrawablesRelative(null, null, InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)), null);
