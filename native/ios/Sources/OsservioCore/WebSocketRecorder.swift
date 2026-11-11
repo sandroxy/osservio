@@ -5,11 +5,14 @@ public struct WebSocketPrivacyPolicy: Sendable {
     public let messageByteLimit: Int
     let metadata: HTTPPrivacyPolicy
     /// Applies to every text message on this recorder. Binary content and close reasons are never copied.
-    public init(publicURLPath: Bool = false, publicHeaderNames: Set<String> = [],
-                publicMessageText: Bool = false, messageByteLimit: Int = 4_096) throws {
+    public init(publicURLPath: Bool = true, publicHeaderNames: Set<String>? = nil,
+                publicMessageText: Bool = true, messageByteLimit: Int = 4_096,
+                publicURLQuery: Bool = true, headerValueByteLimit: Int = 4_096,
+                textPolicy: DiagnosticTextPolicy = .unchanged) throws {
         guard (1...65_536).contains(messageByteLimit) else { throw CaptureConfigurationError.invalidLimit }
         self.publicMessageText = publicMessageText; self.messageByteLimit = messageByteLimit
-        metadata = try HTTPPrivacyPolicy(publicURLPath: publicURLPath, publicHeaderNames: publicHeaderNames)
+        metadata = try HTTPPrivacyPolicy(publicURLPath: publicURLPath, publicHeaderNames: publicHeaderNames,
+            publicURLQuery: publicURLQuery, headerValueByteLimit: headerValueByteLimit, textPolicy: textPolicy)
     }
 }
 public struct WebSocketToken: Sendable {
@@ -114,9 +117,13 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
             guard let bounded = BoundedText.prefix(value, bytes: self.privacy.messageByteLimit) else {
                 return (WebSocketPayloadReference(state: .invalidText, blobID: nil, byteCount: nil), nil)
             }
-            let payload = WebSocketPayload(id: id, text: bounded.text)
+            guard let processed = self.privacy.metadata.textPolicy.apply(bounded.text, field: .webSocketMessage,
+                truncated: bounded.truncated, limit: self.privacy.messageByteLimit) else {
+                return (WebSocketPayloadReference(state: .omitted, blobID: nil, byteCount: nil), nil)
+            }
+            let payload = WebSocketPayload(id: id, text: processed)
             return (WebSocketPayloadReference(state: bounded.truncated ? .truncated : .available, blobID: id,
-                byteCount: bounded.truncated ? nil : Int64(payload.byteCount)), payload)
+                byteCount: bounded.truncated ? nil : Int64(bounded.text.utf8.count), isProcessed: processed != bounded.text), payload)
         }
     }
 

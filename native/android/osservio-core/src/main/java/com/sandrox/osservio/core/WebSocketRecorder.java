@@ -35,8 +35,9 @@ public final class WebSocketRecorder {
     private static final class Payload {
         final WebSocketEvent.PayloadReference reference;
         final WebSocketPayload body;
-        Payload(WebSocketEvent.PayloadState state, Long bytes, WebSocketPayload body) {
-            reference = new WebSocketEvent.PayloadReference(state, body == null ? null : body.id, bytes); this.body = body;
+        Payload(WebSocketEvent.PayloadState state, Long bytes, WebSocketPayload body) { this(state, bytes, body, false); }
+        Payload(WebSocketEvent.PayloadState state, Long bytes, WebSocketPayload body, boolean isProcessed) {
+            reference = new WebSocketEvent.PayloadReference(state, body == null ? null : body.id, bytes, isProcessed); this.body = body;
         }
     }
     public final CaptureController captureController;
@@ -120,9 +121,12 @@ public final class WebSocketRecorder {
             if (!privacy.publicMessageText) return new Payload(WebSocketEvent.PayloadState.OMITTED, null, null);
             BoundedText bounded = BoundedText.prefix(value, privacy.messageByteLimit);
             if (bounded == null) return new Payload(WebSocketEvent.PayloadState.INVALID_TEXT, null, null);
-            WebSocketPayload body = new WebSocketPayload(id, bounded.text);
+            String processed = DiagnosticTextPolicy.apply(privacy.metadata.textPolicy, DiagnosticTextPolicy.Field.WEB_SOCKET_MESSAGE,
+                null, bounded.text, bounded.truncated, privacy.messageByteLimit);
+            if (processed == null) return new Payload(WebSocketEvent.PayloadState.OMITTED, null, null);
+            WebSocketPayload body = new WebSocketPayload(id, processed);
             return new Payload(bounded.truncated ? WebSocketEvent.PayloadState.TRUNCATED : WebSocketEvent.PayloadState.AVAILABLE,
-                bounded.truncated ? null : Long.valueOf(body.byteCount), body);
+                bounded.truncated ? null : Long.valueOf(bounded.text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length), body, !processed.equals(bounded.text));
         });
     }
     /** Binary bytes stay with the host. Only their already-known count is accepted. */

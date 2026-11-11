@@ -1,0 +1,690 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:osservio:incident:4",
+  "title": "Osservio incident metadata revision 4",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "osservio.incident"
+    },
+    "revision": {
+      "const": 4
+    },
+    "payloadFile": {
+      "const": "payloads.json"
+    },
+    "incident": {
+      "$ref": "#/$defs/incident"
+    }
+  },
+  "required": [
+    "format",
+    "revision",
+    "payloadFile",
+    "incident"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "incident": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "urn:osservio:incident:1#/$defs/uuid"
+        },
+        "timestampMillis": {
+          "$ref": "urn:osservio:incident:1#/$defs/int64"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/note"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/environment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "breadcrumbs": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/breadcrumbs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "logs": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/logs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "http": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/http"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "webSockets": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/webSockets"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "enum": [
+            "manual",
+            "systemDiagnostic"
+          ]
+        },
+        "systemDiagnostic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/systemDiagnostic"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "timestampMillis",
+        "note",
+        "environment",
+        "breadcrumbs",
+        "logs",
+        "http",
+        "webSockets",
+        "origin",
+        "systemDiagnostic"
+      ],
+      "additionalProperties": false
+    },
+    "systemDiagnostic": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "enum": [
+            "androidExitInfo",
+            "metricKit",
+            "appleSignal"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "managedCrash",
+            "nativeCrash",
+            "anr",
+            "lowMemoryTermination",
+            "signalTermination",
+            "otherExit",
+            "crash",
+            "hang"
+          ]
+        },
+        "intervalStartMillis": {
+          "$ref": "urn:osservio:incident:1#/$defs/int64"
+        },
+        "intervalEndMillis": {
+          "$ref": "urn:osservio:incident:1#/$defs/int64"
+        },
+        "androidExit": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "reasonCode": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "processID": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "importance": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                },
+                "pssKiB": {
+                  "anyOf": [
+                    {
+                      "$ref": "urn:osservio:incident:1#/$defs/positive64"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rssKiB": {
+                  "anyOf": [
+                    {
+                      "$ref": "urn:osservio:incident:1#/$defs/positive64"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tombstoneState": {
+                  "enum": [
+                    "notRequested",
+                    "notApplicable",
+                    "unsupported",
+                    "unavailable",
+                    "invalid",
+                    "tooLarge",
+                    "limitReached",
+                    "available"
+                  ]
+                },
+                "tombstone": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/androidTombstone"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "reasonCode",
+                "status",
+                "processID",
+                "importance",
+                "pssKiB",
+                "rssKiB",
+                "tombstoneState",
+                "tombstone"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metricKit": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "appVersion": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "appBuild": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "osVersion": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "deviceModel": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "signal": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exceptionType": {
+                  "anyOf": [
+                    {
+                      "$ref": "urn:osservio:incident:1#/$defs/uint63"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exceptionCode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9][0-9]*)(?![\\s\\S])",
+                      "format": "diagnosticCode"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hangDurationMillis": {
+                  "anyOf": [
+                    {
+                      "$ref": "urn:osservio:incident:1#/$defs/uint63"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "metadata",
+                "signal",
+                "exceptionType",
+                "exceptionCode",
+                "hangDurationMillis"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "appleSignal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/appleSignal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "kind",
+        "intervalStartMillis",
+        "intervalEndMillis",
+        "androidExit",
+        "metricKit",
+        "appleSignal"
+      ],
+      "additionalProperties": false
+    },
+    "appleSignal": {
+      "type": "object",
+      "properties": {
+        "reportID": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\\s\\S])"
+        },
+        "signal": {
+          "enum": [
+            "SIGABRT",
+            "SIGBUS",
+            "SIGFPE",
+            "SIGILL",
+            "SIGSEGV",
+            "SIGTRAP"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16
+        },
+        "faultAddress": {
+          "$ref": "urn:osservio:incident:1#/$defs/uint64"
+        },
+        "threadNumber": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "urn:osservio:incident:1#/$defs/uint64"
+          }
+        },
+        "images": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "properties": {
+              "baseAddress": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "size": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "uuid": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cpuType": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:osservio:incident:1#/$defs/uint64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cpuSubtype": {
+                "anyOf": [
+                  {
+                    "$ref": "urn:osservio:incident:1#/$defs/uint64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "baseAddress",
+              "size",
+              "uuid",
+              "cpuType",
+              "cpuSubtype"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "appVersion": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "appBuild": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "osVersion": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "deviceModel": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "imageCacheIncomplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reportID",
+        "signal",
+        "code",
+        "faultAddress",
+        "threadNumber",
+        "frames",
+        "images",
+        "metadata",
+        "imageCacheIncomplete"
+      ],
+      "additionalProperties": false
+    },
+    "androidTombstone": {
+      "type": "object",
+      "properties": {
+        "architectureCode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "signalNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "signalCode": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "threadID": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "faultAddress": {
+          "anyOf": [
+            {
+              "$ref": "urn:osservio:incident:1#/$defs/uint64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "properties": {
+              "programCounter": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "relativeProgramCounter": {
+                "$ref": "urn:osservio:incident:1#/$defs/uint64"
+              },
+              "buildID": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 128,
+                    "pattern": "^(?:[0-9a-f]{2}){1,64}(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "programCounter",
+              "relativeProgramCounter",
+              "buildID"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "architectureCode",
+        "signalNumber",
+        "signalCode",
+        "threadID",
+        "faultAddress",
+        "frames"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

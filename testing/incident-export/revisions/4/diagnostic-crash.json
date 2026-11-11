@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 4,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "9223372036854775807",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": null,
+      "http": null,
+      "webSockets": null,
+      "origin": "systemDiagnostic",
+      "systemDiagnostic": {
+        "source": "metricKit",
+        "kind": "crash",
+        "intervalStartMillis": "-9223372036854775808",
+        "intervalEndMillis": "9007199254740993",
+        "androidExit": null,
+        "metricKit": {
+          "metadata": {
+            "appVersion": {
+              "text": "测试1",
+              "isTruncated": true
+            },
+            "appBuild": {
+              "text": "42",
+              "isTruncated": false
+            },
+            "osVersion": {
+              "text": "26.5",
+              "isTruncated": false
+            },
+            "deviceModel": {
+              "text": "iPhone17,1",
+              "isTruncated": false
+            }
+          },
+          "signal": 11,
+          "exceptionType": "9223372036854775807",
+          "exceptionCode": "18446744073709551615",
+          "hangDurationMillis": null
+        },
+        "appleSignal": null
+      }
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 4,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {}
+  }
+}

@@ -23,7 +23,10 @@ time from manual marks and opens immutable source-specific details. Copy and
 portable export include the evidence, preserving its original time/range
 separately from recovery. See [system diagnostic inspection](system-diagnostics.md#native-inspection).
 
-## Evidence and privacy
+## Evidence and data policy
+
+Snapshots preserve the host-admitted values described in [diagnostic data policy](data-policy.md).
+HTTP metadata can contain credentials and parameters even when body inclusion is off.
 
 The caller supplies already sanitized attachment values. A note
 uses the same explicit `LogMessage` privacy classification as logging. Private
@@ -321,7 +324,7 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `6`. Product versions
+application ID `0x4f535649`, and private schema revision `7`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. Network
 headers and payload text use separate tables; list queries do not load them.
@@ -341,14 +344,19 @@ commits, foreign keys, bounded cache, and zero busy wait. Only a new empty
 unowned database is initialized. Unrelated databases and unsupported revisions
 are refused without reset. Readers ignore additional optional columns within
 the supported revision while validating every known field, type, count, and
-privacy invariant. Revision `1` first adds attachment tables; revision `2` adds
+content invariant. Upgrading from revision `1` first adds attachment tables; revision `2` adds
 the nullable diagnostic-kind column and diagnostic tables. Revision `3` adds
 the report acknowledgement table. Revision `4` adds the signal header, frame and
 image tables. Revision `5` adds Android tombstone state, header and frame tables;
 older Android records retain their facts and use `notRequested` for native traces.
-The complete upgrade
+Upgrading from revision `6` to `7` adds body-processing flags with false defaults, preserving old
+observed-byte accounting and existing content. The complete upgrade
 and revision change share one transaction. Existing identities, save times,
 and evidence remain unchanged; records from revisions 1 and 2 have no system diagnostic. A failed
 upgrade rolls back its added columns and tables without resetting the database.
 An SDK that supports only an earlier revision refuses the newer database rather than
 attempting a destructive downgrade.
+Android account owners can use
+`SQLiteIncidentStore(context, UUID namespace, options)` to isolate persisted
+snapshots under the app's no-backup directory. The application-level constructor
+keeps its existing path. No records are automatically moved between owners.

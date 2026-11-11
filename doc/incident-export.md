@@ -11,7 +11,9 @@ The ZIP contains exactly `incident.json` and `payloads.json`, using the
 [portable document format](../protocol/README.md). It contains only evidence
 already present in the supplied snapshot, including its body inclusion states.
 Encoding cannot recover omitted or evicted data. Public descriptions and log
-text are not automatically scrubbed for secrets at export time.
+text, parameters and credential headers are preserved according to the host
+capture policy; no second automatic hiding pass occurs. See [diagnostic data
+policy](data-policy.md) for account isolation and host-controlled delivery.
 
 ## Integration and ownership
 
@@ -19,6 +21,8 @@ Android:
 
 ```java
 IncidentFileExporter exporter = new IncidentFileExporter(applicationContext);
+// For an account-owned cache, supply a host-managed opaque UUID namespace:
+// new IncidentFileExporter(applicationContext, namespace, new IncidentExportOptions());
 IncidentExporter.Task task = exporter.prepare(snapshot, (file, error) -> {
     // On success: file.file and file.byteCount describe a complete temporary ZIP.
     // file.contentURI is its content:// address; preparation grants no access.
@@ -38,8 +42,10 @@ let task = exporter.prepare(snapshot) { result in
 // task is nil for a rejected request; otherwise task?.cancel() requests cancellation.
 ```
 
-Retain the exporter at application scope and use a dedicated directory for it.
-Android uses `Context.getCacheDir()/osservio/exports`. On iOS, supply a private
+Retain the exporter for its diagnostic owner and use a dedicated directory for it.
+The default Android owner uses `Context.getCacheDir()/osservio/exports`; the
+UUID overload uses `osservio/scoped-exports/<uuid>` under the cache directory.
+Account owners must not share a directory or exporter. On iOS, supply a private
 directory below the app's Caches directory. It is excluded from backup and uses
 `completeUntilFirstUserAuthentication` file protection. Directories must be owned
 by the app user and inaccessible to other users. The SDK creates private files,

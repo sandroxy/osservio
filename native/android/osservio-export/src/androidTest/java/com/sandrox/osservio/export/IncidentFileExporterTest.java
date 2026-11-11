@@ -66,6 +66,33 @@ public final class IncidentFileExporterTest {
         assertFalse(hasFilesEndingWith(".partial"));
     }
 
+    @Test public void accountNamespacesKeepPreparedFilesAndOwnershipIndependent() throws Exception {
+        UUID firstID = UUID.randomUUID(), secondID = UUID.randomUUID();
+        IncidentFileExporter first = new IncidentFileExporter(context, firstID, new IncidentExportOptions());
+        IncidentFileExporter second = new IncidentFileExporter(context, secondID, new IncidentExportOptions());
+        exporters.add(first); exporters.add(second);
+        File firstDirectory = new File(context.getCacheDir(), "osservio/scoped-exports/" + firstID);
+        File secondDirectory = new File(context.getCacheDir(), "osservio/scoped-exports/" + secondID);
+        try {
+            IncidentSnapshot snapshot = IncidentDocumentFixture.make("trusted-content");
+            IncidentExporter.PreparedFile a = new Pending(first, snapshot).awaitFile(); close(first);
+            IncidentExporter.PreparedFile b = new Pending(second, snapshot).awaitFile();
+            assertEquals(firstDirectory, a.file.getParentFile()); assertEquals(secondDirectory, b.file.getParentFile());
+            assertNotEquals(a.contentURI, b.contentURI); assertTrue(a.file.exists()); assertTrue(b.file.exists());
+            assertEquals(IncidentExporter.Error.CLOSED, new Pending(first, snapshot).awaitError());
+            try (InputStream input = context.getContentResolver().openInputStream(Uri.parse(b.contentURI.toString()))) {
+                assertNotNull(input); assertEquals('P', input.read()); assertEquals('K', input.read());
+            }
+            try (ZipFile zip = new ZipFile(b.file)) {
+                assertTrue(entryText(zip, "incident.json").contains("Bearer synthetic-only"));
+            }
+        } finally {
+            close(first); close(second);
+            if (firstDirectory.exists()) remove(firstDirectory);
+            if (secondDirectory.exists()) remove(secondDirectory);
+        }
+    }
+
     @Test public void cancellationBusyAdmissionAndOrderedClose() throws Exception {
         GateClock clock = new GateClock(1);
         IncidentFileExporter exporter = exporter(new IncidentExportOptions(), clock);

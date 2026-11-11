@@ -50,8 +50,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 4, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 4, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 5, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 5, "incidentID", snapshot.id,
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
         if (metadata == null || payloads == null) throw new IllegalArgumentException("Snapshot cannot be represented as JSON");
@@ -168,7 +168,7 @@ public final class IncidentDocuments {
             "retainedTextBytes", value.retainedTextBytes, "retainedPayloadBytes", value.retainedPayloadBytes, "payloads", selection(value.payloads), "events", events);
     }
     private static Map<String, Object> body(HTTPEvent.BodyReference value) {
-        return object("state", code(value.state), "blobID", value.blobId, "observedBytes", Long.toString(value.observedBytes));
+        return object("state", code(value.state), "blobID", value.blobId, "observedBytes", Long.toString(value.observedBytes), "isProcessed", value.isProcessed);
     }
     private static Map<String, Object> webSockets(IncidentWebSockets value) {
         List<Object> events = new ArrayList<>();
@@ -177,7 +177,7 @@ public final class IncidentDocuments {
             "kind", code(event.kind), "headers", headers(event.headers), "headersLimited", event.headersLimited, "statusCode", event.statusCode,
             "closeCode", event.closeCode, "failure", code(event.failure), "direction", code(event.direction), "outcome", code(event.outcome),
             "relatedMessageID", event.relatedMessageId, "payload", event.payload == null ? null : object("state", code(event.payload.state),
-                "blobID", event.payload.blobId, "byteCount", decimal(event.payload.byteCount))));
+                "blobID", event.payload.blobId, "byteCount", decimal(event.payload.byteCount), "isProcessed", event.payload.isProcessed)));
         return object("observedAtMillis", Long.toString(value.observedAtMillis), "sourceEventCount", value.sourceEventCount, "omittedEventCount", value.omittedEventCount,
             "sourceEvictedEvents", Long.toString(value.sourceEvictedEvents), "sourceEvictedPayloads", Long.toString(value.sourceEvictedPayloads),
             "retainedTextBytes", value.retainedTextBytes, "retainedPayloadBytes", value.retainedPayloadBytes, "payloads", selection(value.payloads), "events", events);

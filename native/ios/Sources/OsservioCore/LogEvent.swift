@@ -13,7 +13,7 @@ public struct LogMessage: Sendable {
         LogMessage(text: "[private]", isPrivate: true)
     }
 
-    /// Use only for text the host has reviewed as safe to show and copy.
+    /// Retains host-authorized diagnostic text; this does not classify it as publicly distributable.
     public static func publicText(_ text: String) -> LogMessage {
         LogMessage(text: text, isPrivate: false)
     }

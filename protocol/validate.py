@@ -23,7 +23,7 @@ for name, lower, upper in [
     def integer(value, lower=lower, upper=upper):
         return isinstance(value, str) and re.fullmatch(r"0|-?[1-9][0-9]*", value) is not None and lower <= int(value) <= upper
     FORMATS.checks(name)(integer)
-for limit in [256, 512, 4096, 4128, 65536]:
+for limit in [256, 512, 4096, 4128, 16384, 65536]:
     def bounded(value, limit=limit):
         try:
             return isinstance(value, str) and len(value.encode("utf-8")) <= limit
@@ -45,28 +45,30 @@ def header_bytes(headers):
     return sum(utf8(header["name"]) + utf8(header["value"]) for header in headers)
 
 
-def valid_url(value):
+def valid_url(value, revision):
     if value == "[unavailable]":
         return
     parts = urlsplit(value)
     require(parts.scheme in ("http", "https", "ws", "wss") and parts.hostname
-            and parts.hostname.isascii() and parts.username is None and parts.password is None
-            and "#" not in value and ("?" not in value or parts.query == "[redacted]")
+            and parts.hostname.isascii()
+            and (revision >= 5 or (parts.username is None and parts.password is None
+                 and "#" not in value and ("?" not in value or parts.query == "[redacted]")))
             and (parts.port is None or 1 <= parts.port <= 65535)
             and all(ord(char) >= 32 and ord(char) != 127 for char in value), "Invalid diagnostic URL")
 
 
-def http_event(event):
+def http_event(event, revision):
     status, state = event["statusCode"], event["state"]
     require((state == "failed") == (event["failure"] is not None), "HTTP failure mismatch")
     require(status is not None or (event["responseURL"] is None and not event["responseHeaders"]), "Response metadata without status")
-    valid_url(event["url"])
+    valid_url(event["url"], revision)
     if event["responseURL"] is not None:
-        valid_url(event["responseURL"])
+        valid_url(event["responseURL"], revision)
     for direction in ("request", "response"):
         body = event[direction + "Body"]
         require((body["state"] in ("available", "truncated")) == (body["blobID"] is not None), "HTTP body reference mismatch")
         require(body["blobID"] is None or body["blobID"].lower() == event["id"].lower() + "." + direction, "HTTP body owner mismatch")
+        require(not body.get("isProcessed", False) or body["state"] in ("available", "truncated"), "Processed absent body")
         amount = int(body["observedBytes"])
         require(body["state"] != "pending" or amount == 0, "Pending body has byte count")
         require(body["state"] != "available" or amount <= 65536, "Oversized available body")
@@ -85,9 +87,9 @@ def http_event(event):
                 and (state == "completed" or bodies[1] in ("omitted", "incomplete")), "Invalid terminal exchange")
 
 
-def socket_event(event):
+def socket_event(event, revision):
     kind, payload = event["kind"], event["payload"]
-    valid_url(event["url"])
+    valid_url(event["url"], revision)
     require(event["statusCode"] is None or kind in ("opened", "failed"), "Unexpected handshake status")
     require(event["closeCode"] is None or kind in ("closeRequested", "closing", "closed", "cancelRequested"), "Unexpected close code")
     require((not event["headers"] and not event["headersLimited"]) or kind in ("connecting", "attached", "opened", "failed"), "Unexpected handshake headers")
@@ -103,6 +105,7 @@ def socket_event(event):
         require(event["direction"] is None and event["outcome"] is None and payload is None and event["relatedMessageID"] is None
                 and (kind == "failed") == (event["failure"] is not None), "Invalid connection observation")
     if payload is not None:
+        require(not payload.get("isProcessed", False) or payload["state"] in ("available", "truncated"), "Processed absent payload")
         require((payload["state"] in ("available", "truncated")) == (payload["blobID"] is not None), "Payload reference mismatch")
         require(payload["blobID"] is None or payload["blobID"].lower() == event["id"].lower(), "Payload owner mismatch")
         if payload["state"] == "available":
@@ -122,6 +125,8 @@ def selections(group, content, references, family):
     for key, text in content.items():
         amount, original = utf8(text), references[key]
         require(amount == selected[key]["textByteCount"], "Wrong included body byte count")
+        if original.get("isProcessed", False):
+            continue
         if family == "http":
             require(amount == int(original["observedBytes"]) if original["state"] == "available"
                     else original["state"] == "truncated" and amount < int(original["observedBytes"]), "Body disagrees with its observation")
@@ -162,10 +167,10 @@ def semantics(metadata, payloads):
             elif family == "logs":
                 size += utf8(event["category"]) + utf8(event["message"])
             elif family == "http":
-                http_event(event)
+                http_event(event, metadata["revision"])
                 size += utf8(event["method"]) + utf8(event["url"]) + utf8(event["responseURL"]) + header_bytes(event["requestHeaders"] + event["responseHeaders"])
             else:
-                socket_event(event)
+                socket_event(event, metadata["revision"])
                 size += utf8(event["url"]) + header_bytes(event["headers"])
             bodies = [event["requestBody"], event["responseBody"]] if family == "http" else [event.get("payload")]
             for body in bodies:
@@ -246,10 +251,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=4):
-    require(type(revision) is int and revision in (1, 2, 3, 4), "Unsupported incident revision")
+def validators(reader=False, revision=5):
+    require(type(revision) is int and revision in (1, 2, 3, 4, 5), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)

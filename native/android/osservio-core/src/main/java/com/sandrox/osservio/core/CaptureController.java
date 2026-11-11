@@ -20,8 +20,9 @@ public final class CaptureController {
         public final boolean debugEnabled;
         public final boolean debugHasTimeLimit;
         public final boolean debugExpired;
+        public final boolean isClosed;
         private Status(Mode mode, boolean baselineEnabled, String sessionId, long remainingMillis,
-                       boolean debugHasTimeLimit, boolean debugExpired) {
+                       boolean debugHasTimeLimit, boolean debugExpired, boolean isClosed) {
             this.mode = mode;
             this.baselineEnabled = baselineEnabled;
             this.sessionId = sessionId;
@@ -29,6 +30,7 @@ public final class CaptureController {
             this.debugEnabled = mode == Mode.DETAILED;
             this.debugHasTimeLimit = debugHasTimeLimit;
             this.debugExpired = debugExpired;
+            this.isClosed = isClosed;
         }
     }
 
@@ -58,6 +60,7 @@ public final class CaptureController {
 
     private final ReentrantLock lock = new ReentrantLock();
     final LogClock clock;
+    private boolean closed;
     private boolean baselineEnabled;
     private boolean detailed;
     private boolean timed;
@@ -93,6 +96,7 @@ public final class CaptureController {
     public void setDebugEnabled(boolean enabled) {
         if (!enter()) throw new IllegalStateException("Capture is busy");
         try {
+            if (closed) throw new IllegalStateException("Capture is closed");
             long now = clock.monotonicMillis();
             expire(now);
             if (detailed == enabled) return;
@@ -118,6 +122,7 @@ public final class CaptureController {
         }
         if (!enter()) throw new IllegalStateException("Capture is busy");
         try {
+            if (closed) throw new IllegalStateException("Capture is closed");
             long now = clock.monotonicMillis();
             if (now > Long.MAX_VALUE - durationMillis) throw new IllegalArgumentException("Invalid clock deadline");
             deadline = now + durationMillis;
@@ -140,6 +145,7 @@ public final class CaptureController {
     public boolean setBaselineEnabled(boolean enabled) {
         if (!enter()) return false;
         try {
+            if (closed) return !enabled;
             long now = clock.monotonicMillis();
             expire(now);
             if (baselineEnabled != enabled) {
@@ -165,12 +171,26 @@ public final class CaptureController {
         } finally { lock.unlock(); }
     }
 
+    /** Permanently retires an account/inspection owner; no later enable can reopen it.
+     * False means contention: retry before completing the account transition. Dispose the old UI and
+     * close its exporters/archives separately. This method never deletes retained evidence. */
+    public boolean close() {
+        if (!enter()) return false;
+        try {
+            if (closed) return true;
+            closed = true; baselineEnabled = false; detailed = false; timed = false; debugExpired = false;
+            replaceSession(clock.monotonicMillis());
+            return true;
+        } finally { lock.unlock(); }
+    }
+
     /** Null means contention, never a stopped session. */
     public Status status() { return inspect(value -> value); }
 
     void register(SessionObserver observer) {
         if (!enter()) throw new IllegalStateException("Capture is busy");
         try {
+            if (closed) throw new IllegalStateException("Capture is closed");
             pruneObservers();
             if (observers.size() >= 16) throw new IllegalArgumentException("Too many capture observers");
             observers.add(new WeakReference<>(observer));
@@ -189,7 +209,7 @@ public final class CaptureController {
             expire(now);
             Mode mode = currentMode();
             return body.apply(new Status(mode, baselineEnabled, mode == Mode.OFF ? null : sessionId,
-                    detailed && timed ? deadline - now : 0, detailed && timed, debugExpired));
+                    detailed && timed ? deadline - now : 0, detailed && timed, debugExpired, closed));
         } finally { lock.unlock(); }
     }
 

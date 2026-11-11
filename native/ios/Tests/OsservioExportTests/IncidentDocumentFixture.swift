@@ -6,6 +6,23 @@ enum IncidentDocumentFixture {
     static let session = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     static let httpID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     static func make(_ name: String) throws -> IncidentSnapshot {
+        if name == "trusted-content" {
+            let base = try make("complete"), old = base.http!.events[0]
+            let event = try HTTPEvent.restore(id: old.id, sessionID: old.sessionID, sequence: old.sequence, revision: old.revision,
+                timestampMillis: old.timestampMillis, method: "PROPFIND", source: old.source,
+                url: "https://user:fixture@example.com/frozen?token=synthetic-only&x=1&x=2#detail", responseURL: old.responseURL,
+                requestHeaders: [HTTPHeader(name: "authorization", value: "Bearer synthetic-only"), HTTPHeader(name: "x_custom", value: "trace-value")],
+                responseHeaders: [HTTPHeader(name: "content-type", value: "application/json; charset=utf-8"), HTTPHeader(name: "set-cookie", value: "fixture=synthetic-only; HttpOnly")],
+                headersLimited: old.headersLimited, statusCode: old.statusCode, state: old.state, failure: old.failure,
+                durationMillis: old.durationMillis, requestBody: old.requestBody,
+                responseBody: .restore(state: .available, blobID: old.responseBody.blobID, observedBytes: 2, isProcessed: true))
+            let group = base.http!
+            return try .restore(id: base.id, timestampMillis: base.timestampMillis, note: base.note, environment: base.environment,
+                breadcrumbs: base.breadcrumbs, logs: base.logs,
+                http: .restore(events: [event], payloads: group.payloads, observedAtMillis: group.observedAtMillis,
+                    sourceEventCount: group.sourceEventCount, sourceEvictedEvents: group.sourceEvictedEvents, sourceEvictedBodies: group.sourceEvictedBodies),
+                webSockets: base.webSockets)
+        }
         if name == "absent" { return try .restore(id: id, timestampMillis: .min, note: nil, environment: nil, breadcrumbs: nil) }
         if name == "empty" { return try .restore(id: id, timestampMillis: .min, note: nil, environment: nil, breadcrumbs: nil,
             logs: .restore(events: [], observedAtMillis: 0, sourceEventCount: 4, sourceEvictedCount: 2)) }

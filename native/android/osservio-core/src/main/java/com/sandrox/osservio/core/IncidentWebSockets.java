@@ -78,7 +78,7 @@ public final class IncidentWebSockets {
             String id = event.payload.blobId; IncidentPayload payload = payloads.get(id);
             if (!references.add(id) || payload == null) throw EvidenceValidation.invalid();
             if (payload.state == IncidentPayload.State.AVAILABLE && event.payload.state == WebSocketEvent.PayloadState.AVAILABLE
-                && !Long.valueOf(payload.textByteCount).equals(event.payload.byteCount)) throw EvidenceValidation.invalid();
+                && !event.payload.isProcessed && !Long.valueOf(payload.textByteCount).equals(event.payload.byteCount)) throw EvidenceValidation.invalid();
         }
         if (references.size() != payloads.size()) throw EvidenceValidation.invalid();
         return new IncidentWebSockets(events, payloads, observedAtMillis, sourceEventCount, sourceEvictedEvents, sourceEvictedPayloads, bytes, payloadBytes);

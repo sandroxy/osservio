@@ -23,8 +23,8 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 4, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 4, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 5, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 5, "incidentID": snapshot.id,
             "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
@@ -126,7 +126,7 @@ public struct IncidentDocuments: Sendable {
          }]
     }
     private static func body(_ value: HTTPBodyReference) -> [String: Any] {
-        ["state": value.state.rawValue, "blobID": optional(value.blobID), "observedBytes": String(value.observedBytes)]
+        ["state": value.state.rawValue, "blobID": optional(value.blobID), "observedBytes": String(value.observedBytes), "isProcessed": value.isProcessed]
     }
     private static func webSockets(_ value: IncidentWebSockets) -> [String: Any] {
         ["observedAtMillis": String(value.observedAtMillis), "sourceEventCount": value.sourceEventCount, "omittedEventCount": value.omittedEventCount,
@@ -138,7 +138,7 @@ public struct IncidentDocuments: Sendable {
              "headers": headers(event.headers), "headersLimited": event.headersLimited, "statusCode": optional(event.statusCode), "closeCode": optional(event.closeCode),
              "failure": optional(event.failure?.rawValue), "direction": optional(event.direction?.rawValue), "outcome": optional(event.outcome?.rawValue),
              "relatedMessageID": optional(event.relatedMessageID), "payload": optional(event.payload.map { reference -> [String: Any] in
-                ["state": reference.state.rawValue, "blobID": optional(reference.blobID), "byteCount": decimal(reference.byteCount)]
+                ["state": reference.state.rawValue, "blobID": optional(reference.blobID), "byteCount": decimal(reference.byteCount), "isProcessed": reference.isProcessed]
              })]
          }]
     }

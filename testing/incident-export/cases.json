@@ -83,7 +83,7 @@
           "metadata",
           "revision"
         ],
-        "value": 5
+        "value": 6
       }
     ]
   },
@@ -98,7 +98,7 @@
           "payloads",
           "revision"
         ],
-        "value": 5
+        "value": 6
       }
     ]
   },
@@ -357,7 +357,7 @@
   },
   {
     "name": "empty-fragment",
-    "base": "complete",
+    "base": "revisions/4/complete",
     "writerAccepts": false,
     "readerAccepts": false,
     "changes": [
@@ -376,7 +376,7 @@
   },
   {
     "name": "empty-query",
-    "base": "complete",
+    "base": "revisions/4/complete",
     "writerAccepts": false,
     "readerAccepts": false,
     "changes": [

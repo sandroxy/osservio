@@ -133,3 +133,12 @@ sequence, elapsed time, native value, privacy/truncation, and retention intent.
 Clearing affects only breadcrumb history. Baseline controls explicitly describe
 their fallback behavior; ending detailed capture is a separate control on the
 log or network tabs. No control or retention label claims a durable write.
+
+## Account-owned retained runs
+
+Android hosts can construct `SQLiteBreadcrumbStore(context, UUID namespace,
+options)` for independent account histories under the app's no-backup directory.
+iOS accepts an explicit archive directory. Existing application-level evidence
+is not moved or deleted. Retire old capture and UI owners before switching;
+see [account ownership](data-policy.md#account-ownership). Process-wide system
+signals require a separate ownership decision from business-account records.

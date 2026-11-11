@@ -14,25 +14,25 @@ enum EvidenceValidation {
     }
     static func url(_ value: String) -> Bool {
         if value == "[unavailable]" { return true }
-        // Capture limits raw URLs to 4,096 bytes; redaction can add a short placeholder.
         guard text(value, limit: 4_128),
               !value.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7F }),
-              let parts = URLComponents(string: value), let scheme = parts.scheme,
+              let parts = URLComponents(string: value), let scheme = parts.scheme?.lowercased(),
               ["http", "https", "ws", "wss"].contains(scheme), let host = parts.host, !host.isEmpty,
-              host.utf8.allSatisfy({ $0 < 128 }), parts.user == nil, parts.password == nil,
-              parts.fragment == nil, parts.port == nil || (1...65_535).contains(parts.port!) else { return false }
-        if let query = value.firstIndex(of: "?") { return value[value.index(after: query)...] == "[redacted]" }
+              host.utf8.allSatisfy({ $0 < 128 }), parts.port == nil || (1...65_535).contains(parts.port!) else { return false }
         return true
     }
+    static func method(_ value: String) -> Bool { token(value, limit: 16) }
+    static func headerName(_ value: String) -> Bool { token(value, limit: 64) }
+    private static func token(_ value: String, limit: Int) -> Bool {
+        let bytes = value.utf8.prefix(limit + 1)
+        return !bytes.isEmpty && bytes.count <= limit && bytes.allSatisfy {
+            (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0)
+                || [33, 35, 36, 37, 38, 39, 42, 43, 45, 46, 94, 95, 96, 124, 126].contains($0)
+        }
+    }
     static func headers(_ values: [HTTPHeader]) -> Bool {
-        guard values.count <= 32 else { return false }
-        let secretNames: Set<String> = ["authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"]
-        return values.allSatisfy { header in
-            let name = header.name.utf8.prefix(65)
-            return !name.isEmpty && name.count <= 64
-                && name.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 45 })
-                && text(header.value, limit: 512)
-                && (!secretNames.contains(header.name) || header.value == "[redacted]")
+        values.count <= 32 && values.allSatisfy {
+            headerName($0.name) && $0.name == $0.name.lowercased() && text($0.value, limit: 16_384)
         }
     }
     static func httpBodyID(_ value: String) -> Bool {

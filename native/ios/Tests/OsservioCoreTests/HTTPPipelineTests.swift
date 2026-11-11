@@ -59,9 +59,9 @@ final class HTTPPipelineTests: XCTestCase {
         }
     }
 
-    func testDefaultPrivacyDoesNotCopyBodiesAndSanitizesBeforeStorage() throws {
+    func testExplicitBodyOmissionDoesNotCopyContent() throws {
         let store = try MemoryHTTPStore()
-        let capture = try recorder(store)
+        let capture = try recorder(store, policy: HTTPPrivacyPolicy(bodyPolicy: .omit))
         let token = try XCTUnwrap(capture.begin(method: "post", url: "https://user:secret@example.com/private?token=secret", headers: [
             HTTPHeader(name: "Authorization", value: "Bearer secret"), HTTPHeader(name: "Content-Type", value: "application/json; boundary=secret"),
             HTTPHeader(name: "Content-Length", value: "123"), HTTPHeader(name: "secret-name", value: "secret")
@@ -70,13 +70,13 @@ final class HTTPPipelineTests: XCTestCase {
         XCTAssertEqual(capture.finish(token, state: .failed, failure: .connection, requestComplete: false, responseComplete: false), .recorded)
         let event = try XCTUnwrap(store.snapshot()?.events.first)
         try EvidenceRestorationTests.check(event)
-        XCTAssertEqual(event.method, "POST")
-        XCTAssertEqual(event.requestHeaders.map(\.value), ["[redacted]", "application/json", "123"])
-        XCTAssertTrue(event.headersLimited)
+        XCTAssertEqual(event.method, "post")
+        XCTAssertEqual(event.requestHeaders.map(\.value), ["Bearer secret", "application/json; boundary=secret", "123", "secret"])
+        XCTAssertFalse(event.headersLimited)
         XCTAssertEqual(event.requestBody.state, .omitted)
         XCTAssertEqual(event.requestBody.observedBytes, 123)
         XCTAssertEqual(store.snapshot()?.retainedBodyBytes, 0)
-        XCTAssertThrowsError(try HTTPPrivacyPolicy(publicHeaderNames: ["Authorization"]))
+        XCTAssertNoThrow(try HTTPPrivacyPolicy(publicHeaderNames: ["Authorization"]))
     }
 
     func testSharedBodyUTF8AndFormatFixtures() throws {
@@ -178,7 +178,7 @@ final class HTTPPipelineTests: XCTestCase {
 
     func testPublicHeadersRemainBoundedAndCompressionRequiresDecodedBytes() throws {
         let store = try MemoryHTTPStore()
-        let policy = try HTTPPrivacyPolicy(publicHeaderNames: ["X-Trace"], bodyPolicy: .publicUTF8)
+        let policy = try HTTPPrivacyPolicy(publicHeaderNames: ["X-Trace"], bodyPolicy: .publicUTF8, headerValueByteLimit: 512)
         let capture = try recorder(store, policy: policy)
         let token = try XCTUnwrap(capture.begin(method: "GET", url: "https://example.com", headers: [HTTPHeader(name: "X-Trace", value: String(repeating: "😀", count: 200))]).token)
         XCTAssertEqual(store.snapshot()?.events.first?.requestHeaders.first?.value.utf8.count, 512)
@@ -234,12 +234,12 @@ final class HTTPPipelineTests: XCTestCase {
     }
 
     func testGrowingMetadataEvictsOtherRecordsWithoutRemovingTheUpdatedOne() throws {
-        let store = try MemoryHTTPStore(textByteLimit: 150)
+        let store = try MemoryHTTPStore(textByteLimit: 120)
         let capture = try recorder(store, policy: HTTPPrivacyPolicy(publicHeaderNames: ["X-Trace"]))
         let first = try XCTUnwrap(capture.begin(method: "GET", url: "https://example.com").token)
         _ = capture.begin(method: "GET", url: "https://example.com")
         XCTAssertEqual(capture.receiveResponse(first, statusCode: 200, headers: [HTTPHeader(name: "X-Trace", value: String(repeating: "a", count: 80))]), .recorded)
         XCTAssertEqual(store.snapshot()?.events.map(\.id), [first.id])
-        XCTAssertLessThanOrEqual(try XCTUnwrap(store.snapshot()).retainedTextBytes, 150)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(store.snapshot()).retainedTextBytes, 120)
     }
 }

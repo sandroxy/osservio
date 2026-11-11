@@ -79,7 +79,9 @@ A development preset may start detailed capture during initialization. Its
 resource limits still apply; a host may also configure an automatic deadline. Ending a detailed session restores the configured baseline
 or off state. Closing the inspector does not implicitly change either state.
 
-The host controls access policy, available capabilities, and privacy settings.
+The host controls access policy, available capabilities, and data processing.
+The [local trust model](data-policy.md) keeps useful debug content readable,
+with separate account ownership and explicit output boundaries.
 Opening the inspector must not silently enable mutation tools or export data.
 Capture coverage, remaining session lifetime, and degradation must be observable.
 

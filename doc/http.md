@@ -17,7 +17,7 @@ controller. Construction reports invalid limits or contention explicitly.
 `begin` returns a result and, only after successful admission and storage, an
 opaque exchange token. Supply response headers once through `receiveResponse`,
 then end the observation through `finish`. A response body must not be submitted
-before its response headers. Unknown methods are shown as `OTHER`; invalid or
+before its response headers. Valid HTTP token methods retain their original spelling; invalid or over-limit methods become `OTHER`; invalid or
 unsupported URLs are shown as `[unavailable]`. Status codes must be 100–599.
 
 The host owns transport behavior. It must preserve original request bodies,
@@ -49,36 +49,41 @@ Explicit stop or session replacement releases them during that control call.
 or cancelling the host request. It releases that observation's buffers and
 attempts to record `captureEnded`.
 
-## Privacy
+## Data policy
 
-The default policy records HTTP method, sanitized URL origin, selected header
-names, status, timing, and observed byte counts. It removes URL credentials and
-fragments, replaces paths and query contents, redacts header values, omits
-unrecognized header names, and never copies body bytes. Content type is reduced
-to its media type; a valid nonnegative content length is normalized to a number.
-An origin or media type can still identify a service. This is a defined field
-policy, not a detector for all personal data or secrets.
+The local operator is trusted within the host's inspection scope. See
+[diagnostic data policy](data-policy.md) for host processing, account ownership
+and explicit output boundaries.
 
-The host may explicitly approve URL paths and up to 16 header names. Query
-contents remain redacted. Authorization, proxy authorization, cookies,
-set-cookie, and x-api-key cannot be approved. A public header's value is limited
-to 512 UTF-8 bytes. Header processing examines at most 32 input entries, and
-unrecognized, invalid, or truncated entries are reflected in `headersLimited`.
-Header names in configuration must be static labels, not runtime data.
+The default policy retains the observed URL, including query, credentials and
+fragment, valid header names and values, and supported UTF-8 bodies. Nothing is
+redacted just because it is named Authorization, Cookie or token. The recorder
+still requires detailed capture. The initial capture state remains off.
 
-`publicUTF8` / `PUBLIC_UTF8` is an explicit host classification of every body
-handled by that recorder as safe to retain and display. It is not automatic
-redaction and does not remove JSON fields or credentials. Use the default omit
-policy when that classification cannot be made. The recorder supports UTF-8
-text, JSON, XML, and form media types; other formats and declared non-UTF-8
-charsets are omitted. It does not decompress content. A collector may declare
-response bytes already decoded only when its networking API guarantees that.
+An explicit `publicHeaderNames` set selects values (nil/null includes all valid
+headers). `publicURLPath`, `publicURLQuery` and body policy allow host-selected
+omission. `DiagnosticTextPolicy` supports selective URL, header and body
+processing before any recorded value reaches a store. Errors, nil/null and
+oversized output omit content without retaining raw fallback data.
+
+At most 32 headers are examined. Values default to 4,096 UTF-8 bytes, configurable
+from 1 to 16,384; `headersLimited` reports truncation or invalid/excess entries.
+Header-name token validation and the 64-byte name budget remain independent of
+privacy. Content-Type parameters and custom headers are retained, without
+rewriting their values for display.
+
+`publicUTF8` / `PUBLIC_UTF8` is the default body policy. Supported types remain
+UTF-8 text, JSON, XML and forms. Unsupported media, non-UTF-8 charsets and encoded
+bytes that have not been decoded remain unsupported. This is a format/ownership
+boundary, not a ban on sensitive field names. The SDK never decompresses or
+forces reads from a host stream.
 
 Raw prefixes exist only in bounded recorder-owned memory before finalization.
-Stores receive admitted metadata and explicitly permitted UTF-8 body values,
-never raw observations. Rejected, malformed, or incomplete body input is not
-written to the store. Dropping references does not guarantee physical memory
-zeroization or erase copies owned by the host networking stack.
+Recorded events contain validated, host-processed values. A modified body has
+`isProcessed = true`; original observed byte counts and retained text byte counts
+remain distinct. Rejected or incomplete input is not recorded as complete text.
+Dropping references does not guarantee physical memory zeroization or erase
+copies owned by the host networking stack.
 
 ## Body observation
 
@@ -142,38 +147,26 @@ request is still running. Clearing history does not stop active host requests
 or capture. As with logs, `clear` is a synchronous control operation that may
 wait for the store's bounded critical section; do not call it from capture.
 
-The current records are native in-memory types, not a serialized interchange
-protocol or a persistent archive format. No network data survives termination
-through these modules.
+Live histories are memory-only. Explicit incident attachments can persist the
+admitted metadata and selected bodies; portable export has its own compatibility
+revision. See [manual snapshots](incidents.md).
 
 ## Native inspection
 
-The combined native inspector places HTTP exchanges and WebSocket connections
-inside Network. See [the native inspector guide](inspector.md) for its All, HTTP
-and WebSocket scopes. HTTP
-controls start or end detailed capture on the supplied shared controller. Ending
-detail returns to its configured baseline/off state; closing the inspector and
-pausing rendering do not change capture. Clearing requests affects HTTP history
-only, not the log store or host calls.
+Network combines HTTP exchanges and Socket events with one search and filter
+sheet. The root bug icon controls shared debugging; visibility and list reading
+remain independent. Metadata and bounded body search run only while needed.
+Reading older rows preserves their position; View latest applies the newest
+retained window and scrolls to it. See [inspector behavior](inspector.md).
 
-The visible list refreshes at most every 250 ms; hidden sections stop polling.
-On iOS, polling also stops when its application or window scene becomes inactive.
-Scrolling pauses rendering to keep rows stable. Search covers initial/final URL,
-method, and status code, never body content. HTTP filters combine host, source,
-method, observed state, HTTP status class and time. State and status are separate
-dimensions: a completed HTTP 503 is not presented as a transport failure.
+Details keep their entry-time metadata. Request and Response provide body previews,
+capture/inclusion states and header previews. A long header opens an exact-value
+reader with search and copy; full URL reading preserves the admitted URL rather
+than its readable list projection. Body readers support source and bounded JSON
+structure. Saved readers query only their saved payloads, never current traffic.
+Copy is explicit. Host omission, processing, incomplete capture, unsupported
+formats, truncation, contention and eviction remain distinct.
 
-Details are snapshots with an explicit metadata refresh action. Overview
-contains observation provenance; Request and Response contain their headers
-and body state. Selecting a section does not read content. Open reader performs
-the body lookup and displays bounded selectable text with literal search.
-Copying requires an explicit action. Body policy, incomplete capture, unsupported format,
-truncation, storage contention, and independent eviction remain distinguishable.
-If metadata has been removed, the detail view labels its last viewed snapshot; it
-does not resurrect it. Previously displayed text can remain visible until the
-view is refreshed or closed.
-
-Observation cleanup during refresh does not consume an event sequence or cancel
-a host call. Expiry remains lazy, as described above. Neither the UI nor an
-HTTP status code establishes business success, user intent, or complete traffic
-coverage. See [network coverage](network-integration.md) for collector differences.
+Observation cleanup does not consume a sequence or cancel a host call. Expiry
+remains lazy. Neither the UI nor an HTTP status establishes business success,
+user intent or complete traffic coverage. See [network coverage](network-integration.md).

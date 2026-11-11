@@ -115,7 +115,7 @@ Native diagnostic views show state, signal, architecture, thread ID and fault
 address without querying current device context. The address list exposes
 absolute and ELF-relative PCs with build IDs; row and whole-list copying are
 explicit. Missing stacks have no active address-list navigation. Portable
-[revision 4](../protocol/README.md) carries the same facts and states. Native
+[revision 5](../protocol/README.md) carries the same facts and states. Native
 archive tests cover exact restoration, source/state invariants, corruption,
 transactional recovery, multiplicity, deletion acknowledgements and additive
 migration. These checks do not replace a real next-launch recovery test.

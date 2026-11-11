@@ -230,7 +230,7 @@ disables that store instance and preserves its files.
 
 ## Portable export
 
-Portable document revision 4 includes the reviewed system evidence, original
+Portable document revision 5 includes the reviewed system evidence, original
 time/range, historical metadata, exact numeric codes, and missing-value states.
 It preserves recovery observation time separately and adds no current context.
 See the [document contract](../protocol/README.md) and

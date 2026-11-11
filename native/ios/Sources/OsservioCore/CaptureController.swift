@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CaptureConfigurationError: Error { case invalidLimit, invalidDuration, busy }
+public enum CaptureConfigurationError: Error { case invalidLimit, invalidDuration, busy, closed }
 
 public enum CaptureMode: String, Sendable { case off, baseline, detailed }
 
@@ -13,6 +13,7 @@ public struct CaptureStatus: Sendable {
     /// Zero remaining time denotes no deadline when this is false.
     public let debugHasTimeLimit: Bool
     public let debugExpired: Bool
+    public let isClosed: Bool
 }
 
 struct CaptureContext {
@@ -41,6 +42,7 @@ private final class WeakCaptureObserver {
 public final class CaptureController: @unchecked Sendable {
     private let lock = NSLock()
     let clock: any LogClock
+    private var closed = false
     private var baselineEnabled: Bool
     private var detailed: Bool
     private var debugAutoOffAfterMillis: UInt64?
@@ -74,6 +76,7 @@ public final class CaptureController: @unchecked Sendable {
     public func setDebugEnabled(_ enabled: Bool) throws {
         guard lock.try() else { throw CaptureConfigurationError.busy }
         defer { lock.unlock() }
+        guard !closed else { throw CaptureConfigurationError.closed }
         let now = clock.monotonicMillis()
         expire(at: now)
         guard detailed != enabled else { return }
@@ -93,6 +96,7 @@ public final class CaptureController: @unchecked Sendable {
         guard (1...86_400_000).contains(durationMillis) else { throw CaptureConfigurationError.invalidDuration }
         guard lock.try() else { throw CaptureConfigurationError.busy }
         defer { lock.unlock() }
+        guard !closed else { throw CaptureConfigurationError.closed }
         let now = clock.monotonicMillis()
         guard now <= UInt64.max - durationMillis else { throw CaptureConfigurationError.invalidDuration }
         deadline = now + durationMillis
@@ -114,6 +118,7 @@ public final class CaptureController: @unchecked Sendable {
     public func setBaselineEnabled(_ enabled: Bool) -> Bool {
         guard lock.try() else { return false }
         defer { lock.unlock() }
+        guard !closed else { return !enabled }
         let now = clock.monotonicMillis()
         expire(at: now)
         if baselineEnabled != enabled {
@@ -139,6 +144,19 @@ public final class CaptureController: @unchecked Sendable {
         return true
     }
 
+    /// Permanently retires this account/inspection owner. A closed controller cannot be restarted.
+    /// False means contention: the host must retry before completing its account transition.
+    /// Dispose the owner's inspectors and close its exporters/archives separately; no retained data is deleted.
+    @discardableResult
+    public func close() -> Bool {
+        guard lock.try() else { return false }
+        defer { lock.unlock() }
+        guard !closed else { return true }
+        closed = true; baselineEnabled = false; detailed = false; deadline = 0; debugExpired = false
+        replaceSession(at: clock.monotonicMillis())
+        return true
+    }
+
     /// Nil means contention. It never means that capture has stopped.
     public func status() -> CaptureStatus? { inspect { $0 } }
 
@@ -159,6 +177,7 @@ public final class CaptureController: @unchecked Sendable {
     func register(_ observer: any CaptureSessionObserver) throws {
         guard lock.try() else { throw CaptureConfigurationError.busy }
         defer { lock.unlock() }
+        guard !closed else { throw CaptureConfigurationError.closed }
         observers.removeAll { $0.value == nil }
         guard observers.count < 16 else { throw CaptureConfigurationError.invalidLimit }
         observers.append(WeakCaptureObserver(observer))
@@ -172,7 +191,7 @@ public final class CaptureController: @unchecked Sendable {
         let mode = currentMode
         return body(CaptureStatus(mode: mode, baselineEnabled: baselineEnabled, sessionID: mode == .off ? nil : sessionID,
                                   remainingMillis: deadline == 0 ? 0 : deadline - now,
-                                  debugHasTimeLimit: detailed && deadline != 0, debugExpired: debugExpired))
+                                  debugHasTimeLimit: detailed && deadline != 0, debugExpired: debugExpired, isClosed: closed))
     }
 
     // All recorder state associated with this controller is accessed under this lock.

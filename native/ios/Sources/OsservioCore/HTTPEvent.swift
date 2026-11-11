@@ -18,15 +18,20 @@ public struct HTTPBodyReference: Sendable {
     public let state: HTTPBodyState
     public let blobID: String?
     public let observedBytes: Int64
+    /// True when host processing changed the captured text; observedBytes still describes the original observation.
+    public let isProcessed: Bool
+    init(state: HTTPBodyState, blobID: String?, observedBytes: Int64, isProcessed: Bool = false) {
+        self.state = state; self.blobID = blobID; self.observedBytes = observedBytes; self.isProcessed = isProcessed
+    }
 
-    public static func restore(state: HTTPBodyState, blobID: String?, observedBytes: Int64) throws -> HTTPBodyReference {
+    public static func restore(state: HTTPBodyState, blobID: String?, observedBytes: Int64, isProcessed: Bool = false) throws -> HTTPBodyReference {
         let hasContent = state == .available || state == .truncated
-        guard observedBytes >= 0, hasContent == (blobID != nil),
+        guard observedBytes >= 0, hasContent == (blobID != nil), hasContent || !isProcessed,
               blobID.map(EvidenceValidation.httpBodyID) ?? true,
               state != .pending || observedBytes == 0,
               state != .available || observedBytes <= 65_536,
               state != .truncated || observedBytes > 0 else { throw PersistenceError.invalidRecord }
-        return HTTPBodyReference(state: state, blobID: blobID, observedBytes: observedBytes)
+        return HTTPBodyReference(state: state, blobID: blobID, observedBytes: observedBytes, isProcessed: isProcessed)
     }
 }
 
@@ -87,7 +92,7 @@ public struct HTTPEvent: Sendable {
                                statusCode: Int?, state: HTTPState, failure: HTTPFailure?, durationMillis: UInt64?,
                                requestBody: HTTPBodyReference, responseBody: HTTPBodyReference) throws -> HTTPEvent {
         guard EvidenceValidation.id(id), EvidenceValidation.id(sessionID), sequence > 0, revision >= 0,
-              ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH", "OTHER"].contains(method),
+              EvidenceValidation.method(method),
               EvidenceValidation.url(url), responseURL.map(EvidenceValidation.url) ?? true,
               EvidenceValidation.headers(requestHeaders), EvidenceValidation.headers(responseHeaders),
               statusCode.map({ (100...599).contains($0) }) ?? true,

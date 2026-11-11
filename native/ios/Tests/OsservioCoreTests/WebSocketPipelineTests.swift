@@ -39,15 +39,15 @@ final class WebSocketPipelineTests: XCTestCase {
         try XCTUnwrap(recorder.begin(url: "wss://user:secret@example.com/private?token=secret",
             headers: [HTTPHeader(name: "Authorization", value: "Bearer secret")]).token)
     }
-    func testDefaultPrivacyAndBinaryCount() throws {
+    func testExplicitTextOmissionAndBinaryCount() throws {
         let store = try MemoryWebSocketStore()
         let capture = try recorder(store)
         let token = try begin(capture)
         XCTAssertEqual(capture.text(token, direction: .outgoing, outcome: .queued, value: "secret"), .recorded)
         XCTAssertEqual(capture.binary(token, direction: .incoming, outcome: .received, byteCount: 1234), .recorded)
         let events = try XCTUnwrap(store.snapshot()).events
-        XCTAssertEqual(events[0].headers.first?.value, "[redacted]")
-        XCTAssertEqual(events[0].url, "wss://example.com/[redacted]?[redacted]")
+        XCTAssertEqual(events[0].headers.first?.value, "Bearer secret")
+        XCTAssertEqual(events[0].url, "wss://user:secret@example.com/private?token=secret")
         XCTAssertEqual(events[1].payload?.state, .omitted)
         XCTAssertNil(events[1].payload?.byteCount)
         XCTAssertNil(events[1].payload?.blobID)
@@ -107,7 +107,7 @@ final class WebSocketPipelineTests: XCTestCase {
         XCTAssertEqual(capture.lifecycle(token, kind: .failed, headers: [HTTPHeader(name: "Set-Cookie", value: "secret")],
             statusCode: 403, failure: .transport), .recorded)
         XCTAssertEqual(store.snapshot()?.events.last?.statusCode, 403)
-        XCTAssertEqual(store.snapshot()?.events.last?.headers.first?.value, "[redacted]")
+        XCTAssertEqual(store.snapshot()?.events.last?.headers.first?.value, "secret")
         try EvidenceRestorationTests.check(XCTUnwrap(store.snapshot()?.events.last))
         XCTAssertEqual(capture.status()?.activeConnections, 0)
     }

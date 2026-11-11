@@ -27,7 +27,7 @@ public final class CaptureLoadTest {
     private static final String TEXT = new String(new char[8192]).replace('\0', 'x');
     private static final byte[] BODY = TEXT.getBytes(StandardCharsets.UTF_8);
     private static final List<HTTPHeader> HEADERS = Arrays.asList(
-        new HTTPHeader("Authorization", "synthetic-secret"), new HTTPHeader("Content-Type", "text/plain"));
+        new HTTPHeader("Authorization", "Bearer " + String.join("", Collections.nCopies(1200, "x"))), new HTTPHeader("Content-Type", "text/plain"));
     private static final long[] LATENCY_UPPER_US = {10, 50, 100, 500, 1000, 5000, 20000};
 
     @Test public void sustainedCaptureAndQueryMeasurements() throws Exception {
@@ -47,9 +47,9 @@ public final class CaptureLoadTest {
         LogRecorder log = new LogRecorder(logs, capture);
         BreadcrumbRecorder breadcrumb = new BreadcrumbRecorder(crumbs, capture);
         HTTPRecorder http = new HTTPRecorder(requests, capture,
-            new HTTPPrivacyPolicy(false, Collections.emptySet(), HTTPPrivacyPolicy.BodyPolicy.PUBLIC_UTF8, 1024));
+            new HTTPPrivacyPolicy(true, null, HTTPPrivacyPolicy.BodyPolicy.PUBLIC_UTF8, 1024));
         WebSocketRecorder ws = new WebSocketRecorder(sockets, capture,
-            new WebSocketPrivacyPolicy(false, Collections.emptySet(), true, 1024));
+            new WebSocketPrivacyPolicy(true, null, true, 1024));
         if (!mode.equals("off")) assertTrue(capture.setBaselineEnabled(true));
         if (mode.equals("detailed") || mode.equals("queried")) capture.startDetailed(1000L * (seconds + 10));
         Map<String, Long> outcomes = new LinkedHashMap<>();
@@ -103,8 +103,8 @@ public final class CaptureLoadTest {
         assertEquals(0, ws.status().activeConnections);
         for (HTTPEvent event : requests.snapshot().events) {
             assertEquals(HTTPEvent.State.COMPLETED, event.state);
-            assertFalse(event.url.contains("secret"));
-            assertEquals("[redacted]", event.requestHeaders.get(0).value);
+            assertEquals("https://example.com/private?secret=value", event.url);
+            assertEquals(HEADERS.get(0).value, event.requestHeaders.get(0).value);
         }
         if (mode.equals("off") || mode.equals("baseline")) {
             assertTrue(logs.snapshot().events.isEmpty()); assertTrue(requests.snapshot().events.isEmpty()); assertTrue(sockets.snapshot().events.isEmpty());

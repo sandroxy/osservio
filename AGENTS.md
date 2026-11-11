@@ -30,8 +30,9 @@ and [the development guide](DEVELOPMENT.md) for repository ownership and checks.
 - Declare platform capability differences. Invalid configuration, unsupported
   behavior, and missing evidence must never look like successful capture.
 - Bound capture work and buffering before parsing or transferring observations.
-  Redact before persistence or transport. Stores, bridges, and exporters accept
-  sanitized events only; payload blobs remain separate from searchable metadata.
+  Apply the host-selected data policy before persistence or transport; do not
+  impose blanket redaction on authorized local debugging. Follow `doc/data-policy.md`.
+  Stores, bridges, and exporters accept validated, policy-processed events only; payload blobs remain separate from searchable metadata.
 - Use reviewed platform crash mechanisms. Never run normal application logic
   inside a fatal crash handler.
 - Prefer suitable maintained implementations over rebuilding mature components.

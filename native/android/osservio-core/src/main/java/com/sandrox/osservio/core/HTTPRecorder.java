@@ -60,8 +60,9 @@ public final class HTTPRecorder {
     private static final class FinalBody {
         final HTTPEvent.BodyReference reference;
         final HTTPBody body;
-        FinalBody(HTTPEvent.BodyState state, long observed, HTTPBody body) {
-            reference = new HTTPEvent.BodyReference(state, body == null ? null : body.id, observed); this.body = body;
+        FinalBody(HTTPEvent.BodyState state, long observed, HTTPBody body) { this(state, observed, body, false); }
+        FinalBody(HTTPEvent.BodyState state, long observed, HTTPBody body, boolean isProcessed) {
+            reference = new HTTPEvent.BodyReference(state, body == null ? null : body.id, observed, isProcessed); this.body = body;
         }
     }
 
@@ -142,8 +143,8 @@ public final class HTTPRecorder {
             if ((state != HTTPEvent.State.COMPLETED && state != HTTPEvent.State.FAILED && state != HTTPEvent.State.CANCELLED && state != HTTPEvent.State.CLOSED_EARLY)
                 || (state == HTTPEvent.State.COMPLETED && exchange.event.statusCode == null)
                 || ((state == HTTPEvent.State.FAILED) != (failure != null))) return Result.INVALID;
-            FinalBody request = finalizeBody(exchange.request, token.id + ".request", requestComplete);
-            FinalBody response = finalizeBody(exchange.response, token.id + ".response", responseComplete && state == HTTPEvent.State.COMPLETED);
+            FinalBody request = finalizeBody(exchange.request, token.id + ".request", requestComplete, DiagnosticTextPolicy.Field.REQUEST_BODY);
+            FinalBody response = finalizeBody(exchange.response, token.id + ".response", responseComplete && state == HTTPEvent.State.COMPLETED, DiagnosticTextPolicy.Field.RESPONSE_BODY);
             exchange.event = new HTTPEvent(exchange.event, null, false, null, null, state, failure,
                 now >= exchange.started ? now - exchange.started : null, request.reference, response.reference);
             List<HTTPBody> bodies = new ArrayList<>();
@@ -228,7 +229,7 @@ public final class HTTPRecorder {
         } catch (RuntimeException failure) { return Result.SINK_FAILURE; }
     }
 
-    private FinalBody finalizeBody(BodyBuffer buffer, String id, boolean complete) {
+    private FinalBody finalizeBody(BodyBuffer buffer, String id, boolean complete, DiagnosticTextPolicy.Field field) {
         if (privacy.bodyPolicy == HTTPPrivacyPolicy.BodyPolicy.OMIT) return new FinalBody(HTTPEvent.BodyState.OMITTED, buffer.observed, null);
         if (!complete || buffer.hasGap) return new FinalBody(HTTPEvent.BodyState.INCOMPLETE, buffer.observed, null);
         if (!buffer.supportsText) return new FinalBody(HTTPEvent.BodyState.UNSUPPORTED, buffer.observed, null);
@@ -237,6 +238,9 @@ public final class HTTPRecorder {
         int count = truncated ? HTTPPrivacyPolicy.completeUTF8Prefix(bytes, bytes.length) : bytes.length;
         String text = HTTPPrivacyPolicy.decode(bytes, count);
         if (text == null) return new FinalBody(HTTPEvent.BodyState.INVALID_TEXT, buffer.observed, null);
-        return new FinalBody(truncated ? HTTPEvent.BodyState.TRUNCATED : HTTPEvent.BodyState.AVAILABLE, buffer.observed, new HTTPBody(id, text));
+        String processed = DiagnosticTextPolicy.apply(privacy.textPolicy, field, null, text, truncated, privacy.bodyByteLimit);
+        if (processed == null) return new FinalBody(HTTPEvent.BodyState.OMITTED, buffer.observed, null);
+        return new FinalBody(truncated ? HTTPEvent.BodyState.TRUNCATED : HTTPEvent.BodyState.AVAILABLE,
+            buffer.observed, new HTTPBody(id, processed), !processed.equals(text));
     }
 }

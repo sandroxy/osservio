@@ -2,56 +2,52 @@ import Foundation
 
 public enum HTTPBodyPolicy: Sendable {
     case omit
-    /// The host has reviewed every body handled by this recorder as safe to retain and display.
+    /// Capture supported UTF-8 content within the configured budget and host text policy.
     case publicUTF8
 }
 
 public struct HTTPPrivacyPolicy: Sendable {
     public let publicURLPath: Bool
-    public let publicHeaderNames: Set<String>
+    public let publicURLQuery: Bool
+    /// Nil includes every valid header. An explicit set selects values; other headers retain an omission marker.
+    public let publicHeaderNames: Set<String>?
     public let bodyPolicy: HTTPBodyPolicy
     public let bodyByteLimit: Int
+    public let headerValueByteLimit: Int
+    public let textPolicy: DiagnosticTextPolicy
 
-    public init(publicURLPath: Bool = false, publicHeaderNames: Set<String> = [],
-                bodyPolicy: HTTPBodyPolicy = .omit, bodyByteLimit: Int = 16_384) throws {
-        guard publicHeaderNames.count <= 16, (1...65_536).contains(bodyByteLimit) else {
-            throw CaptureConfigurationError.invalidLimit
-        }
-        var names = Set<String>()
-        for name in publicHeaderNames {
-            guard Self.validHeaderName(name), !Self.secretHeaders.contains(name.lowercased()) else {
-                throw CaptureConfigurationError.invalidLimit
+    public init(publicURLPath: Bool = true, publicHeaderNames: Set<String>? = nil,
+                bodyPolicy: HTTPBodyPolicy = .publicUTF8, bodyByteLimit: Int = 16_384,
+                publicURLQuery: Bool = true, headerValueByteLimit: Int = 4_096,
+                textPolicy: DiagnosticTextPolicy = .unchanged) throws {
+        guard (publicHeaderNames?.count ?? 0) <= 32, (1...65_536).contains(bodyByteLimit),
+              (1...16_384).contains(headerValueByteLimit) else { throw CaptureConfigurationError.invalidLimit }
+        var names: Set<String>?
+        if let publicHeaderNames {
+            names = []
+            for name in publicHeaderNames {
+                guard Self.validHeaderName(name) else { throw CaptureConfigurationError.invalidLimit }
+                names?.insert(name.lowercased())
             }
-            names.insert(name.lowercased())
         }
-        self.publicURLPath = publicURLPath; self.publicHeaderNames = names
+        self.publicURLPath = publicURLPath; self.publicURLQuery = publicURLQuery; self.publicHeaderNames = names
         self.bodyPolicy = bodyPolicy; self.bodyByteLimit = bodyByteLimit
+        self.headerValueByteLimit = headerValueByteLimit; self.textPolicy = textPolicy
     }
-
-    private static let secretHeaders: Set<String> = ["authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"]
-    private static let knownHeaders: Set<String> = secretHeaders.union([
-        "content-type", "content-length", "content-encoding", "accept", "accept-encoding", "cache-control",
-        "connection", "host", "user-agent", "location", "referer", "origin", "etag", "if-none-match"
-    ])
 
     func url(_ raw: String) -> String {
-        guard raw.utf8.prefix(4_097).count <= 4_096,
-              !raw.unicodeScalars.contains(where: { $0.value < 0x20 || $0.value == 0x7F }),
-              let parts = URLComponents(string: raw), let scheme = parts.scheme?.lowercased(),
-              ["http", "https", "ws", "wss"].contains(scheme), let host = parts.host, !host.isEmpty,
-              host.utf8.allSatisfy({ $0 < 128 }), parts.port == nil || (1...65_535).contains(parts.port!) else {
+        guard EvidenceValidation.text(raw, limit: 4_096), EvidenceValidation.url(raw),
+              var parts = URLComponents(string: raw), raw != "[unavailable]" else { return "[unavailable]" }
+        if !publicURLPath { parts.percentEncodedPath = "/%5Bredacted%5D" }
+        if !publicURLQuery, parts.percentEncodedQuery != nil { parts.percentEncodedQuery = "%5Bredacted%5D" }
+        let selected = publicURLPath && publicURLQuery ? raw : (parts.string ?? "[unavailable]")
+        guard EvidenceValidation.text(selected, limit: 4_128), let result = textPolicy.apply(selected, field: .url, limit: 4_128), EvidenceValidation.url(result) else {
             return "[unavailable]"
         }
-        let origin = scheme + "://" + host.lowercased() + (parts.port.map { ":\($0)" } ?? "")
-        let path = publicURLPath ? (parts.percentEncodedPath.isEmpty ? "/" : parts.percentEncodedPath) : "/[redacted]"
-        return origin + path + (parts.percentEncodedQuery == nil ? "" : "?[redacted]")
+        return result
     }
 
-    func method(_ raw: String) -> String {
-        guard raw.utf8.prefix(17).count <= 16 else { return "OTHER" }
-        let value = raw.uppercased()
-        return ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"].contains(value) ? value : "OTHER"
-    }
+    func method(_ raw: String) -> String { EvidenceValidation.method(raw) ? raw : "OTHER" }
 
     func headers(_ raw: [HTTPHeader]) -> (values: [HTTPHeader], limited: Bool) {
         var result: [HTTPHeader] = []
@@ -59,17 +55,12 @@ public struct HTTPPrivacyPolicy: Sendable {
         for header in raw.prefix(32) {
             guard Self.validHeaderName(header.name) else { limited = true; continue }
             let name = header.name.lowercased()
-            guard Self.knownHeaders.contains(name) || publicHeaderNames.contains(name) else { limited = true; continue }
-            var value = "[redacted]"
-            if name == "content-type" { value = Self.mediaType(header.value) ?? "[unavailable]" }
-            else if name == "content-length", header.value.utf8.prefix(20).count <= 19,
-                    header.value.utf8.allSatisfy({ (48...57).contains($0) }), let length = Int64(header.value), length >= 0 {
-                value = String(length)
-            } else if publicHeaderNames.contains(name) {
-                value = Self.prefixText(header.value, limit: 512).text
-                if header.value.utf8.prefix(513).count > 512 { limited = true }
-            }
-            result.append(HTTPHeader(name: name, value: value))
+            let bounded = Self.prefixText(header.value, limit: headerValueByteLimit)
+            limited = limited || bounded.truncated
+            let permitted = publicHeaderNames.map { $0.contains(name) } ?? true
+            let value = permitted ? textPolicy.apply(bounded.text, field: .header(name), truncated: bounded.truncated,
+                                                    limit: headerValueByteLimit) : nil
+            result.append(HTTPHeader(name: name, value: value ?? "[redacted]"))
         }
         return (result, limited)
     }
@@ -102,12 +93,7 @@ public struct HTTPPrivacyPolicy: Sendable {
         return type
     }
 
-    private static func validHeaderName(_ value: String) -> Bool {
-        let bytes = value.utf8.prefix(65)
-        return !bytes.isEmpty && bytes.count <= 64 && bytes.allSatisfy {
-            (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) || $0 == 45
-        }
-    }
+    private static func validHeaderName(_ value: String) -> Bool { EvidenceValidation.headerName(value) }
 
     static func prefixText(_ raw: String, limit: Int) -> (text: String, truncated: Bool) {
         var bytes = Array(raw.utf8.prefix(limit + 1))

@@ -58,20 +58,24 @@ is unknown, for example native task completion after direct session invalidation
 
 ## Privacy and bounded work
 
-URLs and handshake headers follow the same source sanitization rules as
-[HTTP metadata](http.md). Default policy omits URL paths/query values and
-sensitive header values. Raw close reasons and exception descriptions are not
-accepted by the recording API. Handshake headers belong to their specific
-connecting/opened event rather than being copied onto every message. A rejected
-handshake can retain a sanitized response status and headers on its failure event.
+URLs and handshake headers use the same [host-controlled policy](http.md#data-policy)
+as HTTP. The default retains valid observed URLs, headers and UTF-8 message text;
+it does not forbid Token or Cookie values. Set `publicMessageText` to false to
+omit text without scanning it. `DiagnosticTextPolicy` can selectively process
+bounded messages, URLs and headers before recording. See [data ownership and
+output boundaries](data-policy.md).
 
-Text content is omitted by default. `publicMessageText` explicitly classifies
-**every text message** handled by that recorder as safe to retain. It is not a
-JSON secret scrubber. Capture scans only the permitted UTF-8 prefix and preserves
-scalar boundaries. Truncated text has an unknown full byte count; omitted text
-is not scanned just to calculate a size. A complete captured text payload can
-report its byte count. Binary observations accept only a known byte count and
-never receive or copy binary data.
+Handshake headers belong to their specific connecting/opened event, rather than
+being copied onto every message. A rejected handshake can retain response status
+and headers. The current typed lifecycle API records close codes and failure
+categories; it does not accept arbitrary close descriptions or exception objects.
+
+Capture scans only the permitted UTF-8 prefix and preserves scalar boundaries.
+Truncated text has an unknown full byte count. A processed payload keeps its
+`isProcessed` flag and original observed count; its retained text can have a
+different length. Binary observations still accept only a known count and never
+copy binary data. Omission, unsupported binary representation and resource
+truncation are separate facts.
 
 | Limit | Default | Configurable range |
 | --- | --- | --- |
@@ -107,7 +111,7 @@ Clearing this timeline does not stop observation. Later messages on a still
 observed connection are **new events** and may be retained; they do not recreate
 its cleared handshake. This differs from HTTP's updating request record. The
 new messages retain connection identity, source, URL, session, and sequence, so
-their limited context remains explicit. No WebSocket data survives process exit.
+their limited context remains explicit. Live WebSocket history is memory-only; explicit incident attachments may persist selected evidence.
 
 Shared Unicode and lifecycle fixtures, plus native tests for privacy, invalid
 transitions, overload, stale tokens, eviction, clearing, and sink rejection,

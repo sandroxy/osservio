@@ -150,7 +150,7 @@ public final class TombstoneDatabaseTest {
                 store.save(IncidentSnapshot.captureDiagnostic(rich(), 2000), 2000);
             }
             try (SQLiteDatabase raw = SQLiteDatabase.openDatabase(file(fixture).getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(6, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
+                assertEquals(7, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
                 assertEquals(100, EvidenceSQLite.scalar(raw, "SELECT saved_at FROM incidents WHERE id='eeeeeeee-eeee-eeee-eeee-000000000003'"));
             }
         }

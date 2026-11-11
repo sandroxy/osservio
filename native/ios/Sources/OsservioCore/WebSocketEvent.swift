@@ -15,16 +15,20 @@ public struct WebSocketPayloadReference: Sendable {
     public let blobID: String?
     /// Nil means the byte count was not available without inspecting more content.
     public let byteCount: Int64?
-    public static func restore(state: WebSocketPayloadState, blobID: String?, byteCount: Int64?) throws -> WebSocketPayloadReference {
+    public let isProcessed: Bool
+    init(state: WebSocketPayloadState, blobID: String?, byteCount: Int64?, isProcessed: Bool = false) {
+        self.state = state; self.blobID = blobID; self.byteCount = byteCount; self.isProcessed = isProcessed
+    }
+    public static func restore(state: WebSocketPayloadState, blobID: String?, byteCount: Int64?, isProcessed: Bool = false) throws -> WebSocketPayloadReference {
         let hasContent = state == .available || state == .truncated
-        guard hasContent == (blobID != nil), blobID.map(EvidenceValidation.id) ?? true,
+        guard hasContent == (blobID != nil), hasContent || !isProcessed, blobID.map(EvidenceValidation.id) ?? true,
               byteCount.map({ $0 >= 0 }) ?? true else { throw PersistenceError.invalidRecord }
         switch state {
         case .available: guard let byteCount, byteCount <= 65_536 else { throw PersistenceError.invalidRecord }
         case .binary: guard byteCount != nil else { throw PersistenceError.invalidRecord }
         case .omitted, .invalidText, .truncated: guard byteCount == nil else { throw PersistenceError.invalidRecord }
         }
-        return WebSocketPayloadReference(state: state, blobID: blobID, byteCount: byteCount)
+        return WebSocketPayloadReference(state: state, blobID: blobID, byteCount: byteCount, isProcessed: isProcessed)
     }
 }
 public struct WebSocketPayload: Sendable {

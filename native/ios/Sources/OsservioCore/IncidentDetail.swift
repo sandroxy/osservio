@@ -107,7 +107,7 @@ public struct IncidentHTTP: Sendable {
             for reference in [event.requestBody, event.responseBody] {
                 guard let id = reference.blobID else { continue }
                 guard references.insert(id).inserted, let payload = payloads[id] else { throw PersistenceError.invalidRecord }
-                if payload.state == .available {
+                if payload.state == .available, !reference.isProcessed {
                     guard reference.state == .available ? Int64(payload.textByteCount) == reference.observedBytes
                         : reference.state == .truncated && Int64(payload.textByteCount) < reference.observedBytes else { throw PersistenceError.invalidRecord }
                 }
@@ -179,7 +179,7 @@ public struct IncidentWebSockets: Sendable {
         for event in events {
             guard let reference = event.payload, let id = reference.blobID else { continue }
             guard references.insert(id).inserted, let payload = payloads[id] else { throw PersistenceError.invalidRecord }
-            if payload.state == .available, reference.state == .available {
+            if payload.state == .available, reference.state == .available, !reference.isProcessed {
                 guard reference.byteCount == Int64(payload.textByteCount) else { throw PersistenceError.invalidRecord }
             }
         }

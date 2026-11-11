@@ -7,7 +7,7 @@ import XCTest
 /// Opt-in synthetic load. Process measurements include the harness, not just the SDK.
 final class CaptureLoadTests: XCTestCase {
     private let text = String(repeating: "x", count: 8_192)
-    private let headers = [HTTPHeader(name: "Authorization", value: "synthetic-secret"),
+    private let headers = [HTTPHeader(name: "Authorization", value: "Bearer " + String(repeating: "x", count: 1_200)),
                            HTTPHeader(name: "Content-Type", value: "text/plain")]
     private let latencyUpperUs: [UInt64] = [10, 50, 100, 500, 1_000, 5_000, 20_000]
 
@@ -97,8 +97,8 @@ final class CaptureLoadTests: XCTestCase {
         XCTAssertEqual(ws.status()?.activeConnections, 0)
         for event in try XCTUnwrap(requests.snapshot()).events {
             XCTAssertEqual(event.state, .completed)
-            XCTAssertFalse(event.url.contains("secret"))
-            XCTAssertEqual(event.requestHeaders.first?.value, "[redacted]")
+            XCTAssertEqual(event.url, "https://example.com/private?secret=value")
+            XCTAssertEqual(event.requestHeaders.first?.value, headers.first?.value)
         }
         if mode == "off" || mode == "baseline" {
             XCTAssertTrue(logs.snapshot()?.events.isEmpty == true)

@@ -43,7 +43,7 @@ public final class WebSocketPipelineTest {
     private static WebSocketRecorder.Result lifecycle(WebSocketRecorder recorder, WebSocketRecorder.Token token, WebSocketEvent.Kind kind) {
         return recorder.lifecycle(token, kind, EMPTY, null, null, null);
     }
-    @Test public void defaultPrivacyAndBinaryCount() {
+    @Test public void explicitTextOmissionAndBinaryCount() {
         MemoryWebSocketStore store = new MemoryWebSocketStore();
         WebSocketRecorder recorder = recorder(store, false, 4096, 100);
         WebSocketRecorder.Token token = begin(recorder);
@@ -51,7 +51,7 @@ public final class WebSocketPipelineTest {
         assertEquals(WebSocketRecorder.Result.RECORDED, recorder.binary(token, WebSocketEvent.Direction.INCOMING, WebSocketEvent.Outcome.RECEIVED, 1234));
         List<WebSocketEvent> events = store.snapshot().events;
         assertEquals("[redacted]", events.get(0).headers.get(0).value);
-        assertEquals("wss://example.com/[redacted]?[redacted]", events.get(0).url);
+        assertEquals("wss://user:secret@example.com/%5Bredacted%5D?token=secret", events.get(0).url);
         assertEquals(WebSocketEvent.PayloadState.OMITTED, events.get(1).payload.state);
         assertNull(events.get(1).payload.byteCount); assertNull(events.get(1).payload.blobId);
         assertEquals(WebSocketEvent.PayloadState.BINARY, events.get(2).payload.state);

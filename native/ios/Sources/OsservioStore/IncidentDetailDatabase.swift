@@ -21,6 +21,11 @@ final class IncidentDetailDatabase {
     private let connection: SQLiteConnection
     init(connection: SQLiteConnection) { self.connection = connection }
 
+    static let contentPolicySchema = [
+        "ALTER TABLE incident_http ADD COLUMN request_processed INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE incident_http ADD COLUMN response_processed INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE incident_websocket ADD COLUMN payload_processed INTEGER NOT NULL DEFAULT 0"
+    ]
     static let schema = [
         """
         CREATE TABLE incident_windows (incident_id TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
@@ -82,13 +87,14 @@ final class IncidentDetailDatabase {
                 try connection.execute("""
                     INSERT INTO incident_http(incident_id, position, id, session_id, sequence, revision, timestamp, method, source,
                         url, response_url, headers_limited, status_code, state, failure, duration, request_state, request_blob,
-                        request_bytes, response_state, response_blob, response_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        request_bytes, response_state, response_blob, response_bytes, request_processed, response_processed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, [.text(id), .integer(Int64(position)), .text(event.id), .text(event.sessionID), .integer(event.sequence), .integer(event.revision),
                              .integer(event.timestampMillis), .text(event.method), .text(event.source.rawValue), .text(event.url), optional(event.responseURL),
                              .integer(event.headersLimited ? 1 : 0), event.statusCode.map { .integer(Int64($0)) } ?? .null, .text(event.state.rawValue),
                              optional(event.failure?.rawValue), optional(event.durationMillis.map(String.init)), .text(event.requestBody.state.rawValue),
                              optional(event.requestBody.blobID), .integer(event.requestBody.observedBytes), .text(event.responseBody.state.rawValue),
-                             optional(event.responseBody.blobID), .integer(event.responseBody.observedBytes)])
+                             optional(event.responseBody.blobID), .integer(event.responseBody.observedBytes),
+                             .integer(event.requestBody.isProcessed ? 1 : 0), .integer(event.responseBody.isProcessed ? 1 : 0)])
                 try saveHeaders(id, .http, position, "request", event.requestHeaders)
                 try saveHeaders(id, .http, position, "response", event.responseHeaders)
             }
@@ -100,13 +106,13 @@ final class IncidentDetailDatabase {
             for (position, event) in sockets.events.enumerated() {
                 try connection.execute("""
                     INSERT INTO incident_websocket(incident_id, position, id, connection_id, session_id, sequence, timestamp, url, source,
-                        kind, headers_limited, status_code, close_code, failure, direction, outcome, related_message, payload_state, payload_blob, payload_count)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        kind, headers_limited, status_code, close_code, failure, direction, outcome, related_message, payload_state, payload_blob, payload_count, payload_processed)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, [.text(id), .integer(Int64(position)), .text(event.id), .text(event.connectionID), .text(event.sessionID), .integer(event.sequence),
                              .integer(event.timestampMillis), .text(event.url), .text(event.source.rawValue), .text(event.kind.rawValue), .integer(event.headersLimited ? 1 : 0),
                              event.statusCode.map { .integer(Int64($0)) } ?? .null, event.closeCode.map { .integer(Int64($0)) } ?? .null,
                              optional(event.failure?.rawValue), optional(event.direction?.rawValue), optional(event.outcome?.rawValue), optional(event.relatedMessageID),
-                             optional(event.payload?.state.rawValue), optional(event.payload?.blobID), event.payload?.byteCount.map(SQLiteValue.integer) ?? .null])
+                             optional(event.payload?.state.rawValue), optional(event.payload?.blobID), event.payload?.byteCount.map(SQLiteValue.integer) ?? .null, .integer(event.payload?.isProcessed == true ? 1 : 0)])
                 try saveHeaders(id, .websocket, position, "event", event.headers)
             }
             try savePayloads(id, .websocket, sockets.payloads)
@@ -182,13 +188,13 @@ final class IncidentDetailDatabase {
         try connection.statement("""
             SELECT position, id, session_id, sequence, revision, timestamp, method, source, url, response_url,
                 headers_limited, status_code, state, failure, duration, request_state, request_blob, request_bytes,
-                response_state, response_blob, response_bytes FROM incident_http WHERE incident_id=? ORDER BY position LIMIT 2001
+                response_state, response_blob, response_bytes, request_processed, response_processed FROM incident_http WHERE incident_id=? ORDER BY position LIMIT 2001
             """, [.text(id)]) { row in
             while try row.step() {
                 guard let window, events.count < window.count, try row.integer(0) == events.count else { throw PersistenceError.invalidRecord }
                 let headers = try readHeaders(id, .http, position: events.count, scopes: ["request", "response"], total: &headerRows)
-                let request = try HTTPBodyReference.restore(state: required(row, 15), blobID: text(row, 16, 45), observedBytes: row.integer(17))
-                let response = try HTTPBodyReference.restore(state: required(row, 18), blobID: text(row, 19, 45), observedBytes: row.integer(20))
+                let request = try HTTPBodyReference.restore(state: required(row, 15), blobID: text(row, 16, 45), observedBytes: row.integer(17), isProcessed: row.flag(21))
+                let response = try HTTPBodyReference.restore(state: required(row, 18), blobID: text(row, 19, 45), observedBytes: row.integer(20), isProcessed: row.flag(22))
                 let event = try HTTPEvent.restore(id: row.text(1, byteLimit: 36), sessionID: row.text(2, byteLimit: 36), sequence: row.integer(3),
                     revision: row.integer(4), timestampMillis: row.integer(5), method: row.text(6, byteLimit: 16), source: required(row, 7),
                     url: row.text(8, byteLimit: 4_128), responseURL: text(row, 9, 4_128), requestHeaders: headers["request"] ?? [], responseHeaders: headers["response"] ?? [],
@@ -209,15 +215,15 @@ final class IncidentDetailDatabase {
         var events: [WebSocketEvent] = [], bytes = 0
         try connection.statement("""
             SELECT position, id, connection_id, session_id, sequence, timestamp, url, source, kind, headers_limited,
-                status_code, close_code, failure, direction, outcome, related_message, payload_state, payload_blob, payload_count
+                status_code, close_code, failure, direction, outcome, related_message, payload_state, payload_blob, payload_count, payload_processed
             FROM incident_websocket WHERE incident_id=? ORDER BY position LIMIT 2001
             """, [.text(id)]) { row in
             while try row.step() {
                 guard let window, events.count < window.count, try row.integer(0) == events.count else { throw PersistenceError.invalidRecord }
                 let headers = try readHeaders(id, .websocket, position: events.count, scopes: ["event"], total: &headerRows)
                 let payload: WebSocketPayloadReference?
-                if row.isNull(16) { guard row.isNull(17), row.isNull(18) else { throw PersistenceError.invalidRecord }; payload = nil }
-                else { payload = try .restore(state: required(row, 16), blobID: text(row, 17, 36), byteCount: row.isNull(18) ? nil : row.integer(18)) }
+                if row.isNull(16) { guard row.isNull(17), row.isNull(18), try !row.flag(19) else { throw PersistenceError.invalidRecord }; payload = nil }
+                else { payload = try .restore(state: required(row, 16), blobID: text(row, 17, 36), byteCount: row.isNull(18) ? nil : row.integer(18), isProcessed: row.flag(19)) }
                 let event = try WebSocketEvent.restore(id: row.text(1, byteLimit: 36), connectionID: row.text(2, byteLimit: 36), sessionID: row.text(3, byteLimit: 36),
                     sequence: row.integer(4), timestampMillis: row.integer(5), url: row.text(6, byteLimit: 4_128), source: required(row, 7), kind: required(row, 8),
                     headers: headers["event"] ?? [], headersLimited: row.flag(9), statusCode: number(row, 10), closeCode: number(row, 11),
@@ -241,7 +247,7 @@ final class IncidentDetailDatabase {
                     let scope = try row.text(0, byteLimit: 16)
                     let count = headers[scope]?.count ?? 0
                     guard scopes.contains(scope), count < 32, try row.integer(1) == count else { throw PersistenceError.invalidRecord }
-                    headers[scope, default: []].append(try HTTPHeader(name: row.text(2, byteLimit: 64), value: row.text(3, byteLimit: 512)))
+                    headers[scope, default: []].append(try HTTPHeader(name: row.text(2, byteLimit: 64), value: row.text(3, byteLimit: 16_384)))
                     total += 1
                 }
                 return headers

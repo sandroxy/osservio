@@ -18,15 +18,22 @@ public final class HTTPEvent {
         public final BodyState state;
         public final String blobId;
         public final long observedBytes;
+        public final boolean isProcessed;
         BodyReference(BodyState state, String blobId, long observedBytes) {
-            this.state = state; this.blobId = blobId; this.observedBytes = observedBytes;
+            this(state, blobId, observedBytes, false);
+        }
+        BodyReference(BodyState state, String blobId, long observedBytes, boolean isProcessed) {
+            this.state = state; this.blobId = blobId; this.observedBytes = observedBytes; this.isProcessed = isProcessed;
         }
         public static BodyReference restore(BodyState state, String blobId, long observedBytes) {
+            return restore(state, blobId, observedBytes, false);
+        }
+        public static BodyReference restore(BodyState state, String blobId, long observedBytes, boolean isProcessed) {
             boolean content = state == BodyState.AVAILABLE || state == BodyState.TRUNCATED;
-            if (state == null || observedBytes < 0 || content != (blobId != null) || (blobId != null && !EvidenceValidation.httpBodyId(blobId))
+            if ((!content && isProcessed) || state == null || observedBytes < 0 || content != (blobId != null) || (blobId != null && !EvidenceValidation.httpBodyId(blobId))
                 || (state == BodyState.PENDING && observedBytes != 0) || (state == BodyState.AVAILABLE && observedBytes > 65536)
                 || (state == BodyState.TRUNCATED && observedBytes == 0)) throw EvidenceValidation.invalid();
-            return new BodyReference(state, blobId, observedBytes);
+            return new BodyReference(state, blobId, observedBytes, isProcessed);
         }
     }
 
@@ -88,7 +95,7 @@ public final class HTTPEvent {
                                     List<HTTPHeader> responseHeaders, boolean headersLimited, Integer statusCode, State state,
                                     Failure failure, Long durationMillis, BodyReference requestBody, BodyReference responseBody) {
         if (!EvidenceValidation.id(id) || !EvidenceValidation.id(sessionId) || sequence <= 0 || revision < 0 || source == null || state == null
-            || !Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH", "OTHER").contains(method)
+            || !EvidenceValidation.method(method)
             || !EvidenceValidation.url(url) || (responseURL != null && !EvidenceValidation.url(responseURL))
             || !EvidenceValidation.headers(requestHeaders) || !EvidenceValidation.headers(responseHeaders)
             || (statusCode != null && (statusCode < 100 || statusCode > 599)) || (durationMillis != null && durationMillis < 0)

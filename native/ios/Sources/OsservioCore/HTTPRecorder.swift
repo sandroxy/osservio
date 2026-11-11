@@ -131,8 +131,8 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
             guard [.completed, .failed, .cancelled, .closedEarly].contains(state),
                   state != .completed || exchange.event.statusCode != nil,
                   (state == .failed) == (failure != nil) else { return .invalid }
-            let request = finalize(exchange.request, id: token.id + ".request", complete: requestComplete)
-            let response = finalize(exchange.response, id: token.id + ".response", complete: responseComplete && state == .completed)
+            let request = finalize(exchange.request, id: token.id + ".request", complete: requestComplete, field: .requestBody)
+            let response = finalize(exchange.response, id: token.id + ".response", complete: responseComplete && state == .completed, field: .responseBody)
             exchange.event = HTTPEvent(previous: exchange.event, state: state, failure: failure,
                                        duration: now >= exchange.started ? now - exchange.started : nil,
                                        request: request.reference, response: response.reference)
@@ -212,7 +212,7 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
         } catch { return .sinkFailure }
     }
 
-    private func finalize(_ buffer: BodyBuffer, id: String, complete: Bool) -> (reference: HTTPBodyReference, body: HTTPBody?) {
+    private func finalize(_ buffer: BodyBuffer, id: String, complete: Bool, field: DiagnosticTextPolicy.Field) -> (reference: HTTPBodyReference, body: HTTPBody?) {
         func omitted(_ state: HTTPBodyState) -> (HTTPBodyReference, HTTPBody?) {
             (HTTPBodyReference(state: state, blobID: nil, observedBytes: buffer.observed), nil)
         }
@@ -223,8 +223,12 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
         var bytes = buffer.bytes
         if truncated { bytes = Self.completeUTF8Prefix(bytes) }
         guard let text = String(data: bytes, encoding: .utf8) else { return omitted(.invalidText) }
-        let body = HTTPBody(id: id, text: text)
-        return (HTTPBodyReference(state: truncated ? .truncated : .available, blobID: id, observedBytes: buffer.observed), body)
+        guard let processed = privacy.textPolicy.apply(text, field: field, truncated: truncated, limit: privacy.bodyByteLimit) else {
+            return omitted(.omitted)
+        }
+        let body = HTTPBody(id: id, text: processed)
+        return (HTTPBodyReference(state: truncated ? .truncated : .available, blobID: id,
+                                 observedBytes: buffer.observed, isProcessed: processed != text), body)
     }
 
     private static func completeUTF8Prefix(_ bytes: Data) -> Data {

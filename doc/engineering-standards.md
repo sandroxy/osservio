@@ -92,12 +92,15 @@ successful host operation into a failure or conceal the host's own error.
   Apply admission limits before parsing, copying large payloads, or transferring
   data across a runtime bridge. Avoid arbitrary object traversal, getters, or
   unbounded stringification in a capture hook.
-- Sanitize at the source before bridge transfer and validate at the receiving
+- Apply the host-selected [data policy](data-policy.md) at the source before bridge transfer and validate at the receiving
   boundary. Raw observations and sanitized events are distinct types. Stores,
   bridges, exporters, and optional remote sinks accept sanitized events only.
 - Treat metadata, URLs, headers, bodies, errors, and custom context as possible
-  sources of sensitive data. Unknown or unsupported payload formats must not
-  bypass redaction. Omit content when safe bounded handling is unavailable.
+  sources of sensitive data. Trust the host-authorized local operator; do not
+  introduce hardcoded credential bans or blanket hiding. Unknown or unsupported
+  formats must not bypass host-selected processing. Omit content when bounded
+  handling is unavailable. Keep account ownership and explicit external delivery
+  separate from local readability.
 - Keep payload blobs separate from indexed metadata. Format, highlight,
   decompress, and search payload content lazily within explicit limits.
 - Observation must not consume, replay, or force additional reads from a host

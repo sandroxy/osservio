@@ -83,7 +83,7 @@ public final class IncidentHTTP {
                 if (reference.blobId == null) continue;
                 IncidentPayload payload = payloads.get(reference.blobId);
                 if (!references.add(reference.blobId) || payload == null) throw EvidenceValidation.invalid();
-                if (payload.state == IncidentPayload.State.AVAILABLE) {
+                if (payload.state == IncidentPayload.State.AVAILABLE && !reference.isProcessed) {
                     boolean valid = reference.state == HTTPEvent.BodyState.AVAILABLE ? payload.textByteCount == reference.observedBytes
                         : reference.state == HTTPEvent.BodyState.TRUNCATED && payload.textByteCount < reference.observedBytes;
                     if (!valid) throw EvidenceValidation.invalid();

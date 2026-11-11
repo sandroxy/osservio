@@ -1,0 +1,442 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 5,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "-9223372036854775808",
+      "note": {
+        "text": "[private]",
+        "isPrivate": true,
+        "isTruncated": false
+      },
+      "environment": {
+        "platform": "android",
+        "timestampMillis": "123",
+        "values": {
+          "osVersion": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "appIdentifier": {
+            "type": "text",
+            "value": "com.example.fixture",
+            "isTruncated": false
+          },
+          "appVersion": {
+            "type": "text",
+            "value": "测试1",
+            "isTruncated": true
+          },
+          "appBuild": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "manufacturer": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "deviceModel": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "architecture": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "thermalState": {
+            "type": "unsupported",
+            "value": null,
+            "isTruncated": false
+          },
+          "physicalMemoryBytes": {
+            "type": "number",
+            "value": "9007199254740993",
+            "isTruncated": false
+          },
+          "processResidentBytes": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "processProportionalBytes": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "processFootprintBytes": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "runtimeHeapBytes": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "runtimeHeapLimitBytes": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "processID": {
+            "type": "number",
+            "value": "7",
+            "isTruncated": false
+          },
+          "batteryPercent": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "lowPowerMode": {
+            "type": "flag",
+            "value": false,
+            "isTruncated": false
+          }
+        }
+      },
+      "breadcrumbs": {
+        "events": [
+          {
+            "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "9007199254740993",
+            "timestampMillis": "-9223372036854775808",
+            "sessionElapsedMillis": "9223372036854775807",
+            "kind": "hostMarker",
+            "label": "fixture.private",
+            "message": "[private]",
+            "isPrivate": true,
+            "isTruncated": false,
+            "value": "-9223372036854775808",
+            "retention": "restartRelevant"
+          }
+        ],
+        "sourceEventCount": 3,
+        "omittedEventCount": 2,
+        "sourceEvictedCount": "9223372036854775807",
+        "retainedTextBytes": 24
+      },
+      "logs": {
+        "observedAtMillis": "456",
+        "events": [
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "9007199254740993",
+            "timestampMillis": "9223372036854775807",
+            "level": "error",
+            "category": "fixture",
+            "message": "Quote\"\\\n汉😀\u0000",
+            "isPrivate": false,
+            "isTruncated": true
+          },
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "9007199254740994",
+            "timestampMillis": "9223372036854775807",
+            "level": "warning",
+            "category": "fixture",
+            "message": "[private]",
+            "isPrivate": true,
+            "isTruncated": false
+          }
+        ],
+        "sourceEventCount": 3,
+        "omittedEventCount": 1,
+        "sourceEvictedCount": "9",
+        "retainedTextBytes": 39
+      },
+      "http": {
+        "observedAtMillis": "457",
+        "events": [
+          {
+            "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "9007199254740993",
+            "revision": "2",
+            "timestampMillis": "123",
+            "method": "PROPFIND",
+            "source": "okHttp",
+            "url": "https://user:fixture@example.com/frozen?token=synthetic-only&x=1&x=2#detail",
+            "responseURL": "https://example.com/frozen?[redacted]",
+            "requestHeaders": [
+              {
+                "name": "authorization",
+                "value": "Bearer synthetic-only"
+              },
+              {
+                "name": "x_custom",
+                "value": "trace-value"
+              }
+            ],
+            "responseHeaders": [
+              {
+                "name": "content-type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "set-cookie",
+                "value": "fixture=synthetic-only; HttpOnly"
+              }
+            ],
+            "headersLimited": true,
+            "statusCode": 200,
+            "state": "completed",
+            "failure": null,
+            "durationMillis": "9223372036854775807",
+            "requestBody": {
+              "state": "available",
+              "blobID": "dddddddd-dddd-dddd-dddd-dddddddddddd.request",
+              "observedBytes": "0",
+              "isProcessed": false
+            },
+            "responseBody": {
+              "state": "available",
+              "blobID": "dddddddd-dddd-dddd-dddd-dddddddddddd.response",
+              "observedBytes": "2",
+              "isProcessed": true
+            }
+          }
+        ],
+        "sourceEventCount": 3,
+        "omittedEventCount": 2,
+        "sourceEvictedEvents": "5",
+        "sourceEvictedBodies": "7",
+        "retainedTextBytes": 258,
+        "retainedPayloadBytes": 3,
+        "payloads": {
+          "dddddddd-dddd-dddd-dddd-dddddddddddd.request": {
+            "state": "available",
+            "textByteCount": 0
+          },
+          "dddddddd-dddd-dddd-dddd-dddddddddddd.response": {
+            "state": "available",
+            "textByteCount": 3
+          }
+        }
+      },
+      "webSockets": {
+        "observedAtMillis": "458",
+        "events": [
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000001",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "1",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "message",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "submitted",
+            "relatedMessageID": null,
+            "payload": {
+              "state": "available",
+              "blobID": "eeeeeeee-eeee-eeee-eeee-000000000001",
+              "byteCount": "3",
+              "isProcessed": false
+            }
+          },
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000002",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "2",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "message",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "submitted",
+            "relatedMessageID": null,
+            "payload": {
+              "state": "available",
+              "blobID": "eeeeeeee-eeee-eeee-eeee-000000000002",
+              "byteCount": "3",
+              "isProcessed": false
+            }
+          },
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000003",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "3",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "message",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "submitted",
+            "relatedMessageID": null,
+            "payload": {
+              "state": "available",
+              "blobID": "eeeeeeee-eeee-eeee-eeee-000000000003",
+              "byteCount": "3",
+              "isProcessed": false
+            }
+          },
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000004",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "4",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "message",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "submitted",
+            "relatedMessageID": null,
+            "payload": {
+              "state": "available",
+              "blobID": "eeeeeeee-eeee-eeee-eeee-000000000004",
+              "byteCount": "3",
+              "isProcessed": false
+            }
+          },
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000005",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "5",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "message",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "submitted",
+            "relatedMessageID": null,
+            "payload": {
+              "state": "available",
+              "blobID": "eeeeeeee-eeee-eeee-eeee-000000000005",
+              "byteCount": "0",
+              "isProcessed": false
+            }
+          },
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000006",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "6",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "message",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "submitted",
+            "relatedMessageID": null,
+            "payload": {
+              "state": "available",
+              "blobID": "eeeeeeee-eeee-eeee-eeee-000000000006",
+              "byteCount": "4",
+              "isProcessed": false
+            }
+          },
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000007",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "7",
+            "timestampMillis": "124",
+            "url": "wss://example.com/socket?[redacted]",
+            "source": "urlSession",
+            "kind": "messageResult",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": null,
+            "failure": null,
+            "direction": "outgoing",
+            "outcome": "sent",
+            "relatedMessageID": "eeeeeeee-eeee-eeee-eeee-000000000006",
+            "payload": null
+          }
+        ],
+        "sourceEventCount": 9,
+        "omittedEventCount": 2,
+        "sourceEvictedEvents": "5",
+        "sourceEvictedPayloads": "7",
+        "retainedTextBytes": 245,
+        "retainedPayloadBytes": 4,
+        "payloads": {
+          "eeeeeeee-eeee-eeee-eeee-000000000001": {
+            "state": "notSelected",
+            "textByteCount": 0
+          },
+          "eeeeeeee-eeee-eeee-eeee-000000000002": {
+            "state": "unavailable",
+            "textByteCount": 0
+          },
+          "eeeeeeee-eeee-eeee-eeee-000000000003": {
+            "state": "busy",
+            "textByteCount": 0
+          },
+          "eeeeeeee-eeee-eeee-eeee-000000000004": {
+            "state": "budgetExceeded",
+            "textByteCount": 0
+          },
+          "eeeeeeee-eeee-eeee-eeee-000000000005": {
+            "state": "available",
+            "textByteCount": 0
+          },
+          "eeeeeeee-eeee-eeee-eeee-000000000006": {
+            "state": "available",
+            "textByteCount": 4
+          }
+        }
+      },
+      "origin": "manual",
+      "systemDiagnostic": null
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 5,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {
+      "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",
+      "dddddddd-dddd-dddd-dddd-dddddddddddd.response": "汉"
+    },
+    "webSockets": {
+      "eeeeeeee-eeee-eeee-eeee-000000000005": "",
+      "eeeeeeee-eeee-eeee-eeee-000000000006": "😀"
+    }
+  }
+}

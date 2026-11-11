@@ -14,14 +14,14 @@ Each batch offers five mixed ticks followed by 10 ms idle, without catching up
 after scheduler delays. A tick offers a log, breadcrumb, HTTP exchange and
 WebSocket connection/message/close. The recorders use their normal rate limits.
 Logs alternate public 8 KiB synthetic text and private text. Synthetic HTTP and
-WebSocket content is explicitly approved with a 1 KiB prefix. URLs and secret
-headers exercise redaction. This intentionally overloads admission and fills
+WebSocket content uses a 1 KiB prefix. Complete URLs and 1,207-byte synthetic
+Authorization values exercise the local-debugging policy without redaction. This intentionally overloads admission and fills
 retained windows repeatedly; the offered load is not a production traffic model.
 
 The store budgets match on both platforms: 200 logs, 200 breadcrumbs, 100 HTTP
 entries and 200 WebSocket events, each with a 64 KiB metadata text budget. HTTP
 bodies have 32 KiB and WebSocket payloads have 16 KiB. Assertions check bounds,
-off/baseline admission, repeated eviction, private-text/header removal, completed
+off/baseline admission, repeated eviction, explicit private-text omission and complete header preservation, completed
 HTTP exchanges, and release of WebSocket slots despite rate-limited terminals.
 Concurrency, collector/transport behavior, disk retention and crash recovery
 have separate functional tests.

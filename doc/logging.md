@@ -55,27 +55,23 @@ resuming loads current retained history. Clearing history affects the shared
 store, including other viewers, but does not stop capture. Existing snapshots
 remain immutable and may still contain cleared or evicted events until released.
 
-## Privacy boundary
+## Content ownership
 
-Every message must use one of two explicit classifications:
+`LogMessage.publicText` retains the supplied diagnostic text within the log budget.
+It does not mean publicly distributable or automatically scrubbed. The authorized
+local operator can read, search and copy it. `privateText` is an explicit host
+choice to discard the original immediately and record `[private]` with a typed
+privacy flag. Existing private records cannot be unmasked later.
 
-- `privateText` immediately discards its input and substitutes `[private]`.
-  The original text is not retained by the message, recorder, store, or inspector.
-  This does not erase the caller's own copies from memory.
-- `publicText` means the host has reviewed the text and permits it to be recorded
-  and displayed. It does **not** detect or remove credentials, personal data, or
-  arbitrary secrets. Do not pass raw user input, request payloads, or exception
-  descriptions without a suitable host sanitization policy.
+The host can process text before calling the recorder. Future automatic adapters
+must apply the same host-selected policy before bridge transfer. Stores accept
+admitted events, not raw observations. See [diagnostic data policy](data-policy.md)
+for the trust model, account lifecycle and output boundaries.
 
-Categories are static labels such as `app.lifecycle`, containing 1–64 ASCII
-letters, digits, periods, underscores, or hyphens. The character restriction is
-not a privacy filter: never embed a user identifier, token, URL, or other runtime
-data in a category.
-
-Only the recorder constructs `LogEvent` values through the public API. Storage
-accepts these admitted events rather than raw message text. Future automatic
-collectors require their own bounded redaction policies before entering this
-boundary; explicit public classification is not a substitute for those policies.
+Categories remain static grouping labels with a 64-byte token budget. Runtime
+identities, URLs or parameters belong in the message so they do not create an
+unbounded set of filter categories. This organization rule is independent of
+which content the host permits.
 
 ## Resource limits
 

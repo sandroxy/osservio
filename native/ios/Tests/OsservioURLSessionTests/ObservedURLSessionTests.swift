@@ -110,14 +110,14 @@ final class ObservedURLSessionTests: XCTestCase {
         let event = try onlyEvent()
         XCTAssertEqual(event.source, .urlSession)
         XCTAssertEqual(event.state, .completed)
-        XCTAssertTrue(event.url.hasSuffix("/success?[redacted]"))
-        XCTAssertTrue(try XCTUnwrap(event.responseURL).hasSuffix("/success?[redacted]"))
+        XCTAssertTrue(event.url.hasSuffix("/success?token=synthetic"))
+        XCTAssertTrue(try XCTUnwrap(event.responseURL).hasSuffix("/success?token=synthetic"))
         XCTAssertEqual(event.requestBody.state, .truncated)
         XCTAssertEqual(event.responseBody.state, .truncated)
         guard case .available(let body) = store.body(id: try XCTUnwrap(event.responseBody.blobID)) else { return XCTFail("Missing body") }
         XCTAssertEqual(body.text, "response")
-        XCTAssertEqual(event.requestHeaders.first { $0.name == "authorization" }?.value, "[redacted]")
-        XCTAssertEqual(event.responseHeaders.first { $0.name == "set-cookie" }?.value, "[redacted]")
+        XCTAssertEqual(event.requestHeaders.first { $0.name == "authorization" }?.value, "Bearer synthetic-only")
+        XCTAssertEqual(event.responseHeaders.first { $0.name == "set-cookie" }?.value, "synthetic-secret")
     }
 
     func testNetworkErrorReachesHostUnchangedWithoutRecordingItsDescription() throws {
@@ -211,7 +211,7 @@ final class ObservedURLSessionTests: XCTestCase {
         }.resume()
         wait(for: [done], timeout: 3)
         XCTAssertEqual(delegate.redirects, 1)
-        XCTAssertTrue(try XCTUnwrap(try onlyEvent().responseURL).hasSuffix("/alternate?[redacted]"))
+        XCTAssertTrue(try XCTUnwrap(try onlyEvent().responseURL).hasSuffix("/alternate?secret=value"))
     }
 
     func testAsyncDataPreservesResultAndCancellation() async throws {

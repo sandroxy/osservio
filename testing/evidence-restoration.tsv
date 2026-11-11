@@ -12,16 +12,16 @@ http-redacted-url	http	url	https://example.com/[redacted]?[redacted]	true
 http-approved-path	http	url	https://example.com/v1/items	true
 http-unavailable-url	http	url	[unavailable]	true
 http-ipv6	http	url	http://[::1]:8080/[redacted]	true
-http-credentials	http	url	https://user:secret@example.com/path	false
-http-query-secret	http	url	https://example.com/path?token=secret	false
-http-fragment-secret	http	url	https://example.com/path#secret	false
+http-credentials	http	url	https://user:secret@example.com/path	true
+http-query-secret	http	url	https://example.com/path?token=secret	true
+http-fragment-secret	http	url	https://example.com/path#secret	true
 http-unsupported-scheme	http	url	file:///private/file	false
-http-secret-header	http	authorization	Bearer secret	false
+http-secret-header	http	authorization	Bearer secret	true
 http-redacted-header	http	authorization	[redacted]	true
 http-max-headers	http	headerCount	32	true
 http-oversized-headers	http	headerCount	33	false
 http-known-method	http	method	OTHER	true
-http-raw-method	http	method	post	false
+http-raw-method	http	method	post	true
 http-pending-status	http	status	200	false
 http-pending-revision	http	revision	1	false
 http-zero-sequence	http	sequence	0	false
@@ -29,7 +29,7 @@ http-response-without-status	http	responseURL	https://example.com/redirect	false
 socket-sequence-precision	websocket	sequence	9223372036854775807	true
 socket-invalid-connection	websocket	connectionID	1-1-1-1-1	false
 socket-redacted-query	websocket	url	wss://example.com/chat?[redacted]	true
-socket-query-secret	websocket	url	wss://example.com/chat?token=secret	false
+socket-query-secret	websocket	url	wss://example.com/chat?token=secret	true
 socket-outgoing-received	websocket	outcome	received	false
 socket-outgoing-queued	websocket	outcome	queued	true
 socket-outgoing-failed	websocket	outcome	failed	true

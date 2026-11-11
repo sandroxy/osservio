@@ -47,6 +47,15 @@ public final class SQLiteBreadcrumbStore implements BreadcrumbSink, BreadcrumbHi
 
     public SQLiteBreadcrumbStore(Context context) { this(context, new BreadcrumbPersistenceOptions()); }
     public SQLiteBreadcrumbStore(Context context, BreadcrumbPersistenceOptions options) { this(privateDirectory(context), options, LogClock.SYSTEM); }
+    /** Independent host-owned namespace. Existing application-level evidence is never moved or deleted. */
+    public SQLiteBreadcrumbStore(Context context, UUID namespace, BreadcrumbPersistenceOptions options) {
+        this(scopedDirectory(context, namespace), options, LogClock.SYSTEM);
+    }
+    private static DirectoryProvider scopedDirectory(Context context, UUID namespace) {
+        Context application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");
+        String scope = Objects.requireNonNull(namespace, "namespace").toString();
+        return () -> new File(application.getNoBackupFilesDir(), "osservio/scoped/" + scope + "/breadcrumbs");
+    }
     SQLiteBreadcrumbStore(File directory, BreadcrumbPersistenceOptions options, LogClock clock) { this(() -> directory, options, clock); }
     private static DirectoryProvider privateDirectory(Context context) {
         Context application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");

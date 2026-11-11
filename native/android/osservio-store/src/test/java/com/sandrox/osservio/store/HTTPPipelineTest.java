@@ -69,9 +69,9 @@ public final class HTTPPipelineTest {
         }
     }
 
-    @Test public void defaultPrivacyDoesNotCopyBodiesAndSanitizesBeforeStorage() {
+    @Test public void explicitBodyOmissionDoesNotCopyContent() {
         MemoryHTTPStore store = new MemoryHTTPStore();
-        HTTPRecorder capture = recorder(store, new HTTPPrivacyPolicy());
+        HTTPRecorder capture = recorder(store, new HTTPPrivacyPolicy(true, null, HTTPPrivacyPolicy.BodyPolicy.OMIT, 16384));
         HTTPRecorder.Token token = capture.begin("post", "https://user:secret@example.com/private?token=secret", Arrays.asList(
             new HTTPHeader("Authorization", "Bearer secret"), new HTTPHeader("Content-Type", "application/json; boundary=secret"),
             new HTTPHeader("Content-Length", "123"), new HTTPHeader("secret-name", "secret"))).token;
@@ -80,16 +80,16 @@ public final class HTTPPipelineTest {
         assertEquals(HTTPRecorder.Result.RECORDED, capture.finish(token, HTTPEvent.State.FAILED, HTTPEvent.Failure.CONNECTION, false, false));
         HTTPEvent event = store.snapshot().events.get(0);
         EvidenceRestorationTest.check(event);
-        assertEquals("POST", event.method);
-        assertEquals(3, event.requestHeaders.size());
-        assertEquals("[redacted]", event.requestHeaders.get(0).value);
-        assertEquals("application/json", event.requestHeaders.get(1).value);
+        assertEquals("post", event.method);
+        assertEquals(4, event.requestHeaders.size());
+        assertEquals("Bearer secret", event.requestHeaders.get(0).value);
+        assertEquals("application/json; boundary=secret", event.requestHeaders.get(1).value);
         assertEquals("123", event.requestHeaders.get(2).value);
-        assertTrue(event.headersLimited);
+        assertFalse(event.headersLimited);
         assertEquals(HTTPEvent.BodyState.OMITTED, event.requestBody.state);
         assertEquals(123, event.requestBody.observedBytes);
         assertEquals(0, store.snapshot().retainedBodyBytes);
-        assertThrows(IllegalArgumentException.class, () -> new HTTPPrivacyPolicy(false, Collections.singleton("Authorization"), HTTPPrivacyPolicy.BodyPolicy.OMIT, 16384));
+        assertNotNull(new HTTPPrivacyPolicy(false, Collections.singleton("Authorization"), HTTPPrivacyPolicy.BodyPolicy.OMIT, 16384));
     }
 
     @Test public void sharedBodyUTF8AndFormatFixtures() throws Exception {
@@ -195,7 +195,7 @@ public final class HTTPPipelineTest {
 
     @Test public void publicHeadersRemainBoundedAndCompressionRequiresDecodedBytes() {
         MemoryHTTPStore store = new MemoryHTTPStore();
-        HTTPPrivacyPolicy policy = new HTTPPrivacyPolicy(false, Collections.singleton("X-Trace"), HTTPPrivacyPolicy.BodyPolicy.PUBLIC_UTF8, 16384);
+        HTTPPrivacyPolicy policy = new HTTPPrivacyPolicy(false, Collections.singleton("X-Trace"), HTTPPrivacyPolicy.BodyPolicy.PUBLIC_UTF8, 16384, true, 512, DiagnosticTextPolicy.UNCHANGED);
         HTTPRecorder capture = recorder(store, policy);
         HTTPRecorder.Token token = capture.begin("GET", "https://example.com", Collections.singletonList(new HTTPHeader("X-Trace", "😀".repeat(200)))).token;
         assertEquals(512, store.snapshot().events.get(0).requestHeaders.get(0).value.getBytes(StandardCharsets.UTF_8).length);

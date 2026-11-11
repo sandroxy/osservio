@@ -45,6 +45,24 @@ final class SQLiteIncidentStoreTests: XCTestCase {
             try await close(reopened).get()
         }
     }
+    func testAccountDirectoriesStayIndependentAndCanReopenWithoutDeletion() async throws {
+        try await fixture { directory in
+            let a = directory.appendingPathComponent("account-a"), b = directory.appendingPathComponent("account-b")
+            let first = try IncidentSnapshot.capture(note: .publicText("account A"))
+            let second = try IncidentSnapshot.capture(note: .publicText("account B"))
+            let old = try SQLiteIncidentStore(directory: a), next = try SQLiteIncidentStore(directory: b)
+            try await save(first, to: old); try await save(second, to: next)
+            let aRecords = try await summaries(old), bRecords = try await summaries(next)
+            XCTAssertEqual(aRecords.map(\.id), [first.id]); XCTAssertEqual(bRecords.map(\.id), [second.id])
+            let missing = await withCheckedContinuation { continuation in next.readIncident(id: first.id) { continuation.resume(returning: $0) } }
+            XCTAssertNil(try missing.get()); try await close(old).get(); try await close(next).get()
+            let reopened = try SQLiteIncidentStore(directory: a)
+            let retained = try await summaries(reopened); XCTAssertEqual(retained.map(\.id), [first.id])
+            let late = await withCheckedContinuation { continuation in old.save(second) { continuation.resume(returning: $0) } }
+            XCTAssertThrowsError(try late.get()) { XCTAssertEqual($0 as? PersistenceError, .closed) }
+            try await close(reopened).get()
+        }
+    }
     func testPendingWorkIsBoundedAndCloseWaitsForAcceptedOperations() async throws {
         try await fixture { directory in
             let store = try SQLiteIncidentStore(directory: directory, options: IncidentPersistenceOptions(pendingTextByteLimit: 64))

@@ -38,13 +38,14 @@ final class IncidentDatabase implements AutoCloseable {
         this.options = options;
         List<String> schema = new ArrayList<>();
         for (String[] part : new String[][] {SCHEMA, IncidentDetailDatabase.SCHEMA, IncidentDiagnosticDatabase.SCHEMA,
-                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA, TombstoneDatabase.SCHEMA}) Collections.addAll(schema, part);
+                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA, TombstoneDatabase.SCHEMA, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA}) Collections.addAll(schema, part);
         Map<Long, String[]> migrations = new HashMap<>();
         migrations.put(1L, IncidentDetailDatabase.SCHEMA); migrations.put(2L, IncidentDiagnosticDatabase.SCHEMA);
         migrations.put(3L, DiagnosticRecoveryDatabase.SCHEMA);
         migrations.put(4L, SignalCrashDatabase.SCHEMA);
         migrations.put(5L, TombstoneDatabase.SCHEMA);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 6, schema.toArray(new String[0]), migrations);
+        migrations.put(6L, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 7, schema.toArray(new String[0]), migrations);
         details = new IncidentDetailDatabase(database);
         diagnostics = new IncidentDiagnosticDatabase(database);
         recovery = new DiagnosticRecoveryDatabase(database, options);

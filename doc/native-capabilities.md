@@ -20,11 +20,13 @@ and observation points.
 | Runtime breadcrumbs | Optional activity and memory callbacks; explicit host markers | Optional application and memory notifications; explicit host markers | Native lifecycle is not business-page navigation or proof that a screen rendered correctly. |
 | Live inspection | Native Views | UIKit controllers | Logs, Network, Problems and App; combined filters, details, explicit content reading and independent view pause. Simplified Chinese/English and Light/Dark settings are independent of the host. See [inspector](inspector.md). |
 
-Private log text becomes `[private]` before storage. Public text, an approved URL
-path or an approved body is a host assertion about that content; the SDK does not
-detect every possible secret. HTTP secret headers and URL queries have separate
-sanitization rules. See [logging](logging.md), [HTTP](http.md),
-[WebSocket](websocket.md), and [runtime context](runtime-context.md).
+A host's explicit private log text becomes `[private]` before storage. Default
+HTTP and WebSocket policies preserve valid URLs, header values and supported
+UTF-8 content within bounds while debugging is enabled. Hosts can selectively
+omit or transform data before recording; no credential header is permanently
+forbidden. See [data policy and account ownership](data-policy.md),
+[logging](logging.md), [HTTP](http.md), [WebSocket](websocket.md), and
+[runtime context](runtime-context.md).
 
 ## Retained evidence
 

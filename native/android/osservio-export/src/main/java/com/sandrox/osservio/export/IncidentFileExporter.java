@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
@@ -34,6 +35,11 @@ public final class IncidentFileExporter implements IncidentExporter {
 
     public IncidentFileExporter(Context context) { this(context, new IncidentExportOptions()); }
     public IncidentFileExporter(Context context, IncidentExportOptions options) { this(context, privateDirectory(context), options, LogClock.SYSTEM); }
+    /** A host-owned opaque account namespace, independent of capture sessions and user identifiers.
+     * Keep the namespace stable only when deliberately reopening the same account's cache. */
+    public IncidentFileExporter(Context context, UUID namespace, IncidentExportOptions options) {
+        this(context, scopedDirectory(context, namespace), options, LogClock.SYSTEM);
+    }
     IncidentFileExporter(Context context, File directory, IncidentExportOptions options, LogClock clock) { this(context, () -> directory, options, clock); }
     private IncidentFileExporter(Context context, DirectoryProvider directory, IncidentExportOptions options, LogClock clock) {
         this.application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");
@@ -45,6 +51,15 @@ public final class IncidentFileExporter implements IncidentExporter {
             File parent = application.getCacheDir();
             if (parent == null || !parent.isAbsolute()) throw new IllegalStateException("Private export cache is unavailable");
             return new File(parent, "osservio/exports");
+        };
+    }
+    private static DirectoryProvider scopedDirectory(Context context, UUID namespace) {
+        Context application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");
+        String name = Objects.requireNonNull(namespace, "namespace").toString();
+        return () -> {
+            File parent = application.getCacheDir();
+            if (parent == null || !parent.isAbsolute()) throw new IllegalStateException("Private export cache is unavailable");
+            return new File(parent, "osservio/scoped-exports/" + name);
         };
     }
     @Override public Task prepare(IncidentSnapshot snapshot, Completion completion) {

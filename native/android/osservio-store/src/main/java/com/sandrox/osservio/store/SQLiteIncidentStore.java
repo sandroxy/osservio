@@ -11,6 +11,7 @@ import com.sandrox.osservio.core.PersistenceStatus;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,6 +40,15 @@ public final class SQLiteIncidentStore implements IncidentArchive, DiagnosticRec
 
     public SQLiteIncidentStore(Context context) { this(context, new IncidentPersistenceOptions()); }
     public SQLiteIncidentStore(Context context, IncidentPersistenceOptions options) { this(privateDirectory(context), options, LogClock.SYSTEM); }
+    /** Independent host-owned namespace. Existing application-level evidence is never moved or deleted. */
+    public SQLiteIncidentStore(Context context, UUID namespace, IncidentPersistenceOptions options) {
+        this(scopedDirectory(context, namespace), options, LogClock.SYSTEM);
+    }
+    private static DirectoryProvider scopedDirectory(Context context, UUID namespace) {
+        Context application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");
+        String scope = Objects.requireNonNull(namespace, "namespace").toString();
+        return () -> new File(application.getNoBackupFilesDir(), "osservio/scoped/" + scope + "/incidents");
+    }
     SQLiteIncidentStore(File directory, IncidentPersistenceOptions options, LogClock clock) { this(() -> directory, options, clock); }
     private static DirectoryProvider privateDirectory(Context context) {
         Context application = Objects.requireNonNull(context.getApplicationContext(), "applicationContext");

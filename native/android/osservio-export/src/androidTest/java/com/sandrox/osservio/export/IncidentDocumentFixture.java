@@ -15,6 +15,19 @@ final class IncidentDocumentFixture {
     private static final String HTTP_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private IncidentDocumentFixture() { }
     static IncidentSnapshot make(String name) {
+        if (name.equals("trusted-content")) {
+            IncidentSnapshot base = make("complete"); HTTPEvent old = base.http.events.get(0);
+            HTTPEvent event = HTTPEvent.restore(old.id, old.sessionId, old.sequence, old.revision, old.timestampMillis, "PROPFIND", old.source,
+                "https://user:fixture@example.com/frozen?token=synthetic-only&x=1&x=2#detail", old.responseURL,
+                Arrays.asList(new HTTPHeader("authorization", "Bearer synthetic-only"), new HTTPHeader("x_custom", "trace-value")),
+                Arrays.asList(new HTTPHeader("content-type", "application/json; charset=utf-8"), new HTTPHeader("set-cookie", "fixture=synthetic-only; HttpOnly")),
+                old.headersLimited, old.statusCode, old.state, old.failure, old.durationMillis, old.requestBody,
+                HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.AVAILABLE, old.responseBody.blobId, 2, true));
+            IncidentHTTP group = base.http;
+            return IncidentSnapshot.restore(base.id, base.timestampMillis, base.note, base.environment, base.breadcrumbs, base.logs,
+                IncidentHTTP.restore(Collections.singletonList(event), group.payloads, group.observedAtMillis,
+                    group.sourceEventCount, group.sourceEvictedEvents, group.sourceEvictedBodies), base.webSockets);
+        }
         if (name.equals("absent")) return IncidentSnapshot.restore(ID, Long.MIN_VALUE, null, null, null);
         if (name.equals("empty")) return IncidentSnapshot.restore(ID, Long.MIN_VALUE, null, null, null,
             IncidentLogs.restore(Collections.emptyList(), 0, 4, 2), null, null);

@@ -47,6 +47,11 @@ final class IncidentDetailDatabase {
     private final SQLiteDatabase database;
     IncidentDetailDatabase(SQLiteDatabase database) { this.database = database; }
 
+    static final String[] CONTENT_POLICY_SCHEMA = {
+        "ALTER TABLE incident_http ADD COLUMN request_processed INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE incident_http ADD COLUMN response_processed INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE incident_websocket ADD COLUMN payload_processed INTEGER NOT NULL DEFAULT 0"
+    };
     static final String[] SCHEMA = {
         "CREATE TABLE incident_windows (incident_id TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE, "
             + "kind TEXT NOT NULL, observed_at INTEGER NOT NULL, event_count INTEGER NOT NULL, source_count INTEGER NOT NULL, "
@@ -92,11 +97,11 @@ final class IncidentDetailDatabase {
                 HTTPEvent event = http.events.get(position);
                 database.execSQL("INSERT INTO incident_http(incident_id, position, id, session_id, sequence, revision, timestamp, method, source, "
                     + "url, response_url, headers_limited, status_code, state, failure, duration, request_state, request_blob, request_bytes, "
-                    + "response_state, response_blob, response_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    + "response_state, response_blob, response_bytes, request_processed, response_processed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     new Object[] {id, position, event.id, event.sessionId, event.sequence, event.revision, event.timestampMillis, event.method,
                         name(event.source), event.url, event.responseURL, event.headersLimited ? 1 : 0, event.statusCode, name(event.state), name(event.failure),
                         event.durationMillis == null ? null : event.durationMillis.toString(), name(event.requestBody.state), event.requestBody.blobId,
-                        event.requestBody.observedBytes, name(event.responseBody.state), event.responseBody.blobId, event.responseBody.observedBytes});
+                        event.requestBody.observedBytes, name(event.responseBody.state), event.responseBody.blobId, event.responseBody.observedBytes, event.requestBody.isProcessed ? 1 : 0, event.responseBody.isProcessed ? 1 : 0});
                 saveHeaders(id, Kind.HTTP, position, "request", event.requestHeaders);
                 saveHeaders(id, Kind.HTTP, position, "response", event.responseHeaders);
             }
@@ -109,12 +114,12 @@ final class IncidentDetailDatabase {
             for (int position = 0; position < sockets.events.size(); position++) {
                 WebSocketEvent event = sockets.events.get(position);
                 database.execSQL("INSERT INTO incident_websocket(incident_id, position, id, connection_id, session_id, sequence, timestamp, url, source, "
-                    + "kind, headers_limited, status_code, close_code, failure, direction, outcome, related_message, payload_state, payload_blob, payload_count) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {id, position, event.id, event.connectionId, event.sessionId,
+                    + "kind, headers_limited, status_code, close_code, failure, direction, outcome, related_message, payload_state, payload_blob, payload_count, payload_processed) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {id, position, event.id, event.connectionId, event.sessionId,
                         event.sequence, event.timestampMillis, event.url, name(event.source), name(event.kind), event.headersLimited ? 1 : 0, event.statusCode,
                         event.closeCode, name(event.failure), name(event.direction), name(event.outcome), event.relatedMessageId,
                         event.payload == null ? null : name(event.payload.state), event.payload == null ? null : event.payload.blobId,
-                        event.payload == null ? null : event.payload.byteCount});
+                        event.payload == null ? null : event.payload.byteCount, event.payload != null && event.payload.isProcessed ? 1 : 0});
                 saveHeaders(id, Kind.WEBSOCKET, position, "event", event.headers);
             }
             savePayloads(id, Kind.WEBSOCKET, sockets.payloads);
@@ -191,13 +196,13 @@ final class IncidentDetailDatabase {
             + textColumn("method", 16) + "," + textColumn("source", 32) + "," + textColumn("url", 4128) + "," + textColumn("response_url", 4128)
             + ",headers_limited,status_code," + textColumn("state", 32) + "," + textColumn("failure", 32) + "," + textColumn("duration", 20) + ","
             + textColumn("request_state", 32) + "," + textColumn("request_blob", 45) + ",request_bytes," + textColumn("response_state", 32)
-            + "," + textColumn("response_blob", 45) + ",response_bytes";
+            + "," + textColumn("response_blob", 45) + ",response_bytes,request_processed,response_processed";
         try (Cursor row = query("SELECT " + projection + " FROM incident_http WHERE incident_id=? ORDER BY position LIMIT 2001", id)) {
             while (row.moveToNext()) {
                 if (window == null || events.size() >= window.count || integer(row, 0) != events.size()) throw EvidenceStorageException.invalid();
                 Map<String, List<HTTPHeader>> headers = readHeaders(id, Kind.HTTP, events.size(), rows, "request", "response");
-                HTTPEvent.BodyReference request = HTTPEvent.BodyReference.restore(parse(HTTPEvent.BodyState.values(), text(row, 15, 32)), optionalText(row, 16, 45), integer(row, 17));
-                HTTPEvent.BodyReference response = HTTPEvent.BodyReference.restore(parse(HTTPEvent.BodyState.values(), text(row, 18, 32)), optionalText(row, 19, 45), integer(row, 20));
+                HTTPEvent.BodyReference request = HTTPEvent.BodyReference.restore(parse(HTTPEvent.BodyState.values(), text(row, 15, 32)), optionalText(row, 16, 45), integer(row, 17), flag(row, 21));
+                HTTPEvent.BodyReference response = HTTPEvent.BodyReference.restore(parse(HTTPEvent.BodyState.values(), text(row, 18, 32)), optionalText(row, 19, 45), integer(row, 20), flag(row, 22));
                 HTTPEvent event = HTTPEvent.restore(text(row, 1, 36), text(row, 2, 36), integer(row, 3), integer(row, 4), integer(row, 5), text(row, 6, 16),
                     parse(HTTPEvent.Source.values(), text(row, 7, 32)), text(row, 8, 4128), optionalText(row, 9, 4128), headers.get("request"), headers.get("response"),
                     flag(row, 10), optionalInt(row, 11), parse(HTTPEvent.State.values(), text(row, 12, 32)), optionalEnum(row, 13, HTTPEvent.Failure.values()), duration(row, 14), request, response);
@@ -216,14 +221,14 @@ final class IncidentDetailDatabase {
         String projection = "position," + textColumn("id", 36) + "," + textColumn("connection_id", 36) + "," + textColumn("session_id", 36) + ",sequence,timestamp,"
             + textColumn("url", 4128) + "," + textColumn("source", 32) + "," + textColumn("kind", 32) + ",headers_limited,status_code,close_code,"
             + textColumn("failure", 32) + "," + textColumn("direction", 32) + "," + textColumn("outcome", 32) + "," + textColumn("related_message", 36) + ","
-            + textColumn("payload_state", 32) + "," + textColumn("payload_blob", 36) + ",payload_count";
+            + textColumn("payload_state", 32) + "," + textColumn("payload_blob", 36) + ",payload_count,payload_processed";
         try (Cursor row = query("SELECT " + projection + " FROM incident_websocket WHERE incident_id=? ORDER BY position LIMIT 2001", id)) {
             while (row.moveToNext()) {
                 if (window == null || events.size() >= window.count || integer(row, 0) != events.size()) throw EvidenceStorageException.invalid();
                 Map<String, List<HTTPHeader>> headers = readHeaders(id, Kind.WEBSOCKET, events.size(), rows, "event");
                 WebSocketEvent.PayloadReference payload = null;
-                if (row.isNull(16)) { if (!row.isNull(17) || !row.isNull(18)) throw EvidenceStorageException.invalid(); }
-                else payload = WebSocketEvent.PayloadReference.restore(parse(WebSocketEvent.PayloadState.values(), text(row, 16, 32)), optionalText(row, 17, 36), row.isNull(18) ? null : integer(row, 18));
+                if (row.isNull(16)) { if (!row.isNull(17) || !row.isNull(18) || flag(row, 19)) throw EvidenceStorageException.invalid(); }
+                else payload = WebSocketEvent.PayloadReference.restore(parse(WebSocketEvent.PayloadState.values(), text(row, 16, 32)), optionalText(row, 17, 36), row.isNull(18) ? null : integer(row, 18), flag(row, 19));
                 WebSocketEvent event = WebSocketEvent.restore(text(row, 1, 36), text(row, 2, 36), text(row, 3, 36), integer(row, 4), integer(row, 5), text(row, 6, 4128),
                     parse(WebSocketEvent.Source.values(), text(row, 7, 32)), parse(WebSocketEvent.Kind.values(), text(row, 8, 32)), headers.get("event"), flag(row, 9),
                     optionalInt(row, 10), optionalInt(row, 11), optionalEnum(row, 12, WebSocketEvent.Failure.values()), optionalEnum(row, 13, WebSocketEvent.Direction.values()),
@@ -241,13 +246,13 @@ final class IncidentDetailDatabase {
     private Map<String, List<HTTPHeader>> readHeaders(String id, Kind kind, int position, Rows rows, String... scopes) {
         Map<String, List<HTTPHeader>> headers = new LinkedHashMap<>();
         for (String scope : scopes) headers.put(scope, new ArrayList<>());
-        String projection = textColumn("scope", 16) + ",position," + textColumn("name", 64) + "," + textColumn("value", 512);
+        String projection = textColumn("scope", 16) + ",position," + textColumn("name", 64) + "," + textColumn("value", 16384);
         try (Cursor row = query("SELECT " + projection + " FROM incident_headers WHERE incident_id=? AND family=? AND event_position=? ORDER BY scope, position LIMIT 65",
             id, name(kind), Integer.toString(position))) {
             while (row.moveToNext()) {
                 List<HTTPHeader> values = headers.get(text(row, 0, 16));
                 if (values == null || values.size() >= 32 || integer(row, 1) != values.size()) throw EvidenceStorageException.invalid();
-                values.add(new HTTPHeader(text(row, 2, 64), text(row, 3, 512))); rows.headers++;
+                values.add(new HTTPHeader(text(row, 2, 64), text(row, 3, 16384))); rows.headers++;
             }
         }
         return headers;

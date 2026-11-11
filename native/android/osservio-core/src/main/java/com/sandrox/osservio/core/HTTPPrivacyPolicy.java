@@ -17,60 +17,61 @@ import java.util.Set;
 public final class HTTPPrivacyPolicy {
     public enum BodyPolicy {
         OMIT,
-        /** The host has reviewed every body handled by this recorder as safe to retain and display. */
+        /** Capture supported UTF-8 content within the budget and host text policy. */
         PUBLIC_UTF8
     }
     public final boolean publicURLPath;
+    public final boolean publicURLQuery;
+    /** Null captures all valid headers; an explicit set selects values without forbidding any name. */
     public final Set<String> publicHeaderNames;
     public final BodyPolicy bodyPolicy;
     public final int bodyByteLimit;
-    private static final Set<String> SECRET = new HashSet<>(Arrays.asList("authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"));
-    private static final Set<String> KNOWN = new HashSet<>(Arrays.asList("authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key",
-        "content-type", "content-length", "content-encoding", "accept", "accept-encoding", "cache-control", "connection", "host", "user-agent",
-        "location", "referer", "origin", "etag", "if-none-match"));
+    public final int headerValueByteLimit;
+    public final DiagnosticTextPolicy textPolicy;
 
-    public HTTPPrivacyPolicy() { this(false, Collections.emptySet(), BodyPolicy.OMIT, 16384); }
+    public HTTPPrivacyPolicy() { this(true, null, BodyPolicy.PUBLIC_UTF8, 16384, true, 4096, DiagnosticTextPolicy.UNCHANGED); }
     public HTTPPrivacyPolicy(boolean publicURLPath, Set<String> publicHeaderNames, BodyPolicy bodyPolicy, int bodyByteLimit) {
-        if (publicHeaderNames == null || publicHeaderNames.size() > 16 || bodyPolicy == null || bodyByteLimit < 1 || bodyByteLimit > 65536) {
-            throw new IllegalArgumentException("Invalid HTTP privacy policy");
-        }
-        Set<String> names = new HashSet<>();
-        for (String name : publicHeaderNames) {
-            if (!validHeaderName(name) || SECRET.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("Invalid public HTTP header");
+        this(publicURLPath, publicHeaderNames, bodyPolicy, bodyByteLimit, true, 4096, DiagnosticTextPolicy.UNCHANGED);
+    }
+    public HTTPPrivacyPolicy(boolean publicURLPath, Set<String> publicHeaderNames, BodyPolicy bodyPolicy, int bodyByteLimit,
+                             boolean publicURLQuery, int headerValueByteLimit, DiagnosticTextPolicy textPolicy) {
+        if ((publicHeaderNames != null && publicHeaderNames.size() > 32) || bodyPolicy == null || bodyByteLimit < 1 || bodyByteLimit > 65536
+            || headerValueByteLimit < 1 || headerValueByteLimit > 16384 || textPolicy == null) throw new IllegalArgumentException("Invalid HTTP policy");
+        Set<String> names = publicHeaderNames == null ? null : new HashSet<>();
+        if (publicHeaderNames != null) for (String name : publicHeaderNames) {
+            if (!validHeaderName(name)) throw new IllegalArgumentException("Invalid HTTP header name");
             names.add(name.toLowerCase(Locale.ROOT));
         }
-        this.publicURLPath = publicURLPath; this.publicHeaderNames = Collections.unmodifiableSet(names);
+        this.publicURLPath = publicURLPath; this.publicURLQuery = publicURLQuery;
+        this.publicHeaderNames = names == null ? null : Collections.unmodifiableSet(names);
         this.bodyPolicy = bodyPolicy; this.bodyByteLimit = bodyByteLimit;
+        this.headerValueByteLimit = headerValueByteLimit; this.textPolicy = textPolicy;
     }
 
     String url(String raw) {
-        if (raw == null || raw.length() > 4096 || raw.getBytes(StandardCharsets.UTF_8).length > 4096) return "[unavailable]";
-        for (int i = 0; i < raw.length(); i++) if (raw.charAt(i) < 0x20 || raw.charAt(i) == 0x7F) return "[unavailable]";
+        if (!EvidenceValidation.text(raw, 4096) || !EvidenceValidation.url(raw) || "[unavailable]".equals(raw)) return "[unavailable]";
         try {
-            URI parts = new URI(raw);
-            String scheme = parts.getScheme() == null ? "" : parts.getScheme().toLowerCase(Locale.ROOT);
-            String host = parts.getHost();
-            if (!Arrays.asList("http", "https", "ws", "wss").contains(scheme) || host == null || host.isEmpty()
-                || parts.getPort() == 0 || parts.getPort() > 65535) return "[unavailable]";
-            URI ascii = new URI(parts.toASCIIString());
-            String origin = scheme + "://" + host.toLowerCase(Locale.ROOT) + (parts.getPort() < 0 ? "" : ":" + parts.getPort());
-            String path = publicURLPath ? (ascii.getRawPath().isEmpty() ? "/" : ascii.getRawPath()) : "/[redacted]";
-            return origin + path + (parts.getRawQuery() == null ? "" : "?[redacted]");
+            URI parts = new URI(raw.replace("[redacted]", "%5Bredacted%5D"));
+            String selected = raw;
+            if (!publicURLPath || !publicURLQuery) {
+                selected = parts.getScheme() + "://" + parts.getRawAuthority()
+                    + (publicURLPath ? parts.getRawPath() : "/%5Bredacted%5D")
+                    + (parts.getRawQuery() == null ? "" : "?" + (publicURLQuery ? parts.getRawQuery() : "%5Bredacted%5D"))
+                    + (parts.getRawFragment() == null ? "" : "#" + parts.getRawFragment());
+            }
+            if (!EvidenceValidation.text(selected, 4128)) return "[unavailable]";
+            String result = DiagnosticTextPolicy.apply(textPolicy, DiagnosticTextPolicy.Field.URL, null, selected, false, 4128);
+            return EvidenceValidation.url(result) ? result : "[unavailable]";
         } catch (URISyntaxException invalid) { return "[unavailable]"; }
     }
 
-    String method(String raw) {
-        if (raw == null || raw.length() > 16) return "OTHER";
-        String value = raw.toUpperCase(Locale.ROOT);
-        return Arrays.asList("GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH").contains(value) ? value : "OTHER";
-    }
+    String method(String raw) { return EvidenceValidation.method(raw) ? raw : "OTHER"; }
 
     static final class Headers {
         final List<HTTPHeader> values;
         final boolean limited;
         Headers(List<HTTPHeader> values, boolean limited) { this.values = values; this.limited = limited; }
     }
-
     Headers headers(List<HTTPHeader> raw) {
         List<HTTPHeader> result = new ArrayList<>();
         if (raw == null) return new Headers(result, true);
@@ -79,17 +80,12 @@ public final class HTTPPrivacyPolicy {
             HTTPHeader header = raw.get(i);
             if (header == null || !validHeaderName(header.name) || header.value == null) { limited = true; continue; }
             String name = header.name.toLowerCase(Locale.ROOT);
-            if (!KNOWN.contains(name) && !publicHeaderNames.contains(name)) { limited = true; continue; }
-            String value = "[redacted]";
-            if (name.equals("content-type")) { String type = mediaType(header.value); value = type == null ? "[unavailable]" : type; }
-            else if (name.equals("content-length") && header.value.length() <= 19 && header.value.matches("[0-9]+")) {
-                try { value = Long.toString(Long.parseLong(header.value)); }
-                catch (NumberFormatException overflow) { value = "[redacted]"; }
-            } else if (publicHeaderNames.contains(name)) {
-                value = prefixText(header.value, 512);
-                if (header.value.length() > 512 || header.value.getBytes(StandardCharsets.UTF_8).length > 512) limited = true;
-            }
-            result.add(new HTTPHeader(name, value));
+            BoundedText bounded = BoundedText.prefix(header.value, headerValueByteLimit);
+            if (bounded == null) { limited = true; continue; }
+            limited |= bounded.truncated;
+            String value = publicHeaderNames == null || publicHeaderNames.contains(name)
+                ? DiagnosticTextPolicy.apply(textPolicy, DiagnosticTextPolicy.Field.HEADER, name, bounded.text, bounded.truncated, headerValueByteLimit) : null;
+            result.add(new HTTPHeader(name, value == null ? "[redacted]" : value));
         }
         return new Headers(result, limited);
     }
@@ -125,28 +121,7 @@ public final class HTTPPrivacyPolicy {
         return type.matches("[a-z0-9.+-]+/[a-z0-9.+-]+") ? type : null;
     }
 
-    private static boolean validHeaderName(String value) {
-        return value != null && !value.isEmpty() && value.length() <= 64 && value.matches("[A-Za-z0-9-]+");
-    }
-
-    private static String prefixText(String value, int limit) {
-        String prefix = value.substring(0, Math.min(value.length(), limit + 2));
-        for (int i = 0; i < prefix.length(); i++) {
-            char c = prefix.charAt(i);
-            if (Character.isHighSurrogate(c)) {
-                if (i + 1 == prefix.length()) {
-                    if (prefix.length() == value.length()) return "[unavailable]";
-                    prefix = prefix.substring(0, i); break;
-                }
-                if (!Character.isLowSurrogate(prefix.charAt(++i))) return "[unavailable]";
-            } else if (Character.isLowSurrogate(c)) return "[unavailable]";
-        }
-        byte[] bytes = prefix.getBytes(StandardCharsets.UTF_8);
-        int count = Math.min(bytes.length, limit);
-        if (count < bytes.length) count = completeUTF8Prefix(bytes, count);
-        String result = decode(bytes, count);
-        return result == null ? "[unavailable]" : result;
-    }
+    private static boolean validHeaderName(String value) { return EvidenceValidation.headerName(value); }
 
     static int completeUTF8Prefix(byte[] bytes, int count) {
         if (count == 0) return 0;

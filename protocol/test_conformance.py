@@ -27,7 +27,7 @@ class ConformanceTests(unittest.TestCase):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
+        for name in ("absent", "empty", "complete", "trusted-content", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)
@@ -41,7 +41,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 5, "4", None, True):
+        for revision in (0, 6, "5", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision
@@ -52,6 +52,19 @@ class ConformanceTests(unittest.TestCase):
         document["payloads"]["revision"] = 1
         self.check(document, False)
         self.check(document, False, reader=True)
+
+    def test_previous_revision_stays_strict_and_processing_is_explicit(self):
+        for path in sorted((FIXTURES / "revisions" / "4").glob("*.json")):
+            for reader in (False, True):
+                self.check(fixture("revisions/4/" + path.stem), True, reader)
+        value = fixture("trusted-content")
+        self.check(value, True)
+        value["metadata"]["incident"]["http"]["events"][0]["responseBody"]["isProcessed"] = False
+        self.check(value, False)
+        value = fixture("complete")
+        del value["metadata"]["incident"]["http"]["events"][0]["requestBody"]["isProcessed"]
+        self.check(value, False)
+        self.check(value, False, reader=True)
 
     def test_corruption_and_compatibility(self):
         cases = fixture("cases")
@@ -98,7 +111,7 @@ class ConformanceTests(unittest.TestCase):
             event["requestHeaders"] = []
             event["responseHeaders"] = []
             for field in ("requestBody", "responseBody"):
-                event[field] = {"state": state["bodyState"], "blobID": None, "observedBytes": "0"}
+                event[field] = {"state": state["bodyState"], "blobID": None, "observedBytes": "0", "isProcessed": False}
             group["payloads"], document["payloads"]["http"] = {}, {}
             group["retainedPayloadBytes"] = 0
             group["retainedTextBytes"] = len((event["method"] + event["url"]).encode("utf-8"))

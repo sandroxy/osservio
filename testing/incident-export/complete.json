@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 4,
+    "revision": 5,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -186,12 +186,14 @@
             "requestBody": {
               "state": "available",
               "blobID": "dddddddd-dddd-dddd-dddd-dddddddddddd.request",
-              "observedBytes": "0"
+              "observedBytes": "0",
+              "isProcessed": false
             },
             "responseBody": {
               "state": "available",
               "blobID": "dddddddd-dddd-dddd-dddd-dddddddddddd.response",
-              "observedBytes": "3"
+              "observedBytes": "3",
+              "isProcessed": false
             }
           }
         ],
@@ -235,7 +237,8 @@
             "payload": {
               "state": "available",
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000001",
-              "byteCount": "3"
+              "byteCount": "3",
+              "isProcessed": false
             }
           },
           {
@@ -258,7 +261,8 @@
             "payload": {
               "state": "available",
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000002",
-              "byteCount": "3"
+              "byteCount": "3",
+              "isProcessed": false
             }
           },
           {
@@ -281,7 +285,8 @@
             "payload": {
               "state": "available",
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000003",
-              "byteCount": "3"
+              "byteCount": "3",
+              "isProcessed": false
             }
           },
           {
@@ -304,7 +309,8 @@
             "payload": {
               "state": "available",
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000004",
-              "byteCount": "3"
+              "byteCount": "3",
+              "isProcessed": false
             }
           },
           {
@@ -327,7 +333,8 @@
             "payload": {
               "state": "available",
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000005",
-              "byteCount": "0"
+              "byteCount": "0",
+              "isProcessed": false
             }
           },
           {
@@ -350,7 +357,8 @@
             "payload": {
               "state": "available",
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000006",
-              "byteCount": "4"
+              "byteCount": "4",
+              "isProcessed": false
             }
           },
           {
@@ -412,7 +420,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 4,
+    "revision": 5,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {
       "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",

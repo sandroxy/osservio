@@ -21,10 +21,17 @@ public final class WebSocketEvent {
         public final String blobId;
         /** Null means the byte count was unavailable without inspecting more content. */
         public final Long byteCount;
-        PayloadReference(PayloadState state, String blobId, Long byteCount) { this.state = state; this.blobId = blobId; this.byteCount = byteCount; }
+        public final boolean isProcessed;
+        PayloadReference(PayloadState state, String blobId, Long byteCount) { this(state, blobId, byteCount, false); }
+        PayloadReference(PayloadState state, String blobId, Long byteCount, boolean isProcessed) {
+            this.state = state; this.blobId = blobId; this.byteCount = byteCount; this.isProcessed = isProcessed;
+        }
         public static PayloadReference restore(PayloadState state, String blobId, Long byteCount) {
+            return restore(state, blobId, byteCount, false);
+        }
+        public static PayloadReference restore(PayloadState state, String blobId, Long byteCount, boolean isProcessed) {
             boolean content = state == PayloadState.AVAILABLE || state == PayloadState.TRUNCATED;
-            if (state == null || content != (blobId != null) || (blobId != null && !EvidenceValidation.id(blobId))
+            if ((!content && isProcessed) || state == null || content != (blobId != null) || (blobId != null && !EvidenceValidation.id(blobId))
                 || (byteCount != null && byteCount < 0)) throw EvidenceValidation.invalid();
             switch (state) {
                 case AVAILABLE: if (byteCount == null || byteCount > 65536) throw EvidenceValidation.invalid(); break;
@@ -32,7 +39,7 @@ public final class WebSocketEvent {
                 case OMITTED: case INVALID_TEXT: case TRUNCATED: if (byteCount != null) throw EvidenceValidation.invalid(); break;
                 default: throw EvidenceValidation.invalid();
             }
-            return new PayloadReference(state, blobId, byteCount);
+            return new PayloadReference(state, blobId, byteCount, isProcessed);
         }
     }
     public final String id;

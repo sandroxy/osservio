@@ -1,7 +1,7 @@
 # Incident documents
 
 `OsservioExport` on iOS and `osservio-export` on Android encode one immutable,
-sanitized `IncidentSnapshot` into two UTF-8 JSON documents:
+validated, host-policy-processed `IncidentSnapshot` into two UTF-8 JSON documents:
 
 | Document | Content |
 | --- | --- |
@@ -9,13 +9,14 @@ sanitized `IncidentSnapshot` into two UTF-8 JSON documents:
 | `payloads.json` | Available copied HTTP and WebSocket text, keyed by the referenced body identity |
 
 The format identifiers are `osservio.incident` and `osservio.incident.payloads`.
-Both declare compatibility revision `4`, independently of SDK and private
+Both declare compatibility revision `5`, independently of SDK and private
 SQLite schema versions. The metadata's `payloadFile` is the fixed literal
 `payloads.json`, not an arbitrary path. The schema URNs identify local definitions;
 validation does not fetch a remote schema.
 
 Encoding performs no history lookup, collection, storage query, file write, or
-transport. It never includes raw observations or reads the host's database.
+transport. It never bypasses capture policy or reads the host's database. Admitted values may
+contain complete request parameters, authentication headers and message content.
 These APIs produce documents. The separate asynchronous
 [file exporter](../doc/incident-export.md) packages them into a temporary ZIP.
 Native inspectors can use that exporter for explicit system sharing. Importing
@@ -114,15 +115,19 @@ restoration constructors enforce the input's typed evidence invariants.
 - Inclusion byte totals count decoded UTF-8 text, not JSON escaping or compressed
   size. Original HTTP observation sizes and truncation remain unchanged. A
   truncated WebSocket message does not invent its original full byte count.
+- Revision 5 body references include `isProcessed`. True means the host changed
+  captured text before recording. Original observed bytes can then differ from
+  included UTF-8 text bytes even without truncation. Only available or truncated
+  content can be processed; absent bodies keep false. Included-byte accounting
+  always uses the actual processed text, and all content budgets still apply.
 - An event referring to an earlier WebSocket submission does not require that
   submission to remain in the bounded window. A send result does not prove
   peer receipt. Missing events are not reconstructed.
 
 Metadata search does not require loading body text. Metadata itself can contain
-public log text, descriptions, and approved URL paths: it is diagnostic content,
-not a public index safe for unrestricted distribution. Privacy classification
-and source sanitization still apply. Export does not detect secrets mistakenly
-classified as public.
+credentials, query parameters, logs and descriptions. Export preserves the
+snapshot's admitted values and applies no second automatic redaction. Hosts own
+capture and delivery policy; see [diagnostic data policy](../doc/data-policy.md).
 
 ## Bounds
 
@@ -135,20 +140,25 @@ bound concurrent encodes and the lifetime of returned data.
 
 ## Compatibility and conformance
 
-The root schemas describe strict revision-4 writers. Preserved
+The root schemas describe strict revision-5 writers. Preserved
 [revision-1 metadata](revisions/1/incident.schema.json) and
 [payload schemas](revisions/1/payloads.schema.json), and
 [revision-2 metadata](revisions/2/incident.schema.json) and
 [payload schemas](revisions/2/payloads.schema.json), and
 [revision-3 metadata](revisions/3/incident.schema.json) and
-[payload schemas](revisions/3/payloads.schema.json), remain readable by the
+[payload schemas](revisions/3/payloads.schema.json), and
+[revision-4 metadata](revisions/4/incident.schema.json) and
+[payload schemas](revisions/4/payloads.schema.json), remain readable by the
 conformance checker. Revisions 2 through 4 reference unchanged revision-1 event definitions.
+Revision 5 has self-contained definitions and admits complete valid URLs,
+RFC token method/header names, header values up to 16,384 UTF-8 bytes, and
+body-processing flags. Earlier revision constraints remain unchanged.
 A reader may ignore unknown optional object fields within a supported revision,
 while still validating every known
-field, required field, enum, identifier, privacy constraint, and relationship.
+field, required field, enum, identifier, revision-specific content constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
 Unsupported revisions and mixed document revisions are rejected. Native writers
-always emit revision 4, including for manual snapshots. Earlier readers must
+always emit revision 5, including for manual snapshots. Earlier readers must
 reject newer revisions rather than overlook their evidence. No automatic
 document rewriting, downgrade, or SDK runtime importer is provided.
 Private incident database migrations are tested separately in native Store
@@ -162,7 +172,7 @@ This is a development conformance checker, not a runtime deserializer or a safe
 archive-import API. It does not extract ZIP files or accept remote data.
 
 The independent fixtures in `testing/incident-export` cover absent and empty
-groups, exact 64-bit values, redaction, Unicode and escaping, body states, HTTP
+groups, exact 64-bit values, host processing, historical redaction, Unicode and escaping, body states, HTTP
 lifecycles, system source/time invariants, corruption, and compatibility.
-Unmodified revision-1, revision-2 and revision-3 golden documents are retained separately. Both native encoders compare their
+Unmodified revision-1, revision-2, revision-3 and revision-4 golden documents are retained separately. Both native encoders compare their
 output with the same golden documents. See [development checks](../DEVELOPMENT.md).
