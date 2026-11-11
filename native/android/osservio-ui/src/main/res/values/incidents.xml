@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="osservio_incident_title">Problems</string>
-    <string name="osservio_incident_mark">Mark a problem</string>
+    <string name="osservio_incident_mark">Record a problem</string>
     <string name="osservio_incident_refresh">Refresh snapshots</string>
     <string name="osservio_incident_save">Save</string>
     <string name="osservio_incident_saving">Saving snapshot…</string>
@@ -67,4 +67,8 @@
     <string name="osservio_incident_export_invalid">This snapshot could not be validated for export.</string>
     <string name="osservio_incident_export_unavailable">Sharing is unavailable. The saved snapshot is still available. Try again.</string>
     <string name="osservio_incident_archive_hint">Saved reports may contain manual observations or system evidence. Review their source and times. Opening a report does not change capture.</string>
+    <string name="osservio_incident_discard_title">Discard this record?</string>
+    <string name="osservio_incident_discard_hint">Your unsaved note and attachment choices will be discarded.</string>
+    <string name="osservio_incident_keep_editing">Keep editing</string>
+    <string name="osservio_incident_discard">Discard record</string>
 </resources>

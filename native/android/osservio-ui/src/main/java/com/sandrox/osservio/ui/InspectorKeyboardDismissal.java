@@ -26,7 +26,7 @@ final class InspectorKeyboardDismissal {
         return false;
     }
     @android.annotation.SuppressLint("ViewConstructor")
-    static final class Frame extends FrameLayout {
+    static class Frame extends FrameLayout {
         Frame(Context context) { super(context); }
         @Override public boolean dispatchTouchEvent(MotionEvent event) { outside(this, event); return super.dispatchTouchEvent(event); }
     }

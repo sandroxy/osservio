@@ -223,7 +223,7 @@
 "archive_deleting" = "Deleting saved evidence…";
 
 "incident_title" = "Problems";
-"incident_mark" = "Mark a problem";
+"incident_mark" = "Record a problem";
 "incident_refresh" = "Refresh snapshots";
 "incident_save" = "Save";
 "incident_saving" = "Saving snapshot…";
@@ -367,3 +367,8 @@
 "json_invalid" = "This content is not a complete JSON object or array. Showing the source.";
 "json_limited" = "This content exceeds the structure view’s reading limits. Showing the source.";
 "json_busy" = "The structure view is busy. You can read the source or reopen this page to try again.";
+
+"incident_discard_title" = "Discard this record?";
+"incident_discard_hint" = "Your unsaved note and attachment choices will be discarded.";
+"incident_keep_editing" = "Keep editing";
+"incident_discard" = "Discard record";

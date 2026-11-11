@@ -22,9 +22,16 @@ active query visible; the navigation trash action clears the destination with co
 Language and Theme open dedicated settings pages. Filters use a temporary
 sheet with Reset and Apply: Reset edits the draft, and only Apply changes the
 active query. Swipe the handle, tap outside, or use the platform's dismissal
-mechanism to discard it. Problem composition uses a retained full-screen page
-with explicit Save. Platform alerts and system share interfaces keep their native
-behavior. Tapping outside an SDK input dismisses its keyboard without consuming
+mechanism to discard it. Problem composition uses a tall temporary sheet with
+Cancel and Save. It has a handle and no Minimize action; its content scrolls with
+large text or a keyboard.
+Unmodified drafts dismiss immediately. Changed attachment choices or a nonempty
+note require confirmation before user dismissal. Saving prevents duplicate
+submission and user dismissal; failure preserves the draft for retry. Explicit
+host collapse or hide discards temporary drafts without prompting or saving. A
+write already admitted by Save may still finish after the view is removed.
+Platform alerts and system share interfaces keep their native behavior. Tapping
+outside an SDK input dismisses its keyboard without consuming
 the target control's action; host application inputs are unaffected.
 
 ## Debug control and navigation
@@ -48,12 +55,14 @@ active debug session or change the host's storage configuration.
 
 Both platforms keep the tab bar available for ordinary read-only details. Each
 tab retains its own navigation stack, while covered lists and readers suspend
-polling and pending parsing. Temporary panels and full-screen editing tasks cover
-the tab bar. More panels dismiss by native swipe/backdrop or an accessible dismiss
-action; Android also provides a draggable handle. Filter drafts remain provisional
+polling and pending parsing. Temporary panels cover the tab bar. Android bottom
+sheets have rounded top corners and square bottom corners; the surface continues through the navigation
+inset while controls remain within the safe area. More panels dismiss by native
+swipe/backdrop or an accessible dismiss action; Android also provides a draggable
+handle. Filter drafts remain provisional
 until Apply. Copy and Back use icons with contextual
-accessibility labels; Reset, Apply and Save retain concise text. A full-screen editor
-uses Cancel (an X) on the left, rather than the hierarchical Back arrow. Titles
+accessibility labels; Reset, Apply, Cancel and Save retain concise text. The
+problem sheet places Cancel on the left and Save on the right. Titles
 name the page's function; URLs, event categories and observation states stay in
 the content instead of competing for navigation space.
 
@@ -275,14 +284,14 @@ Its app-local entry starts hidden; the host chooses when to call `showEntry()`.
 The entry can be dragged to either edge and remembers its normalized position.
 It passes touches outside the entry through to the host and does not become the
 key window. Tapping it expands a full-screen workspace in the same scene.
-Minimize remains available in SDK navigation pages, readers and full-screen editors.
-Temporary filters and action panels have no inspector-wide Minimize action.
+Minimize remains available in SDK navigation pages and readers.
+Temporary filters, action panels and the problem sheet have no inspector-wide Minimize action.
 The session restores host keyboard focus when collapsing and suspends polling
 before its short exit animation. Reduce Motion, Low Power Mode and elevated
 thermal state reduce motion; Reduce Transparency uses an opaque entry.
 The workspace expands from and contracts toward the docked entry using a bounded
-layer mask and opacity animation. The mask covers presented full-screen editors
-as well as navigation pages. Interruption removes clipping and touch blockers.
+layer mask and opacity animation. The mask covers the full-screen navigation
+workspace. Interruption removes clipping and touch blockers.
 Neither platform captures per-frame screenshots or runs a persistent full-screen
 blur. The diagnostic-panel entry mark is distinct from the debug toggle's bug.
 

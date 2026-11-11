@@ -121,8 +121,11 @@ been evicted before that first selection. New activity is never added to a draft
 Description text is also excluded by default and requires an explicit choice. Included text is
 treated as public diagnostic content, with a visible reminder that secrets are
 not automatically removed. The editor rejects input beyond 4,096 UTF-8 bytes.
-Cancellation writes nothing. A failed save keeps the draft for retry, and a
-successful save is reported only after the archive completes its commit.
+The composer is a temporary sheet with Cancel and Save. User dismissal asks
+before discarding changed attachment choices or a nonempty note. Cancellation
+writes nothing. Explicit host collapse discards the draft without prompting.
+A failed save keeps the draft for retry, and a successful save is reported only
+after the archive completes its commit.
 
 The native composer uses smaller combined budgets than the independent Core
 window defaults:

@@ -36,6 +36,9 @@ final class IncidentComposer {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final InspectorScreen dialog;
     private final android.widget.Button saveButton;
+    private final android.widget.Button cancelButton;
+    private final boolean[] initialOptions;
+    private InspectorScreen discardConfirmation;
     private final Switch includeEnvironment;
     private final Switch includeBreadcrumbs;
     private final Switch includeNote;
@@ -114,9 +117,11 @@ final class IncidentComposer {
         content.addView(editor, params());
         content.addView(label(context.getString(R.string.osservio_incident_note_hint) + "\n" + context.getString(R.string.osservio_incident_note_limit)), params());
         ScrollView scroll = new ScrollView(context); scroll.setFillViewport(true); scroll.addView(content);
-        dialog = InspectorDialogs.screen(context, context.getString(R.string.osservio_incident_mark), scroll);
-        dialog.fullScreenTask();
+        dialog = InspectorDialogs.panel(context, R.string.osservio_incident_mark, scroll);
+        cancelButton = dialog.leadingAction(R.string.osservio_archive_cancel, dialog::cancel);
         saveButton = dialog.action(R.string.osservio_incident_save, this::save);
+        initialOptions = new boolean[] {true, true, mark.logs != null, mark.http != null, false, mark.webSockets != null, false, false};
+        dialog.setBackInterceptor(this::confirmDiscard);
         includeEnvironment.setOnCheckedChangeListener((button, checked) -> updateControls());
         includeHTTP.setOnCheckedChangeListener((button, checked) -> updateControls());
         includeWebSockets.setOnCheckedChangeListener((button, checked) -> updateControls());
@@ -148,10 +153,41 @@ final class IncidentComposer {
         dialog.setOnShowListener(ignored -> {
             updateControls(); readEnvironment();
         });
-        dialog.setOnDismissListener(ignored -> { generation++; dismissed.run(); });
+        dialog.setOnDismissListener(ignored -> {
+            generation++;
+            if (discardConfirmation != null) discardConfirmation.dismiss();
+            dismissed.run();
+        });
     }
     void show() { dialog.show(); }
     void dismiss() { dialog.dismiss(); }
+    private boolean hasChanges() {
+        Switch[] options = {includeEnvironment, includeBreadcrumbs, includeLogs, includeHTTP, includeHTTPBodies, includeWebSockets, includeWebSocketPayloads, includeNote};
+        for (int index = 0; index < options.length; index++) if (options[index].isChecked() != initialOptions[index]) return true;
+        return editor.length() != 0;
+    }
+    private boolean confirmDiscard() {
+        if (saving || discardConfirmation != null) return true;
+        if (!hasChanges()) return false;
+        InspectorWidgets.hideKeyboard(dialog.view);
+        LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), 0, dp(16), dp(16));
+        content.addView(label(context.getString(R.string.osservio_incident_discard_hint)), params());
+        ScrollView scroll = new ScrollView(context); scroll.addView(content);
+        InspectorScreen confirmation = InspectorDialogs.panel(context, R.string.osservio_incident_discard_title, scroll);
+        confirmation.compact();
+        LinearLayout choices = InspectorWidgets.group(context); content.addView(choices, params());
+        android.widget.Button keep = InspectorWidgets.button(context, R.string.osservio_incident_keep_editing, confirmation::dismiss);
+        android.widget.Button discard = InspectorWidgets.button(context, R.string.osservio_incident_discard,
+            () -> { confirmation.dismiss(); dialog.dismiss(); });
+        InspectorWidgets.addGrouped(choices, keep); InspectorWidgets.addGrouped(choices, discard);
+        InspectorAppearance.style(discard, () -> {
+            discard.setTextColor(InspectorTheme.color(context, R.color.osservio_error)); InspectorTheme.feedback(discard, 20);
+        });
+        discardConfirmation = confirmation;
+        confirmation.setOnDismissListener(ignored -> { if (discardConfirmation == confirmation) discardConfirmation = null; });
+        confirmation.show(); return true;
+    }
     private void readEnvironment() {
         int request = ++generation;
         WeakReference<IncidentComposer> reference = new WeakReference<>(this); Handler handler = main;
@@ -175,6 +211,7 @@ final class IncidentComposer {
     private void updateControls() {
         if (!dialog.isShowing()) return;
         saveButton.setEnabled(!saving && (!includeEnvironment.isChecked() || !environmentPending));
+        cancelButton.setEnabled(!saving);
         dialog.setCancelable(!saving);
         includeEnvironment.setEnabled(!saving); includeBreadcrumbs.setEnabled(!saving); includeNote.setEnabled(!saving); editor.setEnabled(!saving);
         includeLogs.setEnabled(!saving && mark.logs != null);

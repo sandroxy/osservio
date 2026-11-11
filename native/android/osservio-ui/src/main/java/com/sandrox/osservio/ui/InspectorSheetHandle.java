@@ -46,7 +46,7 @@ final class InspectorSheetHandle extends View {
                 float travel = Math.max(0, event.getRawY() - startY);
                 float speed = travel / Math.max(1, event.getEventTime() - startTime);
                 if (dragging && (travel > Math.max(InspectorTheme.dp(getContext(), 64), card.getHeight() * 0.18f)
-                        || (speed > 1.2f && travel > ViewConfiguration.get(getContext()).getScaledTouchSlop()))) { dismiss.run(); return true; }
+                        || (speed > 1.2f && travel > ViewConfiguration.get(getContext()).getScaledTouchSlop()))) { restore(); dismiss.run(); return true; }
                 else if (!dragging) performClick();
                 restore(); return true;
             case MotionEvent.ACTION_CANCEL: restore(); return true;

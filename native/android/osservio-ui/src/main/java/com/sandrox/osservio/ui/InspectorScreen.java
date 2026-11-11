@@ -31,7 +31,6 @@ final class InspectorScreen implements DialogInterface {
     void title(InspectorAppearance.Value<String> value) { InspectorAppearance.text(heading, value); }
     void title(int resource) { InspectorAppearance.text(heading, resource); }
     private InspectorSheetHandle handle;
-    private boolean modal;
     private Dialog fallback;
     private boolean showing;
     private boolean cancelable = true;
@@ -41,18 +40,34 @@ final class InspectorScreen implements DialogInterface {
 
     InspectorScreen(Context context, String title, View content, boolean panel) {
         this.panel = panel; this.content = content; navigation = InspectorNavigation.from(context);
-        view = new InspectorKeyboardDismissal.Frame(context);
+        view = new InspectorKeyboardDismissal.Frame(context) {
+            @Override protected void onMeasure(int widthSpec, int heightSpec) {
+                if (panel) {
+                    int bottomInset = getPaddingBottom();
+                    int available = View.MeasureSpec.getSize(heightSpec) - getPaddingTop() - bottomInset;
+                    FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
+                    params.topMargin = Math.min(InspectorTheme.dp(context, 56), Math.max(0, available / 12));
+                    // Extend the surface beneath system insets; keep the content above them.
+                    params.bottomMargin = -bottomInset;
+                    card.setPadding(0, 0, 0, bottomInset);
+                }
+                super.onMeasure(widthSpec, heightSpec);
+            }
+        };
         view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context));
         card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL); card.setClipToOutline(true);
         InspectorAppearance.style(view, () -> view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context)));
-        InspectorAppearance.style(card, () -> card.setBackground(InspectorTheme.shape(context, InspectorTheme.canvas(context), panel ? 24 : 0, false)));
+        InspectorAppearance.style(card, () -> {
+            android.graphics.drawable.GradientDrawable background = InspectorTheme.shape(context, InspectorTheme.canvas(context), 0, false);
+            if (panel) {
+                float radius = InspectorTheme.dp(context, 24);
+                background.setCornerRadii(new float[] {radius, radius, radius, radius, 0, 0, 0, 0});
+            }
+            card.setBackground(background);
+        });
         view.addView(card, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
         if (panel) {
-            view.addOnLayoutChangeListener((root, l, t, r, b, ol, ot, or, ob) -> {
-                int gap = Math.min(InspectorTheme.dp(context, 56), Math.max(0, (b - t) / 12));
-                FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
-                if (params.topMargin != gap) { params.topMargin = gap; card.setLayoutParams(params); }
-            });
+            view.setClipToPadding(false);
             view.setOnClickListener(ignored -> cancel()); card.setClickable(true);
             handle = new InspectorSheetHandle(context, card, this::cancel);
             card.addView(handle, new LinearLayout.LayoutParams(-1, InspectorTheme.dp(context, 40)));
@@ -85,22 +100,13 @@ final class InspectorScreen implements DialogInterface {
         bar.pageActions.add(action);
         return action;
     }
-    void leadingAction(int label, Runnable operation) {
+    Button leadingAction(int label, Runnable operation) {
         back.setVisibility(View.GONE);
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
         bar.leading.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
+        return action;
     }
-    boolean coversTabs() { return panel || modal; }
-    void fullScreenTask() {
-        modal = true; back.setImageResource(R.drawable.osservio_close);
-        Runnable label = () -> {
-            String text = view.getContext().getString(R.string.osservio_archive_cancel);
-            back.setContentDescription(text);
-            if (android.os.Build.VERSION.SDK_INT >= 26) back.setTooltipText(text);
-        };
-        InspectorAppearance.content(back, label); label.run();
-    }
-    void showCancel() { back.setVisibility(View.VISIBLE); }
+    boolean coversTabs() { return panel; }
     ImageButton iconAction(int icon, int label, Runnable operation) {
         ImageButton action = InspectorWidgets.icon(view.getContext(), icon, label, operation);
         addAction(action); return action;
@@ -114,8 +120,12 @@ final class InspectorScreen implements DialogInterface {
         if (showing) return;
         if (navigation != null) { navigation.push(this); return; }
         Context context = view.getContext();
-        fallback = new Dialog(context, InspectorPreferences.dark(context) ? R.style.OsservioScreenDark : R.style.OsservioScreenLight);
+        fallback = new Dialog(context, InspectorPreferences.dark(context) ? R.style.OsservioScreenDark : R.style.OsservioScreenLight) {
+            @SuppressWarnings("deprecation")
+            @Override public void onBackPressed() { InspectorScreen.this.cancel(); }
+        };
         fallback.setContentView(view); fallback.setCancelable(cancelable);
+        fallback.setCanceledOnTouchOutside(false);
         fallback.setOnCancelListener(ignored -> { if (cancelled != null) cancelled.onCancel(this); });
         fallback.setOnDismissListener(ignored -> didDismiss());
         fallback.show();
@@ -135,6 +145,10 @@ final class InspectorScreen implements DialogInterface {
     }
     @Override public void cancel() {
         if (!cancelable || (backInterceptor != null && backInterceptor.consume())) return;
+        discard();
+    }
+    /** Host-driven dismissal skips draft prompts but still notifies cancellation owners. */
+    void discard() {
         if (cancelled != null) cancelled.onCancel(this);
         dismiss();
     }

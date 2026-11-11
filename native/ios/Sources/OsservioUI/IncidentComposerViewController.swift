@@ -4,7 +4,7 @@ import UIKit
 
 /// Metadata is frozen before editing. Opted-in bodies are copied once from those references.
 @MainActor
-final class IncidentComposerViewController: UITableViewController, UITextViewDelegate {
+final class IncidentComposerViewController: UITableViewController, UITextViewDelegate, UIAdaptivePresentationControllerDelegate {
     private let archive: any IncidentArchive
     private let provider: any EnvironmentProvider
     private let mark: IncidentSnapshot
@@ -40,6 +40,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
     private var environmentGeneration = 0
     private var saving = false
     private var notice = ""
+    private var initialOptions: [Bool] = []
 
     init(mark: IncidentSnapshot, archive: any IncidentArchive, provider: any EnvironmentProvider,
          httpHistory: (any HTTPHistory)? = nil, webSocketHistory: (any WebSocketHistory)? = nil, saved: @escaping @MainActor () -> Void) {
@@ -53,7 +54,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("incident_mark")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         tableView.keyboardDismissMode = .interactive
-        navigationItem.leftBarButtonItem = inspectorDismissItem(target: self, action: #selector(cancel))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: RuntimePresentation.text("archive_cancel"), style: .plain, target: self, action: #selector(cancel))
         inspectorPrimaryAction = UIBarButtonItem(title: RuntimePresentation.text("incident_save"), style: .done, target: self, action: #selector(save))
         includeEnvironment.isOn = true; includeBreadcrumbs.isOn = true; includeNote.isOn = false
         includeEnvironment.accessibilityLabel = RuntimePresentation.text("incident_include_environment")
@@ -90,8 +91,18 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
             editor.bottomAnchor.constraint(equalTo: editorCell.contentView.bottomAnchor, constant: -8)
         ])
         environmentCell.detailTextLabel?.text = RuntimePresentation.text("incident_environment_loading")
+        initialOptions = controls.map(\.isOn)
         readEnvironment(); updateControls()
     }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.presentationController?.delegate = self
+    }
+    private var hasChanges: Bool { controls.map(\.isOn) != initialOptions || !editor.text.isEmpty }
+    func presentationControllerShouldDismiss(_ presentationController: UIPresentationController) -> Bool { !saving && !hasChanges }
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) { cancel() }
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { environmentGeneration += 1 }
+    override func accessibilityPerformEscape() -> Bool { cancel(); return true }
     private var controls: [UISwitch] { [includeEnvironment, includeBreadcrumbs, includeLogs, includeHTTP, includeHTTPBodies, includeWebSockets, includeWebSocketPayloads, includeNote] }
     private var optionCells: [UITableViewCell] { [environmentCell, breadcrumbsCell, logsCell, httpCell, httpBodiesCell, webSocketsCell, webSocketPayloadsCell, noteToggleCell] }
     private func configure(_ cell: UITableViewCell, control: UISwitch, key: String, selected: Bool, detail: String?) {
@@ -161,8 +172,25 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         includeHTTPBodies.isEnabled = !saving && includeHTTP.isOn && httpHistory != nil && mark.http?.payloads.isEmpty == false && !httpContentFailed
         includeWebSocketPayloads.isEnabled = !saving && includeWebSockets.isOn && webSocketHistory != nil && mark.webSockets?.payloads.isEmpty == false && !socketContentFailed
         editor.isEditable = !saving; isModalInPresentation = saving
+        navigationController?.isModalInPresentation = saving
     }
-    @objc private func cancel() { environmentGeneration += 1; dismiss(animated: true) }
+    @objc private func cancel() {
+        guard !saving, presentedViewController == nil else { return }
+        guard hasChanges else { abandon(); return }
+        view.endEditing(true)
+        let alert = UIAlertController(title: RuntimePresentation.text("incident_discard_title"),
+            message: RuntimePresentation.text("incident_discard_hint"), preferredStyle: .alert)
+        alert.overrideUserInterfaceStyle = overrideUserInterfaceStyle
+        alert.view.tintColor = InspectorTheme.accent
+        alert.addAction(UIAlertAction(title: RuntimePresentation.text("incident_keep_editing"), style: .cancel))
+        alert.addAction(UIAlertAction(title: RuntimePresentation.text("incident_discard"), style: .destructive) { [weak self] _ in self?.abandon() })
+        present(alert, animated: true)
+    }
+    private func abandon() {
+        environmentGeneration += 1
+        if let presenter = navigationController?.presentingViewController ?? presentingViewController { presenter.dismiss(animated: true) }
+        else { dismiss(animated: true) }
+    }
     @objc private func save() {
         guard !saving, !includeEnvironment.isOn || !environmentPending else { return }
         let snapshot: IncidentSnapshot

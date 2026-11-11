@@ -144,7 +144,8 @@ Use the same package test scheme with `-only-testing:OsservioUITests` and
 `-derivedDataPath .build/ios-ui` for native UI regressions. These checks exercise
 navigation, query and preference isolation, draft filters, lazy body reads,
 literal content search, short-window/keyboard layouts, delayed environment
-delivery, input preservation, optional attachments and original mark time. A running consumer separately verifies actual event routing
+delivery, input preservation, temporary problem-sheet dismissal, optional
+attachments and original mark time. A running consumer separately verifies actual event routing
 and navigation; controller tests do not replace visual acceptance.
 JSON reader checks cover shared grammar fixtures, exact source tokens, resource
 limits, parse cancellation, row reuse, search/expansion restoration and retained

@@ -7,6 +7,33 @@ import XCTest
 
 final class IncidentComposerTests: XCTestCase {
     @MainActor
+    func testDismissalTracksDraftChangesAndAllowsRevertedOptions() async throws {
+        let archive = RecordingArchive(), provider = ControlledEnvironment()
+        let composer = IncidentComposerViewController(mark: try IncidentSnapshot.capture(), archive: archive, provider: provider) { XCTFail("Dismissal must not save") }
+        let window = show(composer)
+        defer { window.isHidden = true; window.rootViewController = nil }
+        let presentation = UIPresentationController(presentedViewController: try XCTUnwrap(composer.navigationController), presenting: nil)
+        XCTAssertEqual(composer.navigationItem.leftBarButtonItem?.title, RuntimePresentation.text("archive_cancel"))
+        XCTAssertTrue(composer.presentationControllerShouldDismiss(presentation))
+        let attachment = try control(composer, row: 0)
+        attachment.isOn = false; try sendChange(attachment)
+        XCTAssertFalse(composer.presentationControllerShouldDismiss(presentation))
+        attachment.isOn = true; try sendChange(attachment)
+        provider.finish(.failure(.unavailable))
+        try await waitUntil { composer.inspectorPrimaryAction?.isEnabled == true }
+        XCTAssertTrue(composer.presentationControllerShouldDismiss(presentation), "Provider delivery is not a draft edit")
+        let note = try control(composer, row: 7); note.isOn = true; try sendChange(note)
+        let cell = try XCTUnwrap(composer.tableView.dataSource?.tableView(composer.tableView, cellForRowAt: IndexPath(row: 0, section: 2)))
+        let editor = try XCTUnwrap(cell.contentView.subviews.compactMap { $0 as? UITextView }.first)
+        editor.text = "Keep this observation"
+        XCTAssertFalse(composer.presentationControllerShouldDismiss(presentation))
+        composer.presentationControllerDidAttemptToDismiss(presentation)
+        let alert = try XCTUnwrap(composer.presentedViewController as? UIAlertController)
+        XCTAssertEqual(alert.actions.map(\.title), [RuntimePresentation.text("incident_keep_editing"), RuntimePresentation.text("incident_discard")])
+        XCTAssertEqual(editor.text, "Keep this observation"); XCTAssertTrue(archive.attempts.isEmpty)
+    }
+
+    @MainActor
     func testEnvironmentDeliveryPreservesEditingAndOriginalMarkTime() async throws {
         let provider = ControlledEnvironment(), archive = RecordingArchive()
         let mark = try IncidentSnapshot.restore(id: UUID().uuidString, timestampMillis: 123, note: nil, environment: nil,
@@ -52,6 +79,11 @@ final class IncidentComposerTests: XCTestCase {
         let save = try XCTUnwrap(composer.navigationItem.rightBarButtonItem)
         XCTAssertTrue(save.isEnabled)
         try send(save)
+        XCTAssertFalse(save.isEnabled)
+        let presentation = UIPresentationController(presentedViewController: try XCTUnwrap(composer.navigationController), presenting: nil)
+        XCTAssertFalse(composer.presentationControllerShouldDismiss(presentation))
+        try send(try XCTUnwrap(composer.navigationItem.leftBarButtonItem)); try send(save)
+        XCTAssertNil(composer.presentedViewController); XCTAssertEqual(archive.attempts.count, 1)
         await fulfillment(of: [saved], timeout: 3)
         let snapshot = try XCTUnwrap(archive.snapshot)
         XCTAssertNil(snapshot.environment); XCTAssertNil(snapshot.note); XCTAssertNil(snapshot.breadcrumbs)

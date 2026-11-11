@@ -69,7 +69,8 @@ final class InspectorNavigation extends FrameLayout {
     }
     void discardPanels() {
         for (List<InspectorScreen> stack : stacks) {
-            for (InspectorScreen screen : new ArrayList<>(stack)) if (screen.panel) { screen.cancel(); break; }
+            // Host-driven hiding discards transient UI, even when user dismissal needs confirmation.
+            for (InspectorScreen screen : new ArrayList<>(stack)) if (screen.panel) { screen.discard(); break; }
         }
     }
     void dispose() {

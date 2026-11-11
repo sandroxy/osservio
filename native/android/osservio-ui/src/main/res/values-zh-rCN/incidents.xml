@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="osservio_incident_title">问题</string>
-    <string name="osservio_incident_mark">标记问题</string>
+    <string name="osservio_incident_mark">记录问题</string>
     <string name="osservio_incident_refresh">刷新问题快照</string>
     <string name="osservio_incident_save">保存</string>
     <string name="osservio_incident_saving">正在保存快照…</string>
@@ -67,4 +67,8 @@
     <string name="osservio_incident_export_invalid">这份快照未通过导出校验。</string>
     <string name="osservio_incident_export_unavailable">暂时无法分享，已保存的快照仍然保留。请重试。</string>
     <string name="osservio_incident_archive_hint">问题档案可能来自手动标记或系统记录，请结合来源和时间查看。打开档案不会改变采集状态。</string>
+    <string name="osservio_incident_discard_title">放弃本次记录？</string>
+    <string name="osservio_incident_discard_hint">未保存的备注和附件选择将被丢弃。</string>
+    <string name="osservio_incident_keep_editing">继续编辑</string>
+    <string name="osservio_incident_discard">放弃记录</string>
 </resources>
