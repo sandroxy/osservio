@@ -125,20 +125,11 @@ extension UIViewController {
     }
     /// Page-owned actions remain separate from the session's stable minimize affordance.
     var inspectorActions: [UIBarButtonItem]? {
-        get { navigationItem.rightBarButtonItems?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } }
+        get { InspectorNavigationActions.state(for: self).items }
         set {
-            let items = newValue?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } ?? []
-            let result: [UIBarButtonItem]
-            if let navigation = navigationController as? InspectorNavigationController, navigation.session != nil, !navigation.transientPanel {
-                let minimize = navigationItem.rightBarButtonItems?.first { $0.accessibilityIdentifier == "Osservio.Minimize" }
-                    ?? navigation.minimizeItem()
-                minimize.accessibilityLabel = InspectorLocalization.text("ui_minimize")
-                result = [minimize] + items
-            } else { result = items }
-            let existing = navigationItem.rightBarButtonItems ?? []
-            if existing.count != result.count || !zip(existing, result).allSatisfy({ $0 === $1 }) {
-                navigationItem.rightBarButtonItems = result.isEmpty ? nil : result
-            }
+            let state = InspectorNavigationActions.state(for: self)
+            state.items = newValue?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } ?? []
+            state.render()
         }
     }
     var inspectorPrimaryAction: UIBarButtonItem? {

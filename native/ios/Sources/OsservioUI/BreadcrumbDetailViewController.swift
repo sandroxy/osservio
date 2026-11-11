@@ -13,7 +13,7 @@ final class BreadcrumbDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() { super.viewDidLoad(); style.changed() }
     private func render() {
-        InspectorTheme.apply(self); title = RuntimePresentation.kind(event)
+        InspectorTheme.apply(self); title = InspectorLocalization.text("ui_event_details")
         let copy = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copySnapshot))
         copy.accessibilityLabel = InspectorLocalization.text("ui_copy_all"); inspectorPrimaryAction = copy
         var overview = [Row(InspectorLocalization.text("ui_event_type"), RuntimePresentation.kind(event)),

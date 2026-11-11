@@ -52,7 +52,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func hide() { loop.hide(); table.endEditing(true) }
     private func relabel() {
         guard let owner else { return }; InspectorTheme.apply(owner)
-        owner.title = connectionID.map { "WebSocket · " + $0.prefix(8) } ?? InspectorLocalization.text("network")
+        owner.title = InspectorLocalization.text(connectionID == nil ? "network" : "ui_connection_records")
         header.search.placeholder = InspectorLocalization.text("ui_network_search")
         (header.extra.arrangedSubviews.first as? UILabel)?.text = InspectorLocalization.text("ui_connection_hint")
         display()

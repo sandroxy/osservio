@@ -47,14 +47,14 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
     private func render() {
-        title = event.method + " · " + (event.statusCode.map(String.init) ?? HTTPPresentation.state(event.state))
+        title = InspectorLocalization.text("ui_request_details")
         selection.setTitles(["ui_overview", "ui_request", "ui_response"].map(InspectorLocalization.text))
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         if selection.selectedIndex == 0 {
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
-                field("ui_state", HTTPPresentation.state(event.state)), field("http_final_url", event.responseURL),
-                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(self.event.method, content: self.event.url) }),
+                field("ui_http_method", event.method), field("ui_state", HTTPPresentation.state(event.state)), field("http_final_url", event.responseURL),
+                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(InspectorLocalization.text("ui_request_url"), content: self.event.url) }),
                 field("http_status", event.statusCode.map(String.init)), field("http_duration", event.durationMillis.map { "\($0) ms" }),
                 field("http_failure", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) })
             ], footer: noticeKey.map(InspectorLocalization.text)),

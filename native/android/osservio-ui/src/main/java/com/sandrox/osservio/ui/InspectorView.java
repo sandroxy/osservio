@@ -160,7 +160,7 @@ public final class InspectorView extends FrameLayout {
             socketRecorder == null ? null : socketRecorder.captureController);
         bar.leading.addView(debugControl.button); title = bar.title;
         close = InspectorWidgets.icon(themed, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> { if (onClose != null) onClose.run(); });
-        updateClose(); bar.trailing.addView(close);
+        updateClose(); bar.pageActions.exit(close);
         rootPage.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(themed); rootPage.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         LinearLayout navigation = new LinearLayout(themed);

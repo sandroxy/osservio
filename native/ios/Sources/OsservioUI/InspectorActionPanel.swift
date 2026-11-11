@@ -9,6 +9,7 @@ final class InspectorActionPanel: UITableViewController {
         let title: String
         let style: Style
         var isEnabled = true
+        var image: UIImage?
         let handler: (Action) -> Void
         init(title: String, style: Style, handler: @escaping (Action) -> Void) {
             self.title = title; self.style = style; self.handler = handler
@@ -47,6 +48,7 @@ final class InspectorActionPanel: UITableViewController {
         cell.textLabel?.textColor = !action.isEnabled ? InspectorTheme.secondary : action.style == .destructive ? .systemRed : .label
         cell.backgroundColor = InspectorTheme.surface; cell.isUserInteractionEnabled = action.isEnabled
         cell.accessibilityTraits = action.isEnabled ? .button : [.button, .notEnabled]
+        cell.imageView?.image = action.image; cell.imageView?.tintColor = InspectorTheme.accent
         if action.style == .destructive { cell.imageView?.image = UIImage(systemName: "trash"); cell.imageView?.tintColor = .systemRed }
         return cell
     }

@@ -22,7 +22,7 @@ final class IncidentSnapshotViewController: UITableViewController {
     required init?(coder: NSCoder) { return nil }
     override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .insetGrouped) }
     override func viewDidLoad() {
-        super.viewDidLoad(); InspectorTheme.apply(self); title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
+        super.viewDidLoad(); InspectorTheme.apply(self); title = InspectorLocalization.text("ui_problem_details")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         search.placeholder = RuntimePresentation.text("crumb_search")
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
@@ -45,7 +45,7 @@ final class IncidentSnapshotViewController: UITableViewController {
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); sharing?.cancel(); view.endEditing(true) }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
-        title = IncidentPresentation.title(snapshot.systemDiagnostic?.kind)
+        title = InspectorLocalization.text("ui_problem_details")
         search.placeholder = RuntimePresentation.text("crumb_search")
         inspectorActions?.last?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
         sharing?.button.accessibilityLabel = RuntimePresentation.text("incident_share"); tableView.reloadData()

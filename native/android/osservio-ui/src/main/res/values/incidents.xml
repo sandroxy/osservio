@@ -3,7 +3,7 @@
     <string name="osservio_incident_title">Problems</string>
     <string name="osservio_incident_mark">Mark a problem</string>
     <string name="osservio_incident_refresh">Refresh snapshots</string>
-    <string name="osservio_incident_save">Save snapshot</string>
+    <string name="osservio_incident_save">Save</string>
     <string name="osservio_incident_saving">Saving snapshot…</string>
     <string name="osservio_incident_saved">Snapshot saved</string>
     <string name="osservio_incident_saved_read_at">Snapshot saved\nRead at · %1$s</string>

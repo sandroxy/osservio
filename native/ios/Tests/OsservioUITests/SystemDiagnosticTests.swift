@@ -56,7 +56,7 @@ final class SystemDiagnosticTests: XCTestCase {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         window.rootViewController = navigation; window.makeKeyAndVisible(); viewer.loadViewIfNeeded()
         defer { window.isHidden = true; window.rootViewController = nil }
-        XCTAssertEqual(viewer.title, RuntimePresentation.text("diagnostic_kind_crash"))
+        XCTAssertEqual(viewer.title, InspectorLocalization.text("ui_problem_details"))
         XCTAssertNil(viewer.navigationItem.searchController, "No breadcrumb search for an absent attachment")
         let time = viewer.tableView(viewer.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
         XCTAssertEqual(time.textLabel?.text, RuntimePresentation.text("diagnostic_recovered_at"))
@@ -111,7 +111,7 @@ final class SystemDiagnosticTests: XCTestCase {
         XCTAssertNil(fields[RuntimePresentation.text("diagnostic_exception_code")])
         let manual = try IncidentSnapshot.capture(), viewer = IncidentSnapshotViewController(snapshot: manual)
         viewer.loadViewIfNeeded()
-        XCTAssertEqual(viewer.title, RuntimePresentation.text("incident_manual"))
+        XCTAssertEqual(viewer.title, InspectorLocalization.text("ui_problem_details"))
         XCTAssertEqual(viewer.tableView(viewer.tableView, numberOfRowsInSection: 0), 3)
         XCTAssertEqual(IncidentPresentation.hint(manual), RuntimePresentation.text("incident_snapshot_hint"))
     }

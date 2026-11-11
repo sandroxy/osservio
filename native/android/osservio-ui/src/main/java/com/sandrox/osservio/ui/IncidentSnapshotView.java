@@ -91,7 +91,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         addView(list, new LayoutParams(-1, 0, 1)); InspectorAppearance.content(this, this::filter); filter();
     }
     @Override public void bindScreen(InspectorScreen screen) {
-        screen.title(() -> IncidentPresentation.title(getContext(), snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind));
+        screen.title(R.string.osservio_ui_problem_details);
         screen.addAction(copy); if (share != null) screen.addAction(share); controls.setVisibility(GONE);
     }
     void busy(boolean busy) {

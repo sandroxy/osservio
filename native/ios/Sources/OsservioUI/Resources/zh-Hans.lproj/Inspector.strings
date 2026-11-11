@@ -183,3 +183,11 @@
 "ui_capture_settings" = "采集设置";
 "ui_baseline_capture" = "基础采集";
 "ui_event_time" = "发生时间";
+"ui_log_details" = "日志详情";
+"ui_log_content" = "日志正文";
+"ui_request_details" = "请求详情";
+"ui_message_details" = "消息详情";
+"ui_connection_event" = "连接事件";
+"ui_connection_records" = "连接记录";
+"ui_event_details" = "事件详情";
+"ui_problem_details" = "问题详情";

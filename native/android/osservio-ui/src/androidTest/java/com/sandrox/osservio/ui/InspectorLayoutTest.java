@@ -37,14 +37,15 @@ public final class InspectorLayoutTest {
                 toolbar.title.setText("WebSocket connection · Message details");
                 int[] clicks = {0};
                 toolbar.leading.addView(InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, () -> clicks[0]++));
-                toolbar.trailing.addView(InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, () -> clicks[0]++));
-                toolbar.trailing.addView(InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> clicks[0]++));
+                toolbar.pageActions.add(InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, () -> clicks[0]++));
+                toolbar.pageActions.exit(InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize, () -> clicks[0]++));
                 toolbar.measure(View.MeasureSpec.makeMeasureSpec(dp(context, width), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 toolbar.layout(0, 0, toolbar.getMeasuredWidth(), toolbar.getMeasuredHeight());
                 assertTrue(toolbar.title.getLeft() >= toolbar.leading.getRight());
                 assertTrue(toolbar.title.getRight() <= toolbar.trailing.getLeft());
                 assertTrue(toolbar.trailing.getRight() <= toolbar.getWidth());
+                assertEquals(toolbar.getWidth() / 2f, (toolbar.title.getLeft() + toolbar.title.getRight()) / 2f, 1);
                 assertTrue(toolbar.title.getHeight() >= toolbar.title.getLayout().getHeight());
                 List<android.widget.ImageButton> buttons = new ArrayList<>(); collect(toolbar, android.widget.ImageButton.class, buttons);
                 for (android.widget.ImageButton button : buttons) {

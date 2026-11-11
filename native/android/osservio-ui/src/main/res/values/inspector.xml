@@ -154,4 +154,12 @@
     <string name="osservio_ui_event_time">Observed at</string>
     <string name="osservio_ui_request_url">Request URL</string>
     <string name="osservio_ui_http">HTTP</string>
+    <string name="osservio_ui_log_details">Log details</string>
+    <string name="osservio_ui_log_content">Log content</string>
+    <string name="osservio_ui_request_details">Request details</string>
+    <string name="osservio_ui_message_details">Message details</string>
+    <string name="osservio_ui_connection_event">Connection event</string>
+    <string name="osservio_ui_connection_records">Connection records</string>
+    <string name="osservio_ui_event_details">Event details</string>
+    <string name="osservio_ui_problem_details">Problem details</string>
 </resources>

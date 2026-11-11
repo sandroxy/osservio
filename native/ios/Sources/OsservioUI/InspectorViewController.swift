@@ -89,12 +89,14 @@ public final class InspectorViewController: UITabBarController, UITabBarControll
         debugControl.refresh()
         for (index, section) in sections.enumerated() {
             viewControllers?[index].tabBarItem.title = InspectorLocalization.text(section.1)
+            let actions = InspectorNavigationActions.state(for: section.0)
             if session == nil {
                 let close = inspectorDismissItem(target: self, action: #selector(closeInspector), label: "ui_close")
-                close.accessibilityIdentifier = "Osservio.CloseInspector"; section.0.inspectorActions = [close]
+                close.accessibilityIdentifier = "Osservio.CloseInspector"; actions.close = close
             } else {
-                section.0.inspectorActions = section.0.inspectorActions?.filter { $0.accessibilityIdentifier != "Osservio.CloseInspector" }
+                actions.close = nil
             }
+            actions.render()
             section.0.inspectorMinimalBackTitle()
         }
     }

@@ -153,4 +153,12 @@
     <string name="osservio_ui_event_time">发生时间</string>
     <string name="osservio_ui_request_url">请求地址</string>
     <string name="osservio_ui_http">HTTP</string>
+    <string name="osservio_ui_log_details">日志详情</string>
+    <string name="osservio_ui_log_content">日志正文</string>
+    <string name="osservio_ui_request_details">请求详情</string>
+    <string name="osservio_ui_message_details">消息详情</string>
+    <string name="osservio_ui_connection_event">连接事件</string>
+    <string name="osservio_ui_connection_records">连接记录</string>
+    <string name="osservio_ui_event_details">事件详情</string>
+    <string name="osservio_ui_problem_details">问题详情</string>
 </resources>

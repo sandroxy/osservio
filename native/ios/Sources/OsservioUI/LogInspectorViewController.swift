@@ -140,7 +140,7 @@ final class LogDetailViewController: InspectorDetailViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated); title = event.category
+        super.viewWillAppear(animated); title = InspectorLocalization.text("ui_log_details")
         inspectorPrimaryAction = inspectorCopyItem(target: self, action: #selector(copyMessage), label: "copy")
         sections = [Section(title: InspectorLocalization.text("ui_metadata"), rows: [
             Row(InspectorLocalization.text("ui_level"), InspectorFilterOptions.label(.level, event.level.rawValue)),
@@ -149,7 +149,7 @@ final class LogDetailViewController: InspectorDetailViewController {
             Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
         ]), Section(title: InspectorLocalization.text("ui_read_content"), rows: [
             Row(String(event.message.prefix(600)), action: { [weak self] in
-                guard let self else { return }; self.read(self.event.category, content: InspectorReadContent(text: self.event.message,
+                guard let self else { return }; self.read(InspectorLocalization.text("ui_log_content"), content: InspectorReadContent(text: self.event.message,
                     notice: self.event.isTruncated ? InspectorLocalization.text("truncated") : "", allowsJSON: !self.event.isTruncated && !self.event.isPrivate))
             })
         ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · "))]

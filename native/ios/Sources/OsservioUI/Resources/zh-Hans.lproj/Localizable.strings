@@ -225,7 +225,7 @@
 "incident_title" = "问题";
 "incident_mark" = "标记问题";
 "incident_refresh" = "刷新问题快照";
-"incident_save" = "保存快照";
+"incident_save" = "保存";
 "incident_saving" = "正在保存快照…";
 "incident_saved" = "快照已保存";
 "incident_empty" = "尚无已保存的问题快照。";

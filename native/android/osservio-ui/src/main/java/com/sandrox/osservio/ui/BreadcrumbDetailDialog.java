@@ -30,8 +30,7 @@ final class BreadcrumbDetailDialog {
         page.expandable(R.string.osservio_ui_technical_details, R.string.osservio_ui_show_identifiers, R.string.osservio_ui_hide_identifiers, () -> {
             page.field("ID", event.id); page.field(R.string.osservio_crumb_session, event.sessionId); page.field(R.string.osservio_crumb_sequence, event.sequence);
         });
-        InspectorScreen screen = InspectorDialogs.screen(context, RuntimePresentation.kind(context, event.kind), page);
-        screen.title(() -> RuntimePresentation.kind(context, event.kind));
+        InspectorScreen screen = InspectorDialogs.screen(context, R.string.osservio_ui_event_details, page);
         screen.iconAction(R.drawable.osservio_copy, R.string.osservio_ui_copy_all, () -> {
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", RuntimePresentation.breadcrumb(context, event)));

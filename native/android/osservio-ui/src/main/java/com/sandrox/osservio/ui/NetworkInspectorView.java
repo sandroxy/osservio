@@ -167,7 +167,7 @@ class NetworkInspectorView extends LinearLayout {
             detail.showConnection(() -> {
                 String id = item.socket.connectionId;
                 NetworkInspectorView timeline = new NetworkInspectorView(getContext(), null, null, socketRecorder, socketHistory, new State(), id);
-                InspectorDialogs.screen(getContext(), "WebSocket · " + id.substring(0, Math.min(8, id.length())), timeline).show();
+                InspectorDialogs.screen(getContext(), R.string.osservio_ui_connection_records, timeline).show();
             }); dialog = detail.dialog;
         }
         watchDialog(); dialog.show();

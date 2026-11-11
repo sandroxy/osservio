@@ -36,8 +36,7 @@ final class HTTPDetailDialog {
         content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ui_request, R.string.osservio_ui_response}, 0,
             index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
-        dialog = InspectorDialogs.screen(context, event.method + " · HTTP", content);
-        dialog.title(() -> event.method + " · " + (event.statusCode == null ? HTTPPresentation.state(context, event.state) : event.statusCode.toString()));
+        dialog = InspectorDialogs.screen(context, R.string.osservio_ui_request_details, content);
         dialog.iconAction(R.drawable.osservio_copy, R.string.osservio_ui_copy_metadata, () -> {
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", HTTPPresentation.overview(context, event)));
@@ -48,9 +47,10 @@ final class HTTPDetailDialog {
         InspectorDetailPage page = new InspectorDetailPage(context);
         if (section == 0) {
             page.section(R.string.osservio_ui_overview);
+            page.field(R.string.osservio_ui_http_method, event.method);
             page.field(R.string.osservio_ui_state, () -> HTTPPresentation.state(context, event.state));
             page.field(R.string.osservio_http_final_url, event.responseURL);
-            page.disclosure(R.string.osservio_ui_request_url, () -> event.url, () -> page.read(event.method, event.url, true));
+            page.disclosure(R.string.osservio_ui_request_url, () -> event.url, () -> page.read(R.string.osservio_ui_request_url, event.url, true));
             page.field(R.string.osservio_http_status, event.statusCode);
             page.field(R.string.osservio_http_duration, event.durationMillis == null ? null : event.durationMillis + " ms");
             page.field(R.string.osservio_http_failure, () -> event.failure == null ? null : HTTPPresentation.failure(context, event.failure));

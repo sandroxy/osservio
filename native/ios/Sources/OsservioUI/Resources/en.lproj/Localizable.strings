@@ -225,7 +225,7 @@
 "incident_title" = "Problems";
 "incident_mark" = "Mark a problem";
 "incident_refresh" = "Refresh snapshots";
-"incident_save" = "Save snapshot";
+"incident_save" = "Save";
 "incident_saving" = "Saving snapshot…";
 "incident_saved" = "Snapshot saved";
 "incident_empty" = "No saved problem snapshots.";

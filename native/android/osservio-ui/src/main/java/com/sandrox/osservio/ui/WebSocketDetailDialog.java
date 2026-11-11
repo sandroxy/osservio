@@ -29,7 +29,7 @@ final class WebSocketDetailDialog {
         content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog = InspectorDialogs.screen(context, "WebSocket", content);
-        dialog.title(() -> WebSocketPresentation.kind(context, event.kind));
+        dialog.title(event.kind == WebSocketEvent.Kind.MESSAGE || event.kind == WebSocketEvent.Kind.MESSAGE_RESULT ? R.string.osservio_ui_message_details : R.string.osservio_ui_connection_event);
         dialog.iconAction(R.drawable.osservio_copy, R.string.osservio_ui_copy_metadata, () -> {
             android.content.ClipboardManager clipboard = context.getSystemService(android.content.ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Osservio", WebSocketPresentation.overview(context, event)));
@@ -40,7 +40,7 @@ final class WebSocketDetailDialog {
         if (section == 0) {
             page.section(R.string.osservio_ui_overview);
             page.value(() -> WebSocketPresentation.summary(context, event));
-            page.disclosure(R.string.osservio_ui_request_url, () -> event.url, () -> page.read("WebSocket", event.url, true));
+            page.disclosure(R.string.osservio_ui_request_url, () -> event.url, () -> page.read(R.string.osservio_ui_request_url, event.url, true));
             page.field(R.string.osservio_ws_time, () -> RuntimePresentation.date(context, event.timestampMillis));
             page.field(R.string.osservio_http_status, event.statusCode); page.field(R.string.osservio_ws_close_code, event.closeCode);
             page.field(R.string.osservio_http_failure, () -> event.failure == null ? null : WebSocketPresentation.failure(context, event.failure));

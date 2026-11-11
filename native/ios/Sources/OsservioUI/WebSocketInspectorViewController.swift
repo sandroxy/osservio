@@ -44,14 +44,14 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
     private func render() {
-        title = WebSocketPresentation.kind(event)
+        title = InspectorLocalization.text(event.kind == .message || event.kind == .messageResult ? "ui_message_details" : "ui_connection_event")
         selection.setTitles(["ui_overview", "ws_payload"].map(InspectorLocalization.text))
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         if selection.selectedIndex == 0 {
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: [
                 Row(WebSocketPresentation.summary(event)),
-                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read("WebSocket", content: self.event.url) }),
+                Row(InspectorLocalization.text("ui_request_url"), event.url, action: { [weak self] in guard let self else { return }; self.read(InspectorLocalization.text("ui_request_url"), content: self.event.url) }),
                 field("ws_time", InspectorLocalization.date(event.timestampMillis)),
                 field("http_status", event.statusCode.map(String.init)), field("ws_close_code", event.closeCode.map(String.init)),
                 field("http_failure", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) })

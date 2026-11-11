@@ -64,7 +64,7 @@ final class InspectorScreen implements DialogInterface {
         heading = bar.title; heading.setText(title);
         minimize = InspectorWidgets.icon(context, R.drawable.osservio_minimize, R.string.osservio_ui_minimize,
             () -> { if (navigation != null) navigation.minimize(); });
-        bar.trailing.addView(minimize); updateMinimize();
+        bar.pageActions.exit(minimize); updateMinimize();
         card.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         card.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
     }
@@ -82,11 +82,7 @@ final class InspectorScreen implements DialogInterface {
     }
     Button action(int label, Runnable operation) {
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
-        if (view.getResources().getConfiguration().fontScale >= 1.5f) {
-            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
-            layout.setMargins(InspectorTheme.dp(view.getContext(), 16), 0, InspectorTheme.dp(view.getContext(), 16), 0);
-            card.addView(action, card.indexOfChild(bar) + 1, layout);
-        } else bar.trailing.addView(action, Math.max(0, bar.trailing.getChildCount() - 1), new LinearLayout.LayoutParams(-2, -2));
+        bar.pageActions.add(action);
         return action;
     }
     void leadingAction(int label, Runnable operation) {
@@ -95,17 +91,24 @@ final class InspectorScreen implements DialogInterface {
         bar.leading.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
     }
     boolean coversTabs() { return panel || modal; }
-    void fullScreenTask() { modal = true; }
+    void fullScreenTask() {
+        modal = true; back.setImageResource(R.drawable.osservio_close);
+        Runnable label = () -> {
+            String text = view.getContext().getString(R.string.osservio_archive_cancel);
+            back.setContentDescription(text);
+            if (android.os.Build.VERSION.SDK_INT >= 26) back.setTooltipText(text);
+        };
+        InspectorAppearance.content(back, label); label.run();
+    }
     void showCancel() { back.setVisibility(View.VISIBLE); }
     ImageButton iconAction(int icon, int label, Runnable operation) {
         ImageButton action = InspectorWidgets.icon(view.getContext(), icon, label, operation);
         addAction(action); return action;
     }
     void addAction(View action) {
-        if (action.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) action.getParent()).removeView(action);
-        bar.trailing.addView(action, Math.max(0, bar.trailing.getChildCount() - 1));
+        bar.pageActions.add(action);
     }
-    void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); }
+    void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); bar.pageActions.render(); }
     void show() {
         if (showing) return;
         if (navigation != null) { navigation.push(this); return; }

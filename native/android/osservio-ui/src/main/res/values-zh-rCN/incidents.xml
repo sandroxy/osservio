@@ -3,7 +3,7 @@
     <string name="osservio_incident_title">问题</string>
     <string name="osservio_incident_mark">标记问题</string>
     <string name="osservio_incident_refresh">刷新问题快照</string>
-    <string name="osservio_incident_save">保存快照</string>
+    <string name="osservio_incident_save">保存</string>
     <string name="osservio_incident_saving">正在保存快照…</string>
     <string name="osservio_incident_saved">快照已保存</string>
     <string name="osservio_incident_saved_read_at">快照已保存\n读取时间 · %1$s</string>
