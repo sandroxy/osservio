@@ -12,18 +12,26 @@ final class InspectorLayoutTests: XCTestCase {
         defer { InspectorPreferences.shared.language = previous }
         InspectorPreferences.shared.language = .english
         for width in [CGFloat(320), CGFloat(390)] {
-            var query = InspectorQuery(); query.select(.transport, value: "webSocket")
+            let query = InspectorQuery()
             let viewer = InspectorFilterViewController(query: query, groups: InspectorFilterOptions.network([], sockets: [], query: query)) { _ in XCTFail("Layout applied a draft") }
             let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 900))
             window.rootViewController = viewer; window.makeKeyAndVisible()
             defer { window.isHidden = true; window.rootViewController = nil }
             viewer.view.frame = window.bounds; viewer.view.layoutIfNeeded(); viewer.tableView.layoutIfNeeded()
+            let scope = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? InspectorScopeControl }.first)
+            scope.onSelect?(2); viewer.tableView.layoutIfNeeded()
             let label = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? UILabel }.first { $0.text == "Connection events" })
             let wordWidth = ("Connection" as NSString).size(withAttributes: [.font: label.font!]).width
             XCTAssertGreaterThanOrEqual(label.bounds.width, ceil(wordWidth))
             for group in descendants(viewer.view).compactMap({ $0 as? InspectorFilterChoices }) {
                 for control in descendants(group).compactMap({ $0 as? UIControl }) {
                     XCTAssertLessThanOrEqual(group.convert(control.bounds, from: control).maxY, group.bounds.height + 1)
+                    for text in descendants(control).compactMap({ $0 as? UILabel }) {
+                        let fullText = UILabel(); fullText.text = text.text; fullText.font = text.font
+                        fullText.numberOfLines = 0; fullText.lineBreakMode = .byWordWrapping
+                        let required = fullText.sizeThatFits(CGSize(width: text.bounds.width, height: .greatestFiniteMagnitude))
+                        XCTAssertGreaterThanOrEqual(text.bounds.height + 1, ceil(required.height), "\(text.text ?? ""): label \(text.bounds), control \(control.bounds), group \(group.bounds)")
+                    }
                 }
             }
         }

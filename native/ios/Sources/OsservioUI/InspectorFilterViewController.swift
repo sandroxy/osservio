@@ -195,6 +195,16 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     }
     override func tableView(_ tableView: UITableView, cellForRowAt path: IndexPath) -> UITableViewCell {
         let row = sections[path.section].rows[path.row]
+        if case .quick(let index) = row {
+            let group = groups[index], cell = InspectorFilterChoicesCell(group: group, selected: draft.values[group.field] ?? [])
+            cell.backgroundColor = InspectorTheme.surface
+            cell.choices.onSelect = { [weak self] value in
+                guard let self else { return }
+                self.view.endEditing(true); self.draft.select(group.field, value: value)
+                self.conditions?.sync(self.draft); self.rebuild()
+            }
+            return cell
+        }
         let reusable: Bool
         switch row { case .option, .timeOption: reusable = true; default: reusable = false }
         let cell = reusable ? tableView.dequeueReusableCell(withIdentifier: "choice") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "choice")
@@ -214,14 +224,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             cell.selectionStyle = .none
         }
         switch row {
-        case .quick(let index):
-            let group = groups[index], choices = InspectorFilterChoices(group: groups[index], selected: draft.values[groups[index].field] ?? [])
-            choices.onSelect = { [weak self] value in
-                guard let self else { return }
-                self.view.endEditing(true); self.draft.select(group.field, value: value)
-                self.conditions?.sync(self.draft); self.rebuild()
-            }
-            embed(choices)
+        case .quick: break
         case .scope:
             if scope == nil {
                 let control = InspectorScopeControl(titles: [text("ui_all"), "HTTP", "WebSocket"])

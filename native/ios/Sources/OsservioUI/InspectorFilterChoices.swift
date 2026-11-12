@@ -1,6 +1,29 @@
 #if canImport(UIKit)
 import UIKit
 
+/// Prepares the grid for the actual cell width before UIKit measures row height.
+@MainActor
+final class InspectorFilterChoicesCell: UITableViewCell {
+    let choices: InspectorFilterChoices
+    init(group: InspectorFilterGroup, selected: Set<String>) {
+        choices = InspectorFilterChoices(group: group, selected: selected)
+        super.init(style: .default, reuseIdentifier: nil)
+        contentView.preservesSuperviewLayoutMargins = false
+        contentView.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
+        choices.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(choices)
+        let margins = contentView.layoutMarginsGuide
+        NSLayoutConstraint.activate([choices.leadingAnchor.constraint(equalTo: margins.leadingAnchor),
+            choices.trailingAnchor.constraint(equalTo: margins.trailingAnchor),
+            choices.topAnchor.constraint(equalTo: margins.topAnchor), choices.bottomAnchor.constraint(equalTo: margins.bottomAnchor)])
+        selectionStyle = .none
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { return nil }
+    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontal: UILayoutPriority, verticalFittingPriority vertical: UILayoutPriority) -> CGSize {
+        choices.prepare(width: targetSize.width - contentView.layoutMargins.left - contentView.layoutMargins.right)
+        return super.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: horizontal, verticalFittingPriority: vertical)
+    }
+}
+
 /// Direct choices for short, stable dimensions. The query owns selection semantics.
 @MainActor
 final class InspectorFilterChoices: UIStackView {
@@ -21,6 +44,7 @@ final class InspectorFilterChoices: UIStackView {
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
     @objc private func choose(_ control: Choice) { onSelect?(control.value) }
+    fileprivate func prepare(width: CGFloat) { updateLayout(width: width) }
     override func didMoveToWindow() { super.didMoveToWindow(); updateLayout() }
     override func layoutSubviews() { updateLayout(); super.layoutSubviews() }
     override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontal: UILayoutPriority, verticalFittingPriority vertical: UILayoutPriority) -> CGSize {
@@ -35,6 +59,10 @@ final class InspectorFilterChoices: UIStackView {
         var count = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 1 : 3
         let required = controls.map(\.minimumWidth).max() ?? 0
         if available > 0 { while count > 1 && (available - CGFloat(count - 1) * 8) / CGFloat(count) < required { count -= 1 } }
+        if available > 0 {
+            let width = (available - CGFloat(count - 1) * 8) / CGFloat(count)
+            for control in controls { control.prepare(width: width) }
+        }
         guard count != columns else { return }; columns = count
         for control in controls { control.removeFromSuperview() }
         for row in grid.arrangedSubviews { row.removeFromSuperview() }
@@ -52,6 +80,7 @@ final class InspectorFilterChoices: UIStackView {
         private let label = InspectorTheme.label(.subheadline)
         private var measuredFont: UIFont?
         private var measuredWidth: CGFloat = 0
+        func prepare(width: CGFloat) { label.preferredMaxLayoutWidth = max(1, width - 38) }
         var minimumWidth: CGFloat {
             let text = label.text ?? "", font = label.font ?? UIFont.preferredFont(forTextStyle: .subheadline)
             if measuredFont == font { return measuredWidth }
@@ -68,7 +97,8 @@ final class InspectorFilterChoices: UIStackView {
             accessibilityTraits = selected ? [.button, .selected] : .button
             backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.canvas
             layer.cornerRadius = 12
-            label.text = title
+            label.text = title; label.numberOfLines = 0; label.lineBreakMode = .byWordWrapping
+            label.setContentCompressionResistancePriority(.required, for: .vertical)
             label.textColor = selected ? InspectorTheme.accent : .label
             let check = UIImageView(image: UIImage(systemName: "checkmark")); check.tintColor = InspectorTheme.accent
             check.contentMode = .scaleAspectFit; check.alpha = selected ? 1 : 0
