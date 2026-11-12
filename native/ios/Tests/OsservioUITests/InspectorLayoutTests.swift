@@ -7,6 +7,28 @@ import XCTest
 
 final class InspectorLayoutTests: XCTestCase {
     @MainActor
+    func testEnglishSocketChoicesFitWordsInsideSelfSizingRows() throws {
+        let previous = InspectorPreferences.shared.language
+        defer { InspectorPreferences.shared.language = previous }
+        InspectorPreferences.shared.language = .english
+        for width in [CGFloat(320), CGFloat(390)] {
+            var query = InspectorQuery(); query.select(.transport, value: "webSocket")
+            let viewer = InspectorFilterViewController(query: query, groups: InspectorFilterOptions.network([], sockets: [], query: query)) { _ in XCTFail("Layout applied a draft") }
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 900))
+            window.rootViewController = viewer; window.makeKeyAndVisible()
+            defer { window.isHidden = true; window.rootViewController = nil }
+            viewer.view.frame = window.bounds; viewer.view.layoutIfNeeded(); viewer.tableView.layoutIfNeeded()
+            let label = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? UILabel }.first { $0.text == "Connection events" })
+            let wordWidth = ("Connection" as NSString).size(withAttributes: [.font: label.font!]).width
+            XCTAssertGreaterThanOrEqual(label.bounds.width, ceil(wordWidth))
+            for group in descendants(viewer.view).compactMap({ $0 as? InspectorFilterChoices }) {
+                for control in descendants(group).compactMap({ $0 as? UIControl }) {
+                    XCTAssertLessThanOrEqual(group.convert(control.bounds, from: control).maxY, group.bounds.height + 1)
+                }
+            }
+        }
+    }
+    @MainActor
     func testDirectFilterChoicesKeepFullLabelsAndTouchTargetsAtLargeTextSizes() throws {
         for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
             let host = UIViewController(), viewer = UIViewController()

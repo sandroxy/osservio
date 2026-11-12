@@ -22,11 +22,19 @@ final class InspectorFilterChoices: UIStackView {
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
     @objc private func choose(_ control: Choice) { onSelect?(control.value) }
     override func didMoveToWindow() { super.didMoveToWindow(); updateLayout() }
+    override func layoutSubviews() { updateLayout(); super.layoutSubviews() }
+    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontal: UILayoutPriority, verticalFittingPriority vertical: UILayoutPriority) -> CGSize {
+        updateLayout(width: targetSize.width)
+        return super.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: horizontal, verticalFittingPriority: vertical)
+    }
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection); updateLayout()
     }
-    private func updateLayout() {
-        let count = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 1 : 3
+    private func updateLayout(width: CGFloat? = nil) {
+        let available = width ?? bounds.width
+        var count = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 1 : 3
+        let required = controls.map(\.minimumWidth).max() ?? 0
+        if available > 0 { while count > 1 && (available - CGFloat(count - 1) * 8) / CGFloat(count) < required { count -= 1 } }
         guard count != columns else { return }; columns = count
         for control in controls { control.removeFromSuperview() }
         for row in grid.arrangedSubviews { row.removeFromSuperview() }
@@ -41,13 +49,26 @@ final class InspectorFilterChoices: UIStackView {
 
     private final class Choice: UIControl {
         let value: String?
+        private let label = InspectorTheme.label(.subheadline)
+        private var measuredFont: UIFont?
+        private var measuredWidth: CGFloat = 0
+        var minimumWidth: CGFloat {
+            let text = label.text ?? "", font = label.font ?? UIFont.preferredFont(forTextStyle: .subheadline)
+            if measuredFont == font { return measuredWidth }
+            var word: CGFloat = 0
+            text.enumerateSubstrings(in: text.startIndex..<text.endIndex, options: .byWords) { value, _, _, _ in
+                if let value { word = max(word, (value as NSString).size(withAttributes: [.font: font]).width) }
+            }
+            measuredFont = font; measuredWidth = ceil(max(word, (text as NSString).size(withAttributes: [.font: font]).width / 2)) + 38
+            return measuredWidth
+        }
         init(value: String?, title: String, selected: Bool) {
             self.value = value; super.init(frame: .zero)
             isSelected = selected; isAccessibilityElement = true; accessibilityLabel = title
             accessibilityTraits = selected ? [.button, .selected] : .button
             backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.canvas
             layer.cornerRadius = 12
-            let label = InspectorTheme.label(.subheadline); label.text = title
+            label.text = title
             label.textColor = selected ? InspectorTheme.accent : .label
             let check = UIImageView(image: UIImage(systemName: "checkmark")); check.tintColor = InspectorTheme.accent
             check.contentMode = .scaleAspectFit; check.alpha = selected ? 1 : 0

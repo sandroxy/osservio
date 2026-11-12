@@ -110,8 +110,9 @@ draft; Apply commits the entire draft, including choices made in a nested picker
 Short, stable choices for log levels, Socket activity and message direction are
 directly visible above the other common conditions. They keep the query's
 selection rules: levels and directions allow multiple values, activity is
-exclusive, and All removes that dimension's restriction. Large text lays these
-choices out vertically. Time and other dimensions remain summary rows; small
+exclusive, and All removes that dimension's restriction. Columns adapt to the
+available width and label lengths; large text lays these choices out vertically.
+Time and other dimensions remain summary rows; small
 choice sets expand in place and long sets open a searchable picker within the
 same sheet. Back returns to the overview with its draft and scroll position.
 Precise conditions remain under Refine filters, whose collapsed summary names

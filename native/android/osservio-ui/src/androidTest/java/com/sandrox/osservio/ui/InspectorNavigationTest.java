@@ -96,9 +96,31 @@ public final class InspectorNavigationTest {
                 List<android.widget.CheckedTextView> choices = new ArrayList<>(); collect(view, android.widget.CheckedTextView.class, choices);
                 assertEquals(3, choices.size());
                 for (android.widget.CheckedTextView choice : choices) {
-                    assertTrue(choice.getHeight() >= InspectorTheme.dp(context, 48));
+                    assertTrue("Target " + choice.getText() + " at scale " + scale + ": " + choice.getHeight(), choice.getHeight() >= InspectorTheme.dp(context, 48));
                     assertTrue(choice.getLayout().getHeight() <= choice.getHeight() - choice.getCompoundPaddingTop() - choice.getCompoundPaddingBottom());
                     if (scale == 2) assertEquals(width - InspectorTheme.dp(context, 32), choice.getWidth());
+                }
+            }
+        });
+    }
+    @Test public void englishSocketChoicesReflowWithoutBreakingWordsOrChangingSelection() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            InspectorFilterSheet.Group group = new InspectorFilterSheet.Group(InspectorQuery.Field.ACTIVITY, "Socket content")
+                .option("messages", "Messages and send results").option("connections", "Connection events");
+            InspectorFilterChoices view = new InspectorFilterChoices(context, group, java.util.Collections.singleton("connections"), value -> fail("Resize changed selection"));
+            for (int width : new int[] {280, 360, 600, 280}) {
+                int pixels = InspectorTheme.dp(context, width);
+                view.measure(View.MeasureSpec.makeMeasureSpec(pixels, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                view.layout(0, 0, pixels, view.getMeasuredHeight());
+                List<android.widget.CheckedTextView> choices = new ArrayList<>(); collect(view, android.widget.CheckedTextView.class, choices);
+                assertEquals(3, choices.size());
+                for (android.widget.CheckedTextView choice : choices) {
+                    if (choice.getText().toString().equals("Connection events")) {
+                        assertTrue(choice.isChecked());
+                        assertTrue(choice.getWidth() - choice.getCompoundPaddingLeft() - choice.getCompoundPaddingRight() >= Math.ceil(choice.getPaint().measureText("Connection")));
+                    }
+                    assertTrue(choice.getLayout().getHeight() <= choice.getHeight() - choice.getCompoundPaddingTop() - choice.getCompoundPaddingBottom());
                 }
             }
         });
