@@ -42,7 +42,7 @@ final class EnvironmentInspectorView extends LinearLayout implements InspectorSc
         notice.setVisibility(GONE);
     }
     @Override public void bindScreen(InspectorScreen screen) {
-        screen.title(R.string.osservio_runtime_environment); screen.addAction(refresh); screen.addAction(copy); controls.setVisibility(GONE);
+        screen.title(R.string.osservio_runtime_environment); screen.addAction(copy); screen.addAction(refresh); controls.setVisibility(GONE);
     }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); visibility(); }
     @Override protected void onDetachedFromWindow() { generation++; reading = false; attempted = false; super.onDetachedFromWindow(); }
@@ -72,13 +72,13 @@ final class EnvironmentInspectorView extends LinearLayout implements InspectorSc
         }
         snapshot = value; copy.setEnabled(true);
         notice.setText(""); notice.setVisibility(GONE);
-        facts.removeAllViews(); facts.addView(snapshotView(getContext(), value), new android.widget.FrameLayout.LayoutParams(-1, -1));
+        facts.removeAllViews(); facts.addView(factsView(getContext(), value, false), new android.widget.FrameLayout.LayoutParams(-1, -1));
     }
-    static View snapshotView(Context context, EnvironmentSnapshot snapshot) {
+    static View factsView(Context context, EnvironmentSnapshot snapshot, boolean saved) {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_snapshot_time);
-        page.value(() -> RuntimePresentation.date(context, snapshot.timestampMillis));
-        page.note(snapshot.platform == EnvironmentSnapshot.Platform.IOS ? R.string.osservio_runtime_environment_hint : R.string.osservio_ui_environment_android_hint);
+        page.value(() -> RuntimePresentation.date(context, snapshot.timestampMillis) + (saved ? " · " + snapshot.platform.name().toLowerCase(java.util.Locale.ROOT) : ""));
+        page.note(saved ? R.string.osservio_incident_snapshot_hint : snapshot.platform == EnvironmentSnapshot.Platform.IOS ? R.string.osservio_runtime_environment_hint : R.string.osservio_ui_environment_android_hint);
         EnvironmentSnapshot.Key[][] groups = {
             {EnvironmentSnapshot.Key.APP_IDENTIFIER, EnvironmentSnapshot.Key.APP_VERSION, EnvironmentSnapshot.Key.APP_BUILD},
             {EnvironmentSnapshot.Key.OS_VERSION, EnvironmentSnapshot.Key.MANUFACTURER, EnvironmentSnapshot.Key.DEVICE_MODEL,

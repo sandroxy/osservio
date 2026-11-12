@@ -296,3 +296,11 @@
 "ui_status_5xx" = "服务端错误（5xx）";
 "ui_search_scope_hint" = "限定文字搜索与排除文本的范围。JSON 字段条件检查已保留的正文。";
 "ui_filter_options_empty" = "没有匹配的选项。";
+"ui_retained_run" = "留存运行";
+"ui_run_kind" = "所属运行";
+"ui_run_started" = "采集开始时间";
+"ui_run_last_event" = "最新线索时间";
+"ui_run_events" = "留存线索数";
+"ui_run_evicted" = "已淘汰线索数";
+"ui_run_identity" = "运行标识";
+"ui_platform" = "平台";

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="osservio_ui_evidence_available">可查看的现场</string>
     <string name="osservio_ui_url_unavailable">地址不可用</string>
     <string name="osservio_ui_path_hidden">路径已隐藏</string>
     <string name="osservio_ui_query_hidden">参数已隐藏</string>
@@ -57,4 +58,12 @@
     <string name="osservio_ui_exit_reason_16">应用包已更新</string>
     <string name="osservio_ui_record_count">%1$d 条记录</string>
     <string name="osservio_ui_event_recorded">记录时间</string>
+    <string name="osservio_ui_retained_run">留存运行</string>
+    <string name="osservio_ui_run_kind">所属运行</string>
+    <string name="osservio_ui_run_started">采集开始时间</string>
+    <string name="osservio_ui_run_last_event">最新线索时间</string>
+    <string name="osservio_ui_run_events">留存线索数</string>
+    <string name="osservio_ui_run_evicted">已淘汰线索数</string>
+    <string name="osservio_ui_run_identity">运行标识</string>
+    <string name="osservio_ui_platform">平台</string>
 </resources>

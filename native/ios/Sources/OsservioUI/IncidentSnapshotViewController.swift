@@ -11,11 +11,22 @@ final class IncidentSnapshotViewController: UITableViewController {
     private let header = UIStackView()
     private let exportStatus = UILabel()
     private var sharing: IncidentSharePresentation?
-    init(snapshot: IncidentSnapshot, exporter: (any IncidentExporter)? = nil) {
+    private var deletion: InspectorRecordDeletion?
+    private lazy var copyButton = inspectorCopyItem(target: self, action: #selector(copySummary), label: "archive_copy_summary")
+    init(snapshot: IncidentSnapshot, exporter: (any IncidentExporter)? = nil, archive: (any IncidentArchive)? = nil) {
         self.snapshot = snapshot; events = (snapshot.breadcrumbs?.events ?? []).reversed()
         super.init(style: .insetGrouped)
         if let exporter {
             sharing = IncidentSharePresentation(owner: self, snapshot: snapshot, exporter: exporter) { [weak self] in self?.showExportStatus($0) }
+        }
+        if let archive {
+            deletion = InspectorRecordDeletion(owner: self, label: "incident_delete", confirmation: "incident_delete_confirmation",
+                operation: { archive.deleteIncident(id: snapshot.id, completion: $0) }, state: { [weak self] busy, message in
+                    guard let self else { return }
+                    if busy { self.sharing?.cancel() }
+                    self.copyButton.isEnabled = !busy; self.sharing?.button.isEnabled = !busy
+                    self.showExportStatus(message)
+                })
         }
     }
     @available(*, unavailable)
@@ -35,19 +46,16 @@ final class IncidentSnapshotViewController: UITableViewController {
         header.addArrangedSubview(exportStatus); exportStatus.isHidden = true
 
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
-        let copy = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain,
-            target: self, action: #selector(copySummary))
-        copy.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
-        inspectorActions = sharing.map { [$0.button, copy] } ?? [copy]
+        inspectorActions = (deletion.map { [$0.button] } ?? []) + (sharing.map { [$0.button] } ?? []) + [copyButton]
         exportStatus.font = .preferredFont(forTextStyle: .footnote); exportStatus.adjustsFontForContentSizeCategory = true
         exportStatus.numberOfLines = 0; exportStatus.textColor = .secondaryLabel
     }
-    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); sharing?.cancel(); view.endEditing(true) }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); sharing?.cancel(); deletion?.invalidate(); view.endEditing(true) }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
         title = InspectorLocalization.text("ui_problem_details")
         search.placeholder = RuntimePresentation.text("ui_search_breadcrumbs")
-        inspectorActions?.last?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
+        copyButton.accessibilityLabel = RuntimePresentation.text("archive_copy_summary"); deletion?.relabel()
         sharing?.button.accessibilityLabel = RuntimePresentation.text("incident_share"); tableView.reloadData()
     }
     private func showExportStatus(_ message: String?) {

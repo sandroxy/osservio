@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="osservio_ui_evidence_available">Available evidence</string>
     <string name="osservio_ui_url_unavailable">Address unavailable</string>
     <string name="osservio_ui_path_hidden">Path hidden</string>
     <string name="osservio_ui_query_hidden">Query hidden</string>
@@ -57,4 +58,12 @@
     <string name="osservio_ui_exit_reason_16">Package updated</string>
     <string name="osservio_ui_record_count">Records: %1$d</string>
     <string name="osservio_ui_event_recorded">Recorded at</string>
+    <string name="osservio_ui_retained_run">Retained run</string>
+    <string name="osservio_ui_run_kind">Run</string>
+    <string name="osservio_ui_run_started">Recording started</string>
+    <string name="osservio_ui_run_last_event">Latest recorded breadcrumb</string>
+    <string name="osservio_ui_run_events">Retained breadcrumbs</string>
+    <string name="osservio_ui_run_evicted">Evicted breadcrumbs</string>
+    <string name="osservio_ui_run_identity">Run identity</string>
+    <string name="osservio_ui_platform">Platform</string>
 </resources>

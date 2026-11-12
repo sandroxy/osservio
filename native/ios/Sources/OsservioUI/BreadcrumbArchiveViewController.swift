@@ -102,7 +102,7 @@ final class BreadcrumbArchiveViewController: UITableViewController {
                 self.reading = false
                 switch result {
                 case .success(let history):
-                    if let history { self.navigationController?.pushViewController(RetainedBreadcrumbViewController(history: history), animated: true) }
+                    if let history { self.navigationController?.pushViewController(RetainedBreadcrumbViewController(history: history, archive: self.archive), animated: true) }
                     else { self.notice = RuntimePresentation.text("archive_missing") }
                 case .failure(let error): self.failed(error)
                 }
@@ -147,15 +147,25 @@ final class BreadcrumbArchiveViewController: UITableViewController {
 }
 
 @MainActor
-private final class RetainedBreadcrumbViewController: UITableViewController {
+final class RetainedBreadcrumbViewController: UITableViewController {
     private let history: RetainedBreadcrumbs
     private var events: [BreadcrumbEvent]
     private let search = UISearchTextField()
-    init(history: RetainedBreadcrumbs) { self.history = history; events = history.events.reversed(); super.init(style: .plain) }
+    private let status = InspectorTheme.label(.footnote, secondary: true)
+    private var deletion: InspectorRecordDeletion?
+    private lazy var copy = inspectorCopyItem(target: self, action: #selector(copySummary), label: "archive_copy_summary")
+    init(history: RetainedBreadcrumbs, archive: any BreadcrumbArchive) {
+        self.history = history; events = history.events.reversed(); super.init(style: .insetGrouped)
+        deletion = InspectorRecordDeletion(owner: self, label: "archive_delete_run", confirmation: "archive_delete_confirmation",
+            operation: { archive.deleteRun(id: history.run.id, completion: $0) }, state: { [weak self] busy, message in
+                guard let self else { return }; self.copy.isEnabled = !busy
+                self.status.text = message; self.status.isHidden = message == nil; self.tableView.setNeedsLayout()
+            })
+    }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("archive_title")
+        super.viewDidLoad(); InspectorTheme.apply(self); title = RuntimePresentation.text("ui_retained_run")
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 80
         search.placeholder = RuntimePresentation.text("crumb_search")
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
@@ -163,40 +173,59 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
         search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
         search.addTarget(self, action: #selector(endSearch), for: .editingDidEndOnExit)
-        let details = UIButton(type: .system); details.setTitle(RuntimePresentation.text("ui_run_details"), for: .normal)
-        details.titleLabel?.font = .preferredFont(forTextStyle: .body); details.titleLabel?.adjustsFontForContentSizeCategory = true
-        details.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        details.addTarget(self, action: #selector(openRunDetails), for: .touchUpInside)
-        let header = UIStackView(arrangedSubviews: [search, details]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
-        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
+        status.isHidden = true
+        let header = UIStackView(arrangedSubviews: [status]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
-        inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copySummary))
+        inspectorActions = (deletion.map { [$0.button] } ?? []) + [copy]
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)
-        title = RuntimePresentation.text("archive_title"); search.placeholder = RuntimePresentation.text("crumb_search")
-        inspectorPrimaryAction?.accessibilityLabel = RuntimePresentation.text("archive_copy_summary")
+        title = RuntimePresentation.text("ui_retained_run"); search.placeholder = RuntimePresentation.text("crumb_search")
+        copy.accessibilityLabel = RuntimePresentation.text("archive_copy_summary"); deletion?.relabel()
+        tableView.reloadData()
         searchChanged()
     }
-    override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .plain) }
+    override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); deletion?.invalidate(); view.endEditing(true) }
+    override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .insetGrouped) }
     @objc private func endSearch() { search.resignFirstResponder() }
     @objc private func copySummary() { UIPasteboard.general.string = PersistencePresentation.run(history.run) }
-    @objc private func openRunDetails() { inspectorPush(InspectorContentViewController(titleKey: "ui_run_details", content: PersistencePresentation.run(history.run), code: false)) }
     @objc private func searchChanged() {
         guard search.markedTextRange == nil else { return }
         let query = String((search.text ?? "").prefix(512)); if query != search.text { search.text = query }
+        let previousCount = events.count
         events = history.events.reversed().filter { query.isEmpty || $0.label.localizedCaseInsensitiveContains(query)
             || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query) || ($0.message?.localizedCaseInsensitiveContains(query) ?? false) }
-        tableView.reloadData()
+        UIView.performWithoutAnimation {
+            tableView.performBatchUpdates {
+                tableView.deleteRows(at: (0..<previousCount).map { IndexPath(row: $0, section: 1) }, with: .none)
+                tableView.insertRows(at: events.indices.map { IndexPath(row: $0, section: 1) }, with: .none)
+            }
+        }
     }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { events.count }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { PersistencePresentation.title(history.run) + "\n" + PersistencePresentation.counts(history.run) }
+    override func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : events.count }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { section == 0 ? RuntimePresentation.text("ui_run_details") : nil }
+    override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        guard section == 1 else { return nil }
+        let title = InspectorTheme.label(.caption1, secondary: true); title.text = RuntimePresentation.text("runtime_breadcrumbs")
+        let header = UIStackView(arrangedSubviews: [title, search]); header.axis = .vertical; header.spacing = 10
+        header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 20, bottom: 10, trailing: 20)
+        return header
+    }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        (events.isEmpty ? RuntimePresentation.text("ws_no_matches") + "\n" : "") + RuntimePresentation.text("archive_snapshot")
+        section == 0 ? RuntimePresentation.text("archive_snapshot") : events.isEmpty ? RuntimePresentation.text("ws_no_matches") : nil
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "saved-event") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "saved-event")
         PersistencePresentation.style(cell)
+        cell.accessoryType = .disclosureIndicator
+        if indexPath.section == 0 {
+            cell.textLabel?.text = PersistencePresentation.title(history.run)
+            cell.detailTextLabel?.text = PersistencePresentation.counts(history.run)
+            return cell
+        }
         let event = events[indexPath.row]
         cell.textLabel?.text = RuntimePresentation.breadcrumbTitle(event)
         cell.detailTextLabel?.text = InspectorValuePresentation.eventTime(event.timestampMillis) + "\n" + RuntimePresentation.breadcrumbSubtitle(event)
@@ -205,7 +234,8 @@ private final class RetainedBreadcrumbViewController: UITableViewController {
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        navigationController?.pushViewController(BreadcrumbDetailViewController(event: events[indexPath.row]), animated: true)
+        if indexPath.section == 0 { inspectorPush(RetainedRunDetailViewController(run: history.run)) }
+        else { inspectorPush(BreadcrumbDetailViewController(event: events[indexPath.row])) }
     }
 }
 

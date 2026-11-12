@@ -73,6 +73,7 @@ final class IncidentComposer {
         metadata.addView(time); content.addView(metadata, params());
         content.addView(label(context.getString(R.string.osservio_incident_mark_hint)), params());
         notice = label(""); notice.setVisibility(View.GONE); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); content.addView(notice, params());
+        TextView evidenceTitle = InspectorWidgets.sectionLabel(context); evidenceTitle.setText(R.string.osservio_ui_evidence_available); content.addView(evidenceTitle);
         LinearLayout options = InspectorWidgets.group(context); content.addView(options, params());
         includeEnvironment = option(R.string.osservio_incident_include_environment, true);
         environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); addOption(options, includeEnvironment, environmentStatus);
@@ -120,7 +121,7 @@ final class IncidentComposer {
             }
             editor.setError(null); return null;
         }});
-        content.addView(editor, params());
+        noteOptions.addView(editor, params());
         content.addView(label(context.getString(R.string.osservio_incident_note_hint) + "\n" + context.getString(R.string.osservio_incident_note_limit)), params());
         ScrollView scroll = new InspectorScroll.Page(context); scroll.setFillViewport(true); scroll.addView(content);
         dialog = InspectorDialogs.panel(context, R.string.osservio_incident_mark, scroll);

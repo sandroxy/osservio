@@ -21,6 +21,7 @@ final class InspectorWidgets {
     static ImageButton icon(Context context, int symbol, int label, Runnable action) {
         ImageButton button = new ImageButton(context);
         button.setImageResource(symbol);
+        button.setTag(R.id.osservio_destructive_action, symbol == R.drawable.osservio_trash);
         InspectorAppearance.style(button, () -> styleIcon(button, label));
         int size = InspectorTheme.dp(context, 48), inset = InspectorTheme.dp(context, 13);
         button.setLayoutParams(new LinearLayout.LayoutParams(size, size)); button.setPadding(inset, inset, inset, inset);
@@ -140,6 +141,15 @@ final class InspectorWidgets {
         InspectorTheme.typography(text, 15, true);
         text.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 8));
         return text;
+    }
+    static LinearLayout searchSectionHeader(Context context, InspectorAppearance.Value<String> title, EditText search) {
+        LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 10));
+        TextView label = caption(context); InspectorTheme.typography(label, 12, false);
+        label.setPadding(0, 0, 0, InspectorTheme.dp(context, 10)); InspectorAppearance.text(label, title);
+        header.addView(label, new LinearLayout.LayoutParams(-1, -2));
+        header.addView(search, new LinearLayout.LayoutParams(-1, -2));
+        return header;
     }
     static LinearLayout group(Context context) {
         LinearLayout group = new LinearLayout(context); group.setOrientation(LinearLayout.VERTICAL);

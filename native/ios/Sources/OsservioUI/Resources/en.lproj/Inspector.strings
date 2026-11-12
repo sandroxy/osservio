@@ -296,3 +296,11 @@
 "ui_status_5xx" = "Server error (5xx)";
 "ui_search_scope_hint" = "Limits text search and excluded text. JSON field conditions inspect retained bodies.";
 "ui_filter_options_empty" = "No matching options.";
+"ui_retained_run" = "Retained run";
+"ui_run_kind" = "Run";
+"ui_run_started" = "Recording started";
+"ui_run_last_event" = "Latest recorded breadcrumb";
+"ui_run_events" = "Retained breadcrumbs";
+"ui_run_evicted" = "Evicted breadcrumbs";
+"ui_run_identity" = "Run identity";
+"ui_platform" = "Platform";

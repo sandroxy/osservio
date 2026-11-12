@@ -52,24 +52,31 @@ final class InspectorToolbarActions {
         for (View item : items) if (item.getVisibility() == View.VISIBLE) available.add(item);
         for (int index = 0; index < available.size(); index++) {
             View item = available.get(index);
+            boolean destructive = Boolean.TRUE.equals(item.getTag(R.id.osservio_destructive_action));
+            boolean first = index == 0 || destructive != Boolean.TRUE.equals(available.get(index - 1).getTag(R.id.osservio_destructive_action));
+            boolean last = index + 1 == available.size() || destructive != Boolean.TRUE.equals(available.get(index + 1).getTag(R.id.osservio_destructive_action));
+            int tint = destructive ? InspectorTheme.color(context, R.color.osservio_error) : InspectorTheme.accent(context);
             android.widget.CheckedTextView row = InspectorWidgets.choice(context);
             CharSequence label = item.getContentDescription();
             row.setText(label != null ? label : item instanceof TextView ? ((TextView) item).getText() : "");
+            if (destructive) row.setTextColor(tint);
             row.setEnabled(item.isEnabled()); row.setAlpha(item.isEnabled() ? 1 : 0.45f);
             if (item instanceof ImageView) {
                 android.graphics.drawable.Drawable source = ((ImageView) item).getDrawable();
                 if (source != null && source.getConstantState() != null) {
                     android.graphics.drawable.Drawable icon = source.getConstantState().newDrawable().mutate();
-                    icon.setTint(InspectorTheme.accent(context)); int size = InspectorTheme.dp(context, 22); icon.setBounds(0, 0, size, size);
+                    icon.setTint(tint); int size = InspectorTheme.dp(context, 22); icon.setBounds(0, 0, size, size);
                     row.setCompoundDrawablesRelative(icon, null, null, null); row.setCompoundDrawablePadding(inset);
                 }
             }
-            InspectorWidgets.groupedRow(row, index == 0, index + 1 == available.size());
+            InspectorWidgets.groupedRow(row, first, last);
             row.setOnClickListener(ignored -> {
                 if (!item.isEnabled() || item.getVisibility() != View.VISIBLE) return;
                 menu.dismiss(); item.performClick();
             });
-            content.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(-1, -2);
+            if (first && index > 0) layout.topMargin = InspectorTheme.dp(context, 16);
+            content.addView(row, layout);
         }
         menu.show();
     }

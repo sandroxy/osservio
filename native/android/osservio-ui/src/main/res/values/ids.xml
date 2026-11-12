@@ -4,4 +4,5 @@
     <item name="osservio_appearance_content" type="id" />
     <item name="osservio_scroll_padding" type="id" />
     <item name="osservio_floating_margin" type="id" />
+    <item name="osservio_destructive_action" type="id" />
 </resources>

@@ -61,11 +61,7 @@ final class AppInspectorView extends InspectorScroll.Page {
     private void choose(boolean appearance) {
         Context context = getContext();
         if (appearance) { open(R.string.osservio_ui_appearance, new InspectorThemeView(context)); return; }
-        String[] choices = {context.getString(R.string.osservio_ui_chinese), context.getString(R.string.osservio_ui_english)};
-        int selected = InspectorPreferences.english(context) ? 1 : 0;
-        dialog = InspectorDialogs.choices(context, R.string.osservio_ui_language, choices, selected, false,
-            (selection, which) -> InspectorPreferences.setEnglish(context, which == 1));
-        clearOnDismiss();
+        open(R.string.osservio_ui_language, new InspectorLanguageView(context));
     }
     private void captureStatus() {
         Context context = getContext();
@@ -74,7 +70,7 @@ final class AppInspectorView extends InspectorScroll.Page {
             logs.captureController, http.captureController, sockets == null ? null : sockets.captureController, breadcrumbs == null ? null : breadcrumbs.captureController));
     }
     private void open(int title, View view) {
-        dialog = InspectorDialogs.screen(getContext(), getContext().getString(title), view); clearOnDismiss(); dialog.show();
+        dialog = InspectorDialogs.screen(getContext(), title, view); clearOnDismiss(); dialog.show();
     }
     private void clearOnDismiss() {
         InspectorScreen shown = dialog; shown.setOnDismissListener(ignored -> { if (dialog == shown) dialog = null; });

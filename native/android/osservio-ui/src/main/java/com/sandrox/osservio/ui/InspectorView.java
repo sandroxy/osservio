@@ -230,10 +230,9 @@ public final class InspectorView extends FrameLayout {
         title.setText(labels[index]); navigation.select(index); updateDebugPolling();
     }
     private View unavailable() {
-        LinearLayout message = new LinearLayout(themed); message.setOrientation(LinearLayout.VERTICAL); message.setGravity(Gravity.CENTER);
-        int inset = InspectorTheme.dp(themed, 32); message.setPadding(inset, inset, inset, inset);
-        TextView title = InspectorTheme.text(themed, 18, true); title.setText(R.string.osservio_ui_no_archive); title.setGravity(Gravity.CENTER); message.addView(title);
-        TextView hint = InspectorWidgets.caption(themed); hint.setText(R.string.osservio_ui_no_archive_hint); hint.setGravity(Gravity.CENTER); message.addView(hint);
+        InspectorDetailPage message = new InspectorDetailPage(themed);
+        message.section(R.string.osservio_ui_no_archive);
+        message.value(() -> themed.getString(R.string.osservio_ui_no_archive_hint));
         return message;
     }
     private void savePosition(View page) {

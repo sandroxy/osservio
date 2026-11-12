@@ -276,6 +276,19 @@ problems share this immutable presentation, with exact full-snapshot copying and
 a separate bounded content reader. Retention intent alone is not proof of a
 committed write.
 
+Saved runs open their own grouped detail page, preserving the archive list's
+reading position. The run summary opens labeled recording times, retained and
+evicted counts, platform, process ID and full run identity. Saved problem and run
+details offer single-record deletion in the navigation actions alongside copying
+and, when configured, sharing. Overflow groups all actions under More and keeps
+Minimize at the right edge. Deletion requires confirmation; a storage failure
+keeps the snapshot readable and allows retry. The iOS list swipe is an additional
+shortcut, not the only deletion entry.
+
+Saved environment pages copy only their frozen attachment and identify its
+original observation time and platform. They never fill missing facts from the
+live provider. Empty attached evidence remains distinct from absent attachments.
+
 Saved problem details never refresh from current histories. Attached groups
 retain their observation times, source loss counters and body-selection states.
 Marking a problem does not save it automatically: select attachments and save
@@ -290,7 +303,8 @@ mode (Light or Dark) from Palette (Violet, Blue, Teal, Forest or Rose).
 The defaults are **Simplified Chinese, Light and Violet**, independently of the host's
 language or appearance. Preferences persist locally for subsequent inspector
 openings. Switching them does not change capture, retention, host defaults or
-host UI configuration. Each palette has light/dark accent, tint and pressed
+host UI configuration. Language selection stays on its settings page and updates
+the checkmark and labels in place. Each palette has light/dark accent, tint and pressed
 colors. Error/warning/success and JSON value-type colors keep their semantic
 meaning. Palette swatches use a ring and checkmark, localized accessible names,
 and full-size touch targets; the grid wraps on narrow viewports. Switching

@@ -7,6 +7,28 @@ import XCTest
 
 final class InspectorArchiveTests: XCTestCase {
     @MainActor
+    func testSavedDetailsExposeTheSameActionsAndKeepExactRunMetadata() throws {
+        let archive = ArchiveReadProbe()
+        let snapshot = IncidentSnapshotViewController(snapshot: try IncidentSnapshot.capture(), archive: archive)
+        snapshot.loadViewIfNeeded()
+        XCTAssertEqual(snapshot.inspectorActions?.map(\.accessibilityLabel),
+            [RuntimePresentation.text("incident_delete"), RuntimePresentation.text("archive_copy_summary")])
+        let run = RetainedRun(id: UUID().uuidString, platform: .ios, processID: 321,
+            recordingStartedAtMillis: 1_234, lastRecordedAtMillis: 5_678, eventCount: 0, evictedEvents: 42, isCurrent: false)
+        let retained = RetainedBreadcrumbViewController(history: RetainedBreadcrumbs(run: run, events: []), archive: archive)
+        retained.loadViewIfNeeded()
+        XCTAssertEqual(retained.tableView.style, .insetGrouped)
+        XCTAssertEqual(retained.inspectorActions?.map(\.accessibilityLabel),
+            [RuntimePresentation.text("archive_delete_run"), RuntimePresentation.text("archive_copy_summary")])
+        let metadata = RetainedRunDetailViewController(run: run)
+        metadata.loadViewIfNeeded(); metadata.viewWillAppear(false)
+        let values = metadata.sections.flatMap(\.rows).compactMap(\.value)
+        XCTAssertTrue(values.contains(run.id)); XCTAssertTrue(values.contains("42")); XCTAssertTrue(values.contains("321"))
+        XCTAssertTrue(values.contains(InspectorValuePresentation.eventTime(1_234, full: true)))
+        XCTAssertTrue(values.contains(InspectorValuePresentation.eventTime(5_678, full: true)))
+        XCTAssertEqual(archive.mutations, 0)
+    }
+    @MainActor
     func testPrivacyDescriptionsResolveInBothLanguages() {
         let previous = InspectorPreferences.shared.language
         defer { InspectorPreferences.shared.language = previous }

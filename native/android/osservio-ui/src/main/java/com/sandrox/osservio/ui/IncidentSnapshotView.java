@@ -7,7 +7,6 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -28,7 +27,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
     private final EditText search;
     private final TextView footer, status;
     private final ImageButton back, copy;
-    private final Button delete;
+    private final ImageButton delete;
     private final LinearLayout controls;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
@@ -42,6 +41,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         back = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, goBack);
         copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_archive_copy_summary, () -> copy(IncidentPresentation.summary(context, snapshot)));
         controls.addView(back); controls.addView(copy); addView(controls, new LayoutParams(-1, -2));
+        delete = InspectorWidgets.icon(context, R.drawable.osservio_trash, R.string.osservio_incident_delete, deleteSnapshot);
         ListView list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.setPadding(dp(16), 0, dp(16), dp(16)); list.setClipToPadding(false);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(0, dp(8), 0, 0);
@@ -55,7 +55,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         }
         SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
         LinearLayout metadata = section(header, () -> IncidentPresentation.title(context, kind));
-        field(metadata, () -> IncidentPresentation.timeLabel(context, kind), () -> RuntimePresentation.date(context, snapshot.timestampMillis), null);
+        field(metadata, () -> IncidentPresentation.timeLabel(context, kind), () -> InspectorValuePresentation.eventTime(snapshot.timestampMillis, true), null);
         field(metadata, () -> context.getString(R.string.osservio_ui_record_identity), () -> InspectorRecordPresentation.identity(snapshot.id),
             () -> showText(R.string.osservio_ui_record_identity, snapshot.id));
         field(metadata, () -> context.getString(R.string.osservio_incident_note), () -> IncidentPresentation.note(context, snapshot.note),
@@ -68,7 +68,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         if (snapshot.environment == null) header.addView(caption(() -> context.getString(R.string.osservio_incident_not_attached)));
         else field(environment, () -> context.getString(R.string.osservio_runtime_snapshot),
             () -> RuntimePresentation.date(context, snapshot.environment.timestampMillis) + " · " + snapshot.environment.platform.name().toLowerCase(Locale.ROOT),
-            () -> open(R.string.osservio_runtime_environment, EnvironmentInspectorView.snapshotView(context, snapshot.environment)));
+            () -> open(R.string.osservio_runtime_environment, new EnvironmentSnapshotView(context, snapshot.environment)));
         LinearLayout attachments = section(header, () -> context.getString(R.string.osservio_incident_evidence_title));
         attachment(attachments, R.string.osservio_logs, snapshot.logs == null ? null : snapshot.logs.events.size(),
             () -> open(R.string.osservio_logs, new IncidentEvidenceView(context, snapshot.logs, () -> { })));
@@ -76,15 +76,12 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
             () -> open(R.string.osservio_ui_http, new IncidentEvidenceView(context, snapshot.http, () -> { })));
         attachment(attachments, R.string.osservio_ws_title, snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
             () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
-        TextView eventsTitle = InspectorWidgets.sectionLabel(context); InspectorAppearance.text(eventsTitle, R.string.osservio_runtime_breadcrumbs); header.addView(eventsTitle);
-        header.addView(caption(() -> IncidentPresentation.breadcrumbSummary(context, snapshot.breadcrumbs)));
-        header.addView(search, new LayoutParams(-1, -2));
+        header.addView(InspectorWidgets.searchSectionHeader(context,
+            () -> context.getString(R.string.osservio_runtime_breadcrumbs) + " · " + IncidentPresentation.breadcrumbSummary(context, snapshot.breadcrumbs), search));
         list.addHeaderView(header, null, false);
         LinearLayout ending = new LinearLayout(context); ending.setOrientation(VERTICAL);
         footer = caption(() -> ""); ending.addView(footer);
-        delete = InspectorWidgets.button(context, R.string.osservio_incident_delete, deleteSnapshot);
-        InspectorAppearance.style(delete, () -> { delete.setTextColor(InspectorTheme.color(context, R.color.osservio_error)); InspectorTheme.surface(delete, true, 22); });
-        LayoutParams deletion = new LayoutParams(-1, -2); deletion.topMargin = dp(24); ending.addView(delete, deletion);
+        controls.addView(delete);
         list.addFooterView(ending, null, false); list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
@@ -94,12 +91,12 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
     }
     @Override public void bindScreen(InspectorScreen screen) {
         screen.title(R.string.osservio_ui_problem_details);
-        screen.addAction(copy); if (share != null) screen.addAction(share); controls.setVisibility(GONE);
+        screen.addAction(copy); if (share != null) screen.addAction(share); screen.addAction(delete); controls.setVisibility(GONE);
     }
     void busy(boolean busy) {
         if (busy && sharing != null) sharing.cancel();
         if (share != null) share.setEnabled(!busy);
-        back.setEnabled(!busy); delete.setEnabled(!busy); status(busy ? getContext().getString(R.string.osservio_archive_deleting) : "");
+        back.setEnabled(!busy); copy.setEnabled(!busy); delete.setEnabled(!busy); status(busy ? getContext().getString(R.string.osservio_archive_deleting) : "");
     }
     private void status(String text) { status.setText(text); status.setVisibility(text.isEmpty() ? GONE : VISIBLE); }
     void error(String message) { status(message); }

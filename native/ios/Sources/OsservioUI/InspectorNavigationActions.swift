@@ -45,7 +45,8 @@ final class InspectorNavigationActions: NSObject {
         guard let owner else { return }
         let panel = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
         for item in items.reversed() where item.accessibilityIdentifier != "Osservio.CloseInspector" {
-            var action = InspectorActionPanel.Action(title: item.accessibilityLabel ?? item.title ?? "", style: .default) { [weak item] _ in
+            var action = InspectorActionPanel.Action(title: item.accessibilityLabel ?? item.title ?? "",
+                style: item.accessibilityIdentifier == "Osservio.DestructiveAction" ? .destructive : .default) { [weak item] _ in
                 guard let item, item.isEnabled, let selector = item.action else { return }
                 UIApplication.shared.sendAction(selector, to: item.target, from: item, for: nil)
             }

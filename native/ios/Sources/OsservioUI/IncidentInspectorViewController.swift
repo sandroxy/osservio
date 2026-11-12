@@ -158,7 +158,7 @@ public final class IncidentInspectorViewController: UITableViewController {
                 self.reading = false
                 switch result {
                 case .success(let snapshot):
-                    if let snapshot { self.navigationController?.pushViewController(IncidentSnapshotViewController(snapshot: snapshot, exporter: self.exporter), animated: true) }
+                    if let snapshot { self.navigationController?.pushViewController(IncidentSnapshotViewController(snapshot: snapshot, exporter: self.exporter, archive: self.archive), animated: true) }
                     else { self.notice = RuntimePresentation.text("incident_missing") }
                 case .failure(let error): self.failed(error)
                 }

@@ -70,6 +70,7 @@ func inspectorCopyItem(target: Any, action: Selector, label: String) -> UIBarBut
 func inspectorDeleteItem(target: Any, action: Selector, label: String) -> UIBarButtonItem {
     let item = UIBarButtonItem(image: UIImage(systemName: "trash"), style: .plain, target: target, action: action)
     item.accessibilityLabel = InspectorLocalization.text(label)
+    item.accessibilityIdentifier = "Osservio.DestructiveAction"
     return item
 }
 
