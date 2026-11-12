@@ -34,7 +34,7 @@ account isolation, resource limits and system-diagnostic boundaries.
   an optional auto-off deadline; per-message and admission-rate limits; and
   in-memory history bounded by both event count and UTF-8 text bytes.
 - An Android View and an iOS UIKit inspector organized into Logs, Network,
-  Problems and App, with unified filters, log/network content search,
+  Problems and App, with common and precise filters, exact HTTP status codes, scoped header/content search,
   cross-connection Socket message lookup and layered details. Language defaults to Simplified Chinese, with English
   available; Theme offers Light/Dark modes and five accent palettes, defaulting to Light and Violet. These preferences
   are independent of the host. See [the native inspector guide](doc/inspector.md).

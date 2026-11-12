@@ -89,7 +89,11 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
     private List<HTTPEvent> http() { return state.http == null ? Collections.emptyList() : state.http.events; }
     private List<WebSocketEvent> sockets() { return state.sockets == null ? Collections.emptyList() : state.sockets.events; }
     private List<InspectorFilterSheet.Group> groups() {
-        return InspectorFilterOptions.network(getContext(), http(), sockets(), state.query, httpHistory != null, socketHistory != null);
+        List<WebSocketEvent> observed = sockets();
+        if (connectionID != null) { observed = new ArrayList<>(); for (WebSocketEvent event : sockets()) if (connectionID.equals(event.connectionId)) observed.add(event); }
+        List<InspectorFilterSheet.Group> groups = InspectorFilterOptions.network(getContext(), http(), observed, state.query, httpHistory != null, socketHistory != null);
+        if (connectionID != null) for (int index = groups.size() - 1; index >= 0; index--) if (groups.get(index).field == InspectorQuery.Field.CONNECTION) groups.remove(index);
+        return groups;
     }
     private void cancelSearch() { if (previewTask != null) previewTask.cancel(); previewTask = null; generation++; if (task != null) task.cancel(); task = null; dirty = true; }
     private void apply(InspectorQuery query) {
@@ -200,7 +204,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
     }
     private void open(InspectorRecordSearch.Record item) {
         if (dialog != null) return; InspectorWidgets.hideKeyboard(this);
-        if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory).dialog;
+        if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory, result == null ? null : result.previewSources.get(item.key())).dialog;
         else {
             WebSocketDetailDialog detail = new WebSocketDetailDialog(getContext(), item.socket, socketHistory);
             detail.showConnection(() -> {
@@ -246,7 +250,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             InspectorRecordSearch.Record item = items.get(position); Context context = getContext();
             String preview = result == null ? null : result.previews.get(item.key());
             if (item.http != null) InspectorRecordPresentation.http(context, item.http, InspectorRecordPresentation.matchPreview(context, result, item.key())).bind(row, context);
-            else InspectorRecordPresentation.socket(context, item.socket, preview == null ? previews.get(item.socket.id) : preview, connectionID != null).bind(row, context);
+            else InspectorRecordPresentation.socket(context, item.socket, preview == null ? previews.get(item.socket.id) : preview, connectionID != null, result == null ? null : result.previewSources.get(item.key())).bind(row, context);
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

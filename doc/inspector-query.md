@@ -44,12 +44,13 @@ Text scope restricts the text condition; an independent JSON condition still
 examines retained bodies. For example, a request-header match can be combined
 with a JSON field in its response without parsing the header as JSON.
 
-HTTP status selection accepts exact observed codes and status families in the
-same union. A code in an address or payload is not an exact status match.
+HTTP status selection accepts exact codes from 100 through 599 and status
+families in the same union. A code in an address or payload is not an exact status match.
 Transport outcome remains independent of HTTP status and neither establishes
 business success. Socket activity distinguishes messages and their send results
 from connection events. Direction and message-result criteria do not apply to
-the connection-only group. Specific event kinds, close codes and connection
+the connection-only group. Switching activity removes incompatible kind selections;
+message-only views also remove close-code conditions. Specific event kinds, close codes and connection
 identities remain available for precise inspection; they are not business event
 classifications.
 
@@ -65,6 +66,10 @@ a 750 ms elapsed-work budget between records; an individual bounded lookup or
 scan can complete after that check. JSON parsing keeps the reader's 65,536-unit,
 4,096-node and 48-level limits. Results retain IDs and at most a 180-unit preview
 per matching record, not a second body store or an unbounded search index.
+
+A connection-context page restricts its source window independently of removable
+query conditions. Reset must not expand either live or saved evidence to another
+connection.
 
 Body matches identify the request, response or message content that supplied the
 excerpt. Saved attachments use their immutable payload map, never a current live

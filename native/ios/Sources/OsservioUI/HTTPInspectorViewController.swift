@@ -23,6 +23,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     private let event: HTTPEvent
     private let history: (any HTTPHistory)?
     private let savedPayloads: [String: IncidentPayload]?
+    var searchSource: String?
     private let selection = InspectorScopeControl(titles: ["", "", ""])
     private var noticeKey: String?
     private lazy var copyButton = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyMetadata))
@@ -39,6 +40,8 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         inspectorActions = [copyButton]
+        if ["ui_search_request_body", "ui_search_request_headers"].contains(searchSource ?? "") { selection.selectedIndex = 1 }
+        if ["ui_search_response_body", "ui_search_response_headers"].contains(searchSource ?? "") { selection.selectedIndex = 2 }
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         tableView.tableHeaderView = header

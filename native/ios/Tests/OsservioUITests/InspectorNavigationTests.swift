@@ -104,11 +104,13 @@ final class InspectorNavigationTests: XCTestCase {
         let filters = InspectorFilterViewController(query: original,
             groups: [InspectorFilterGroup(.level, values: ["info", "warning", "error"])]) { applied = $0 }
         filters.loadViewIfNeeded()
-        // All is row zero; fixed choices keep their semantic order.
-        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 2, section: 0))
-        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 3, section: 0))
-        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 1, section: 1))
-        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 2, section: 1))
+        try selectFilter(filters, title: InspectorFilterGroup(.level, values: []).title)
+        try selectFilter(filters, title: InspectorFilterOptions.label(.level, "warning"))
+        try selectFilter(filters, title: InspectorFilterOptions.label(.level, "error"))
+        try selectFilter(filters, title: InspectorLocalization.text("ui_time"))
+        try selectFilter(filters, title: InspectorLocalization.text("ui_time_5"))
+        try selectFilter(filters, title: InspectorLocalization.text("ui_time"))
+        try selectFilter(filters, title: InspectorLocalization.text("ui_time_30"))
         XCTAssertNil(applied); XCTAssertEqual(original.activeCount, 0)
         let apply = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
         _ = (apply.target as? NSObject)?.perform(try XCTUnwrap(apply.action))
@@ -127,9 +129,9 @@ final class InspectorNavigationTests: XCTestCase {
         let filters = InspectorFilterViewController(query: query, groups: [empty, InspectorFilterGroup(.host, values: [])]) { applied = $0 }
         filters.loadViewIfNeeded()
         XCTAssertEqual(filters.numberOfSections(in: filters.tableView), 2)
-        XCTAssertEqual(filters.tableView(filters.tableView, numberOfRowsInSection: 0), 2)
-        XCTAssertEqual(filters.tableView(filters.tableView, cellForRowAt: IndexPath(row: 1, section: 0)).textLabel?.text, "expired.test")
-        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+        try selectFilter(filters, title: InspectorLocalization.text("ui_filter_refine"))
+        try selectFilter(filters, title: InspectorFilterGroup(.host, values: []).title)
+        try selectFilter(filters, title: "expired.test")
         let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
         _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
         XCTAssertTrue(applied?.values[.host]?.isEmpty == true); XCTAssertEqual(applied?.text, "keep search")
@@ -147,13 +149,79 @@ final class InspectorNavigationTests: XCTestCase {
         editor.path.text = "/data/id"; editor.value.text = "42"; try activate(editor.path, event: .editingChanged)
         editor.duration.text = "100"; try activate(editor.duration, event: .editingChanged)
         XCTAssertEqual(editor.path.text, "/data/id")
-        filters.tableView(filters.tableView, didSelectRowAt: IndexPath(row: 2, section: 0))
+        let cell = filters.tableView(filters.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
+        let scope = try XCTUnwrap(descendants(cell).compactMap { $0 as? InspectorScopeControl }.first)
+        scope.onSelect?(2)
         XCTAssertEqual(editor.duration.text, ""); XCTAssertEqual(editor.path.text, "/data/id")
         let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
         _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
         XCTAssertEqual(applied?.values[.transport], ["webSocket"]); XCTAssertEqual(applied?.minimumDurationMillis, 0)
         XCTAssertEqual(applied?.fieldValue, "42"); XCTAssertEqual(applied?.excludedText, "heartbeat"); XCTAssertEqual(applied?.text, "main search")
         XCTAssertEqual(query.activeCount, 1)
+    }
+
+    @MainActor
+    private func selectFilter(_ filters: InspectorFilterViewController, title: String) throws {
+        for section in 0..<filters.numberOfSections(in: filters.tableView) {
+            for row in 0..<filters.tableView(filters.tableView, numberOfRowsInSection: section) {
+                let path = IndexPath(row: row, section: section)
+                if filters.tableView(filters.tableView, cellForRowAt: path).textLabel?.text == title {
+                    filters.tableView(filters.tableView, didSelectRowAt: path); return
+                }
+            }
+        }
+        XCTFail("Missing filter row: \(title)")
+    }
+
+    @MainActor
+    func testPreciseStatusPickerKeepsDraftAndFindsUnobservedCode() throws {
+        var query = InspectorQuery(); query.select(.transport, value: "http")
+        var applied: InspectorQuery?
+        let groups = InspectorFilterOptions.network([], sockets: [], query: query)
+        let filters = InspectorFilterViewController(query: query, groups: groups, payload: true) { applied = $0 }
+        filters.loadViewIfNeeded()
+        try selectFilter(filters, title: InspectorLocalization.text("ui_http_status"))
+        let field = try XCTUnwrap(descendants(filters.tableView.tableHeaderView!).compactMap { $0 as? UISearchTextField }.first)
+        field.text = "401"; try activate(field, event: .editingChanged)
+        try selectFilter(filters, title: "401")
+        XCTAssertNil(applied)
+        let back = try XCTUnwrap(filters.navigationItem.leftBarButtonItem)
+        _ = (back.target as? NSObject)?.perform(try XCTUnwrap(back.action))
+        XCTAssertEqual(filters.title, InspectorLocalization.text("ui_filters"))
+        let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
+        _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
+        XCTAssertEqual(applied?.values[.status], ["401"])
+    }
+
+    @MainActor
+    func testRuntimeKindsDoNotRequireANetworkScope() throws {
+        let kind = BreadcrumbKind.appActive
+        var applied: InspectorQuery?
+        let filters = InspectorFilterViewController(query: InspectorQuery(), groups: [InspectorFilterGroup(.kind, values: [kind.rawValue])]) { applied = $0 }
+        filters.loadViewIfNeeded()
+        try selectFilter(filters, title: InspectorLocalization.text("ui_kind"))
+        try selectFilter(filters, title: InspectorFilterOptions.label(.kind, kind.rawValue))
+        let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
+        _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
+        XCTAssertEqual(applied?.values[.kind], [kind.rawValue]); XCTAssertNil(applied?.transport)
+    }
+
+    @MainActor
+    func testSavedConnectionContextSurvivesFilterReset() throws {
+        let first = "00000000-0000-0000-0000-000000000001", second = "00000000-0000-0000-0000-000000000002"
+        let events = try [first, second].enumerated().map { index, id in
+            try WebSocketEvent.restore(id: id, connectionID: id, sessionID: first, sequence: Int64(index + 1), timestampMillis: 100,
+                url: "wss://example.test/stream", source: .host, kind: .connecting, headers: [], headersLimited: false,
+                statusCode: nil, closeCode: nil, failure: nil, direction: nil, outcome: nil, relatedMessageID: nil, payload: nil)
+        }
+        let saved = try IncidentWebSockets.restore(events: events, payloads: [:], observedAtMillis: 100, sourceEventCount: 2, sourceEvictedEvents: 0, sourceEvictedPayloads: 0)
+        let viewer = IncidentEvidenceViewController(.webSockets(saved), connectionID: first); viewer.loadViewIfNeeded()
+        let header = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? InspectorFeedHeader }.first)
+        XCTAssertEqual(viewer.tableView(viewer.tableView, numberOfRowsInSection: 0), 1)
+        var query = InspectorQuery(); query.select(.direction, value: "incoming"); header.onQueryChange?(query)
+        XCTAssertEqual(viewer.tableView(viewer.tableView, numberOfRowsInSection: 0), 0)
+        query.resetFilters(); header.onQueryChange?(query)
+        XCTAssertEqual(viewer.tableView(viewer.tableView, numberOfRowsInSection: 0), 1)
     }
 
     @MainActor

@@ -88,6 +88,61 @@ public final class InspectorNavigationTest {
         });
     }
 
+    @Test public void runtimeFilterKindsRemainVisibleWithoutNetworkScopeOrHeaderGap() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController(); MemoryLogStore logs = new MemoryLogStore();
+            MemoryHTTPStore requests = new MemoryHTTPStore();
+            InspectorView inspector = new InspectorView(context, new LogRecorder(logs, capture), logs, new HTTPRecorder(requests, capture, new HTTPPrivacyPolicy()), requests);
+            layout(inspector, 390, 844);
+            InspectorFilterSheet.Group kinds = new InspectorFilterSheet.Group(InspectorQuery.Field.KIND, context.getString(R.string.osservio_ui_kind))
+                .option("APP_ACTIVE", "Active");
+            InspectorQuery[] applied = {null};
+            InspectorScreen filters = InspectorFilterSheet.show(inspector.getContext(), new InspectorQuery(), java.util.Collections.singletonList(kinds), value -> applied[0] = value);
+            layout(inspector, 390, 844);
+            ListView list = first(filters.view, ListView.class); assertNotNull(list);
+            assertEquals("The overview must not reserve a choice-search header", 0, list.getHeaderViewsCount());
+            List<InspectorWidgets.ValueRow> summaries = new ArrayList<>(); collect(filters.view, InspectorWidgets.ValueRow.class, summaries);
+            InspectorWidgets.ValueRow group = null;
+            for (InspectorWidgets.ValueRow row : summaries) if (row.title.getText().toString().equals(kinds.title)) group = row;
+            assertNotNull(group); group.performClick(); layout(inspector, 390, 844);
+            for (int index = 0; index < list.getCount(); index++) {
+                View row = list.getAdapter().getView(index, null, list);
+                if (row instanceof android.widget.CheckedTextView && ((android.widget.CheckedTextView) row).getText().toString().equals("Active")) {
+                    list.performItemClick(row, index, index); break;
+                }
+            }
+            List<Button> buttons = new ArrayList<>(); collect(filters.view, Button.class, buttons);
+            Button apply = null; for (Button button : buttons) if (button.getText().toString().equals(button.getContext().getString(R.string.osservio_ui_apply))) apply = button;
+            assertNotNull(apply); apply.performClick();
+            assertNotNull(applied[0]); assertTrue(applied[0].allows(InspectorQuery.Field.KIND, "APP_ACTIVE"));
+            assertEquals(java.util.Collections.singleton("APP_ACTIVE"), applied[0].values.get(InspectorQuery.Field.KIND));
+            assertNull(applied[0].transport()); inspector.disposePresentation(); capture.stopAll();
+        });
+    }
+
+    @Test public void savedConnectionContextCannotBeClearedByFilterReset() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController(); capture.startDetailed();
+            try {
+                MemoryWebSocketStore store = new MemoryWebSocketStore();
+                WebSocketRecorder recorder = new WebSocketRecorder(store, capture, new WebSocketPrivacyPolicy());
+                recorder.begin("wss://example.test/first", java.util.Collections.emptyList(), WebSocketEvent.Source.HOST);
+                recorder.begin("wss://example.test/second", java.util.Collections.emptyList(), WebSocketEvent.Source.HOST);
+                IncidentWebSockets saved = IncidentWebSockets.capture(store.snapshot(), System.currentTimeMillis(), store, false);
+                IncidentEvidenceView viewer = new IncidentEvidenceView(context, saved, () -> { });
+                viewer.scopeConnection(saved.events.get(0).connectionId); layout(viewer, 390, 844);
+                ListView list = first(viewer, ListView.class); InspectorFeedHeader header = first(viewer, InspectorFeedHeader.class);
+                assertEquals(1, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
+                InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.DIRECTION, "INCOMING"); header.onQueryChange.apply(query);
+                assertEquals(0, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
+                query.resetFilters(); header.onQueryChange.apply(query);
+                assertEquals(1, list.getCount() - list.getHeaderViewsCount() - list.getFooterViewsCount());
+            } finally { capture.stopAll(); }
+        });
+    }
+
     @Test public void retainedPageRebindsPreferencesWithoutReplacingQueryOrJsonExpansion() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();

@@ -162,8 +162,8 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     @objc private func showFilters() {
         table.endEditing(true)
         let filters = InspectorFilterViewController(query: query,
-            groups: InspectorFilterOptions.network(latestHTTP?.events ?? [], sockets: latestSockets?.events ?? [], query: query,
-                includeHTTP: http != nil, includeSockets: sockets != nil), payload: true) { [weak self] in self?.apply($0) }
+            groups: InspectorFilterOptions.network(latestHTTP?.events ?? [], sockets: (latestSockets?.events ?? []).filter { connectionID == nil || $0.connectionID == connectionID }, query: query,
+                includeHTTP: http != nil, includeSockets: sockets != nil).filter { connectionID == nil || $0.field != .connection }, payload: true) { [weak self] in self?.apply($0) }
         owner?.inspectorPresent(filters)
     }
     @objc private func clear() {
@@ -187,7 +187,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         case .http(let event):
             let source = result?.previewSources[record.key].map(InspectorLocalization.text)
             cell.configure(InspectorRecordPresentation.http(event, preview: preview.map { (source ?? "") + ": " + $0 }))
-        case .socket(let event): cell.configure(InspectorRecordPresentation.socket(event, preview: preview ?? previews[event.id], scoped: connectionID != nil))
+        case .socket(let event): cell.configure(InspectorRecordPresentation.socket(event, preview: preview ?? previews[event.id], scoped: connectionID != nil, matchSource: result?.previewSources[record.key]))
         case .log: break
         }
         return cell
@@ -195,7 +195,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
         switch rows[indexPath.row] {
-        case .http(let event): if let http { owner?.inspectorPush(HTTPDetailViewController(event: event, history: http.history)) }
+        case .http(let event): if let http { let detail = HTTPDetailViewController(event: event, history: http.history); detail.searchSource = result?.previewSources[InspectorSearchRecord.http(event).key]; owner?.inspectorPush(detail) }
         case .socket(let event):
             if let sockets {
                 let detail = WebSocketDetailViewController(event: event, history: sockets.history)

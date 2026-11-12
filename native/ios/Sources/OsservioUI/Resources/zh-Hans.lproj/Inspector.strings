@@ -141,11 +141,10 @@
 
 "ui_duration" = "HTTP 最小时长（毫秒）";
 
-"ui_network_filter_hint" = "同组内任一匹配，组间同时满足。选择 HTTP 或 Socket 专属条件会切换类型；切回全部会清除专属条件。";
 
 "ui_searching" = "正在检索已留存内容…";
 
-"ui_search_partial" = "仅显示已检索范围：部分正文不可用、被截断或超出检索预算。";
+"ui_search_partial" = "仅显示已检索范围：部分内容不可用、被截断或超出检索预算。";
 
 
 "ui_retention_loss" = "部分历史已因容量或限流被丢弃";
@@ -295,5 +294,5 @@
 "ui_status_3xx" = "重定向（3xx）";
 "ui_status_4xx" = "客户端错误（4xx）";
 "ui_status_5xx" = "服务端错误（5xx）";
-"ui_filter_exact_status" = "具体状态码";
 "ui_search_scope_hint" = "限定文字搜索与排除文本的范围。JSON 字段条件检查已保留的正文。";
+"ui_filter_options_empty" = "没有匹配的选项。";

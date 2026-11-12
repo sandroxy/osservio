@@ -66,6 +66,13 @@ final class InspectorQuery {
         if (field == Field.SEARCH_SCOPE || field == Field.ACTIVITY) {
             if (value == null) values.remove(field); else values.put(field, new HashSet<>(Collections.singleton(value)));
             if (field == Field.ACTIVITY && "connections".equals(value)) { values.remove(Field.DIRECTION); values.remove(Field.OUTCOME); }
+            if (field == Field.ACTIVITY && value != null) {
+                if (value.equals("messages")) values.remove(Field.CLOSE_CODE);
+                Set<String> kinds = values.get(Field.KIND);
+                if (kinds != null) { java.util.Iterator<String> iterator = kinds.iterator(); while (iterator.hasNext()) {
+                    String kind = iterator.next(); if ((kind.equals("MESSAGE") || kind.equals("MESSAGE_RESULT")) != value.equals("messages")) iterator.remove();
+                } }
+            }
             return;
         }
         if (value != null) {

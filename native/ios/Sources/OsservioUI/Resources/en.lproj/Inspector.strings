@@ -141,7 +141,6 @@
 
 "ui_duration" = "Minimum HTTP duration (ms)";
 
-"ui_network_filter_hint" = "Choices within a group are alternatives; groups intersect. Protocol-specific conditions select HTTP or Socket. All clears protocol-specific conditions.";
 
 "ui_searching" = "Searching retained content…";
 
@@ -295,5 +294,5 @@
 "ui_status_3xx" = "Redirection (3xx)";
 "ui_status_4xx" = "Client error (4xx)";
 "ui_status_5xx" = "Server error (5xx)";
-"ui_filter_exact_status" = "Exact status code";
 "ui_search_scope_hint" = "Limits text search and excluded text. JSON field conditions inspect retained bodies.";
+"ui_filter_options_empty" = "No matching options.";

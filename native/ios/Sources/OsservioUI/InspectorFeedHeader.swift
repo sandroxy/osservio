@@ -109,7 +109,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             button.accessibilityLabel = title; button.accessibilityHint = InspectorLocalization.text("ui_remove_filter")
             tokens.addArrangedSubview(button)
         }
-        for field in query.values.keys.sorted(by: { $0.rawValue < $1.rawValue }) {
+        for field in InspectorQuery.fieldOrder {
             guard let values = query.values[field], !values.isEmpty else { continue }
             var changed = query
             if field == .transport { changed.select(.transport, value: nil) } else { changed.values[field] = nil }

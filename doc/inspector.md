@@ -99,33 +99,52 @@ Network details preserve the selected entry-time record, without a refresh actio
 Return to the list and reopen for the latest retained state. Opening any detail
 never resends a request or a Socket message.
 
-Network has one search and one filter draft. Type, host, time and protocol-specific
-criteria are edited together. Selecting an HTTP-specific condition chooses HTTP
-and removes Socket-only conditions, and vice versa. All clears protocol-specific
-criteria while preserving common text, host and time conditions. Switching tabs,
-minimizing, or changing language and appearance preserves the query and reading
-position. Reset clears filters and content conditions while retaining the main
-search text.
+Network has one search and one filter draft. Choose All, HTTP or WebSocket at
+the top of the sheet; only the selected protocol's conditions appear below.
+Switching scope clears incompatible conditions while preserving common text,
+host and time criteria. Switching tabs, minimizing, or changing language and
+theme preserves the applied query and reading position. Reset clears filter
+conditions while retaining the main search text. Closing the sheet discards its
+draft; Apply commits the entire draft, including choices made in a nested picker.
 
-| View | Filter dimensions |
-| --- | --- |
-| Logs | Level, host-supplied category, time, text exclusion and optional JSON field |
-| Network, common | HTTP/Socket type, host, source when relevant, time, content search and exclusion, optional JSON field |
-| HTTP | Method, status class, observed transport state, response type, minimum observed duration |
-| Socket | Message direction, observed record kind and connection ID |
-| Problems | Observed problem kind, record time and note/identifier search |
+Common filters appear first as summary rows. Small choice sets expand in place;
+long sets open a searchable picker within the same sheet, with Back returning to
+the overview and preserving its draft and scroll position. Precise conditions
+remain under Refine filters. Applied conditions stay visible as removable chips
+above the results, including a restricted text-search scope.
+
+| View | Common conditions | Precise conditions |
+| --- | --- | --- |
+| Logs | Time, level, host-supplied category | Text scope, exclusion, JSON field |
+| Network | HTTP/Socket scope, time, host | Collector source when relevant, text scope, exclusion, JSON field |
+| HTTP | Method, status code or family, transport state, minimum duration | Response content type |
+| Socket | Messages/send results or connection events, message direction | Observed event kind, message outcome, close code, connection |
+| Problems | Record/recovery time, observed record kind | None; note and identifier lookup use the main search |
+| Runtime timeline | Observation time and observed kind | None |
 
 Values within a field are alternatives; fields intersect. Categories, hosts,
 connections and observed record kinds come from retained records; selected values
 remain editable even after their examples disappear. Groups without any candidate
-or selected value are omitted. Candidate lists are frozen while a draft is open;
-choosing a condition does not make the other sections disappear. Fixed semantic
-choices, such as levels and time ranges, can also describe future observations.
-Content filters expand inline into text exclusion and JSON field matching;
-minimum HTTP duration appears with the HTTP conditions. A category is an exact
-host-defined identifier, not a runtime or content-format classification. The SDK
-does not recognize sample hosts or interpret application protocols. Framework log
-provenance awaits the corresponding adapters.
+or selected value are omitted. A singleton category or host stays available under
+Refine filters. Candidate lists and their placement are frozen while a draft is
+open. Fixed semantic choices, such as levels and time ranges, can describe future
+observations. HTTP status selection includes families and observed exact codes;
+typing a code from 100 through 599 also offers that exact choice, even before it
+has appeared. A number in a URL, header or body is not a status-code match.
+
+Search text defaults to all retained searchable content. Refine filters can limit
+literal inclusion and exclusion to addresses, headers, request/response bodies,
+messages, identifiers or record information. An independent JSON field condition
+still examines retained bodies. Result excerpts name the matching source. Opening
+an HTTP header/body result selects its request or response section. A metadata
+match does not replace a log's message with its category or identifier. Search and
+its coverage limits are specified in [Inspector queries](inspector-query.md).
+
+Connection context opened from a Socket detail is fixed for that page, including
+saved evidence. Reset can clear user criteria but cannot expand it to other
+connections. A category is an exact host-defined identifier, not a runtime or
+content-format classification. The SDK does not recognize sample hosts or
+interpret application protocols. Framework log provenance awaits its adapters.
 
 HTTP response types use retained response Content-Type metadata only. Missing,
 malformed or conflicting values remain Unknown. No URL suffix or body shape is

@@ -50,7 +50,8 @@ public final class InspectorQueryTest {
         query.select(InspectorQuery.Field.ACTIVITY, "messages");
         assertTrue(query.matchesFacets(socket(1, WebSocketEvent.Kind.MESSAGE), 10));
         assertFalse(query.matchesFacets(socket(2, WebSocketEvent.Kind.OPENED), 10));
-        query.select(InspectorQuery.Field.DIRECTION, "INCOMING"); query.select(InspectorQuery.Field.ACTIVITY, "connections");
+        query.select(InspectorQuery.Field.KIND, "MESSAGE"); query.select(InspectorQuery.Field.DIRECTION, "INCOMING"); query.select(InspectorQuery.Field.ACTIVITY, "connections");
+        assertTrue(query.values.get(InspectorQuery.Field.KIND).isEmpty());
         assertFalse(query.values.containsKey(InspectorQuery.Field.DIRECTION));
         assertTrue(query.matchesFacets(socket(2, WebSocketEvent.Kind.OPENED), 10));
         query.select(InspectorQuery.Field.SEARCH_SCOPE, "headers"); query.select(InspectorQuery.Field.TRANSPORT, "http");

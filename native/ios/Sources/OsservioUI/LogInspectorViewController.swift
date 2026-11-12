@@ -124,7 +124,7 @@ public final class LogInspectorViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let event = events[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "log") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "log")
-        cell.configure(InspectorRecordPresentation.log(event, preview: result?.previews[InspectorSearchRecord.log(event).key]))
+        cell.configure(InspectorRecordPresentation.log(event, preview: result?.previews[InspectorSearchRecord.log(event).key], matchSource: result?.previewSources[InspectorSearchRecord.log(event).key]))
         return cell
     }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

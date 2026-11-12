@@ -31,6 +31,6 @@
     <string name="osservio_ui_status_3xx">Redirection (3xx)</string>
     <string name="osservio_ui_status_4xx">Client error (4xx)</string>
     <string name="osservio_ui_status_5xx">Server error (5xx)</string>
-    <string name="osservio_ui_filter_exact_status">Exact status code</string>
     <string name="osservio_ui_search_scope_hint">Limits text search and excluded text. JSON field conditions inspect retained bodies.</string>
+    <string name="osservio_ui_filter_options_empty">No matching options.</string>
 </resources>

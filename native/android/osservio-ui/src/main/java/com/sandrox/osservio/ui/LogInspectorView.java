@@ -188,7 +188,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
                 ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(getContext());
             LogEvent event = events.get(position);
             String preview = result == null ? null : result.previews.get(new InspectorRecordSearch.Record(event).key());
-            InspectorRecordPresentation.log(getContext(), event, preview).bind(row, getContext());
+            InspectorRecordPresentation.log(getContext(), event, preview, result == null ? null : result.previewSources.get(new InspectorRecordSearch.Record(event).key())).bind(row, getContext());
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

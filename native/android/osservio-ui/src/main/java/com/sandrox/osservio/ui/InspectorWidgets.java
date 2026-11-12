@@ -177,6 +177,7 @@ final class InspectorWidgets {
             title.setText(heading); value.setText(detail); value.setVisibility(detail.isEmpty() ? GONE : VISIBLE);
             arrow.setVisibility(navigates ? VISIBLE : GONE);
         }
+        void disclosureRotation(float degrees) { arrow.setRotation(degrees); }
         void action(Runnable action) {
             setOnClickListener(action == null ? null : view -> action.run());
             setFocusable(action != null); setClickable(action != null);

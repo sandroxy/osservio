@@ -28,10 +28,11 @@ enum InspectorRecordPresentation {
         return joined([url.origin, path(source), url.queryHidden ? text("query_hidden") : ""])
     }
     static func joined(_ values: [String]) -> String { values.filter { !$0.isEmpty }.joined(separator: " · ") }
-    static func log(_ event: LogEvent, preview: String? = nil) -> Row {
-        Row(badge: InspectorFilterOptions.label(.level, event.level.rawValue),
-            title: event.isPrivate ? text("private_content") : compact(preview ?? event.message, limit: 600),
-            subtitle: joined([event.category, event.isTruncated ? InspectorLocalization.text("truncated") : ""]),
+    static func log(_ event: LogEvent, preview: String? = nil, matchSource: String? = nil) -> Row {
+        let metadataMatch = matchSource.map { $0 != "ui_search_log_message" } ?? false
+        return Row(badge: InspectorFilterOptions.label(.level, event.level.rawValue),
+            title: event.isPrivate ? text("private_content") : compact(metadataMatch ? event.message : preview ?? event.message, limit: 600),
+            subtitle: joined([event.category, event.isTruncated ? InspectorLocalization.text("truncated") : ""]) + (metadataMatch ? "\n" + InspectorLocalization.text(matchSource!) + ": " + (preview ?? "") : ""),
             time: event.timestampMillis, tone: event.level == .error ? .error : event.level == .warning ? .warning : .ordinary)
     }
     static func http(_ event: HTTPEvent, preview: String? = nil) -> Row {
@@ -43,13 +44,14 @@ enum InspectorRecordPresentation {
                 + (preview.map { "\n" + $0 } ?? ""), time: event.timestampMillis,
             tone: event.state == .failed || (event.statusCode ?? 0) >= 400 ? .error : .ordinary)
     }
-    static func socket(_ event: WebSocketEvent, preview: String? = nil, scoped: Bool = false) -> Row {
+    static func socket(_ event: WebSocketEvent, preview: String? = nil, scoped: Bool = false, matchSource: String? = nil) -> Row {
         let message = event.kind == .message
         let result = event.kind == .messageResult
         let direction = event.direction.map { InspectorLocalization.text("ws_" + $0.rawValue) }
         let badge = "Socket · " + (message ? direction ?? WebSocketPresentation.kind(event) : WebSocketPresentation.kind(event))
         let title: String
-        if let preview { title = compact(preview) }
+        let metadataMatch = matchSource.map { $0 != "ui_search_message" } ?? false
+        if let preview, !metadataMatch { title = compact(preview) }
         else if message { title = payloadLabel(event.payload) }
         else if result { title = event.outcome.map { InspectorLocalization.text("ws_outcome_" + $0.rawValue) } ?? WebSocketPresentation.kind(event) }
         else { title = path(event.url) }
@@ -61,6 +63,7 @@ enum InspectorRecordPresentation {
         if message, let bytes = event.payload?.byteCount { details.append(InspectorValuePresentation.bytes(bytes)) }
         if message, let outcome = event.outcome, outcome != .received { details.append(InspectorLocalization.text("ws_outcome_" + outcome.rawValue)) }
         if result, let related = event.relatedMessageID { details.append(text("related_message") + " · " + identity(related)) }
+        if let preview, let matchSource { details.append(InspectorLocalization.text(matchSource) + (metadataMatch ? ": " + preview : "")) }
         return Row(badge: badge, title: title, subtitle: joined(details), time: event.timestampMillis,
             tone: event.kind == .failed || event.outcome == .failed || event.outcome == .rejected ? .error : .ordinary)
     }

@@ -23,17 +23,21 @@ final class HTTPDetailDialog {
     final InspectorScreen dialog;
 
     HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history) {
-        this(context, event, history, null);
+        this(context, event, history, null, null);
     }
     HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads) {
-        this(context, event, null, savedPayloads);
+        this(context, event, null, savedPayloads, null);
     }
-    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, Map<String, IncidentPayload> savedPayloads) {
+    HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, String searchSource) { this(context, event, history, null, searchSource); }
+    HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads, String searchSource) { this(context, event, null, savedPayloads, searchSource); }
+    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, Map<String, IncidentPayload> savedPayloads, String searchSource) {
         this.context = context; this.event = event; this.history = history; this.savedPayloads = savedPayloads;
+        if ("request".equals(searchSource) || "requestHeaders".equals(searchSource)) section = 1;
+        if ("response".equals(searchSource) || "responseHeaders".equals(searchSource)) section = 2;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams tabs = new LinearLayout.LayoutParams(-1, -2);
         int inset = InspectorTheme.dp(context, 16); tabs.setMargins(inset, InspectorTheme.dp(context, 8), inset, 0);
-        content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ui_request, R.string.osservio_ui_response}, 0,
+        content.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_overview, R.string.osservio_ui_request, R.string.osservio_ui_response}, section,
             index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog = InspectorDialogs.screen(context, R.string.osservio_ui_request_details, content);

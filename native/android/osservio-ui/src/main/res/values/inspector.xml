@@ -125,7 +125,6 @@
     <string name="osservio_ui_field_hint">Searches retained content only. Field values match exactly; business meaning is not inferred. Paths are case-sensitive.</string>
     <string name="osservio_ui_field_invalid">Enter a valid JSON Pointer starting with /, with at most 16 components. Duration must be a nonnegative integer.</string>
     <string name="osservio_ui_duration">Minimum HTTP duration (ms)</string>
-    <string name="osservio_ui_network_filter_hint">Choices within a group are alternatives; groups intersect. Protocol-specific conditions select HTTP or Socket. All clears protocol-specific conditions.</string>
     <string name="osservio_ui_searching">Searching retained content…</string>
     <string name="osservio_ui_search_partial">Results cover searched content only: some content is unavailable, truncated, or beyond the search budget.</string>
     <string name="osservio_ui_retention_loss">Some history was discarded by retention or rate limits</string>

@@ -124,9 +124,8 @@
     <string name="osservio_ui_field_hint">仅检索已留存的内容。字段值按完整值匹配，不推断业务含义；路径区分大小写。</string>
     <string name="osservio_ui_field_invalid">请输入有效的 JSON 字段路径，以 / 开头，最多 16 层；时长须为非负整数。</string>
     <string name="osservio_ui_duration">HTTP 最小时长（毫秒）</string>
-    <string name="osservio_ui_network_filter_hint">同组内任一匹配，组间同时满足。选择 HTTP 或 Socket 专属条件会切换类型；切回全部会清除专属条件。</string>
     <string name="osservio_ui_searching">正在检索已留存内容…</string>
-    <string name="osservio_ui_search_partial">仅显示已检索范围：部分正文不可用、被截断或超出检索预算。</string>
+    <string name="osservio_ui_search_partial">仅显示已检索范围：部分内容不可用、被截断或超出检索预算。</string>
     <string name="osservio_ui_retention_loss">部分历史已因容量或限流被丢弃</string>
     <string name="osservio_ui_remove_filter">移除此条件</string>
     <string name="osservio_ui_connection_context">查看此连接的记录</string>

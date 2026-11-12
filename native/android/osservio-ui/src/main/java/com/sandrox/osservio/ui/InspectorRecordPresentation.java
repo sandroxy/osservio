@@ -38,10 +38,12 @@ final class InspectorRecordPresentation {
         InspectorURL url = new InspectorURL(source);
         return joined(url.origin, path(context, source), url.queryHidden ? context.getString(R.string.osservio_ui_query_hidden) : "");
     }
-    static Row log(Context context, LogEvent event, String preview) {
+    static Row log(Context context, LogEvent event, String preview) { return log(context, event, preview, null); }
+    static Row log(Context context, LogEvent event, String preview, String matchSource) {
+        boolean metadataMatch = matchSource != null && !matchSource.equals("log");
         return new Row(event.level == LogLevel.WARNING ? "WARN" : event.level.name(),
-            event.isPrivate ? context.getString(R.string.osservio_ui_private_content) : compact(preview == null ? event.message : preview, 600),
-            joined(event.category, event.isTruncated ? context.getString(R.string.osservio_truncated) : ""), event.timestampMillis,
+            event.isPrivate ? context.getString(R.string.osservio_ui_private_content) : compact(preview == null || metadataMatch ? event.message : preview, 600),
+            joined(event.category, event.isTruncated ? context.getString(R.string.osservio_truncated) : "") + (metadataMatch ? "\n" + context.getString(matchSource(matchSource)) + ": " + preview : ""), event.timestampMillis,
             event.level == LogLevel.ERROR ? 2 : event.level == LogLevel.WARNING ? 1 : 0);
     }
     static Row http(Context context, HTTPEvent event, String preview) {
@@ -52,11 +54,13 @@ final class InspectorRecordPresentation {
                 + (preview == null ? "" : "\n" + preview), event.timestampMillis,
             event.state == HTTPEvent.State.FAILED || event.statusCode != null && event.statusCode >= 400 ? 2 : 0);
     }
-    static Row socket(Context context, WebSocketEvent event, String preview, boolean scoped) {
+    static Row socket(Context context, WebSocketEvent event, String preview, boolean scoped) { return socket(context, event, preview, scoped, null); }
+    static Row socket(Context context, WebSocketEvent event, String preview, boolean scoped, String matchSource) {
+        boolean metadataMatch = matchSource != null && !matchSource.equals("message");
         boolean message = event.kind == WebSocketEvent.Kind.MESSAGE, result = event.kind == WebSocketEvent.Kind.MESSAGE_RESULT;
         String direction = event.direction == null ? null : context.getString(event.direction == WebSocketEvent.Direction.INCOMING ? R.string.osservio_ws_incoming : R.string.osservio_ws_outgoing);
         String badge = "Socket · " + (message && direction != null ? direction : WebSocketPresentation.kind(context, event.kind));
-        String title = preview != null ? compact(preview, 180) : message ? payloadLabel(context, event.payload)
+        String title = preview != null && !metadataMatch ? compact(preview, 180) : message ? payloadLabel(context, event.payload)
             : result && event.outcome != null ? WebSocketPresentation.outcome(context, event.outcome) : path(context, event.url);
         List<String> details = new ArrayList<>();
         if (!scoped) { details.add(message || result ? address(context, event.url) : new InspectorURL(event.url).origin); details.add(connection(context, event.connectionId)); }
@@ -66,6 +70,7 @@ final class InspectorRecordPresentation {
         if (message && event.payload != null && event.payload.byteCount != null) details.add(InspectorValuePresentation.bytes(event.payload.byteCount));
         if (message && event.outcome != null && event.outcome != WebSocketEvent.Outcome.RECEIVED) details.add(WebSocketPresentation.outcome(context, event.outcome));
         if (result && event.relatedMessageId != null) details.add(context.getString(R.string.osservio_ui_related_message) + " · " + identity(event.relatedMessageId));
+        if (preview != null && matchSource != null) details.add(context.getString(matchSource(matchSource)) + (metadataMatch ? ": " + preview : ""));
         return new Row(badge, title, joined(details.toArray(new String[0])), event.timestampMillis,
             event.kind == WebSocketEvent.Kind.FAILED || event.outcome == WebSocketEvent.Outcome.FAILED || event.outcome == WebSocketEvent.Outcome.REJECTED ? 2 : 0);
     }

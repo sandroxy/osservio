@@ -125,11 +125,11 @@ final class InspectorFeedHeader extends LinearLayout {
     }
     private void updateTokens(InspectorQuery query, List<InspectorFilterSheet.Group> groups) {
         tokens.removeAllViews(); tokenScroll.setVisibility(query.activeCount() == 0 ? GONE : VISIBLE);
-        for (InspectorFilterSheet.Group group : groups) {
+        for (InspectorFilterSheet.Group group : InspectorFilterOptions.displayGroups(getContext(), query, groups)) {
             java.util.Set<String> values = query.values.get(group.field);
             if (values == null || values.isEmpty()) continue;
             java.util.List<String> labels = new java.util.ArrayList<>();
-            for (String value : new java.util.TreeSet<>(values)) labels.add(group.options.containsKey(value) ? group.options.get(value) : value);
+            for (String value : new java.util.TreeSet<>(values)) labels.add(InspectorFilterOptions.label(getContext(), group.field, value));
             InspectorQuery changed = query.copy();
             if (group.field == InspectorQuery.Field.TRANSPORT) changed.select(group.field, null); else changed.values.remove(group.field);
             token(group.title + ": " + android.text.TextUtils.join(", ", labels), changed);

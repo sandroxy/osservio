@@ -115,7 +115,18 @@ final class InspectorFilterOptions {
                     case "identity": return context.getString(R.string.osservio_ui_scope_identity);
                     default: return context.getString(R.string.osservio_ui_scope_metadata);
                 }
+            case CONTENT:
+                String[] kinds = InspectorHTTPContent.CATEGORIES;
+                int[] labels = {R.string.osservio_ui_content_json, R.string.osservio_ui_content_text, R.string.osservio_ui_content_image, R.string.osservio_ui_content_media, R.string.osservio_ui_content_other, R.string.osservio_ui_content_unknown};
+                for (int i = 0; i < kinds.length; i++) if (kinds[i].equals(value)) return context.getString(labels[i]); return value;
             case STATE: return HTTPPresentation.state(context, HTTPEvent.State.valueOf(value));
+            case KIND:
+                for (WebSocketEvent.Kind kind : WebSocketEvent.Kind.values()) if (kind.name().equals(value)) return WebSocketPresentation.kind(context, kind);
+                for (com.sandrox.osservio.core.BreadcrumbEvent.Kind kind : com.sandrox.osservio.core.BreadcrumbEvent.Kind.values()) if (kind.name().equals(value)) return RuntimePresentation.kind(context, kind);
+                return value;
+            case RECORD:
+                if (value.equals("manual")) return context.getString(R.string.osservio_ui_manual);
+                return SystemDiagnosticPresentation.kind(context, com.sandrox.osservio.core.SystemDiagnostic.Kind.valueOf(value));
             case OUTCOME: return WebSocketPresentation.outcome(context, WebSocketEvent.Outcome.valueOf(value));
             case DIRECTION: return context.getString(value.equals("none") ? R.string.osservio_ui_no_direction : value.equals("INCOMING") ? R.string.osservio_ws_incoming : R.string.osservio_ws_outgoing);
             default: return value;
@@ -134,9 +145,17 @@ final class InspectorFilterOptions {
             default: return value;
         }
     }
+    static List<InspectorFilterSheet.Group> displayGroups(Context context, InspectorQuery query, List<InspectorFilterSheet.Group> groups) {
+        List<InspectorFilterSheet.Group> result = new ArrayList<>(groups);
+        if (!query.searchScope().equals("all")) {
+            boolean present = false; for (InspectorFilterSheet.Group group : result) if (group.field == InspectorQuery.Field.SEARCH_SCOPE) present = true;
+            if (!present) result.add(group(context, InspectorQuery.Field.SEARCH_SCOPE, R.string.osservio_ui_search_scope).option(query.searchScope(), label(context, InspectorQuery.Field.SEARCH_SCOPE, query.searchScope())));
+        }
+        return ordered(result);
+    }
     static String summary(Context context, InspectorQuery query, List<InspectorFilterSheet.Group> groups) {
         List<String> parts = new ArrayList<>();
-        for (InspectorFilterSheet.Group group : ordered(groups)) {
+        for (InspectorFilterSheet.Group group : displayGroups(context, query, groups)) {
             Set<String> selected = query.values.get(group.field);
             if (selected == null || selected.isEmpty()) continue;
             List<String> labels = new ArrayList<>();

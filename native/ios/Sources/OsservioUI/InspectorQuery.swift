@@ -40,6 +40,10 @@ struct InspectorQuery: Equatable {
         if field == .searchScope || field == .activity {
             values[field] = value.map { [$0] } ?? []
             if field == .activity, value == "connections" { values[.direction] = nil; values[.outcome] = nil }
+            if field == .activity, let value {
+                if value == "messages" { values[.closeCode] = nil }
+                values[.kind] = values[.kind]?.filter { (["message", "messageResult"].contains($0)) == (value == "messages") }
+            }
             return
         }
         if value != nil {
