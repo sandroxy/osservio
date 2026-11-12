@@ -21,6 +21,22 @@ import static org.junit.Assert.*;
 /** Geometry and view-state checks; real gestures and attached windows are consumer tests. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorNavigationTest {
+    @Test public void protocolChoicesStackWhenLargeTextCannotFitWithoutChangingSelection() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            Configuration config = new Configuration(base.getResources().getConfiguration()); config.fontScale = 2;
+            Context context = InspectorTheme.context(base.createConfigurationContext(config));
+            int[] calls = {0};
+            android.widget.RadioGroup choices = (android.widget.RadioGroup) InspectorWidgets.segments(context,
+                new String[] {"All", "HTTP", "WebSocket"}, 2, index -> calls[0]++);
+            layout(choices, 300, 600);
+            assertEquals(android.widget.LinearLayout.VERTICAL, choices.getOrientation());
+            for (int index = 0; index < choices.getChildCount(); index++) assertEquals(1, ((android.widget.RadioButton) choices.getChildAt(index)).getLineCount());
+            assertTrue(((android.widget.RadioButton) choices.getChildAt(2)).isChecked()); assertEquals(0, calls[0]);
+            layout(choices, 1000, 600); assertEquals(android.widget.LinearLayout.HORIZONTAL, choices.getOrientation());
+            assertTrue(((android.widget.RadioButton) choices.getChildAt(2)).isChecked()); assertEquals(0, calls[0]);
+        });
+    }
     @Test public void fourSectionsPreserveSearchAndCaptureInShortLargeTextLayouts() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();

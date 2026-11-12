@@ -259,7 +259,7 @@ final class InspectorWidgets {
         return bar;
     }
     static View segments(Context context, String[] labels, int selected, Selection changed) {
-        android.widget.RadioGroup bar = new android.widget.RadioGroup(context);
+        android.widget.RadioGroup bar = new SegmentGroup(context);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         int inset = InspectorTheme.dp(context, 4); bar.setPadding(inset, inset, inset, inset);
         InspectorAppearance.style(bar, () -> bar.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false)));
@@ -287,6 +287,33 @@ final class InspectorWidgets {
             if (selectedView != null) changed.selected((Integer) selectedView.getTag());
         });
         return bar;
+    }
+    /** Keep every choice legible at large text sizes instead of splitting protocol names. */
+    private static final class SegmentGroup extends android.widget.RadioGroup {
+        SegmentGroup(Context context) { super(context); }
+        @Override protected void onMeasure(int widthSpec, int heightSpec) {
+            int available = MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight();
+            boolean vertical = false;
+            if (getChildCount() > 0 && MeasureSpec.getMode(widthSpec) != MeasureSpec.UNSPECIFIED) {
+                int share = Math.max(0, available / getChildCount());
+                for (int index = 0; index < getChildCount(); index++) {
+                    TextView choice = (TextView) getChildAt(index);
+                    float needed = android.text.Layout.getDesiredWidth(choice.getText(), choice.getPaint())
+                        + choice.getCompoundPaddingLeft() + choice.getCompoundPaddingRight();
+                    if (needed > share) { vertical = true; break; }
+                }
+            }
+            int orientation = vertical ? VERTICAL : HORIZONTAL;
+            if (getOrientation() != orientation) {
+                setOrientation(orientation);
+                for (int index = 0; index < getChildCount(); index++) {
+                    LayoutParams params = (LayoutParams) getChildAt(index).getLayoutParams();
+                    params.width = vertical ? LayoutParams.MATCH_PARENT : 0; params.weight = vertical ? 0 : 1;
+                    params.topMargin = vertical && index > 0 ? InspectorTheme.dp(getContext(), 2) : 0;
+                }
+            }
+            super.onMeasure(widthSpec, heightSpec);
+        }
     }
     static View divider(Context context) {
         View divider = new View(context); InspectorAppearance.style(divider, () -> divider.setBackgroundColor(InspectorTheme.color(context, R.color.osservio_separator)));
