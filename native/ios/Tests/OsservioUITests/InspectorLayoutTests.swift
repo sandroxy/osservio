@@ -37,6 +37,10 @@ final class InspectorLayoutTests: XCTestCase {
                                 guard let label = cell.textLabel, let title = label.text, !title.isEmpty else { continue }
                                 if cell.accessibilityTraits.contains(.header) { headings += 1 }
                                 else if cell.accessibilityTraits.contains(.button) { options += 1; XCTAssertGreaterThanOrEqual(cell.bounds.height, 44) }
+                                if cell.reuseIdentifier == "choice" {
+                                    let mark = try XCTUnwrap(cell.accessoryView as? UIImageView)
+                                    XCTAssertEqual(mark.image != nil, cell.accessibilityTraits.contains(.selected), title)
+                                }
                                 let fullText = UILabel(); fullText.text = title; fullText.font = label.font
                                 fullText.numberOfLines = 0; fullText.lineBreakMode = .byWordWrapping
                                 let required = fullText.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
@@ -53,6 +57,7 @@ final class InspectorLayoutTests: XCTestCase {
                             viewer.tableView.scrollToRow(at: path, at: .middle, animated: false); viewer.tableView.layoutIfNeeded()
                             let selected = try XCTUnwrap(viewer.tableView.cellForRow(at: path))
                             XCTAssertTrue(selected.accessibilityTraits.contains(.selected))
+                            XCTAssertNotNil((selected.accessoryView as? UIImageView)?.image)
                             XCTAssertEqual(selected.textLabel?.bounds.width ?? 0, size.width, accuracy: 1)
                             XCTAssertEqual(selected.bounds.height, height, accuracy: 1)
                         }

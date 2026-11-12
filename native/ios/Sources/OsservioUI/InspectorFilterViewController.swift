@@ -207,10 +207,10 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         cell.detailTextLabel?.font = .preferredFont(forTextStyle: .subheadline); cell.detailTextLabel?.adjustsFontForContentSizeCategory = true
         cell.detailTextLabel?.textColor = InspectorTheme.secondary; cell.detailTextLabel?.numberOfLines = 2
         func selected(_ value: Bool) {
-            let mark = UIImageView(image: UIImage(systemName: "checkmark"))
+            let mark = UIImageView(image: value ? UIImage(systemName: "checkmark") : nil)
             mark.frame.size = CGSize(width: 22, height: 22); mark.contentMode = .scaleAspectFit
-            mark.tintColor = InspectorTheme.accent; mark.alpha = value ? 1 : 0
-            // Reserve the same trailing space before and after selection.
+            mark.tintColor = InspectorTheme.accent
+            // Reserve trailing space without relying on accessory alpha, which UIKit manages.
             cell.accessoryView = mark; cell.accessibilityTraits = value ? [.button, .selected] : .button
         }
         func disclosure(_ open: Bool) { let icon = UIImageView(image: UIImage(systemName: open ? "chevron.up" : "chevron.down")); icon.tintColor = InspectorTheme.secondary; cell.accessoryView = icon; cell.accessibilityTraits = .button }
