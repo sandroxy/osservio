@@ -104,7 +104,6 @@ final class InspectorNavigationTests: XCTestCase {
         let filters = InspectorFilterViewController(query: original,
             groups: [InspectorFilterGroup(.level, values: ["info", "warning", "error"])]) { applied = $0 }
         filters.loadViewIfNeeded()
-        try selectFilter(filters, title: InspectorFilterGroup(.level, values: []).title)
         try selectFilter(filters, title: InspectorFilterOptions.label(.level, "warning"))
         try selectFilter(filters, title: InspectorFilterOptions.label(.level, "error"))
         try selectFilter(filters, title: InspectorLocalization.text("ui_time"))
@@ -115,6 +114,11 @@ final class InspectorNavigationTests: XCTestCase {
         let apply = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
         _ = (apply.target as? NSObject)?.perform(try XCTUnwrap(apply.action))
         XCTAssertEqual(applied?.values[.level], ["error", "warning"]); XCTAssertEqual(applied?.recentMinutes, 30)
+        let reopened = InspectorFilterViewController(query: applied!, groups: [InspectorFilterGroup(.level, values: ["info", "warning", "error"])]) { applied = $0 }
+        reopened.loadViewIfNeeded(); try selectFilter(reopened, title: InspectorLocalization.text("ui_all"))
+        let clear = try XCTUnwrap(reopened.navigationItem.rightBarButtonItem)
+        _ = (clear.target as? NSObject)?.perform(try XCTUnwrap(clear.action))
+        XCTAssertTrue(applied?.values[.level]?.isEmpty ?? true); XCTAssertEqual(applied?.recentMinutes, 30)
         let abandoned = InspectorFilterViewController(query: applied!, groups: []) { _ in XCTFail("Cancel applied a draft") }
         abandoned.loadViewIfNeeded()
         let cancel = try XCTUnwrap(abandoned.navigationItem.leftBarButtonItem)
@@ -165,12 +169,43 @@ final class InspectorNavigationTests: XCTestCase {
         for section in 0..<filters.numberOfSections(in: filters.tableView) {
             for row in 0..<filters.tableView(filters.tableView, numberOfRowsInSection: section) {
                 let path = IndexPath(row: row, section: section)
-                if filters.tableView(filters.tableView, cellForRowAt: path).textLabel?.text == title {
+                let cell = filters.tableView(filters.tableView, cellForRowAt: path)
+                if cell.textLabel?.text == title {
                     filters.tableView(filters.tableView, didSelectRowAt: path); return
+                }
+                if let control = descendants(cell).compactMap({ $0 as? UIControl }).first(where: { $0.accessibilityLabel == title }) {
+                    try activate(control, event: .touchUpInside); return
                 }
             }
         }
         XCTFail("Missing filter row: \(title)")
+    }
+
+    @MainActor
+    func testDirectSocketChoicesRespectActivityAndRefineSummaryShowsActualConditions() throws {
+        var query = InspectorQuery(); query.select(.transport, value: "webSocket"); query.select(.direction, value: "incoming")
+        query.excludedText = "heartbeat"; query.fieldPath = "/data/id"; query.fieldValue = "42"
+        var applied: InspectorQuery?
+        let filters = InspectorFilterViewController(query: query, groups: InspectorFilterOptions.network([], sockets: [], query: query), payload: true) { applied = $0 }
+        filters.loadViewIfNeeded()
+        try selectFilter(filters, title: InspectorFilterOptions.label(.activity, "connections"))
+        func cells() -> [UITableViewCell] {
+            (0..<filters.numberOfSections(in: filters.tableView)).flatMap { section in
+                (0..<filters.tableView(filters.tableView, numberOfRowsInSection: section)).map {
+                    filters.tableView(filters.tableView, cellForRowAt: IndexPath(row: $0, section: section))
+                }
+            }
+        }
+        XCTAssertFalse(cells().flatMap(descendants).contains { $0.accessibilityLabel == InspectorFilterOptions.label(.direction, "incoming") })
+        try selectFilter(filters, title: InspectorFilterOptions.label(.activity, "messages"))
+        try selectFilter(filters, title: InspectorFilterOptions.label(.direction, "incoming"))
+        try selectFilter(filters, title: InspectorFilterOptions.label(.direction, "outgoing"))
+        let summary = try XCTUnwrap(cells().first { $0.textLabel?.text == InspectorLocalization.text("ui_filter_refine") }?.detailTextLabel?.text)
+        XCTAssertTrue(summary.contains("heartbeat")); XCTAssertTrue(summary.contains("/data/id = 42"))
+        let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
+        _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
+        XCTAssertEqual(applied?.values[.activity], ["messages"]); XCTAssertEqual(applied?.values[.direction], ["incoming", "outgoing"])
+        XCTAssertEqual(query.values[.direction], ["incoming"]); XCTAssertNil(query.values[.activity])
     }
 
     @MainActor

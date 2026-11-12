@@ -7,6 +7,30 @@ import XCTest
 
 final class InspectorLayoutTests: XCTestCase {
     @MainActor
+    func testDirectFilterChoicesKeepFullLabelsAndTouchTargetsAtLargeTextSizes() throws {
+        for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
+            let host = UIViewController(), viewer = UIViewController()
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 900))
+            defer { window.isHidden = true; window.rootViewController = nil }
+            window.rootViewController = host; host.loadViewIfNeeded(); host.addChild(viewer)
+            let traits = UITraitCollection(preferredContentSizeCategory: category)
+            host.setOverrideTraitCollection(traits, forChild: viewer)
+            var choices: InspectorFilterChoices!
+            traits.performAsCurrent { choices = InspectorFilterChoices(group: InspectorFilterGroup(.level, values: ["debug", "info", "warning", "error"]), selected: ["warning", "error"]) }
+            viewer.view = choices; host.view.addSubview(choices); viewer.didMove(toParent: host); window.makeKeyAndVisible()
+            choices.frame = CGRect(x: 0, y: 0, width: 280, height: choices.systemLayoutSizeFitting(CGSize(width: 280, height: 0), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height)
+            choices.layoutIfNeeded()
+            let controls = descendants(choices).compactMap { $0 as? UIControl }
+            XCTAssertEqual(controls.count, 5); XCTAssertEqual(controls.filter { $0.isSelected }.count, 2)
+            for control in controls {
+                XCTAssertGreaterThanOrEqual(control.bounds.height, 44)
+                if category.isAccessibilityCategory { XCTAssertEqual(control.bounds.width, choices.bounds.width, accuracy: 1) }
+                let label = try XCTUnwrap(descendants(control).compactMap { $0 as? UILabel }.first)
+                XCTAssertLessThanOrEqual(label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height, label.bounds.height + 1)
+            }
+        }
+    }
+    @MainActor
     func testCompactLargeTextKeepsHistoryReachableAndControlsReadable() throws {
         for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
             for size in [CGSize(width: 320, height: 240), CGSize(width: 568, height: 180)] {

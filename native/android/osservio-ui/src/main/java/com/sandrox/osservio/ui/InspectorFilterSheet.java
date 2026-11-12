@@ -46,7 +46,7 @@ final class InspectorFilterSheet {
         }
         return result;
     }
-    private enum Type { HEADING, NOTE, SCOPE, GROUP, OPTION, TIME, TIME_OPTION, DURATION, INPUT, REFINE }
+    private enum Type { HEADING, NOTE, SCOPE, QUICK, GROUP, OPTION, TIME, TIME_OPTION, DURATION, INPUT, REFINE }
     private static final class Row {
         final Type type; final Group group; final String value, label;
         Row(Type type, Group group, String value, String label) { this.type = type; this.group = group; this.value = value; this.label = label; }
@@ -144,7 +144,13 @@ final class InspectorFilterSheet {
                 default: return false;
             }
         }
-        void addGroup(Group group) { rows.add(new Row(Type.GROUP, group, null, group.title)); if (expanded.contains(group.field)) addChoices(group, ""); }
+        boolean direct(Group group) {
+            return (group.field == InspectorQuery.Field.LEVEL || group.field == InspectorQuery.Field.ACTIVITY || group.field == InspectorQuery.Field.DIRECTION) && group.options.size() <= 6;
+        }
+        void addGroup(Group group) {
+            rows.add(new Row(direct(group) ? Type.QUICK : Type.GROUP, group, null, group.title));
+            if (!direct(group) && expanded.contains(group.field)) addChoices(group, "");
+        }
         void addChoices(Group group, String term) {
             int start = rows.size();
             if (term.isEmpty()) rows.add(new Row(Type.OPTION, group, ALL, text(R.string.osservio_ui_all)));
@@ -164,9 +170,10 @@ final class InspectorFilterSheet {
             else {
                 if (hasHTTP && hasSockets) { rows.add(new Row(Type.HEADING, text(R.string.osservio_ui_filter_scope))); rows.add(new Row(Type.SCOPE, "")); }
                 rows.add(new Row(Type.HEADING, text(R.string.osservio_ui_filter_common)));
+                for (Group group : groups) if (applicable(group) && !advanced(group) && direct(group)) addGroup(group);
                 rows.add(new Row(Type.TIME, text(timeLabel)));
                 if (timeExpanded) for (int value : times) rows.add(new Row(Type.TIME_OPTION, null, Integer.toString(value), timeText(value)));
-                for (Group group : groups) if (applicable(group) && !advanced(group)) addGroup(group);
+                for (Group group : groups) if (applicable(group) && !advanced(group) && !direct(group)) addGroup(group);
                 if (payload && "http".equals(transport())) { rows.add(new Row(Type.DURATION, text(R.string.osservio_ui_http_timing))); if (durationExpanded) rows.add(new Row(Type.INPUT, "")); }
                 boolean precise = payload; for (Group group : groups) if (applicable(group) && advanced(group)) { precise = true; break; }
                 if (precise) { rows.add(new Row(Type.HEADING, "")); rows.add(new Row(Type.REFINE, text(R.string.osservio_ui_filter_refine))); if (refined) for (Group group : groups) if (applicable(group) && advanced(group)) addGroup(group); }
@@ -189,10 +196,13 @@ final class InspectorFilterSheet {
             return false;
         }
         String refineSummary() {
-            int count = (draft.excludedText.isEmpty() ? 0 : 1) + (draft.fieldPath.isEmpty() ? 0 : 1);
-            for (Group group : groups) if (applicable(group) && advanced(group) && draft.values.containsKey(group.field) && !draft.values.get(group.field).isEmpty()) count++;
-            return count == 0 ? text(R.string.osservio_ui_filter_refine_hint) : context.getString(R.string.osservio_ui_filter_count, count);
+            List<String> details = new ArrayList<>();
+            for (Group group : groups) if (applicable(group) && advanced(group) && draft.values.containsKey(group.field) && !draft.values.get(group.field).isEmpty()) details.add(group.title + ": " + compact(summary(group)));
+            if (!draft.excludedText.isEmpty()) details.add(text(R.string.osservio_ui_exclude) + ": " + compact(draft.excludedText));
+            if (!draft.fieldPath.isEmpty()) details.add(text(R.string.osservio_ui_json_field) + ": " + compact(draft.fieldPath + " = " + draft.fieldValue));
+            return details.isEmpty() ? text(R.string.osservio_ui_filter_refine_hint) : android.text.TextUtils.join(" · ", details.subList(0, Math.min(3, details.size()))) + (details.size() > 3 ? " · +" + (details.size() - 3) : "");
         }
+        String compact(String value) { return value.codePointCount(0, value.length()) > 80 ? value.substring(0, value.offsetByCodePoints(0, 80)) + "…" : value; }
         String timeText(int value) { return text(value == 0 ? R.string.osservio_ui_time_all : value == 5 ? R.string.osservio_ui_time_5 : value == 30 ? R.string.osservio_ui_time_30 : value == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440); }
         String summary(Group group) {
             Set<String> values = draft.values.get(group.field); if (values == null || values.isEmpty()) return text(R.string.osservio_ui_all);
@@ -215,6 +225,12 @@ final class InspectorFilterSheet {
             }
             boolean first = position == 0 || rows.get(position - 1).type == Type.HEADING;
             boolean last = position + 1 == rows.size() || rows.get(position + 1).type == Type.HEADING || rows.get(position + 1).type == Type.NOTE;
+            if (row.type == Type.QUICK) {
+                InspectorFilterChoices choices = new InspectorFilterChoices(context, row.group, draft.values.get(row.group.field), value -> {
+                    InspectorWidgets.hideKeyboard(list); draft.select(row.group.field, value); if (conditions != null) conditions.sync(); rebuild();
+                });
+                InspectorWidgets.groupedRow(choices, first, last); return choices;
+            }
             if (row.type == Type.INPUT) {
                 if (conditions.duration.getParent() instanceof ViewGroup) ((ViewGroup) conditions.duration.getParent()).removeView(conditions.duration);
                 LinearLayout region = column(); region.setPadding(dp(16), dp(8), dp(16), dp(12)); region.addView(conditions.duration); InspectorWidgets.groupedRow(region, first, last); return region;
@@ -228,7 +244,7 @@ final class InspectorFilterSheet {
             }
             InspectorWidgets.ValueRow view = recycled instanceof InspectorWidgets.ValueRow ? (InspectorWidgets.ValueRow) recycled : new InspectorWidgets.ValueRow(context);
             String detail = row.type == Type.GROUP ? summary(row.group) : row.type == Type.TIME ? timeText(draft.recentMinutes) : row.type == Type.DURATION ? draft.minimumDurationMillis == 0 ? text(R.string.osservio_ui_all) : "≥ " + draft.minimumDurationMillis + " ms" : refineSummary();
-            view.bind(row.label, detail, true); view.value.setMaxLines(2); view.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            view.bind(row.label, detail, true); view.value.setMaxLines(row.type == Type.REFINE ? 3 : 2); view.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
             boolean opensPicker = row.type == Type.GROUP && (row.group.options.size() > 6 || row.group.field == InspectorQuery.Field.STATUS);
             boolean open = row.type == Type.GROUP ? expanded.contains(row.group.field) : row.type == Type.TIME ? timeExpanded : row.type == Type.DURATION ? durationExpanded : refined;
             view.disclosureRotation(opensPicker ? 0 : open ? -90 : 90); view.action(() -> choose(row)); InspectorWidgets.groupedRow(view, first, last); return view;

@@ -21,6 +21,88 @@ import static org.junit.Assert.*;
 /** Geometry and view-state checks; real gestures and attached windows are consumer tests. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorNavigationTest {
+    @Test public void directFilterChoicesPreserveMultiselectDraftAndScopeRules() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController(); MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore http = new MemoryHTTPStore();
+            InspectorView inspector = new InspectorView(base, new LogRecorder(logs, capture), logs, new HTTPRecorder(http, capture, new HTTPPrivacyPolicy()), http);
+            layout(inspector, 390, 844); Context context = inspector.getContext();
+            try {
+                InspectorQuery original = new InspectorQuery(); original.text = "keep search"; original.recentMinutes = 30;
+                InspectorQuery[] applied = {null};
+                InspectorFilterSheet.Group levels = new InspectorFilterSheet.Group(InspectorQuery.Field.LEVEL, "Level").option("WARN", "WARN").option("ERROR", "ERROR");
+                InspectorScreen filters = InspectorFilterSheet.show(context, original, java.util.Collections.singletonList(levels), query -> applied[0] = query);
+                ListView list = first(filters.view, ListView.class);
+                quickChoice(list, "WARN").performClick(); quickChoice(list, "ERROR").performClick();
+                assertTrue(quickChoice(list, "WARN").isChecked()); assertTrue(quickChoice(list, "ERROR").isChecked());
+                assertNull(applied[0]); assertFalse(original.values.containsKey(InspectorQuery.Field.LEVEL));
+                quickChoice(list, context.getString(R.string.osservio_ui_all)).performClick();
+                assertFalse(quickChoice(list, "WARN").isChecked());
+                applyFilters(filters);
+                assertEquals(30, applied[0].recentMinutes); assertEquals("keep search", applied[0].text);
+                assertTrue(applied[0].allows(InspectorQuery.Field.LEVEL, "INFO"));
+
+                List<InspectorFilterSheet.Group> groups = new ArrayList<>();
+                groups.add(new InspectorFilterSheet.Group(InspectorQuery.Field.ACTIVITY, "Activity").option("messages", "Messages").option("connections", "Connections"));
+                groups.add(new InspectorFilterSheet.Group(InspectorQuery.Field.DIRECTION, "Direction").option("INCOMING", "Receive").option("OUTGOING", "Send"));
+                original.select(InspectorQuery.Field.DIRECTION, "INCOMING"); original.excludedText = "heartbeat"; original.fieldPath = "/data/id"; original.fieldValue = "42";
+                InspectorScreen socketFilters = InspectorFilterSheet.show(context, original, groups, true, query -> applied[0] = query);
+                list = first(socketFilters.view, ListView.class);
+                quickChoice(list, "Connections").performClick(); assertNull(findQuickChoice(list, "Receive"));
+                quickChoice(list, "Messages").performClick(); quickChoice(list, "Receive").performClick(); quickChoice(list, "Send").performClick();
+                assertTrue(quickChoice(list, "Receive").isChecked()); assertTrue(quickChoice(list, "Send").isChecked());
+                boolean summary = false;
+                for (int i = 0; i < list.getCount(); i++) {
+                    View row = list.getAdapter().getView(i, null, list);
+                    if (row instanceof InspectorWidgets.ValueRow && ((InspectorWidgets.ValueRow) row).title.getText().toString().equals(context.getString(R.string.osservio_ui_filter_refine))) {
+                        String detail = ((InspectorWidgets.ValueRow) row).value.getText().toString();
+                        assertTrue(detail.contains("heartbeat")); assertTrue(detail.contains("/data/id = 42")); summary = true;
+                    }
+                }
+                assertTrue(summary); applyFilters(socketFilters);
+                assertEquals(2, applied[0].values.get(InspectorQuery.Field.DIRECTION).size());
+                assertEquals(java.util.Collections.singleton("INCOMING"), original.values.get(InspectorQuery.Field.DIRECTION));
+            } finally { inspector.disposePresentation(); capture.close(); }
+        });
+    }
+    private static android.widget.CheckedTextView quickChoice(ListView list, String title) {
+        android.widget.CheckedTextView choice = findQuickChoice(list, title); assertNotNull("Missing direct choice: " + title, choice); return choice;
+    }
+    private static void applyFilters(InspectorScreen screen) {
+        List<Button> buttons = new ArrayList<>(); collect(screen.view, Button.class, buttons);
+        for (Button button : buttons) if (button.getText().toString().equals(button.getContext().getString(R.string.osservio_ui_apply))) { button.performClick(); return; }
+        fail("Missing apply action");
+    }
+    private static android.widget.CheckedTextView findQuickChoice(ListView list, String title) {
+        for (int i = 0; i < list.getCount(); i++) {
+            View row = list.getAdapter().getView(i, null, list);
+            if (!(row instanceof InspectorFilterChoices)) continue;
+            List<android.widget.CheckedTextView> choices = new ArrayList<>(); collect(row, android.widget.CheckedTextView.class, choices);
+            for (android.widget.CheckedTextView choice : choices) if (choice.getText().toString().equals(title)) return choice;
+        }
+        return null;
+    }
+    @Test public void directChoicesKeepFullLabelsAndTouchTargetsAtNormalAndLargeTextSizes() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            for (float scale : new float[] {1, 2}) {
+                Configuration config = new Configuration(base.getResources().getConfiguration()); config.fontScale = scale;
+                Context context = InspectorTheme.context(base.createConfigurationContext(config));
+                InspectorFilterSheet.Group levels = new InspectorFilterSheet.Group(InspectorQuery.Field.LEVEL, "Level").option("WARN", "WARN").option("ERROR", "ERROR");
+                InspectorFilterChoices view = new InspectorFilterChoices(context, levels, java.util.Collections.singleton("WARN"), value -> fail("Layout changed selection"));
+                int width = InspectorTheme.dp(context, 300);
+                view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                view.layout(0, 0, width, view.getMeasuredHeight());
+                List<android.widget.CheckedTextView> choices = new ArrayList<>(); collect(view, android.widget.CheckedTextView.class, choices);
+                assertEquals(3, choices.size());
+                for (android.widget.CheckedTextView choice : choices) {
+                    assertTrue(choice.getHeight() >= InspectorTheme.dp(context, 48));
+                    assertTrue(choice.getLayout().getHeight() <= choice.getHeight() - choice.getCompoundPaddingTop() - choice.getCompoundPaddingBottom());
+                    if (scale == 2) assertEquals(width - InspectorTheme.dp(context, 32), choice.getWidth());
+                }
+            }
+        });
+    }
     @Test public void protocolChoicesStackWhenLargeTextCannotFitWithoutChangingSelection() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();

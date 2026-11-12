@@ -107,15 +107,21 @@ theme preserves the applied query and reading position. Reset clears filter
 conditions while retaining the main search text. Closing the sheet discards its
 draft; Apply commits the entire draft, including choices made in a nested picker.
 
-Common filters appear first as summary rows. Small choice sets expand in place;
-long sets open a searchable picker within the same sheet, with Back returning to
-the overview and preserving its draft and scroll position. Precise conditions
-remain under Refine filters. Applied conditions stay visible as removable chips
-above the results, including a restricted text-search scope.
+Short, stable choices for log levels, Socket activity and message direction are
+directly visible above the other common conditions. They keep the query's
+selection rules: levels and directions allow multiple values, activity is
+exclusive, and All removes that dimension's restriction. Large text lays these
+choices out vertically. Time and other dimensions remain summary rows; small
+choice sets expand in place and long sets open a searchable picker within the
+same sheet. Back returns to the overview with its draft and scroll position.
+Precise conditions remain under Refine filters, whose collapsed summary names
+the selected criteria and values. Applied conditions stay visible as removable
+chips above the results, including a restricted text-search scope. Live arrivals
+never expand or collapse a draft's groups.
 
 | View | Common conditions | Precise conditions |
 | --- | --- | --- |
-| Logs | Time, level, host-supplied category | Text scope, exclusion, JSON field |
+| Logs | Level, time, host-supplied category | Text scope, exclusion, JSON field |
 | Network | HTTP/Socket scope, time, host | Collector source when relevant, text scope, exclusion, JSON field |
 | HTTP | Method, status code or family, transport state, minimum duration | Response content type |
 | Socket | Messages/send results or connection events, message direction | Observed event kind, message outcome, close code, connection |
@@ -215,6 +221,13 @@ group the record, environment, attached logs/network records and breadcrumbs;
 unattached evidence has no disclosure action. System diagnostics retain structured
 source facts and open address lists separately. Platform-specific evidence stays
 explicit rather than being replaced with a common placeholder value.
+
+Saved problem and retained-run breadcrumbs use one continuous group: heading,
+count, search, results and any empty-state explanation share a surface. Search
+keeps its editor when results change; records remain reusable rows in the page's
+single scrolling list. An attached empty window and an unattached window keep
+different explanations. Page-wide controls and simple settings do not gain
+extra containers merely for visual consistency.
 
 Explicitly private descriptions explain that the content was omitted at capture instead of making
 `[private]` the problem title. The list retains the problem type, record time and

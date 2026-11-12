@@ -16,7 +16,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private var picker: Int?
     private var overviewOffset = CGPoint.zero
     private let times = [0, 5, 30, 60, 1440]
-    private enum Row { case scope, group(Int), option(Int, String?, String), time, timeOption(Int), duration, durationInput, refine }
+    private enum Row { case scope, quick(Int), group(Int), option(Int, String?, String), time, timeOption(Int), duration, durationInput, refine }
     private struct Section { let title: String?; let rows: [Row] }
     private var sections: [Section] = []
     private var scope: InspectorScopeControl?
@@ -87,8 +87,12 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     }
     private func rows(for indices: [Int]) -> [Row] {
         indices.flatMap { index -> [Row] in
-            [.group(index)] + (expanded.contains(groups[index].field) ? choices(index) : [])
+            if direct(groups[index]) { return [.quick(index)] }
+            return [.group(index)] + (expanded.contains(groups[index].field) ? choices(index) : [])
         }
+    }
+    private func direct(_ group: InspectorFilterGroup) -> Bool {
+        [.level, .activity, .direction].contains(group.field) && group.options.count <= 6
     }
     private func choices(_ index: Int) -> [Row] {
         let group = groups[index], term = picker == nil ? "" : search.text ?? ""
@@ -110,9 +114,10 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         if let picker {
             sections = [Section(title: nil, rows: choices(picker))]
         } else {
-            var common: [Row] = [.time]
+            let commonGroups = groups.indices.filter { applicable(groups[$0]) && !advanced(groups[$0]) }
+            var common = rows(for: commonGroups.filter { direct(groups[$0]) }) + [.time]
             if timeExpanded { common += times.map(Row.timeOption) }
-            common += rows(for: groups.indices.filter { applicable(groups[$0]) && !advanced(groups[$0]) })
+            common += rows(for: commonGroups.filter { !direct(groups[$0]) })
             if payload && transport == "http" { common.append(.duration); if durationExpanded { common.append(.durationInput) } }
             sections = (hasHTTP && hasSockets ? [Section(title: text("ui_filter_scope"), rows: [.scope])] : [])
                 + [Section(title: text("ui_filter_common"), rows: common)]
@@ -175,10 +180,14 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         return nil
     }
     private func refineSummary() -> String {
-        let count = groups.filter { applicable($0) && advanced($0) && !(draft.values[$0.field]?.isEmpty ?? true) }.count
-            + (draft.excludedText.isEmpty ? 0 : 1) + (draft.fieldPath.isEmpty ? 0 : 1)
-        return count == 0 ? text("ui_filter_refine_hint") : String(format: text("ui_filter_count"), count)
+        var details = groups.filter { applicable($0) && advanced($0) && !(draft.values[$0.field]?.isEmpty ?? true) }
+            .map { $0.title + ": " + compact(summary($0)) }
+        if !draft.excludedText.isEmpty { details.append(text("ui_exclude") + ": " + compact(draft.excludedText)) }
+        if !draft.fieldPath.isEmpty { details.append(text("ui_json_field") + ": " + compact(draft.fieldPath + " = " + draft.fieldValue)) }
+        return details.isEmpty ? text("ui_filter_refine_hint") : details.prefix(3).joined(separator: " · ")
+            + (details.count > 3 ? " · +\(details.count - 3)" : "")
     }
+    private func compact(_ value: String) -> String { String(value.prefix(80)) + (value.count > 80 ? "…" : "") }
     private func summary(_ group: InspectorFilterGroup) -> String {
         let values = draft.values[group.field] ?? []
         guard !values.isEmpty else { return text("ui_all") }
@@ -205,6 +214,14 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             cell.selectionStyle = .none
         }
         switch row {
+        case .quick(let index):
+            let group = groups[index], choices = InspectorFilterChoices(group: groups[index], selected: draft.values[groups[index].field] ?? [])
+            choices.onSelect = { [weak self] value in
+                guard let self else { return }
+                self.view.endEditing(true); self.draft.select(group.field, value: value)
+                self.conditions?.sync(self.draft); self.rebuild()
+            }
+            embed(choices)
         case .scope:
             if scope == nil {
                 let control = InspectorScopeControl(titles: [text("ui_all"), "HTTP", "WebSocket"])
@@ -227,7 +244,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         case .timeOption(let value): cell.textLabel?.text = text(value == 0 ? "ui_time_all" : "ui_time_\(value)"); cell.indentationLevel = 1; cell.indentationWidth = 12; selected(value == draft.recentMinutes)
         case .duration: cell.textLabel?.text = text("ui_http_timing"); cell.detailTextLabel?.text = draft.minimumDurationMillis == 0 ? text("ui_all") : "≥ \(draft.minimumDurationMillis) ms"; disclosure(durationExpanded)
         case .durationInput: if let field = conditions?.duration { embed(field) }
-        case .refine: cell.textLabel?.text = text("ui_filter_refine"); cell.detailTextLabel?.text = refineSummary(); disclosure(refined)
+        case .refine: cell.textLabel?.text = text("ui_filter_refine"); cell.detailTextLabel?.text = refineSummary(); cell.detailTextLabel?.numberOfLines = 3; disclosure(refined)
         }
         return cell
     }
@@ -235,7 +252,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         tableView.deselectRow(at: path, animated: true)
         let wasPicker = picker != nil
         switch sections[path.section].rows[path.row] {
-        case .scope, .durationInput: return
+        case .scope, .quick, .durationInput: return
         case .group(let index):
             view.endEditing(true)
             if groups[index].options.count > 6 || groups[index].field == .status { overviewOffset = tableView.contentOffset; picker = index; search.text = "" }
