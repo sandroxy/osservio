@@ -48,13 +48,20 @@ public final class InspectorSavedDetailsTest {
                 IncidentSnapshotView view = new IncidentSnapshotView(context, snapshot, () -> { }, () -> fail("Layout must not delete"), null);
                 int width = InspectorTheme.dp(context, 390), height = InspectorTheme.dp(context, 844);
                 layout(view, width, height);
-                ListView list = first(view, ListView.class); EditText search = first(view, EditText.class);
-                assertNotNull(list); assertNotNull(search);
-                list.setSelectionFromTop(list.getHeaderViewsCount(), InspectorTheme.dp(context, 400)); layout(view, width, height);
+                ListView list = first(view, ListView.class); assertNotNull(list);
+                list.setSelectionFromTop(list.getHeaderViewsCount() - 1, 0); layout(view, width, height);
+                EditText search = first(view, EditText.class); assertNotNull(search);
                 View row = list.getChildAt(list.getHeaderViewsCount() - list.getFirstVisiblePosition()); assertNotNull(row);
                 Rect searchBounds = new Rect(), rowBounds = new Rect(); search.getDrawingRect(searchBounds); row.getDrawingRect(rowBounds);
                 view.offsetDescendantRectToMyCoords(search, searchBounds); view.offsetDescendantRectToMyCoords(row, rowBounds);
                 assertTrue("Search and rows must remain separated at scale " + scale, rowBounds.top - searchBounds.bottom >= InspectorTheme.dp(context, 10));
+                search.setText("no-such-event"); layout(view, width, height);
+                assertEquals(list.getHeaderViewsCount(), list.getCount());
+                assertSame(search, first(view, EditText.class));
+                assertNotNull(text(view, context.getString(R.string.osservio_ws_no_matches)));
+                search.setText("visible event"); layout(view, width, height);
+                assertEquals(list.getHeaderViewsCount() + 1, list.getCount());
+                assertSame(search, first(view, EditText.class));
             }
             capture.close();
         });

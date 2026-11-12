@@ -66,4 +66,5 @@
     <string name="osservio_ui_run_evicted">Evicted breadcrumbs</string>
     <string name="osservio_ui_run_identity">Run identity</string>
     <string name="osservio_ui_platform">Platform</string>
+    <string name="osservio_ui_saved_breadcrumbs_empty">No breadcrumbs were retained in this snapshot.</string>
 </resources>

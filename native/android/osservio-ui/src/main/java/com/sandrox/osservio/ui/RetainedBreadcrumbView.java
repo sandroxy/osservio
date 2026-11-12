@@ -27,7 +27,8 @@ final class RetainedBreadcrumbView extends LinearLayout implements InspectorScre
     private final RetainedBreadcrumbs history;
     private final BreadcrumbArchive archive;
     private final EditText search;
-    private final TextView status, empty;
+    private final TextView status;
+    private final InspectorSearchGroup searchGroup;
     private final ImageButton copy, delete;
     private final LinearLayout controls;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
@@ -56,9 +57,9 @@ final class RetainedBreadcrumbView extends LinearLayout implements InspectorScre
         InspectorWidgets.addGrouped(group, summary);
         TextView hint = InspectorWidgets.caption(context); hint.setPadding(dp(16), dp(8), dp(16), 0); InspectorAppearance.text(hint, R.string.osservio_archive_snapshot); header.addView(hint);
         search = InspectorWidgets.search(context, R.string.osservio_crumb_search, "", ignored -> filter());
-        header.addView(InspectorWidgets.searchSectionHeader(context, () -> context.getString(R.string.osservio_runtime_breadcrumbs), search));
         list.addHeaderView(header, null, false);
-        empty = InspectorWidgets.caption(context); InspectorAppearance.text(empty, R.string.osservio_ws_no_matches); list.addFooterView(empty, null, false);
+        searchGroup = new InspectorSearchGroup(context, search, R.string.osservio_crumb_search);
+        list.addHeaderView(searchGroup, null, false);
         list.setAdapter(rows); list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
             if (index >= 0 && index < events.size()) show(BreadcrumbDetailDialog.create(context, events.get(index)));
@@ -99,7 +100,7 @@ final class RetainedBreadcrumbView extends LinearLayout implements InspectorScre
     @Override protected void onVisibilityChanged(View view, int visibility) { super.onVisibilityChanged(view, visibility); if (copy != null && !isShown()) invalidateDelivery(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); if (copy != null && visibility != VISIBLE) invalidateDelivery(); }
     private void filter() {
-        if (empty == null) return;
+        if (searchGroup == null) return;
         String query = search.getText().toString().toLowerCase(Locale.ROOT); events.clear();
         for (int i = history.events.size() - 1; i >= 0; i--) {
             BreadcrumbEvent event = history.events.get(i);
@@ -107,7 +108,9 @@ final class RetainedBreadcrumbView extends LinearLayout implements InspectorScre
                 || RuntimePresentation.kind(getContext(), event.kind).toLowerCase(Locale.ROOT).contains(query)
                 || event.message != null && event.message.toLowerCase(Locale.ROOT).contains(query)) events.add(event);
         }
-        empty.setVisibility(events.isEmpty() ? VISIBLE : GONE); rows.notifyDataSetChanged();
+        searchGroup.bind(getContext().getString(R.string.osservio_ui_record_count, history.events.size()), true,
+            events.isEmpty() ? getContext().getString(history.events.isEmpty() ? R.string.osservio_ui_saved_breadcrumbs_empty : R.string.osservio_ws_no_matches) : null,
+            !events.isEmpty()); rows.notifyDataSetChanged();
     }
     private int dp(int value) { return InspectorTheme.dp(getContext(), value); }
     private final class Rows extends BaseAdapter {
@@ -119,7 +122,7 @@ final class RetainedBreadcrumbView extends LinearLayout implements InspectorScre
             BreadcrumbEvent event = events.get(position); row.bind(RuntimePresentation.breadcrumbTitle(getContext(), event),
                 InspectorValuePresentation.eventTime(event.timestampMillis, false) + "\n" + RuntimePresentation.breadcrumbSubtitle(getContext(), event), true);
             row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1); return row;
+            InspectorWidgets.groupedRow(row, false, position == getCount() - 1); return row;
         }
     }
 }

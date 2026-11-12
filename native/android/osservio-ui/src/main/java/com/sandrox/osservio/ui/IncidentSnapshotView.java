@@ -25,7 +25,8 @@ import java.util.Locale;
 final class IncidentSnapshotView extends LinearLayout implements InspectorScreen.Content {
     private final IncidentSnapshot snapshot;
     private final EditText search;
-    private final TextView footer, status;
+    private final TextView status;
+    private final InspectorSearchGroup searchGroup;
     private final ImageButton back, copy;
     private final ImageButton delete;
     private final LinearLayout controls;
@@ -76,13 +77,11 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
             () -> open(R.string.osservio_ui_http, new IncidentEvidenceView(context, snapshot.http, () -> { })));
         attachment(attachments, R.string.osservio_ws_title, snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
             () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
-        header.addView(InspectorWidgets.searchSectionHeader(context,
-            () -> context.getString(R.string.osservio_runtime_breadcrumbs) + " · " + IncidentPresentation.breadcrumbSummary(context, snapshot.breadcrumbs), search));
         list.addHeaderView(header, null, false);
-        LinearLayout ending = new LinearLayout(context); ending.setOrientation(VERTICAL);
-        footer = caption(() -> ""); ending.addView(footer);
+        searchGroup = new InspectorSearchGroup(context, search, R.string.osservio_ui_search_breadcrumbs);
+        list.addHeaderView(searchGroup, null, false);
         controls.addView(delete);
-        list.addFooterView(ending, null, false); list.setAdapter(rows);
+        list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
             if (index >= 0 && index < events.size() && detail == null) show(BreadcrumbDetailDialog.create(context, events.get(index)));
@@ -129,7 +128,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         screen.setOnDismissListener(ignored -> { if (detail == screen) detail = null; }); screen.show();
     }
     private void filter() {
-        if (footer == null) return;
+        if (searchGroup == null) return;
         events.clear(); String query = search.getText().toString().toLowerCase(Locale.ROOT);
         if (snapshot.breadcrumbs != null) for (int i = snapshot.breadcrumbs.events.size() - 1; i >= 0; i--) {
             BreadcrumbEvent event = snapshot.breadcrumbs.events.get(i);
@@ -137,8 +136,11 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
                 || RuntimePresentation.kind(getContext(), event.kind).toLowerCase(Locale.ROOT).contains(query)
                 || (event.message != null && event.message.toLowerCase(Locale.ROOT).contains(query))) events.add(event);
         }
-        footer.setText(events.isEmpty() && snapshot.breadcrumbs != null ? getContext().getString(R.string.osservio_ws_no_matches) : "");
-        footer.setVisibility(footer.length() == 0 ? GONE : VISIBLE); rows.notifyDataSetChanged();
+        String emptyMessage = snapshot.breadcrumbs == null ? getContext().getString(R.string.osservio_incident_not_attached)
+            : !events.isEmpty() ? null : getContext().getString(snapshot.breadcrumbs.events.isEmpty()
+                ? R.string.osservio_ui_saved_breadcrumbs_empty : R.string.osservio_ws_no_matches);
+        searchGroup.bind(snapshot.breadcrumbs == null ? null : IncidentPresentation.breadcrumbSummary(getContext(), snapshot.breadcrumbs),
+            snapshot.breadcrumbs != null, emptyMessage, !events.isEmpty()); rows.notifyDataSetChanged();
     }
     private void showText(int title, String value) {
         InspectorContentReader content = new InspectorContentReader(getContext()); content.display(new InspectorReadContent(value, "", false).withContext(() -> IncidentPresentation.title(getContext(), snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind) + " · " + InspectorValuePresentation.eventTime(snapshot.timestampMillis, true)), false); open(title, content);
@@ -161,7 +163,7 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
             row.bind(RuntimePresentation.breadcrumbTitle(getContext(), event),
                 InspectorValuePresentation.eventTime(event.timestampMillis, false) + "\n" + RuntimePresentation.breadcrumbSubtitle(getContext(), event), true);
             row.title.setMaxLines(2); row.title.setEllipsize(android.text.TextUtils.TruncateAt.END); row.value.setMaxLines(3); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            InspectorWidgets.groupedRow(row, position == 0, position == getCount() - 1); return row;
+            InspectorWidgets.groupedRow(row, false, position == getCount() - 1); return row;
         }
     }
 }

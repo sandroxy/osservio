@@ -66,4 +66,5 @@
     <string name="osservio_ui_run_evicted">已淘汰线索数</string>
     <string name="osservio_ui_run_identity">运行标识</string>
     <string name="osservio_ui_platform">平台</string>
+    <string name="osservio_ui_saved_breadcrumbs_empty">这份快照中没有留存运行线索。</string>
 </resources>

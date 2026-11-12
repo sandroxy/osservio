@@ -304,3 +304,5 @@
 "ui_run_evicted" = "Evicted breadcrumbs";
 "ui_run_identity" = "Run identity";
 "ui_platform" = "Platform";
+
+"ui_saved_breadcrumbs_empty" = "No breadcrumbs were retained in this snapshot.";

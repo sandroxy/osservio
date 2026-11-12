@@ -304,3 +304,5 @@
 "ui_run_evicted" = "已淘汰线索数";
 "ui_run_identity" = "运行标识";
 "ui_platform" = "平台";
+
+"ui_saved_breadcrumbs_empty" = "这份快照中没有留存运行线索。";

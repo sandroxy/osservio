@@ -7,6 +7,53 @@ import XCTest
 
 final class InspectorArchiveTests: XCTestCase {
     @MainActor
+    func testSavedSearchKeepsItsEditorAndRecordNavigationAcrossEmptyResults() async throws {
+        let store = try MemoryBreadcrumbStore(), capture = CaptureController(baselineEnabled: true)
+        let recorder = try BreadcrumbRecorder(sink: store, captureController: capture)
+        XCTAssertEqual(recorder.record(.hostMarker, label: "fixture.first"), .recorded)
+        XCTAssertEqual(recorder.record(.hostMarker, label: "fixture.second"), .recorded)
+        let history = try XCTUnwrap(store.snapshot())
+        let run = RetainedRun(id: UUID().uuidString, platform: .ios, processID: 1,
+            recordingStartedAtMillis: 100, lastRecordedAtMillis: 200, eventCount: 2, evictedEvents: 0, isCurrent: false)
+        let viewers: [(UITableViewController, Int)] = [
+            (IncidentSnapshotViewController(snapshot: try IncidentSnapshot.capture(breadcrumbs: history)), 3),
+            (RetainedBreadcrumbViewController(history: RetainedBreadcrumbs(run: run, events: history.events), archive: ArchiveReadProbe()), 1)
+        ]
+        for (viewer, section) in viewers {
+            let navigation = UINavigationController(rootViewController: viewer)
+            let window = show(navigation)
+            defer { window.isHidden = true; window.rootViewController = nil }
+            try await settle()
+            let table = viewer.tableView!
+            table.scrollToRow(at: IndexPath(row: 0, section: section), at: .top, animated: false); table.layoutIfNeeded()
+            let group = try XCTUnwrap(table.cellForRow(at: IndexPath(row: 0, section: section)) as? InspectorSearchGroupCell)
+            let search = try XCTUnwrap(descendants(group).compactMap { $0 as? UISearchTextField }.first)
+            XCTAssertTrue(search.becomeFirstResponder())
+            search.text = "no-such-event"; changed(search); table.layoutIfNeeded()
+            XCTAssertEqual(table.numberOfRows(inSection: section), 1)
+            XCTAssertTrue(search.isFirstResponder)
+            XCTAssertTrue(descendants(group).compactMap { $0 as? UILabel }.contains { $0.text == RuntimePresentation.text("ws_no_matches") && !$0.isHidden })
+            search.text = "fixture.first"; changed(search); table.layoutIfNeeded()
+            XCTAssertEqual(table.numberOfRows(inSection: section), 2); XCTAssertTrue(search.isFirstResponder)
+            viewer.tableView(table, didSelectRowAt: IndexPath(row: 0, section: section))
+            XCTAssertTrue(navigation.topViewController === viewer)
+            viewer.tableView(table, didSelectRowAt: IndexPath(row: 1, section: section))
+            XCTAssertTrue(navigation.topViewController is BreadcrumbDetailViewController)
+        }
+        XCTAssertEqual(store.snapshot()?.events.count, 2)
+    }
+    @MainActor private func descendants(_ view: UIView) -> [UIView] { [view] + view.subviews.flatMap(descendants) }
+    @MainActor private func changed(_ control: UIControl) {
+        var sent = false
+        for target in control.allTargets {
+            guard let receiver = target.base as? NSObject else { continue }
+            for action in control.actions(forTarget: receiver, forControlEvent: .editingChanged) ?? [] {
+                _ = receiver.perform(NSSelectorFromString(action), with: control); sent = true
+            }
+        }
+        XCTAssertTrue(sent)
+    }
+    @MainActor
     func testSavedDetailsExposeTheSameActionsAndKeepExactRunMetadata() throws {
         let archive = ArchiveReadProbe()
         let snapshot = IncidentSnapshotViewController(snapshot: try IncidentSnapshot.capture(), archive: archive)

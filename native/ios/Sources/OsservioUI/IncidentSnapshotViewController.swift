@@ -8,6 +8,7 @@ final class IncidentSnapshotViewController: UITableViewController {
     private let snapshot: IncidentSnapshot
     private var events: [BreadcrumbEvent]
     private let search = UISearchTextField()
+    private lazy var searchGroup = InspectorSearchGroupCell(search: search)
     private let header = UIStackView()
     private let exportStatus = UILabel()
     private var sharing: IncidentSharePresentation?
@@ -73,11 +74,12 @@ final class IncidentSnapshotViewController: UITableViewController {
             query.isEmpty || $0.label.localizedCaseInsensitiveContains(query) || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query)
                 || ($0.message?.localizedCaseInsensitiveContains(query) ?? false)
         }
-        // Keep the section header (and its active editor) attached while results change.
+        updateSearchGroup()
+        // Keep the first row and its active editor attached while results change.
         UIView.performWithoutAnimation {
             tableView.performBatchUpdates {
-                tableView.deleteRows(at: (0..<previousCount).map { IndexPath(row: $0, section: 3) }, with: .none)
-                tableView.insertRows(at: events.indices.map { IndexPath(row: $0, section: 3) }, with: .none)
+                tableView.deleteRows(at: (0..<previousCount).map { IndexPath(row: $0 + 1, section: 3) }, with: .none)
+                tableView.insertRows(at: events.indices.map { IndexPath(row: $0 + 1, section: 3) }, with: .none)
             }
         }
     }
@@ -86,7 +88,7 @@ final class IncidentSnapshotViewController: UITableViewController {
         if section == 0 { return snapshot.systemDiagnostic == nil ? 3 : 4 }
         if section == 1 { return snapshot.environment == nil ? 0 : 1 }
         if section == 2 { return 3 }
-        return events.count
+        return 1 + events.count
     }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         if section == 0 { return IncidentPresentation.title(snapshot.systemDiagnostic?.kind) }
@@ -94,24 +96,24 @@ final class IncidentSnapshotViewController: UITableViewController {
             return RuntimePresentation.text("runtime_environment")
         }
         if section == 2 { return RuntimePresentation.text("incident_evidence_title") }
-        return RuntimePresentation.text("runtime_breadcrumbs") + "\n" + IncidentPresentation.breadcrumbSummary(snapshot.breadcrumbs)
+        return nil
     }
-    override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        guard section == 3, snapshot.breadcrumbs != nil else { return nil }
-        let label = InspectorTheme.label(.caption1, secondary: true)
-        label.text = RuntimePresentation.text("runtime_breadcrumbs") + " · " + IncidentPresentation.breadcrumbSummary(snapshot.breadcrumbs)
-        let stack = UIStackView(arrangedSubviews: [label, search]); stack.axis = .vertical; stack.spacing = 10
-        stack.isLayoutMarginsRelativeArrangement = true
-        stack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 20, bottom: 10, trailing: 20)
-        return stack
+    private func updateSearchGroup() {
+        let message: String?
+        if snapshot.breadcrumbs == nil { message = RuntimePresentation.text("incident_not_attached") }
+        else if events.isEmpty { message = RuntimePresentation.text(snapshot.breadcrumbs?.events.isEmpty == true ? "ui_saved_breadcrumbs_empty" : "ws_no_matches") }
+        else { message = nil }
+        searchGroup.configure(title: RuntimePresentation.text("runtime_breadcrumbs"),
+            summary: snapshot.breadcrumbs == nil ? nil : IncidentPresentation.breadcrumbSummary(snapshot.breadcrumbs),
+            searchable: snapshot.breadcrumbs != nil, message: message)
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if section == 0 { return IncidentPresentation.hint(snapshot) }
         if section == 1 && snapshot.environment == nil { return RuntimePresentation.text("incident_not_attached") }
-        if section == 3 && events.isEmpty && snapshot.breadcrumbs != nil { return RuntimePresentation.text("ws_no_matches") }
         return nil
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if indexPath.section == 3 && indexPath.row == 0 { updateSearchGroup(); return searchGroup }
         let cell = tableView.dequeueReusableCell(withIdentifier: "incident-evidence") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "incident-evidence")
         PersistencePresentation.style(cell); cell.selectionStyle = .none; cell.accessoryType = .none
         cell.accessibilityTraits = .staticText
@@ -136,7 +138,7 @@ final class IncidentSnapshotViewController: UITableViewController {
             cell.detailTextLabel?.text = IncidentPresentation.count(counts[indexPath.row])
             if counts[indexPath.row] != nil { cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button }
         } else {
-            let event = events[indexPath.row]
+            let event = events[indexPath.row - 1]
             cell.textLabel?.text = RuntimePresentation.breadcrumbTitle(event)
             cell.detailTextLabel?.text = InspectorValuePresentation.eventTime(event.timestampMillis) + "\n" + RuntimePresentation.breadcrumbSubtitle(event)
             cell.textLabel?.numberOfLines = 2; cell.detailTextLabel?.numberOfLines = 3
@@ -167,7 +169,7 @@ final class IncidentSnapshotViewController: UITableViewController {
             }
             if let evidence { navigationController?.pushViewController(IncidentEvidenceViewController(evidence), animated: true) }
         }
-        if indexPath.section == 3 { navigationController?.pushViewController(BreadcrumbDetailViewController(event: events[indexPath.row]), animated: true) }
+        if indexPath.section == 3 && indexPath.row > 0 { navigationController?.pushViewController(BreadcrumbDetailViewController(event: events[indexPath.row - 1]), animated: true) }
     }
 }
 #endif

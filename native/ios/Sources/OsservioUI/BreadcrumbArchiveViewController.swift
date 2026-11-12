@@ -151,6 +151,7 @@ final class RetainedBreadcrumbViewController: UITableViewController {
     private let history: RetainedBreadcrumbs
     private var events: [BreadcrumbEvent]
     private let search = UISearchTextField()
+    private lazy var searchGroup = InspectorSearchGroupCell(search: search)
     private let status = InspectorTheme.label(.footnote, secondary: true)
     private var deletion: InspectorRecordDeletion?
     private lazy var copy = inspectorCopyItem(target: self, action: #selector(copySummary), label: "archive_copy_summary")
@@ -196,28 +197,27 @@ final class RetainedBreadcrumbViewController: UITableViewController {
         let previousCount = events.count
         events = history.events.reversed().filter { query.isEmpty || $0.label.localizedCaseInsensitiveContains(query)
             || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query) || ($0.message?.localizedCaseInsensitiveContains(query) ?? false) }
+        updateSearchGroup()
         UIView.performWithoutAnimation {
             tableView.performBatchUpdates {
-                tableView.deleteRows(at: (0..<previousCount).map { IndexPath(row: $0, section: 1) }, with: .none)
-                tableView.insertRows(at: events.indices.map { IndexPath(row: $0, section: 1) }, with: .none)
+                tableView.deleteRows(at: (0..<previousCount).map { IndexPath(row: $0 + 1, section: 1) }, with: .none)
+                tableView.insertRows(at: events.indices.map { IndexPath(row: $0 + 1, section: 1) }, with: .none)
             }
         }
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 2 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : events.count }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : 1 + events.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { section == 0 ? RuntimePresentation.text("ui_run_details") : nil }
-    override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        guard section == 1 else { return nil }
-        let title = InspectorTheme.label(.caption1, secondary: true); title.text = RuntimePresentation.text("runtime_breadcrumbs")
-        let header = UIStackView(arrangedSubviews: [title, search]); header.axis = .vertical; header.spacing = 10
-        header.isLayoutMarginsRelativeArrangement = true
-        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 20, bottom: 10, trailing: 20)
-        return header
+    private func updateSearchGroup() {
+        searchGroup.configure(title: RuntimePresentation.text("runtime_breadcrumbs"),
+            summary: String(format: RuntimePresentation.text("ui_record_count"), history.events.count),
+            message: events.isEmpty ? RuntimePresentation.text(history.events.isEmpty ? "ui_saved_breadcrumbs_empty" : "ws_no_matches") : nil)
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        section == 0 ? RuntimePresentation.text("archive_snapshot") : events.isEmpty ? RuntimePresentation.text("ws_no_matches") : nil
+        section == 0 ? RuntimePresentation.text("archive_snapshot") : nil
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if indexPath.section == 1 && indexPath.row == 0 { updateSearchGroup(); return searchGroup }
         let cell = tableView.dequeueReusableCell(withIdentifier: "saved-event") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "saved-event")
         PersistencePresentation.style(cell)
         cell.accessoryType = .disclosureIndicator
@@ -226,7 +226,7 @@ final class RetainedBreadcrumbViewController: UITableViewController {
             cell.detailTextLabel?.text = PersistencePresentation.counts(history.run)
             return cell
         }
-        let event = events[indexPath.row]
+        let event = events[indexPath.row - 1]
         cell.textLabel?.text = RuntimePresentation.breadcrumbTitle(event)
         cell.detailTextLabel?.text = InspectorValuePresentation.eventTime(event.timestampMillis) + "\n" + RuntimePresentation.breadcrumbSubtitle(event)
         cell.textLabel?.numberOfLines = 2; cell.detailTextLabel?.numberOfLines = 3; cell.accessoryType = .disclosureIndicator
@@ -235,7 +235,7 @@ final class RetainedBreadcrumbViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         if indexPath.section == 0 { inspectorPush(RetainedRunDetailViewController(run: history.run)) }
-        else { inspectorPush(BreadcrumbDetailViewController(event: events[indexPath.row])) }
+        else if indexPath.row > 0 { inspectorPush(BreadcrumbDetailViewController(event: events[indexPath.row - 1])) }
     }
 }
 

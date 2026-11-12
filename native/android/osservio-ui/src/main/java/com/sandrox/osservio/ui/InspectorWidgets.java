@@ -142,15 +142,6 @@ final class InspectorWidgets {
         text.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 8));
         return text;
     }
-    static LinearLayout searchSectionHeader(Context context, InspectorAppearance.Value<String> title, EditText search) {
-        LinearLayout header = new LinearLayout(context); header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 10));
-        TextView label = caption(context); InspectorTheme.typography(label, 12, false);
-        label.setPadding(0, 0, 0, InspectorTheme.dp(context, 10)); InspectorAppearance.text(label, title);
-        header.addView(label, new LinearLayout.LayoutParams(-1, -2));
-        header.addView(search, new LinearLayout.LayoutParams(-1, -2));
-        return header;
-    }
     static LinearLayout group(Context context) {
         LinearLayout group = new LinearLayout(context); group.setOrientation(LinearLayout.VERTICAL);
         InspectorAppearance.style(group, () -> InspectorTheme.surface(group, false, 22));
@@ -211,13 +202,16 @@ final class InspectorWidgets {
         return drawable;
     }
     static void groupedRow(View row, boolean first, boolean last) {
+        groupedRow(row, first, last, !last);
+    }
+    static void groupedRow(View row, boolean first, boolean last, boolean separator) {
         Context context = row.getContext();
         android.graphics.drawable.GradientDrawable fill = InspectorTheme.shape(context, InspectorTheme.surface(context), 0, false);
         float radius = InspectorTheme.dp(context, 20);
         fill.setCornerRadii(new float[] {first ? radius : 0, first ? radius : 0, first ? radius : 0, first ? radius : 0,
             last ? radius : 0, last ? radius : 0, last ? radius : 0, last ? radius : 0});
         android.graphics.drawable.Drawable background = fill;
-        if (!last) {
+        if (separator) {
             android.graphics.drawable.LayerDrawable layers = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[] {
                 fill, new android.graphics.drawable.ColorDrawable(InspectorTheme.color(context, R.color.osservio_separator))});
             layers.setLayerGravity(1, Gravity.BOTTOM); layers.setLayerHeight(1, 1);
