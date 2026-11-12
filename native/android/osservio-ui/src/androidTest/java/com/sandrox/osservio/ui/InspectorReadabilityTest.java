@@ -64,8 +64,10 @@ public final class InspectorReadabilityTest {
                 page.header(new HTTPHeader("authorization", token));
                 InspectorDialogs.screen(inspector.getContext(), "Detail", page).show();
                 TextView label = text(page, "authorization"); assertNotNull(label);
-                ViewGroup row = (ViewGroup) label.getParent();
-                assertTrue(((TextView) row.getChildAt(1)).getText().length() < 200);
+                ViewGroup labels = (ViewGroup) label.getParent();
+                assertTrue(((TextView) labels.getChildAt(1)).getText().length() < 200);
+                View row = label;
+                while (!row.isClickable() && row.getParent() instanceof View) row = (View) row.getParent();
                 assertTrue(row.performClick());
                 assertNotNull(text(inspector, token));
                 HTTPEvent.BodyReference processed = HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.AVAILABLE, ID + ".request", 2, true);

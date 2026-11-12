@@ -56,18 +56,21 @@ final class InspectorDetailPage extends InspectorScroll.Page {
     private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value, Runnable action) {
         if (group == null) section(R.string.osservio_ui_metadata);
         Context context = getContext(); int inset = InspectorTheme.dp(context, 16);
-        LinearLayout row = new LinearLayout(context); row.setOrientation(LinearLayout.VERTICAL); row.setPadding(inset, InspectorTheme.dp(context, 12), inset, InspectorTheme.dp(context, 12));
+        LinearLayout row = new LinearLayout(context); row.setGravity(android.view.Gravity.CENTER_VERTICAL); row.setBaselineAligned(false);
+        row.setPadding(inset, InspectorTheme.dp(context, 12), inset, InspectorTheme.dp(context, 12));
+        LinearLayout labels = new LinearLayout(context); labels.setOrientation(LinearLayout.VERTICAL); row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
         if (group.getChildCount() > 0) group.addView(InspectorWidgets.divider(context));
-        TextView label = InspectorWidgets.caption(context); label.setTextSize(12); InspectorAppearance.text(label, title); label.setPadding(0, 0, 0, InspectorTheme.dp(context, 4)); row.addView(label);
-        TextView text = InspectorTheme.text(context, 16, false); InspectorAppearance.text(text, () -> { Object result = value.get(); return result == null ? context.getString(R.string.osservio_http_none) : result.toString(); });
-        text.setTextIsSelectable(action == null); row.addView(text); group.addView(row);
+        TextView label = InspectorWidgets.caption(context); label.setTextSize(12); InspectorAppearance.text(label, title); label.setPadding(0, 0, 0, InspectorTheme.dp(context, 4)); labels.addView(label);
+        TextView text = InspectorTheme.text(context, 17, false); InspectorAppearance.text(text, () -> { Object result = value.get(); return result == null ? context.getString(R.string.osservio_http_none) : result.toString(); });
+        text.setTextIsSelectable(action == null); labels.addView(text); group.addView(row);
         if (action != null) {
             text.setMaxLines(3); row.setFocusable(true); row.setOnClickListener(ignored -> action.run());
             InspectorAppearance.style(row, () -> InspectorTheme.feedback(row, 0));
-            InspectorAppearance.style(label, () -> {
-                label.setTextColor(InspectorTheme.accent(context));
-                label.setCompoundDrawablesRelative(null, null, InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context)), null);
-            });
+            android.widget.ImageView arrow = new android.widget.ImageView(context); arrow.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20)); layout.leftMargin = InspectorTheme.dp(context, 12);
+            row.addView(arrow, layout);
+            InspectorAppearance.style(label, () -> label.setTextColor(InspectorTheme.accent(context)));
+            InspectorAppearance.style(arrow, () -> arrow.setImageDrawable(InspectorWidgets.symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context))));
         }
 
     }

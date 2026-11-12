@@ -221,6 +221,7 @@ final class InspectorFilterSheet {
             }
             if (row.type == Type.OPTION || row.type == Type.TIME_OPTION) {
                 CheckedTextView view = recycled instanceof CheckedTextView ? (CheckedTextView) recycled : InspectorWidgets.choice(context); view.setText(row.label);
+                view.setPadding(dp(picker == null ? 28 : 16), dp(13), dp(16), dp(13));
                 Set<String> values = row.group == null ? null : draft.values.get(row.group.field);
                 view.setChecked(row.type == Type.TIME_OPTION ? row.value.equals(Integer.toString(draft.recentMinutes)) : row.value.equals(ALL) ? values == null || values.isEmpty() : values != null && values.contains(row.value));
                 InspectorWidgets.groupedRow(view, first, last); return view;

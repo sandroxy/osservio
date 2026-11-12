@@ -8,8 +8,9 @@ class InspectorDetailViewController: UITableViewController {
         let label: String
         let value: String?
         let action: (() -> Void)?
-        init(_ label: String, _ value: String? = nil, action: (() -> Void)? = nil) {
-            self.label = label; self.value = value; self.action = action
+        let expanded: Bool?
+        init(_ label: String, _ value: String? = nil, expanded: Bool? = nil, action: (() -> Void)? = nil) {
+            self.label = label; self.value = value; self.expanded = expanded; self.action = action
         }
     }
     struct Section {
@@ -23,7 +24,7 @@ class InspectorDetailViewController: UITableViewController {
         let value = sections[section]
         guard value.collapsible else { return value.rows }
         let open = expanded.contains(value.title)
-        return [Row(InspectorLocalization.text(open ? "ui_hide_details" : "ui_show_details"), action: { [weak self] in
+        return [Row(InspectorLocalization.text(open ? "ui_hide_details" : "ui_show_details"), expanded: open, action: { [weak self] in
             guard let self else { return }; if open { self.expanded.remove(value.title) } else { self.expanded.insert(value.title) }; self.tableView.reloadData()
         })] + (open ? value.rows : [])
     }
@@ -52,6 +53,13 @@ class InspectorDetailViewController: UITableViewController {
         cell.textLabel?.adjustsFontForContentSizeCategory = true; cell.textLabel?.numberOfLines = row.action == nil ? 0 : 4
         cell.detailTextLabel?.adjustsFontForContentSizeCategory = true; cell.detailTextLabel?.numberOfLines = row.action == nil ? 0 : 3
         cell.accessoryType = row.action == nil ? .none : .disclosureIndicator
+        if let expanded = row.expanded {
+            cell.accessoryType = .none
+            let arrow = UIImageView(image: UIImage(systemName: expanded ? "chevron.up" : "chevron.down",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
+            arrow.tintColor = InspectorTheme.secondary; arrow.isAccessibilityElement = false
+            cell.accessoryView = arrow
+        }
         cell.selectionStyle = row.action == nil ? .none : .default
         if row.action != nil { cell.accessibilityTraits.insert(.button) }
         return cell

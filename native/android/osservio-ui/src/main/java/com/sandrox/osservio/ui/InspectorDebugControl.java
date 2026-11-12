@@ -42,7 +42,7 @@ final class InspectorDebugControl {
         button.setEnabled(!busy); button.setSelected(on);
         button.setImageResource(R.drawable.osservio_debug);
         InspectorWidgets.iconBackground(button);
-        button.setImageTintList(ColorStateList.valueOf(on ? InspectorTheme.accent(context) : InspectorTheme.secondary(context)));
+        button.setImageTintList(InspectorWidgets.actionColors(context, on ? InspectorTheme.accent(context) : InspectorTheme.secondary(context)));
         button.setContentDescription(label);
         if (Build.VERSION.SDK_INT >= 30) button.setStateDescription(value);
         else button.setContentDescription(label + " · " + value);

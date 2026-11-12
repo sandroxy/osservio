@@ -28,7 +28,7 @@ final class InspectorWidgets {
         button.setOnClickListener(ignored -> action.run()); return button;
     }
     private static void styleIcon(ImageButton button, int label) {
-        Context context = button.getContext(); button.setImageTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.accent(context)));
+        Context context = button.getContext(); button.setImageTintList(actionColors(context, InspectorTheme.accent(context)));
         button.setContentDescription(context.getString(label));
         iconBackground(button);
         if (android.os.Build.VERSION.SDK_INT >= 26) button.setTooltipText(context.getString(label));
@@ -36,6 +36,11 @@ final class InspectorWidgets {
     static void iconBackground(ImageButton button) {
         button.setBackgroundTintList(null);
         InspectorTheme.surface(button, true, 24);
+    }
+    static android.content.res.ColorStateList actionColors(Context context, int enabled) {
+        int disabled = (InspectorTheme.secondary(context) & 0x00FFFFFF) | 0x66000000;
+        return new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[0]},
+            new int[] {disabled, enabled});
     }
     static void hideKeyboard(View view) {
         View focused = view.findFocus(); if (focused != null) focused.clearFocus();
@@ -49,7 +54,7 @@ final class InspectorWidgets {
         button.setMinimumWidth(0); button.setMinWidth(0); button.setSingleLine(false);
         button.setStateListAnimator(null); button.setPadding(InspectorTheme.dp(context, 12), InspectorTheme.dp(context, 8), InspectorTheme.dp(context, 12), InspectorTheme.dp(context, 8));
         InspectorAppearance.style(button, () -> {
-            button.setTextColor(InspectorTheme.accent(context));
+            button.setTextColor(actionColors(context, InspectorTheme.accent(context)));
             button.setBackgroundTintList(null);
             InspectorTheme.feedback(button, 20);
         });
@@ -160,8 +165,8 @@ final class InspectorWidgets {
             setPadding(inset, InspectorTheme.dp(context, 12), inset, InspectorTheme.dp(context, 12));
             setMinimumHeight(InspectorTheme.dp(context, 52));
             LinearLayout labels = new LinearLayout(context); labels.setOrientation(VERTICAL);
-            title = InspectorTheme.text(context, 16, false); labels.addView(title, new LayoutParams(-1, -2));
-            value = InspectorTheme.text(context, 13, false);
+            title = InspectorTheme.text(context, 17, false); labels.addView(title, new LayoutParams(-1, -2));
+            value = InspectorTheme.text(context, 12, false);
             value.setPadding(0, InspectorTheme.dp(context, 3), 0, 0); labels.addView(value, new LayoutParams(-1, -2));
             addView(labels, new LayoutParams(0, -2, 1));
             arrow = new android.widget.ImageView(context); arrow.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -342,21 +347,29 @@ final class InspectorWidgets {
         EventRow(Context context) {
             super(context); setOrientation(VERTICAL);
             int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
-            card = new LinearLayout(context); card.setOrientation(VERTICAL); card.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
+            card = new LinearLayout(context); card.setGravity(Gravity.CENTER_VERTICAL); card.setBaselineAligned(false);
+            card.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
             InspectorAppearance.style(card, () -> InspectorTheme.surface(card, true, 18));
             card.setDuplicateParentStateEnabled(true);
             addView(card, new LayoutParams(-1, -2));
+            LinearLayout labels = new LinearLayout(context); labels.setOrientation(VERTICAL);
+            card.addView(labels, new LayoutParams(0, -2, 1));
+            android.widget.ImageView arrow = new android.widget.ImageView(context);
+            arrow.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            InspectorAppearance.style(arrow, () -> arrow.setImageDrawable(symbol(context, R.drawable.osservio_forward, 16, InspectorTheme.secondary(context))));
+            LayoutParams disclosure = new LayoutParams(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 20));
+            disclosure.leftMargin = InspectorTheme.dp(context, 12); card.addView(arrow, disclosure);
             LinearLayout top = new LinearLayout(context); top.setGravity(Gravity.CENTER_VERTICAL);
-            badge = InspectorTheme.text(context, 11, true); time = InspectorTheme.text(context, 11, false); time.setFontFeatureSettings("tnum");
+            badge = InspectorTheme.text(context, 12, false); time = InspectorTheme.text(context, 11, false); time.setFontFeatureSettings("tnum");
             InspectorAppearance.style(time, () -> time.setTextColor(InspectorTheme.secondary(context))); time.setGravity(Gravity.END);
             top.addView(badge, new LayoutParams(0, -2, 1)); top.addView(time, new LayoutParams(0, -2, 1));
-            card.addView(top, new LayoutParams(-1, -2));
-            title = InspectorTheme.text(context, 15, false); title.setMaxLines(3); title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            labels.addView(top, new LayoutParams(-1, -2));
+            title = InspectorTheme.text(context, 17, false); title.setMaxLines(3); title.setEllipsize(android.text.TextUtils.TruncateAt.END);
             title.setPadding(0, InspectorTheme.dp(context, 6), 0, InspectorTheme.dp(context, 4));
-            card.addView(title, new LayoutParams(-1, -2));
+            labels.addView(title, new LayoutParams(-1, -2));
             metadata = InspectorTheme.text(context, 12, false); InspectorAppearance.style(metadata, () -> metadata.setTextColor(InspectorTheme.secondary(context)));
             metadata.setMaxLines(3); metadata.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            card.addView(metadata, new LayoutParams(-1, -2));
+            labels.addView(metadata, new LayoutParams(-1, -2));
         }
         void grouped(boolean first, boolean last) {
             InspectorAppearance.style(card, () -> groupedRow(card, first, last));

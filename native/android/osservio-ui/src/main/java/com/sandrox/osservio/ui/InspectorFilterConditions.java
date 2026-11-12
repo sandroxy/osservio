@@ -53,25 +53,15 @@ final class InspectorFilterConditions {
         LinearLayout result = column(); int inset = InspectorTheme.dp(context, 12); result.setPadding(inset, 0, inset, inset); return result;
     }
     private TextView row(LinearLayout card, int label, LinearLayout editor) {
-        LinearLayout row = column(); int inset = InspectorTheme.dp(context, 16); row.setPadding(inset, InspectorTheme.dp(context, 13), inset, InspectorTheme.dp(context, 13));
-        row.setMinimumHeight(InspectorTheme.dp(context, 56));
-        TextView title = InspectorTheme.text(context, 16, false); title.setText(label);
-        android.graphics.drawable.Drawable arrow = context.getDrawable(R.drawable.osservio_expand);
-        if (arrow != null) arrow.setTint(InspectorTheme.secondary(context));
-        android.graphics.drawable.RotateDrawable chevron = new android.graphics.drawable.RotateDrawable();
-        chevron.setDrawable(arrow); chevron.setFromDegrees(0); chevron.setToDegrees(180);
-        chevron.setLevel(editor.getVisibility() == View.VISIBLE ? 10000 : 0);
-        title.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, chevron, null);
-        TextView summary = InspectorTheme.text(context, 12, false); summary.setTextColor(InspectorTheme.secondary(context)); summary.setMaxLines(2);
-        summary.setPadding(0, InspectorTheme.dp(context, 4), 0, 0);
-        row.addView(title); row.addView(summary); row.setFocusable(true);
-        InspectorAppearance.style(row, () -> InspectorTheme.feedback(row, 0));
-        row.setOnClickListener(ignored -> {
+        InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(context);
+        row.bind(context.getString(label), "", true); row.value.setVisibility(View.VISIBLE); row.value.setMaxLines(2);
+        row.disclosureRotation(editor.getVisibility() == View.VISIBLE ? -90 : 90);
+        row.action(() -> {
             if (editor.getVisibility() == View.VISIBLE) InspectorWidgets.hideKeyboard(editor);
             editor.setVisibility(editor.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
-            chevron.setLevel(editor.getVisibility() == View.VISIBLE ? 10000 : 0);
+            row.disclosureRotation(editor.getVisibility() == View.VISIBLE ? -90 : 90);
         });
-        card.addView(row, new LinearLayout.LayoutParams(-1, -2)); card.addView(editor, new LinearLayout.LayoutParams(-1, -2)); return summary;
+        card.addView(row, new LinearLayout.LayoutParams(-1, -2)); card.addView(editor, new LinearLayout.LayoutParams(-1, -2)); return row.value;
     }
     private EditText input(int hint, int limit) {
         EditText field = InspectorWidgets.search(context, hint, "", ignored -> { });

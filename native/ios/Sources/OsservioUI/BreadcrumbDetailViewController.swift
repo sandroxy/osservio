@@ -36,7 +36,7 @@ final class BreadcrumbDetailViewController: InspectorDetailViewController {
             })], footer: flags.isEmpty ? nil : flags))
         }
         result.append(Section(title: InspectorLocalization.text("crumb_retention"), rows: [Row(InspectorLocalization.text(event.retention == .restartRelevant ? "crumb_restart_relevant" : "crumb_memory_only"))]))
-        var technical = [Row(InspectorLocalization.text(technicalExpanded ? "ui_hide_identifiers" : "ui_show_identifiers")) { [weak self] in
+        var technical = [Row(InspectorLocalization.text(technicalExpanded ? "ui_hide_identifiers" : "ui_show_identifiers"), expanded: technicalExpanded) { [weak self] in
             guard let self else { return }; self.technicalExpanded.toggle(); self.render()
         }]
         if technicalExpanded {
