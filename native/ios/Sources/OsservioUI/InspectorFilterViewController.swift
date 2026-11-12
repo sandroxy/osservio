@@ -16,7 +16,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private var picker: Int?
     private var overviewOffset = CGPoint.zero
     private let times = [0, 5, 30, 60, 1440]
-    private enum Row { case scope, quick(Int), group(Int), option(Int, String?, String), time, timeOption(Int), duration, durationInput, refine }
+    private enum Row { case scope, groupHeading(Int), group(Int), option(Int, String?, String), time, timeOption(Int), duration, durationInput, refine }
     private struct Section { let title: String?; let rows: [Row] }
     private var sections: [Section] = []
     private var scope: InspectorScopeControl?
@@ -87,7 +87,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     }
     private func rows(for indices: [Int]) -> [Row] {
         indices.flatMap { index -> [Row] in
-            if direct(groups[index]) { return [.quick(index)] }
+            if direct(groups[index]) { return [.groupHeading(index)] + choices(index) }
             return [.group(index)] + (expanded.contains(groups[index].field) ? choices(index) : [])
         }
     }
@@ -195,16 +195,6 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     }
     override func tableView(_ tableView: UITableView, cellForRowAt path: IndexPath) -> UITableViewCell {
         let row = sections[path.section].rows[path.row]
-        if case .quick(let index) = row {
-            let group = groups[index], cell = InspectorFilterChoicesCell(group: group, selected: draft.values[group.field] ?? [])
-            cell.backgroundColor = InspectorTheme.surface
-            cell.choices.onSelect = { [weak self] value in
-                guard let self else { return }
-                self.view.endEditing(true); self.draft.select(group.field, value: value)
-                self.conditions?.sync(self.draft); self.rebuild()
-            }
-            return cell
-        }
         let reusable: Bool
         switch row { case .option, .timeOption: reusable = true; default: reusable = false }
         let cell = reusable ? tableView.dequeueReusableCell(withIdentifier: "choice") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "choice")
@@ -213,9 +203,16 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         cell.textLabel?.text = nil; cell.detailTextLabel?.text = nil
         cell.backgroundColor = InspectorTheme.surface
         cell.textLabel?.font = .preferredFont(forTextStyle: .body); cell.textLabel?.adjustsFontForContentSizeCategory = true; cell.textLabel?.numberOfLines = 0
+        cell.textLabel?.lineBreakMode = .byWordWrapping
         cell.detailTextLabel?.font = .preferredFont(forTextStyle: .subheadline); cell.detailTextLabel?.adjustsFontForContentSizeCategory = true
         cell.detailTextLabel?.textColor = InspectorTheme.secondary; cell.detailTextLabel?.numberOfLines = 2
-        func selected(_ value: Bool) { cell.accessoryType = value ? .checkmark : .none; cell.accessibilityTraits = value ? [.button, .selected] : .button }
+        func selected(_ value: Bool) {
+            let mark = UIImageView(image: UIImage(systemName: "checkmark"))
+            mark.frame.size = CGSize(width: 22, height: 22); mark.contentMode = .scaleAspectFit
+            mark.tintColor = InspectorTheme.accent; mark.alpha = value ? 1 : 0
+            // Reserve the same trailing space before and after selection.
+            cell.accessoryView = mark; cell.accessibilityTraits = value ? [.button, .selected] : .button
+        }
         func disclosure(_ open: Bool) { let icon = UIImageView(image: UIImage(systemName: open ? "chevron.up" : "chevron.down")); icon.tintColor = InspectorTheme.secondary; cell.accessoryView = icon; cell.accessibilityTraits = .button }
         func embed(_ view: UIView) {
             view.removeFromSuperview(); view.translatesAutoresizingMaskIntoConstraints = false; cell.contentView.addSubview(view)
@@ -224,7 +221,11 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             cell.selectionStyle = .none
         }
         switch row {
-        case .quick: break
+        case .groupHeading(let index):
+            let group = groups[index]
+            cell.textLabel?.text = String(format: text(group.field == .activity ? "ui_filter_single_title" : "ui_filter_multiple_title"), group.title)
+            cell.textLabel?.font = .preferredFont(forTextStyle: .subheadline); cell.textLabel?.textColor = InspectorTheme.secondary
+            cell.accessibilityTraits = .header; cell.selectionStyle = .none
         case .scope:
             if scope == nil {
                 let control = InspectorScopeControl(titles: [text("ui_all"), "HTTP", "WebSocket"])
@@ -241,7 +242,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             if groups[index].options.count > 6 || groups[index].field == .status { cell.accessoryView = nil; cell.accessoryType = .disclosureIndicator }
         case .option(let index, let value, let label):
             cell.textLabel?.text = label
-            if picker == nil { cell.indentationLevel = 1; cell.indentationWidth = 12 }
+            if picker == nil && !direct(groups[index]) { cell.indentationLevel = 1; cell.indentationWidth = 12 }
             let values = draft.values[groups[index].field] ?? []; selected(value.map(values.contains) ?? values.isEmpty)
         case .time: cell.textLabel?.text = text(timeLabel); cell.detailTextLabel?.text = text(draft.recentMinutes == 0 ? "ui_time_all" : "ui_time_\(draft.recentMinutes)"); disclosure(timeExpanded)
         case .timeOption(let value): cell.textLabel?.text = text(value == 0 ? "ui_time_all" : "ui_time_\(value)"); cell.indentationLevel = 1; cell.indentationWidth = 12; selected(value == draft.recentMinutes)
@@ -255,12 +256,13 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         tableView.deselectRow(at: path, animated: true)
         let wasPicker = picker != nil
         switch sections[path.section].rows[path.row] {
-        case .scope, .quick, .durationInput: return
+        case .scope, .groupHeading, .durationInput: return
         case .group(let index):
             view.endEditing(true)
             if groups[index].options.count > 6 || groups[index].field == .status { overviewOffset = tableView.contentOffset; picker = index; search.text = "" }
             else if expanded.contains(groups[index].field) { expanded.remove(groups[index].field) } else { expanded.insert(groups[index].field) }
         case .option(let index, let value, _):
+            view.endEditing(true)
             draft.select(groups[index].field, value: value)
             if let value, !groups[index].options.contains(where: { $0.value == value }) { groups[index].options.append((value, value)) }
             conditions?.sync(draft)

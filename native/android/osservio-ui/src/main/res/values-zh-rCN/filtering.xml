@@ -21,6 +21,8 @@
     <string name="osservio_ui_outcome">消息结果</string>
     <string name="osservio_ui_close_code">关闭码</string>
     <string name="osservio_ui_filter_common">常用筛选</string>
+    <string name="osservio_ui_filter_single_title">%1$s · 单选</string>
+    <string name="osservio_ui_filter_multiple_title">%1$s · 可多选</string>
     <string name="osservio_ui_filter_refine">精细筛选</string>
     <string name="osservio_ui_filter_scope">查看范围</string>
     <string name="osservio_ui_filter_switch">切换 HTTP / Socket 会保留共同条件，并清除另一协议的专属条件。</string>

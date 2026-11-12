@@ -284,6 +284,8 @@
 "ui_outcome" = "Message result";
 "ui_close_code" = "Close code";
 "ui_filter_common" = "Common filters";
+"ui_filter_single_title" = "%@ · Select one";
+"ui_filter_multiple_title" = "%@ · Select multiple";
 "ui_filter_refine" = "Refine filters";
 "ui_filter_scope" = "View";
 "ui_filter_switch" = "Switching HTTP / Socket keeps shared conditions and clears conditions for the other protocol.";

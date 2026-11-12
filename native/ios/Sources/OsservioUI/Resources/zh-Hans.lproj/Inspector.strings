@@ -284,6 +284,8 @@
 "ui_outcome" = "消息结果";
 "ui_close_code" = "关闭码";
 "ui_filter_common" = "常用筛选";
+"ui_filter_single_title" = "%@ · 单选";
+"ui_filter_multiple_title" = "%@ · 可多选";
 "ui_filter_refine" = "精细筛选";
 "ui_filter_scope" = "查看范围";
 "ui_filter_switch" = "切换 HTTP / Socket 会保留共同条件，并清除另一协议的专属条件。";

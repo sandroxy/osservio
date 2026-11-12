@@ -46,7 +46,7 @@ final class InspectorFilterSheet {
         }
         return result;
     }
-    private enum Type { HEADING, NOTE, SCOPE, QUICK, GROUP, OPTION, TIME, TIME_OPTION, DURATION, INPUT, REFINE }
+    private enum Type { HEADING, NOTE, SCOPE, GROUP_HEADING, GROUP, OPTION, TIME, TIME_OPTION, DURATION, INPUT, REFINE }
     private static final class Row {
         final Type type; final Group group; final String value, label;
         Row(Type type, Group group, String value, String label) { this.type = type; this.group = group; this.value = value; this.label = label; }
@@ -148,8 +148,8 @@ final class InspectorFilterSheet {
             return (group.field == InspectorQuery.Field.LEVEL || group.field == InspectorQuery.Field.ACTIVITY || group.field == InspectorQuery.Field.DIRECTION) && group.options.size() <= 6;
         }
         void addGroup(Group group) {
-            rows.add(new Row(direct(group) ? Type.QUICK : Type.GROUP, group, null, group.title));
-            if (!direct(group) && expanded.contains(group.field)) addChoices(group, "");
+            rows.add(new Row(direct(group) ? Type.GROUP_HEADING : Type.GROUP, group, null, group.title));
+            if (direct(group) || expanded.contains(group.field)) addChoices(group, "");
         }
         void addChoices(Group group, String term) {
             int start = rows.size();
@@ -225,11 +225,13 @@ final class InspectorFilterSheet {
             }
             boolean first = position == 0 || rows.get(position - 1).type == Type.HEADING;
             boolean last = position + 1 == rows.size() || rows.get(position + 1).type == Type.HEADING || rows.get(position + 1).type == Type.NOTE;
-            if (row.type == Type.QUICK) {
-                InspectorFilterChoices choices = new InspectorFilterChoices(context, row.group, draft.values.get(row.group.field), value -> {
-                    InspectorWidgets.hideKeyboard(list); draft.select(row.group.field, value); if (conditions != null) conditions.sync(); rebuild();
-                });
-                InspectorWidgets.groupedRow(choices, first, last); return choices;
+            if (row.type == Type.GROUP_HEADING) {
+                TextView label = recycled instanceof TextView ? (TextView) recycled : InspectorWidgets.caption(context);
+                InspectorTheme.typography(label, 15, false);
+                label.setText(context.getString(row.group.field == InspectorQuery.Field.ACTIVITY ? R.string.osservio_ui_filter_single_title : R.string.osservio_ui_filter_multiple_title, row.label));
+                label.setPadding(dp(16), dp(14), dp(16), dp(10));
+                if (android.os.Build.VERSION.SDK_INT >= 28) label.setAccessibilityHeading(true);
+                InspectorWidgets.groupedRow(label, first, last); return label;
             }
             if (row.type == Type.INPUT) {
                 if (conditions.duration.getParent() instanceof ViewGroup) ((ViewGroup) conditions.duration.getParent()).removeView(conditions.duration);
@@ -237,7 +239,7 @@ final class InspectorFilterSheet {
             }
             if (row.type == Type.OPTION || row.type == Type.TIME_OPTION) {
                 CheckedTextView view = recycled instanceof CheckedTextView ? (CheckedTextView) recycled : InspectorWidgets.choice(context); view.setText(row.label);
-                view.setPadding(dp(picker == null ? 28 : 16), dp(13), dp(16), dp(13));
+                view.setPadding(dp(picker == null && (row.group == null || !direct(row.group)) ? 28 : 16), dp(13), dp(16), dp(13));
                 Set<String> values = row.group == null ? null : draft.values.get(row.group.field);
                 view.setChecked(row.type == Type.TIME_OPTION ? row.value.equals(Integer.toString(draft.recentMinutes)) : row.value.equals(ALL) ? values == null || values.isEmpty() : values != null && values.contains(row.value));
                 InspectorWidgets.groupedRow(view, first, last); return view;
@@ -259,6 +261,7 @@ final class InspectorFilterSheet {
                     }
                     if (!expanded.remove(row.group.field)) expanded.add(row.group.field); break;
                 case OPTION:
+                    InspectorWidgets.hideKeyboard(list);
                     draft.select(row.group.field, row.value.equals(ALL) ? null : row.value);
                     if (!row.value.equals(ALL) && !row.group.options.containsKey(row.value)) row.group.option(row.value, row.value);
                     if (conditions != null) conditions.sync(); break;

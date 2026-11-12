@@ -173,9 +173,6 @@ final class InspectorNavigationTests: XCTestCase {
                 if cell.textLabel?.text == title {
                     filters.tableView(filters.tableView, didSelectRowAt: path); return
                 }
-                if let control = descendants(cell).compactMap({ $0 as? UIControl }).first(where: { $0.accessibilityLabel == title }) {
-                    try activate(control, event: .touchUpInside); return
-                }
             }
         }
         XCTFail("Missing filter row: \(title)")
@@ -196,7 +193,7 @@ final class InspectorNavigationTests: XCTestCase {
                 }
             }
         }
-        XCTAssertFalse(cells().flatMap(descendants).contains { $0.accessibilityLabel == InspectorFilterOptions.label(.direction, "incoming") })
+        XCTAssertFalse(cells().contains { $0.textLabel?.text == InspectorFilterOptions.label(.direction, "incoming") })
         try selectFilter(filters, title: InspectorFilterOptions.label(.activity, "messages"))
         try selectFilter(filters, title: InspectorFilterOptions.label(.direction, "incoming"))
         try selectFilter(filters, title: InspectorFilterOptions.label(.direction, "outgoing"))

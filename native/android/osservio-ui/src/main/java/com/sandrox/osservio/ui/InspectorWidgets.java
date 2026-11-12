@@ -221,7 +221,8 @@ final class InspectorWidgets {
     }
     static CheckedTextView choice(Context context) {
         CheckedTextView row = new CheckedTextView(context); InspectorTheme.typography(row, 16, false);
-        row.setGravity(Gravity.CENTER_VERTICAL); row.setMinHeight(InspectorTheme.dp(context, 50));
+        row.setGravity(Gravity.CENTER_VERTICAL); row.setMinimumHeight(InspectorTheme.dp(context, 50));
+        row.setSingleLine(false); row.setEllipsize(null);
         row.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 13), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 13));
         InspectorAppearance.style(row, () -> {
             row.setTextColor(InspectorTheme.primary(context));

@@ -7,56 +7,57 @@ import XCTest
 
 final class InspectorLayoutTests: XCTestCase {
     @MainActor
-    func testEnglishSocketChoicesFitWordsInsideSelfSizingRows() throws {
+    func testFilterRowsKeepCompleteLabelsInBothLanguagesAndTextSizes() throws {
         let previous = InspectorPreferences.shared.language
         defer { InspectorPreferences.shared.language = previous }
-        InspectorPreferences.shared.language = .english
-        for width in [CGFloat(320), CGFloat(390)] {
-            let query = InspectorQuery()
-            let viewer = InspectorFilterViewController(query: query, groups: InspectorFilterOptions.network([], sockets: [], query: query)) { _ in XCTFail("Layout applied a draft") }
-            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 900))
-            window.rootViewController = viewer; window.makeKeyAndVisible()
-            defer { window.isHidden = true; window.rootViewController = nil }
-            viewer.view.frame = window.bounds; viewer.view.layoutIfNeeded(); viewer.tableView.layoutIfNeeded()
-            let scope = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? InspectorScopeControl }.first)
-            scope.onSelect?(2); viewer.tableView.layoutIfNeeded()
-            let label = try XCTUnwrap(descendants(viewer.view).compactMap { $0 as? UILabel }.first { $0.text == "Connection events" })
-            let wordWidth = ("Connection" as NSString).size(withAttributes: [.font: label.font!]).width
-            XCTAssertGreaterThanOrEqual(label.bounds.width, ceil(wordWidth))
-            for group in descendants(viewer.view).compactMap({ $0 as? InspectorFilterChoices }) {
-                for control in descendants(group).compactMap({ $0 as? UIControl }) {
-                    XCTAssertLessThanOrEqual(group.convert(control.bounds, from: control).maxY, group.bounds.height + 1)
-                    for text in descendants(control).compactMap({ $0 as? UILabel }) {
-                        let fullText = UILabel(); fullText.text = text.text; fullText.font = text.font
-                        fullText.numberOfLines = 0; fullText.lineBreakMode = .byWordWrapping
-                        let required = fullText.sizeThatFits(CGSize(width: text.bounds.width, height: .greatestFiniteMagnitude))
-                        XCTAssertGreaterThanOrEqual(text.bounds.height + 1, ceil(required.height), "\(text.text ?? ""): label \(text.bounds), control \(control.bounds), group \(group.bounds)")
+        for language in InspectorPreferences.Language.allCases {
+            InspectorPreferences.shared.language = language
+            for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
+                for width in [CGFloat(320), CGFloat(390)] {
+                    var query = InspectorQuery(); query.select(.transport, value: "webSocket")
+                    let groupSets = [[InspectorFilterGroup(.level, values: ["debug", "info", "warning", "error"])],
+                        InspectorFilterOptions.network([], sockets: [], query: query)]
+                    for groups in groupSets {
+                        let viewer = InspectorFilterViewController(query: query, groups: groups) { _ in XCTFail("Layout applied a draft") }
+                        let host = UIViewController(), window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 700))
+                        defer { window.isHidden = true; window.rootViewController = nil }
+                        window.rootViewController = host; host.loadViewIfNeeded(); host.addChild(viewer)
+                        let traits = UITraitCollection(preferredContentSizeCategory: category)
+                        host.setOverrideTraitCollection(traits, forChild: viewer)
+                        traits.performAsCurrent { viewer.loadViewIfNeeded() }
+                        host.view.addSubview(viewer.view); viewer.didMove(toParent: host); window.makeKeyAndVisible()
+                        viewer.view.frame = window.bounds; viewer.view.layoutIfNeeded()
+                        var options = 0, headings = 0
+                        var messageRow: (IndexPath, CGSize, CGFloat)?
+                        for section in 0..<viewer.numberOfSections(in: viewer.tableView) {
+                            for row in 0..<viewer.tableView(viewer.tableView, numberOfRowsInSection: section) {
+                                let path = IndexPath(row: row, section: section)
+                                viewer.tableView.scrollToRow(at: path, at: .middle, animated: false); viewer.tableView.layoutIfNeeded()
+                                let cell = try XCTUnwrap(viewer.tableView.cellForRow(at: path))
+                                guard let label = cell.textLabel, let title = label.text, !title.isEmpty else { continue }
+                                if cell.accessibilityTraits.contains(.header) { headings += 1 }
+                                else if cell.accessibilityTraits.contains(.button) { options += 1; XCTAssertGreaterThanOrEqual(cell.bounds.height, 44) }
+                                let fullText = UILabel(); fullText.text = title; fullText.font = label.font
+                                fullText.numberOfLines = 0; fullText.lineBreakMode = .byWordWrapping
+                                let required = fullText.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
+                                XCTAssertGreaterThanOrEqual(label.bounds.height + 1, ceil(required.height), title)
+                                XCTAssertLessThanOrEqual(cell.convert(label.bounds, from: label).maxY, cell.bounds.height + 1, title)
+                                if title == InspectorFilterOptions.label(.activity, "messages") {
+                                    messageRow = (path, label.bounds.size, cell.bounds.height)
+                                }
+                            }
+                        }
+                        XCTAssertGreaterThanOrEqual(options, 5); XCTAssertGreaterThanOrEqual(headings, 1)
+                        if let (path, size, height) = messageRow {
+                            viewer.tableView(viewer.tableView, didSelectRowAt: path)
+                            viewer.tableView.scrollToRow(at: path, at: .middle, animated: false); viewer.tableView.layoutIfNeeded()
+                            let selected = try XCTUnwrap(viewer.tableView.cellForRow(at: path))
+                            XCTAssertTrue(selected.accessibilityTraits.contains(.selected))
+                            XCTAssertEqual(selected.textLabel?.bounds.width ?? 0, size.width, accuracy: 1)
+                            XCTAssertEqual(selected.bounds.height, height, accuracy: 1)
+                        }
                     }
                 }
-            }
-        }
-    }
-    @MainActor
-    func testDirectFilterChoicesKeepFullLabelsAndTouchTargetsAtLargeTextSizes() throws {
-        for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
-            let host = UIViewController(), viewer = UIViewController()
-            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 900))
-            defer { window.isHidden = true; window.rootViewController = nil }
-            window.rootViewController = host; host.loadViewIfNeeded(); host.addChild(viewer)
-            let traits = UITraitCollection(preferredContentSizeCategory: category)
-            host.setOverrideTraitCollection(traits, forChild: viewer)
-            var choices: InspectorFilterChoices!
-            traits.performAsCurrent { choices = InspectorFilterChoices(group: InspectorFilterGroup(.level, values: ["debug", "info", "warning", "error"]), selected: ["warning", "error"]) }
-            viewer.view = choices; host.view.addSubview(choices); viewer.didMove(toParent: host); window.makeKeyAndVisible()
-            choices.frame = CGRect(x: 0, y: 0, width: 280, height: choices.systemLayoutSizeFitting(CGSize(width: 280, height: 0), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height)
-            choices.layoutIfNeeded()
-            let controls = descendants(choices).compactMap { $0 as? UIControl }
-            XCTAssertEqual(controls.count, 5); XCTAssertEqual(controls.filter { $0.isSelected }.count, 2)
-            for control in controls {
-                XCTAssertGreaterThanOrEqual(control.bounds.height, 44)
-                if category.isAccessibilityCategory { XCTAssertEqual(control.bounds.width, choices.bounds.width, accuracy: 1) }
-                let label = try XCTUnwrap(descendants(control).compactMap { $0 as? UILabel }.first)
-                XCTAssertLessThanOrEqual(label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height, label.bounds.height + 1)
             }
         }
     }
