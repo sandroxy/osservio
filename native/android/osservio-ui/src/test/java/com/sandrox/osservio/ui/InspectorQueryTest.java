@@ -34,6 +34,30 @@ public final class InspectorQueryTest {
         query.values.put(InspectorQuery.Field.STATE, Collections.singleton("FAILED"));
         assertFalse(query.matches(event, 1));
     }
+    @Test public void exactStatusAndFamiliesShareOneUnion() {
+        HTTPEvent.BodyReference body = HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.OMITTED, null, 0);
+        HTTPEvent event = HTTPEvent.restore(ID, ID, 1, 2, 1, "POST", HTTPEvent.Source.HOST, "https://example.test/401", null,
+            Collections.emptyList(), Collections.emptyList(), false, 503, HTTPEvent.State.COMPLETED, null, 12L, body, body);
+        InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.STATUS, "401");
+        assertFalse(query.matchesFacets(event, 1));
+        query.select(InspectorQuery.Field.STATUS, "503"); assertTrue(query.matchesFacets(event, 1));
+        query.select(InspectorQuery.Field.STATUS, "503"); query.select(InspectorQuery.Field.STATUS, "5xx");
+        assertTrue(query.matchesFacets(event, 1));
+        query.select(InspectorQuery.Field.TRANSPORT, "webSocket"); assertFalse(query.values.containsKey(InspectorQuery.Field.STATUS));
+    }
+    @Test public void socketActivityAndSearchScopesKeepApplicableConditions() {
+        InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.TRANSPORT, "webSocket");
+        query.select(InspectorQuery.Field.ACTIVITY, "messages");
+        assertTrue(query.matchesFacets(socket(1, WebSocketEvent.Kind.MESSAGE), 10));
+        assertFalse(query.matchesFacets(socket(2, WebSocketEvent.Kind.OPENED), 10));
+        query.select(InspectorQuery.Field.DIRECTION, "INCOMING"); query.select(InspectorQuery.Field.ACTIVITY, "connections");
+        assertFalse(query.values.containsKey(InspectorQuery.Field.DIRECTION));
+        assertTrue(query.matchesFacets(socket(2, WebSocketEvent.Kind.OPENED), 10));
+        query.select(InspectorQuery.Field.SEARCH_SCOPE, "headers"); query.select(InspectorQuery.Field.TRANSPORT, "http");
+        assertEquals("headers", query.searchScope()); assertFalse(query.values.containsKey(InspectorQuery.Field.ACTIVITY));
+        query.select(InspectorQuery.Field.SEARCH_SCOPE, "response"); query.select(InspectorQuery.Field.TRANSPORT, "webSocket");
+        assertEquals("all", query.searchScope());
+    }
     @Test public void groupingKeepsLifecycleAndCompleteRetainedCount() {
         WebSocketEvent open = socket(1, WebSocketEvent.Kind.OPENED), message = socket(2, WebSocketEvent.Kind.MESSAGE), close = socket(3, WebSocketEvent.Kind.CLOSED);
         List<InspectorQuery.Connection> groups = InspectorQuery.connections(Arrays.asList(close, message, open));

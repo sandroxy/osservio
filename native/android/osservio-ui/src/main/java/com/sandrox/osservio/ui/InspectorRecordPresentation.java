@@ -84,11 +84,12 @@ final class InspectorRecordPresentation {
     }
     static void prepareSearch(Context context, java.util.List<InspectorRecordSearch.Record> records) {
         for (InspectorRecordSearch.Record record : records) {
+            record.displayAddress = record.http != null ? address(context, record.http.url) : record.socket != null ? address(context, record.socket.url) : "";
             if (record.log != null) record.displayText = joined(record.log.level == LogLevel.WARNING ? "WARN" : record.log.level.name(),
                 record.log.isPrivate ? context.getString(R.string.osservio_ui_private_content) : "");
-            else if (record.http != null) record.displayText = joined(address(context, record.http.url), HTTPPresentation.state(context, record.http.state),
+            else if (record.http != null) record.displayText = joined(HTTPPresentation.state(context, record.http.state),
                 record.http.failure == null ? "" : HTTPPresentation.failure(context, record.http.failure));
-            else record.displayText = joined(address(context, record.socket.url), WebSocketPresentation.kind(context, record.socket.kind),
+            else record.displayText = joined(WebSocketPresentation.kind(context, record.socket.kind),
                 record.socket.direction == null ? "" : context.getString(record.socket.direction == WebSocketEvent.Direction.INCOMING ? R.string.osservio_ws_incoming : R.string.osservio_ws_outgoing),
                 record.socket.outcome == null ? "" : WebSocketPresentation.outcome(context, record.socket.outcome),
                 record.socket.kind == WebSocketEvent.Kind.MESSAGE ? payloadLabel(context, record.socket.payload) : "",
@@ -98,8 +99,21 @@ final class InspectorRecordPresentation {
     static String matchPreview(Context context, InspectorRecordSearch.Result result, String key) {
         if (result == null) return null; String preview = result.previews.get(key), source = result.previewSources.get(key);
         if (preview == null || source == null || source.isEmpty()) return preview;
-        int label = source.equals("request") ? R.string.osservio_ui_search_request_body : source.equals("response") ? R.string.osservio_ui_search_response_body : R.string.osservio_ui_search_message;
-        return context.getString(label) + ": " + preview;
+        return context.getString(matchSource(source)) + ": " + preview;
+    }
+    static int matchSource(String source) {
+        switch (source) {
+            case "request": return R.string.osservio_ui_search_request_body;
+            case "response": return R.string.osservio_ui_search_response_body;
+            case "requestHeaders": return R.string.osservio_ui_search_request_headers;
+            case "responseHeaders": return R.string.osservio_ui_search_response_headers;
+            case "handshakeHeaders": return R.string.osservio_ui_search_handshake_headers;
+            case "address": return R.string.osservio_ui_search_address;
+            case "identity": return R.string.osservio_ui_search_identity;
+            case "metadata": return R.string.osservio_ui_search_metadata;
+            case "log": return R.string.osservio_ui_search_log_message;
+            default: return R.string.osservio_ui_search_message;
+        }
     }
     static String context(Context context, LogEvent event) { return joined(event.level == LogLevel.WARNING ? "WARN" : event.level.name(), event.category, InspectorValuePresentation.eventTime(event.timestampMillis, false), context.getString(R.string.osservio_ui_record_identity) + " · " + identity(event.sessionId) + " #" + event.sequence); }
     static String context(Context context, HTTPEvent event) { return joined(event.method, context.getString(R.string.osservio_ui_record_identity) + " · " + identity(event.id), InspectorValuePresentation.eventTime(event.timestampMillis, false), address(context, event.url)); }

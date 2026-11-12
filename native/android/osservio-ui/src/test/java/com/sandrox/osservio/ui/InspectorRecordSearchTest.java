@@ -109,6 +109,39 @@ public final class InspectorRecordSearchTest {
         assertTrue(InspectorRecordSearch.run(records, query, 100, history, null, InspectorRecordSearch.MAX_UNITS, () -> false).keys.isEmpty());
         assertEquals(2, history.reads);
     }
+    @Test public void handshakeHeadersHaveProvenanceAndScopedExclusionNeedsNoBodyRead() {
+        History history = new History(); InspectorRecordSearch.Record record = handshake(false);
+        InspectorQuery query = new InspectorQuery(); query.text = "header-only";
+        InspectorRecordSearch.Result match = search(Collections.singletonList(record), query, history, InspectorRecordSearch.MAX_UNITS);
+        assertEquals(Collections.singleton(record.key()), match.keys); assertEquals("handshakeHeaders", match.previewSources.get(record.key()));
+        assertTrue(match.previews.get(record.key()).contains("authorization: Bearer"));
+        query.select(InspectorQuery.Field.SEARCH_SCOPE, "address");
+        assertTrue(search(Collections.singletonList(record), query, history, InspectorRecordSearch.MAX_UNITS).keys.isEmpty());
+        query.select(InspectorQuery.Field.SEARCH_SCOPE, "headers"); query.text = ""; query.excludedText = "address-only";
+        assertEquals(Collections.singleton(record.key()), search(Collections.singletonList(record), query, history, InspectorRecordSearch.MAX_UNITS).keys);
+        InspectorRecordSearch.Result partial = search(Collections.singletonList(handshake(true)), query, history, InspectorRecordSearch.MAX_UNITS);
+        assertTrue(partial.keys.isEmpty()); assertEquals(1, partial.truncated); assertEquals(0, history.reads);
+    }
+    private static InspectorRecordSearch.Record handshake(boolean limited) {
+        return new InspectorRecordSearch.Record(WebSocketEvent.restore(id(1), id(10), id(100), 1, 100,
+            "wss://example.test/ws?token=address-only", WebSocketEvent.Source.HOST, WebSocketEvent.Kind.OPENED,
+            Collections.singletonList(new HTTPHeader("authorization", "Bearer header-only")), limited, 101, null, null, null, null, null, null));
+    }
+    @Test public void textScopeReadsOnlyTheSelectedHTTPBody() {
+        Requests history = new Requests(); String requestId = id(1) + ".request", responseId = id(1) + ".response";
+        history.bodies.put(requestId, HTTPBody.restore(requestId, "request-marker"));
+        history.bodies.put(responseId, HTTPBody.restore(responseId, "response-marker"));
+        InspectorRecordSearch.Record record = new InspectorRecordSearch.Record(HTTPEvent.restore(id(1), id(100), 1, 2, 100,
+            "POST", HTTPEvent.Source.HOST, "https://example.test/response-marker", null, Collections.emptyList(), Collections.emptyList(), false,
+            200, HTTPEvent.State.COMPLETED, null, 1L,
+            HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.AVAILABLE, requestId, 14), HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.AVAILABLE, responseId, 15)));
+        InspectorQuery query = new InspectorQuery(); query.text = "response-marker"; query.select(InspectorQuery.Field.SEARCH_SCOPE, "request");
+        assertTrue(InspectorRecordSearch.run(Collections.singletonList(record), query, 100, history, null, InspectorRecordSearch.MAX_UNITS, () -> false).keys.isEmpty());
+        assertEquals(1, history.reads);
+        query.select(InspectorQuery.Field.SEARCH_SCOPE, "response");
+        InspectorRecordSearch.Result result = InspectorRecordSearch.run(Collections.singletonList(record), query, 100, history, null, InspectorRecordSearch.MAX_UNITS, () -> false);
+        assertEquals(Collections.singleton(record.key()), result.keys); assertEquals("response", result.previewSources.get(record.key())); assertEquals(2, history.reads);
+    }
     private static final class Requests implements HTTPHistory {
         final Map<String, HTTPBody> bodies = new HashMap<>(); int reads;
         @Override public HTTPSnapshot snapshot() { throw new AssertionError("Search must use its input snapshot"); }

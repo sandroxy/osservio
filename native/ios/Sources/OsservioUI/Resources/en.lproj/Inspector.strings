@@ -263,3 +263,37 @@
 
 "ui_header_value" = "Header value";
 "ui_content_processed" = "Content modified by the host policy. Byte counts refer to the original observation.";
+
+"ui_search_request_headers" = "Request header match";
+"ui_search_response_headers" = "Response header match";
+"ui_search_handshake_headers" = "Handshake header match";
+"ui_search_address" = "Address match";
+"ui_search_identity" = "Identifier match";
+"ui_search_metadata" = "Record information match";
+"ui_search_log_message" = "Log content match";
+"ui_search_scope" = "Search text in";
+"ui_scope_address" = "Address";
+"ui_scope_headers" = "Headers";
+"ui_scope_request" = "Request body";
+"ui_scope_response" = "Response body";
+"ui_scope_message" = "Message content";
+"ui_scope_identity" = "Identifiers";
+"ui_scope_metadata" = "Record information";
+"ui_activity" = "Socket content";
+"ui_activity_messages" = "Messages and send results";
+"ui_activity_connections" = "Connection events";
+"ui_outcome" = "Message result";
+"ui_close_code" = "Close code";
+"ui_filter_common" = "Common filters";
+"ui_filter_refine" = "Refine filters";
+"ui_filter_scope" = "View";
+"ui_filter_switch" = "Switching HTTP / Socket keeps shared conditions and clears conditions for the other protocol.";
+"ui_filter_refine_hint" = "Content, source and precise conditions";
+"ui_specific_status" = "Status code (100–599)";
+"ui_status_1xx" = "Informational (1xx)";
+"ui_status_2xx" = "Successful response (2xx)";
+"ui_status_3xx" = "Redirection (3xx)";
+"ui_status_4xx" = "Client error (4xx)";
+"ui_status_5xx" = "Server error (5xx)";
+"ui_filter_exact_status" = "Exact status code";
+"ui_search_scope_hint" = "Limits text search and excluded text. JSON field conditions inspect retained bodies.";

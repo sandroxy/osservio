@@ -4,7 +4,9 @@ import OsservioCore
 /// View-only criteria. Each value set is a union; independent fields intersect.
 /// The caller supplies a fixed time anchor while reading a paused snapshot.
 struct InspectorQuery: Equatable {
-    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection }
+    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope" }
+    static let fieldOrder: [Field] = [.transport, .level, .record, .host, .category, .method, .status, .state,
+        .activity, .direction, .kind, .outcome, .closeCode, .connection, .content, .source, .searchScope]
     var text = ""
     var excludedText = ""
     var fieldPath = ""
@@ -17,12 +19,27 @@ struct InspectorQuery: Equatable {
         + (minimumDurationMillis > 0 ? 1 : 0) + (fieldPath.isEmpty ? 0 : 1) + (excludedText.isEmpty ? 0 : 1) }
     var searchesPayload: Bool { !text.isEmpty || !excludedText.isEmpty || !fieldPath.isEmpty }
     static let httpFields: Set<Field> = [.method, .state, .status, .content]
-    static let socketFields: Set<Field> = [.direction, .kind, .connection]
+    static let socketFields: Set<Field> = [.activity, .direction, .kind, .connection, .outcome, .closeCode]
+    var searchScope: String { values[.searchScope]?.first ?? "all" }
+    var transport: String? { values[.transport]?.first }
+    func searches(_ scope: String) -> Bool { searchScope == "all" || searchScope == scope }
+    func allowsStatus(_ code: Int?) -> Bool {
+        guard let selected = values[.status], !selected.isEmpty else { return true }
+        guard let code else { return selected.contains("none") }
+        return selected.contains(String(code)) || selected.contains("\(code / 100)xx")
+    }
     mutating func select(_ field: Field, value: String?) {
         if field == .transport {
             values[field] = value.map { [$0] } ?? []
             if value != "http" { for key in Self.httpFields { values[key] = nil }; minimumDurationMillis = 0 }
             if value != "webSocket" { for key in Self.socketFields { values[key] = nil } }
+            if value != "http", ["request", "response"].contains(searchScope) { values[.searchScope] = nil }
+            if value != "webSocket", searchScope == "message" { values[.searchScope] = nil }
+            return
+        }
+        if field == .searchScope || field == .activity {
+            values[field] = value.map { [$0] } ?? []
+            if field == .activity, value == "connections" { values[.direction] = nil; values[.outcome] = nil }
             return
         }
         if value != nil {
@@ -63,7 +80,7 @@ struct InspectorQuery: Equatable {
     }
     func matchesFacets(_ event: HTTPEvent, now: Int64) -> Bool {
         allows(.transport, "http") && allows(.method, event.method) && allows(.state, event.state.rawValue)
-            && allows(.status, event.statusCode.map { "\($0 / 100)xx" } ?? "none")
+            && allowsStatus(event.statusCode)
             && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
             && allows(.content, InspectorHTTPContent.category(event.responseHeaders))
             && (minimumDurationMillis == 0 || event.durationMillis.map { $0 >= minimumDurationMillis } == true)
@@ -75,7 +92,9 @@ struct InspectorQuery: Equatable {
     }
     func matchesFacets(_ event: WebSocketEvent, now: Int64) -> Bool {
         allows(.transport, "webSocket") && allows(.connection, event.connectionID)
+            && allows(.activity, event.kind == .message || event.kind == .messageResult ? "messages" : "connections")
             && allows(.direction, event.direction?.rawValue ?? "none") && allows(.kind, event.kind.rawValue)
+            && allows(.outcome, event.outcome?.rawValue ?? "none") && allows(.closeCode, event.closeCode.map(String.init) ?? "none")
             && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
             && Self.httpFields.allSatisfy { values[$0]?.isEmpty ?? true } && minimumDurationMillis == 0
             && includesTime(event.timestampMillis, now: now)

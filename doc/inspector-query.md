@@ -19,7 +19,14 @@ time means record/recovery time, not an inferred historical failure time.
 
 Literal text matches metadata, localized visible labels or retained content,
 ignoring case. HTTP metadata
-includes sanitized headers; content includes request and response bodies. An
+includes admitted request and response headers; Socket metadata includes observed
+handshake headers. Content includes request and response bodies and messages.
+An optional text scope limits both the literal term and excluded text to addresses,
+headers, a request body, a response body, messages, identifiers or record metadata.
+It does not change capture, load another account or query another archive.
+Metadata hits retain a bounded excerpt and their source, just as body hits do;
+searching only headers does not read unrelated bodies. Limited header observations
+cannot establish the absence of an excluded term. An
 excluded term removes a record when observed in either metadata or content.
 Unavailable content cannot establish that an excluded term was absent; search
 coverage must remain visible. No regular expression is executed from user input.
@@ -33,6 +40,18 @@ floating-point conversion. Duplicate object members are ambiguous. Malformed,
 truncated, unsupported or over-budget JSON is not treated as a definite mismatch.
 HTTP matches when one body satisfies the field condition and the text condition
 (or the text was already matched by metadata).
+Text scope restricts the text condition; an independent JSON condition still
+examines retained bodies. For example, a request-header match can be combined
+with a JSON field in its response without parsing the header as JSON.
+
+HTTP status selection accepts exact observed codes and status families in the
+same union. A code in an address or payload is not an exact status match.
+Transport outcome remains independent of HTTP status and neither establishes
+business success. Socket activity distinguishes messages and their send results
+from connection events. Direction and message-result criteria do not apply to
+the connection-only group. Specific event kinds, close codes and connection
+identities remain available for precise inspection; they are not business event
+classifications.
 
 ## Resource and evidence boundaries
 

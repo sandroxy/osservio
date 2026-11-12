@@ -26,12 +26,21 @@ enum InspectorFilterOptions {
         let sources = Set(events.map { $0.source.rawValue } + sockets.map { $0.source.rawValue })
         if sources.count > 1 || !(query.values[.source]?.isEmpty ?? true) { result.append(InspectorFilterGroup(.source, values: sources.sorted())) }
         result += [InspectorFilterGroup(.method, title: InspectorLocalization.text("ui_http_method"), values: events.map(\.method).sorted()),
-            InspectorFilterGroup(.status, title: InspectorLocalization.text("ui_http_status"), values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"]),
+            InspectorFilterGroup(.status, title: InspectorLocalization.text("ui_http_status"), values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"] + events.compactMap { $0.statusCode }.sorted().map(String.init)),
             InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_http_state"), values: events.map { $0.state.rawValue }.sorted()),
             InspectorFilterGroup(.content, title: InspectorLocalization.text("ui_http_content"), values: events.map { InspectorHTTPContent.category($0.responseHeaders) }.sorted()),
-            InspectorFilterGroup(.direction, title: InspectorLocalization.text("ui_socket_direction"), values: ["incoming", "outgoing", "none"]),
+            InspectorFilterGroup(.activity, values: ["messages", "connections"]),
+            InspectorFilterGroup(.direction, title: InspectorLocalization.text("ui_socket_direction"), values: ["incoming", "outgoing"]),
             InspectorFilterGroup(.kind, title: InspectorLocalization.text("ui_socket_kind"), values: sockets.map { $0.kind.rawValue }.sorted()),
+            InspectorFilterGroup(.outcome, values: sockets.compactMap { $0.outcome?.rawValue }.sorted()),
+            InspectorFilterGroup(.closeCode, values: sockets.compactMap { $0.closeCode }.sorted().map(String.init)),
             InspectorFilterGroup(.connection, values: sockets.map(\.connectionID).sorted())]
+        if let index = result.firstIndex(where: { $0.field == .connection }) {
+            result[index].options = InspectorConnection.groups(sockets).map { connection in
+                (connection.first.connectionID, InspectorRecordPresentation.address(connection.first.url) + "\n"
+                    + InspectorValuePresentation.eventTime(connection.first.timestampMillis) + " · " + InspectorRecordPresentation.identity(connection.first.connectionID))
+            }
+        }
         return result.filter { (includeHTTP || !InspectorQuery.httpFields.contains($0.field)) &&
             (includeSockets || !InspectorQuery.socketFields.contains($0.field)) }
     }
@@ -51,7 +60,10 @@ enum InspectorFilterOptions {
         case .kind:
             if WebSocketKind(rawValue: value) != nil { return InspectorLocalization.text("ws_kind_" + value) }
             return InspectorLocalization.text("crumb_kind_" + value)
-        case .status: return value == "none" ? InspectorLocalization.text("ui_no_status") : value
+        case .status: return value == "none" ? InspectorLocalization.text("ui_no_status") : value.hasSuffix("xx") ? InspectorLocalization.text("ui_status_" + value) : value
+        case .activity: return InspectorLocalization.text("ui_activity_" + value)
+        case .outcome: return InspectorLocalization.text("ws_outcome_" + value)
+        case .searchScope: return InspectorLocalization.text("ui_scope_" + value)
         case .direction: return InspectorLocalization.text(value == "none" ? "ui_no_direction" : "ws_" + value)
         case .source:
             if value == "host" { return InspectorLocalization.text("ws_host") }
@@ -64,7 +76,7 @@ enum InspectorFilterOptions {
         }
     }
     static func summary(_ query: InspectorQuery) -> String {
-        var parts = query.values.keys.sorted { $0.rawValue < $1.rawValue }.compactMap { field -> String? in
+        var parts = InspectorQuery.fieldOrder.compactMap { field -> String? in
             guard let values = query.values[field], !values.isEmpty else { return nil }
             let labels = values.sorted().prefix(2).map { String(label(field, $0).prefix(48)) }
             return InspectorLocalization.text("ui_" + field.rawValue) + ": " + labels.joined(separator: ", ") + (values.count > 2 ? " +\(values.count - 2)" : "")

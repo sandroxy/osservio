@@ -44,6 +44,33 @@ final class InspectorQueryTests: XCTestCase {
         XCTAssertFalse(query.matches(event, now: 1))
     }
 
+    func testExactStatusAndFamiliesUseTheSameUnion() throws {
+        let body = try HTTPBodyReference.restore(state: .omitted, blobID: nil, observedBytes: 0)
+        let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 1, revision: 2, timestampMillis: 1,
+            method: "POST", source: .host, url: "https://example.test/401", responseURL: nil,
+            requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 503,
+            state: .completed, failure: nil, durationMillis: 12, requestBody: body, responseBody: body)
+        var query = InspectorQuery(); query.select(.status, value: "401")
+        XCTAssertFalse(query.matchesFacets(event, now: 1), "An address containing 401 is not a 401 response")
+        query.select(.status, value: "503"); XCTAssertTrue(query.matchesFacets(event, now: 1))
+        query.select(.status, value: "503"); query.select(.status, value: "5xx")
+        XCTAssertTrue(query.matchesFacets(event, now: 1))
+        query.select(.transport, value: "webSocket"); XCTAssertNil(query.values[.status])
+    }
+    func testSocketActivityKeepsMessagesSeparateFromConnectionEvents() throws {
+        var query = InspectorQuery(); query.select(.transport, value: "webSocket")
+        query.select(.activity, value: "messages")
+        XCTAssertTrue(query.matchesFacets(try socket(sequence: 1, kind: .message), now: 10))
+        XCTAssertFalse(query.matchesFacets(try socket(sequence: 2, kind: .opened), now: 10))
+        query.select(.direction, value: "incoming"); query.select(.activity, value: "connections")
+        XCTAssertNil(query.values[.direction])
+        XCTAssertTrue(query.matchesFacets(try socket(sequence: 2, kind: .opened), now: 10))
+        query.select(.searchScope, value: "headers"); query.select(.transport, value: "http")
+        XCTAssertEqual(query.searchScope, "headers"); XCTAssertNil(query.values[.activity])
+        query.select(.searchScope, value: "response"); query.select(.transport, value: "webSocket")
+        XCTAssertEqual(query.searchScope, "all")
+    }
+
     func testConnectionUsesLifecycleAndCountsAllRetainedEvents() throws {
         let open = try socket(sequence: 1, kind: .opened)
         let close = try socket(sequence: 3, kind: .closed)

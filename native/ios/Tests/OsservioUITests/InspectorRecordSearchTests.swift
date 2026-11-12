@@ -122,6 +122,43 @@ final class InspectorRecordSearchTests: XCTestCase {
         query.text = "discarded secret"
         XCTAssertTrue(search([.log(log)], query, history)?.keys.isEmpty == true)
     }
+    func testHandshakeHeadersHaveProvenanceAndScopedExclusionDoesNotReadBodies() throws {
+        let history = History()
+        func record(limited: Bool) throws -> InspectorSearchRecord {
+            .socket(try .restore(id: id(1), connectionID: id(10), sessionID: id(100), sequence: 1, timestampMillis: 100,
+                url: "wss://example.test/ws?token=address-only", source: .host, kind: .opened,
+                headers: [HTTPHeader(name: "authorization", value: "Bearer header-only")], headersLimited: limited,
+                statusCode: 101, closeCode: nil, failure: nil, direction: nil, outcome: nil, relatedMessageID: nil, payload: nil))
+        }
+        let event = try record(limited: false)
+        var query = InspectorQuery(); query.text = "header-only"
+        let match = try XCTUnwrap(search([event], query, history))
+        XCTAssertEqual(match.keys, [event.key]); XCTAssertEqual(match.previewSources[event.key], "ui_search_handshake_headers")
+        XCTAssertTrue(match.previews[event.key]?.contains("authorization: Bearer") == true)
+        query.select(.searchScope, value: "address"); XCTAssertTrue(search([event], query, history)?.keys.isEmpty == true)
+        query.select(.searchScope, value: "headers"); query.text = ""; query.excludedText = "address-only"
+        XCTAssertEqual(search([event], query, history)?.keys, [event.key])
+        XCTAssertTrue(search([try record(limited: true)], query, history)?.keys.isEmpty == true)
+        XCTAssertEqual(search([try record(limited: true)], query, history)?.truncated, 1)
+        XCTAssertEqual(history.reads, 0)
+    }
+    func testTextScopeReadsOnlyTheSelectedHTTPBody() throws {
+        let history = Requests(), requestID = id(1) + ".request", responseID = id(1) + ".response"
+        history.bodies[requestID] = try .restore(id: requestID, text: "request-marker")
+        history.bodies[responseID] = try .restore(id: responseID, text: "response-marker")
+        let record = InspectorSearchRecord.http(try .restore(id: id(1), sessionID: id(100), sequence: 1, revision: 2, timestampMillis: 100,
+            method: "POST", source: .host, url: "https://example.test/response-marker", responseURL: nil,
+            requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 200, state: .completed, failure: nil, durationMillis: 1,
+            requestBody: .restore(state: .available, blobID: requestID, observedBytes: 14),
+            responseBody: .restore(state: .available, blobID: responseID, observedBytes: 15)))
+        var query = InspectorQuery(); query.text = "response-marker"; query.select(.searchScope, value: "request")
+        XCTAssertTrue(InspectorRecordSearch.run([record], query: query, now: 100, http: history, sockets: nil, cancelled: { false })?.keys.isEmpty == true)
+        XCTAssertEqual(history.reads, 1)
+        query.select(.searchScope, value: "response")
+        let result = InspectorRecordSearch.run([record], query: query, now: 100, http: history, sockets: nil, cancelled: { false })
+        XCTAssertEqual(result?.keys, [record.key]); XCTAssertEqual(result?.previewSources[record.key], "ui_search_response_body")
+        XCTAssertEqual(history.reads, 2)
+    }
     private final class Requests: HTTPHistory, @unchecked Sendable {
         var bodies: [String: HTTPBody] = [:], reads = 0
         func snapshot() -> HTTPSnapshot? { XCTFail("Search must use its input snapshot"); return nil }

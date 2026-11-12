@@ -18,7 +18,10 @@ import java.util.HashSet;
 
 /** View-only criteria: OR within one field, AND between independent fields. */
 final class InspectorQuery {
-    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION }
+    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION, ACTIVITY, OUTCOME, CLOSE_CODE, SEARCH_SCOPE }
+    static final Field[] FIELD_ORDER = {Field.TRANSPORT, Field.LEVEL, Field.RECORD, Field.HOST, Field.CATEGORY,
+        Field.METHOD, Field.STATUS, Field.STATE, Field.ACTIVITY, Field.DIRECTION, Field.KIND, Field.OUTCOME,
+        Field.CLOSE_CODE, Field.CONNECTION, Field.CONTENT, Field.SOURCE, Field.SEARCH_SCOPE};
     String text = "";
     String excludedText = "", fieldPath = "", fieldValue = "";
     long minimumDurationMillis;
@@ -41,13 +44,28 @@ final class InspectorQuery {
         return selected == null || selected.isEmpty() || selected.contains(value);
     }
     boolean searchesPayload() { return !text.isEmpty() || !excludedText.isEmpty() || !fieldPath.isEmpty(); }
-    private static final Field[] HTTP_FIELDS = {Field.METHOD, Field.STATE, Field.STATUS, Field.CONTENT};
-    private static final Field[] SOCKET_FIELDS = {Field.DIRECTION, Field.KIND, Field.CONNECTION};
+    static final Field[] HTTP_FIELDS = {Field.METHOD, Field.STATE, Field.STATUS, Field.CONTENT};
+    static final Field[] SOCKET_FIELDS = {Field.ACTIVITY, Field.DIRECTION, Field.KIND, Field.CONNECTION, Field.OUTCOME, Field.CLOSE_CODE};
+    String searchScope() { Set<String> selected = values.get(Field.SEARCH_SCOPE); return selected == null || selected.isEmpty() ? "all" : selected.iterator().next(); }
+    String transport() { Set<String> selected = values.get(Field.TRANSPORT); return selected == null || selected.isEmpty() ? null : selected.iterator().next(); }
+    boolean searches(String scope) { return searchScope().equals("all") || searchScope().equals(scope); }
+    boolean allowsStatus(Integer code) {
+        Set<String> selected = values.get(Field.STATUS);
+        return selected == null || selected.isEmpty() || (code == null ? selected.contains("none")
+            : selected.contains(code.toString()) || selected.contains(code / 100 + "xx"));
+    }
     void select(Field field, String value) {
         if (field == Field.TRANSPORT) {
             if (value == null) values.remove(field); else values.put(field, new HashSet<>(Collections.singleton(value)));
             if (!"http".equals(value)) { for (Field key : HTTP_FIELDS) values.remove(key); minimumDurationMillis = 0; }
             if (!"webSocket".equals(value)) for (Field key : SOCKET_FIELDS) values.remove(key);
+            if (!"http".equals(value) && (searchScope().equals("request") || searchScope().equals("response"))) values.remove(Field.SEARCH_SCOPE);
+            if (!"webSocket".equals(value) && searchScope().equals("message")) values.remove(Field.SEARCH_SCOPE);
+            return;
+        }
+        if (field == Field.SEARCH_SCOPE || field == Field.ACTIVITY) {
+            if (value == null) values.remove(field); else values.put(field, new HashSet<>(Collections.singleton(value)));
+            if (field == Field.ACTIVITY && "connections".equals(value)) { values.remove(Field.DIRECTION); values.remove(Field.OUTCOME); }
             return;
         }
         if (value != null) {
@@ -90,7 +108,7 @@ final class InspectorQuery {
     }
     boolean matchesFacets(HTTPEvent event, long now) {
         return allows(Field.TRANSPORT, "http") && allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
-            && allows(Field.STATUS, event.statusCode == null ? "none" : event.statusCode / 100 + "xx")
+            && allowsStatus(event.statusCode)
             && allows(Field.HOST, host(event.url)) && allows(Field.SOURCE, event.source.name())
             && allows(Field.CONTENT, InspectorHTTPContent.category(event.responseHeaders))
             && (minimumDurationMillis == 0 || event.durationMillis != null && event.durationMillis >= minimumDurationMillis)
@@ -101,7 +119,10 @@ final class InspectorQuery {
     }
     boolean matchesFacets(WebSocketEvent event, long now) {
         return allows(Field.TRANSPORT, "webSocket") && allows(Field.CONNECTION, event.connectionId)
+            && allows(Field.ACTIVITY, event.kind == WebSocketEvent.Kind.MESSAGE || event.kind == WebSocketEvent.Kind.MESSAGE_RESULT ? "messages" : "connections")
             && allows(Field.DIRECTION, event.direction == null ? "none" : event.direction.name())
+            && allows(Field.OUTCOME, event.outcome == null ? "none" : event.outcome.name())
+            && allows(Field.CLOSE_CODE, event.closeCode == null ? "none" : event.closeCode.toString())
             && allows(Field.KIND, event.kind.name()) && allows(Field.HOST, host(event.url))
             && allows(Field.SOURCE, event.source.name()) && empty(HTTP_FIELDS) && minimumDurationMillis == 0 && includesTime(event.timestampMillis, now);
     }

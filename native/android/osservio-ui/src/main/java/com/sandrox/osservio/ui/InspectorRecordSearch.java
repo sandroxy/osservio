@@ -19,7 +19,7 @@ import java.util.Set;
 final class InspectorRecordSearch {
     static final int MAX_RECORDS = 4_000, MAX_UNITS = 2_097_152;
     static final class Record {
-        String displayText = "";
+        String displayText = "", displayAddress = "";
         final LogEvent log;
         final HTTPEvent http;
         final WebSocketEvent socket;
@@ -29,21 +29,46 @@ final class InspectorRecordSearch {
         String key() { return log != null ? "log:" + log.sessionId + ":" + log.sequence : http != null ? "http:" + http.id : "socket:" + socket.id; }
         long time() { return log != null ? log.timestampMillis : http != null ? http.timestampMillis : socket.timestampMillis; }
         boolean matchesFacets(InspectorQuery query, long now) { return log != null ? query.matchesFacets(log, now) : http != null ? query.matchesFacets(http, now) : query.matchesFacets(socket, now); }
-        boolean contains(String term) {
-            if (term.isEmpty() || has(term, displayText)) return true;
-            if (log != null) return has(term, log.category);
-            if (http != null) {
-                if (has(term, http.url, http.responseURL, http.method, http.id, http.statusCode == null ? "" : http.statusCode.toString())) return true;
-                for (HTTPHeader header : http.requestHeaders) if (has(term, header.name, header.value)) return true;
-                for (HTTPHeader header : http.responseHeaders) if (has(term, header.name, header.value)) return true;
-                return false;
+        boolean contains(String term) { return term.isEmpty() || match(term, "all") != null; }
+        Match match(String term, String scope) {
+            if (term.isEmpty()) return null;
+            Match found;
+            if (log != null) {
+                found = find(term, scope, "identity", "identity", log.sessionId + " #" + log.sequence);
+                return found != null ? found : find(term, scope, "metadata", "metadata", log.category, displayText);
             }
-            return has(term, socket.url, socket.id, socket.connectionId, socket.kind.name(), socket.outcome == null ? "" : socket.outcome.name());
+            if (http != null) {
+                found = find(term, scope, "address", "address", http.url, displayAddress, http.responseURL); if (found != null) return found;
+                found = headers(term, scope, http.requestHeaders, "requestHeaders"); if (found != null) return found;
+                found = headers(term, scope, http.responseHeaders, "responseHeaders"); if (found != null) return found;
+                found = find(term, scope, "identity", "identity", http.id, http.sessionId + " #" + http.sequence); if (found != null) return found;
+                return find(term, scope, "metadata", "metadata", http.method, http.statusCode == null ? "" : http.statusCode.toString(), displayText);
+            }
+            found = find(term, scope, "address", "address", socket.url, displayAddress); if (found != null) return found;
+            found = headers(term, scope, socket.headers, "handshakeHeaders"); if (found != null) return found;
+            found = find(term, scope, "identity", "identity", socket.id, socket.connectionId, socket.relatedMessageId, socket.sessionId + " #" + socket.sequence); if (found != null) return found;
+            return find(term, scope, "metadata", "metadata", socket.kind.name(), socket.outcome == null ? "" : socket.outcome.name(),
+                socket.statusCode == null ? "" : socket.statusCode.toString(), socket.closeCode == null ? "" : socket.closeCode.toString(), displayText);
         }
+        private static Match find(String term, String scope, String field, String source, String... values) {
+            if (!scope.equals("all") && !scope.equals(field)) return null;
+            for (String value : values) if (InspectorQuery.hasText(value, term)) return new Match(source, value);
+            return null;
+        }
+        private static Match headers(String term, String scope, List<HTTPHeader> headers, String source) {
+            if (!scope.equals("all") && !scope.equals("headers")) return null;
+            for (HTTPHeader header : headers) if (has(term, header.name, header.value)) return new Match(source, header.name + ": " + header.value);
+            return null;
+        }
+        boolean headersLimited() { return http != null ? http.headersLimited : socket != null && socket.headersLimited; }
         private static boolean has(String term, String... fields) {
             for (String field : fields) if (InspectorQuery.hasText(field, term)) return true;
             return false;
         }
+    }
+    private static final class Match {
+        final String source, text;
+        Match(String source, String text) { this.source = source; this.text = text; }
     }
     static final class Result {
         final Set<String> keys = new HashSet<>();
@@ -55,8 +80,9 @@ final class InspectorRecordSearch {
     private static final class Payload {
         final String text;
         final boolean truncated; final String source;
-        Payload(String text, boolean truncated) { this(text, truncated, ""); }
+        Payload(String text, boolean truncated) { this(text, truncated, "log"); }
         Payload(String text, boolean truncated, String source) { this.text = text; this.truncated = truncated; this.source = source; }
+        String scope() { return source.equals("request") || source.equals("response") ? source : "message"; }
     }
     private InspectorRecordSearch() { }
     static int newestFirst(Record left, Record right) {
@@ -75,20 +101,24 @@ final class InspectorRecordSearch {
             if (position >= MAX_RECORDS || System.nanoTime() - started > 750_000_000L) { result.limited = true; break; }
             Record record = records.get(position);
             if (!record.matchesFacets(query, now)) continue;
-            boolean metadata = record.contains(query.text);
-            if (!query.excludedText.isEmpty() && record.contains(query.excludedText)) continue;
+            Match hit = record.match(query.text, query.searchScope());
+            boolean metadata = query.text.isEmpty() || hit != null;
+            boolean incompleteHeaders = query.searches("headers") && record.headersLimited();
+            if (incompleteHeaders) result.truncated++;
+            if (!query.excludedText.isEmpty() && record.match(query.excludedText, query.searchScope()) != null) continue;
+            if (hit != null) { result.previews.put(record.key(), preview(hit.text, query.text)); result.previewSources.put(record.key(), hit.source); }
             if (metadata && query.fieldPath.isEmpty() && query.excludedText.isEmpty()) { result.keys.add(record.key()); continue; }
-            if (spent >= unitLimit) { result.limited = true; continue; }
-            boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = false;
-            for (Payload payload : payloads(record, http, sockets, saved)) {
+            if (spent >= unitLimit) { result.limited = true; result.previews.remove(record.key()); result.previewSources.remove(record.key()); continue; }
+            boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = incompleteHeaders;
+            for (Payload payload : payloads(record, query, http, sockets, saved)) {
                 if (cancelled.isCancelled()) return null;
                 String text = payload.text;
-                if (text == null) { result.unavailable++; exclusionUnknown = true; continue; }
+                if (text == null) { result.unavailable++; exclusionUnknown |= query.searches(payload.scope()); continue; }
                 int count = text.length();
-                if (count > InspectorJsonDocument.MAX_UNITS || count > unitLimit - spent) { result.limited = true; exclusionUnknown = true; continue; }
+                if (count > InspectorJsonDocument.MAX_UNITS || count > unitLimit - spent) { result.limited = true; exclusionUnknown |= query.searches(payload.scope()); continue; }
                 spent += count;
-                if (payload.truncated) { result.truncated++; exclusionUnknown = true; }
-                if (!query.excludedText.isEmpty() && InspectorQuery.hasText(text, query.excludedText)) { excluded = true; break; }
+                if (payload.truncated) { result.truncated++; exclusionUnknown |= query.searches(payload.scope()); }
+                if (query.searches(payload.scope()) && !query.excludedText.isEmpty() && InspectorQuery.hasText(text, query.excludedText)) { excluded = true; break; }
                 boolean fieldMatches = true;
                 if (!query.fieldPath.isEmpty()) {
                     if (payload.truncated) fieldMatches = false;
@@ -98,31 +128,33 @@ final class InspectorRecordSearch {
                         if (field == InspectorJsonField.Match.UNAVAILABLE) result.unavailable++;
                     }
                 }
-                if (fieldMatches && (metadata || InspectorQuery.hasText(text, query.text))) {
+                if (fieldMatches && (metadata || query.searches(payload.scope()) && InspectorQuery.hasText(text, query.text))) {
                     matched = true;
                     if (!result.previews.containsKey(record.key())) { result.previews.put(record.key(), preview(text, query.text)); result.previewSources.put(record.key(), payload.source); }
                 }
             }
-            if (matched && !excluded && (query.excludedText.isEmpty() || !exclusionUnknown)) result.keys.add(record.key()); else result.previews.remove(record.key());
+            if (matched && !excluded && (query.excludedText.isEmpty() || !exclusionUnknown)) result.keys.add(record.key()); else { result.previews.remove(record.key()); result.previewSources.remove(record.key()); }
         }
         return cancelled.isCancelled() ? null : result;
     }
-    private static List<Payload> payloads(Record record, HTTPHistory http, WebSocketHistory sockets, Map<String, IncidentPayload> saved) {
-        if (record.log != null) return Collections.singletonList(new Payload(record.log.isPrivate ? null : record.log.message, record.log.isTruncated));
+    private static List<Payload> payloads(Record record, InspectorQuery query, HTTPHistory http, WebSocketHistory sockets, Map<String, IncidentPayload> saved) {
+        if (record.log != null) return query.searches("message") || !query.fieldPath.isEmpty() ? Collections.singletonList(new Payload(record.log.isPrivate ? null : record.log.message, record.log.isTruncated)) : Collections.emptyList();
         if (record.http != null) {
             List<Payload> result = new ArrayList<>(2); int index = 0;
             for (HTTPEvent.BodyReference reference : new HTTPEvent.BodyReference[] {record.http.requestBody, record.http.responseBody}) {
+                String source = index++ == 0 ? "request" : "response";
+                if (!query.searches(source) && query.fieldPath.isEmpty()) continue;
                 String text = null;
                 if (reference.blobId != null) {
                     if (saved != null) { IncidentPayload payload = saved.get(reference.blobId); if (payload != null && payload.state == IncidentPayload.State.AVAILABLE) text = payload.text; }
                     else if (http != null) { HTTPHistory.BodyLookup lookup = http.body(reference.blobId); if (lookup.state == HTTPHistory.BodyLookup.State.AVAILABLE) text = lookup.body.text; }
                 }
-                result.add(new Payload(text, reference.state == HTTPEvent.BodyState.TRUNCATED, index++ == 0 ? "request" : "response"));
+                result.add(new Payload(text, reference.state == HTTPEvent.BodyState.TRUNCATED, source));
             }
             return result;
         }
         WebSocketEvent.PayloadReference reference = record.socket.payload;
-        if (reference == null) return Collections.emptyList();
+        if (reference == null || !query.searches("message") && query.fieldPath.isEmpty()) return Collections.emptyList();
         String text = null;
         if (reference.blobId != null) {
             if (saved != null) { IncidentPayload payload = saved.get(reference.blobId); if (payload != null && payload.state == IncidentPayload.State.AVAILABLE) text = payload.text; }

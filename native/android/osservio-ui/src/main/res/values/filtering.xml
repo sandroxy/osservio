@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_ui_search_request_headers">Request header match</string>
+    <string name="osservio_ui_search_response_headers">Response header match</string>
+    <string name="osservio_ui_search_handshake_headers">Handshake header match</string>
+    <string name="osservio_ui_search_address">Address match</string>
+    <string name="osservio_ui_search_identity">Identifier match</string>
+    <string name="osservio_ui_search_metadata">Record information match</string>
+    <string name="osservio_ui_search_log_message">Log content match</string>
+    <string name="osservio_ui_search_scope">Search text in</string>
+    <string name="osservio_ui_scope_address">Address</string>
+    <string name="osservio_ui_scope_headers">Headers</string>
+    <string name="osservio_ui_scope_request">Request body</string>
+    <string name="osservio_ui_scope_response">Response body</string>
+    <string name="osservio_ui_scope_message">Message content</string>
+    <string name="osservio_ui_scope_identity">Identifiers</string>
+    <string name="osservio_ui_scope_metadata">Record information</string>
+    <string name="osservio_ui_activity">Socket content</string>
+    <string name="osservio_ui_activity_messages">Messages and send results</string>
+    <string name="osservio_ui_activity_connections">Connection events</string>
+    <string name="osservio_ui_outcome">Message result</string>
+    <string name="osservio_ui_close_code">Close code</string>
+    <string name="osservio_ui_filter_common">Common filters</string>
+    <string name="osservio_ui_filter_refine">Refine filters</string>
+    <string name="osservio_ui_filter_scope">View</string>
+    <string name="osservio_ui_filter_switch">Switching HTTP / Socket keeps shared conditions and clears conditions for the other protocol.</string>
+    <string name="osservio_ui_filter_refine_hint">Content, source and precise conditions</string>
+    <string name="osservio_ui_specific_status">Status code (100–599)</string>
+    <string name="osservio_ui_status_1xx">Informational (1xx)</string>
+    <string name="osservio_ui_status_2xx">Successful response (2xx)</string>
+    <string name="osservio_ui_status_3xx">Redirection (3xx)</string>
+    <string name="osservio_ui_status_4xx">Client error (4xx)</string>
+    <string name="osservio_ui_status_5xx">Server error (5xx)</string>
+    <string name="osservio_ui_filter_exact_status">Exact status code</string>
+    <string name="osservio_ui_search_scope_hint">Limits text search and excluded text. JSON field conditions inspect retained bodies.</string>
+</resources>

@@ -263,3 +263,37 @@
 
 "ui_header_value" = "请求头内容";
 "ui_content_processed" = "内容已由宿主策略处理，字节数仍指原始观测数据。";
+
+"ui_search_request_headers" = "匹配请求头";
+"ui_search_response_headers" = "匹配响应头";
+"ui_search_handshake_headers" = "匹配握手头";
+"ui_search_address" = "匹配地址";
+"ui_search_identity" = "匹配标识";
+"ui_search_metadata" = "匹配记录信息";
+"ui_search_log_message" = "匹配日志正文";
+"ui_search_scope" = "文字查找范围";
+"ui_scope_address" = "地址";
+"ui_scope_headers" = "请求头与响应头";
+"ui_scope_request" = "请求正文";
+"ui_scope_response" = "响应正文";
+"ui_scope_message" = "消息正文";
+"ui_scope_identity" = "记录与连接标识";
+"ui_scope_metadata" = "记录信息";
+"ui_activity" = "Socket 内容";
+"ui_activity_messages" = "消息与发送结果";
+"ui_activity_connections" = "连接事件";
+"ui_outcome" = "消息结果";
+"ui_close_code" = "关闭码";
+"ui_filter_common" = "常用筛选";
+"ui_filter_refine" = "精细筛选";
+"ui_filter_scope" = "查看范围";
+"ui_filter_switch" = "切换 HTTP / Socket 会保留共同条件，并清除另一协议的专属条件。";
+"ui_filter_refine_hint" = "内容、采集来源与精确条件";
+"ui_specific_status" = "状态码（100–599）";
+"ui_status_1xx" = "信息响应（1xx）";
+"ui_status_2xx" = "成功响应（2xx）";
+"ui_status_3xx" = "重定向（3xx）";
+"ui_status_4xx" = "客户端错误（4xx）";
+"ui_status_5xx" = "服务端错误（5xx）";
+"ui_filter_exact_status" = "具体状态码";
+"ui_search_scope_hint" = "限定文字搜索与排除文本的范围。JSON 字段条件检查已保留的正文。";
