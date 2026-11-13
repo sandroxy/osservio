@@ -20,6 +20,7 @@ public final class LogInspectorViewController: UITableViewController {
     private var timeCheck: TimeInterval = 0
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var latest: LogSnapshot?
+    private var displayedRevision: UInt64?
     private var events: [LogEvent] = []
     private var anchor: Int64 = 0
     private var dirty = true
@@ -109,7 +110,9 @@ public final class LogInspectorViewController: UITableViewController {
     }
     private func display() {
         let span = InspectorPerformance.begin(.logApply); defer { span?.end() }
-        table.refreshFeed(rowCount: events.count, preservingPosition: paused && result != nil)
+        if result == nil && displayedRevision != latest?.revision { table.reloadData() }
+        else { table.refreshFeed(rowCount: events.count, preservingPosition: paused) }
+        displayedRevision = latest?.revision
         let count = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
         if header.count.text != count { header.count.text = count }
         let key = dirty && query.searchesPayload ? "ui_searching" : latest == nil ? attemptedRead ? "busy" : "ui_reading"

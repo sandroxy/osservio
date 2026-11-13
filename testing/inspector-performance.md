@@ -47,8 +47,10 @@ filter generations, immutable detail reads, bounded indices and inactive-view
 suspension; reducing a trace duration is not sufficient if these regress.
 
 Live feed controls keep their existing instances when only counts change. On
-iOS, unchanged row counts reconfigure the visible cells instead of discarding
-the entire table's layout; a changed count still reconciles the data source.
+iOS, network feeds and search results with unchanged row counts reconfigure
+visible cells; changed counts reload the data source. Unfiltered and facet-only
+log windows use table reloads as records rotate through the retained window;
+reconfiguring those rows did not reduce measured update costs.
 Socket preview delivery updates only affected visible rows. Verify both short
 and wrapped content, offscreen reuse, theme changes and a paused reading anchor
 when changing these paths. `InspectorRefreshTests` and `InspectorFeedUpdateTest`
