@@ -91,17 +91,18 @@ public final class LogInspectorViewController: UITableViewController {
             events = query.activeCount == 0 ? Array(retained) : retained.filter { query.matchesFacets($0, now: anchor) }
             result = nil; dirty = false; display(); return
         }
-        let records = (latest?.events ?? []).reversed().map(InspectorSearchRecord.log)
+        let retained = latest?.events ?? []
         let current = generation, detailsHistory = history as? any LogDetailsHistory
         let showProgress = result == nil || result?.complete == false
         task = InspectorRecordSearchTask.submitProgressive(search: { cancelled, progress in
-            InspectorRecordSearch.run(records, query: query, now: anchor, http: nil, sockets: nil, logs: detailsHistory, cancelled: cancelled, progress: progress)
+            InspectorRecordSearch.run(retained.reversed().lazy.map(InspectorSearchRecord.log), query: query, now: anchor,
+                http: nil, sockets: nil, logs: detailsHistory, cancelled: cancelled, progress: progress)
         }, completion: { [weak self] result in
             guard let self, self.generation == current else { return }
             guard result.complete || showProgress else { return }
             if result.complete { self.task = nil; self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1 }
             self.result = result
-            self.events = result.positions.compactMap { position in guard case .log(let event) = records[position] else { return nil }; return event }
+            self.events = result.positions.map { retained[retained.count - 1 - $0] }
             self.display()
         })
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }

@@ -87,21 +87,32 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             .filter { connectionID == nil || $0.connectionID == connectionID }.map(InspectorSearchRecord.socket))
     }
     private func search() {
-        let records = records, query = query, anchor = anchor
-        available = records.count
+        let query = query, anchor = anchor
         if !query.searchesPayload {
+            let records = records; available = records.count
             rows = query.activeCount == 0 ? records : records.filter { $0.matchesFacets(query, now: anchor) }
             result = nil; dirty = false; display(); return
         }
         let requestHistory = http?.history, socketHistory = sockets?.history, current = generation
+        let requests = connectionID == nil ? latestHTTP?.events ?? [] : []
+        let messages = latestSockets?.events ?? [], connectionID = connectionID
+        let record: (Int) -> InspectorSearchRecord = { index in
+            index < requests.count ? .http(requests[index]) : .socket(messages[index - requests.count])
+        }
         let showProgress = result == nil || result?.complete == false
         task = InspectorRecordSearchTask.submitProgressive(search: { cancelled, progress in
-            InspectorRecordSearch.run(records, query: query, now: anchor, http: requestHistory, sockets: socketHistory, cancelled: cancelled, progress: progress)
+            guard !cancelled() else { return nil }
+            // Sort lightweight source positions on the worker and create record values lazily.
+            guard let positions = InspectorSearchRecord.searchOrder(count: requests.count + messages.count, record: record, includes: { index in
+                connectionID == nil || index < requests.count || messages[index - requests.count].connectionID == connectionID
+            }, cancelled: cancelled) else { return nil }
+            return InspectorRecordSearch.run(positions.lazy.map(record), query: query, now: anchor,
+                http: requestHistory, sockets: socketHistory, cancelled: cancelled, position: { positions[$0] }, progress: progress)
         }, completion: { [weak self] result in
             guard let self, self.generation == current else { return }
             guard result.complete || showProgress else { return }
             if result.complete { self.task = nil; self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1 }
-            self.result = result; self.rows = result.positions.map { records[$0] }; self.display()
+            self.result = result; self.available = result.total; self.rows = result.positions.map(record); self.display()
         })
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }

@@ -4,6 +4,23 @@ import OsservioCore
 import XCTest
 
 final class InspectorRecordSearchTests: XCTestCase {
+    func testLazySearchKeepsOriginalPositionsAndOrderingCanCancelBeforeReads() throws {
+        let history = History()
+        let records = [InspectorSearchRecord.socket(try message(1, connection: 10, text: "needle", history: history, time: 10)),
+                       .socket(try message(2, connection: 20, text: "needle", history: history, time: 20)),
+                       .socket(try message(3, connection: 10, text: "needle", history: history, time: 30))]
+        let positions = try XCTUnwrap(InspectorSearchRecord.searchOrder(count: records.count, record: { records[$0] }, includes: { $0 != 1 }, cancelled: { false }))
+        XCTAssertEqual(positions, [2, 0])
+        var query = InspectorQuery(); query.text = "needle"
+        let found = try XCTUnwrap(InspectorRecordSearch.run(positions.lazy.map { records[$0] }, query: query, now: 100,
+            http: nil, sockets: history, cancelled: { false }, position: { positions[$0] }))
+        XCTAssertEqual(found.positions, [2, 0]); XCTAssertEqual(found.total, 2); XCTAssertEqual(history.reads, 2)
+        var fetched = 0
+        XCTAssertNil(InspectorSearchRecord.searchOrder(count: 10_000, record: { index in fetched += 1; return records[index % records.count] },
+            includes: { _ in true }, cancelled: { fetched > 0 }))
+        XCTAssertLessThan(fetched, 1_024, "Ordering must observe cancellation before reading bodies")
+        XCTAssertEqual(history.reads, 2)
+    }
     func testSearchCoversTheEntireWindowBeyondPreviousRecordAndAggregateLimits() throws {
         let text = String(repeating: "x", count: 600)
         let records: [InspectorSearchRecord] = try (0..<10_000).map { position in

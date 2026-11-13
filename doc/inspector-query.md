@@ -80,7 +80,8 @@ already evicted by the store is reported as unavailable.
 
 Android captures a resource configuration before scheduling work; address and
 localized search preparation use that context on the worker, without accessing
-Views or retaining an Activity. Changing a query or presentation generation
+Views or retaining an Activity. iOS searches logs lazily and sorts network source
+positions on the worker; it creates presentation rows only for matches. Changing a query or presentation generation
 rejects stale deliveries on both platforms.
 
 A connection-context page restricts its source window independently of removable

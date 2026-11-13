@@ -52,6 +52,24 @@ enum InspectorSearchRecord: Sendable {
     static func ordered(_ records: [Self]) -> [Self] {
         records.indices.sorted { newestFirst(records[$0], records[$1]) }.map { records[$0] }
     }
+    private enum OrderingStopped: Error { case cancelled }
+    static func searchOrder(count: Int, record: (Int) -> Self, includes: (Int) -> Bool,
+                            cancelled: () -> Bool) -> [Int]? {
+        var positions: [Int] = []
+        for index in 0..<count {
+            if index % 256 == 0 && cancelled() { return nil }
+            if includes(index) { positions.append(index) }
+        }
+        var comparisons = 0
+        do {
+            try positions.sort { left, right in
+                comparisons += 1
+                if comparisons % 256 == 0 && cancelled() { throw OrderingStopped.cancelled }
+                return newestFirst(record(left), record(right))
+            }
+        } catch { return nil }
+        return cancelled() ? nil : positions
+    }
 }
 
 /// On-demand search of sanitized retained evidence, never a host stream. No body index is kept.
@@ -71,19 +89,19 @@ enum InspectorRecordSearch {
         let text: String?; let truncated: Bool; var source: String = "ui_search_message"
         var scope: String { source == "ui_search_request_body" ? "request" : source == "ui_search_response_body" ? "response" : "message" }
     }
-    static func run(_ records: [InspectorSearchRecord], query: InspectorQuery, now: Int64,
+    static func run<Records: Collection>(_ records: Records, query: InspectorQuery, now: Int64,
                     http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?,
                     savedPayloads: [String: IncidentPayload]? = nil, logs: (any LogDetailsHistory)? = nil, unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool,
-                    progress: (Result) -> Void = { _ in }) -> Result? {
+                    position: (Int) -> Int = { $0 }, progress: (Result) -> Void = { _ in }) -> Result? where Records.Element == InspectorSearchRecord {
         var result = Result(); result.total = records.count; result.complete = false
         var sliceStart = DispatchTime.now().uptimeNanoseconds, publishedAt: UInt64 = 0, sliceCount = 0
-        for (position, record) in records.enumerated() {
+        for (index, record) in records.enumerated() {
             if cancelled() { return nil }
             if match(record, query: query, now: now, http: http, sockets: sockets,
                      savedPayloads: savedPayloads, logs: logs, unitLimit: unitLimit, cancelled: cancelled, result: &result) {
-                result.keys.insert(record.key); result.positions.append(position)
+                result.keys.insert(record.key); result.positions.append(position(index))
             }
-            result.scanned = position + 1; sliceCount += 1
+            result.scanned = index + 1; sliceCount += 1
             let tick = DispatchTime.now().uptimeNanoseconds
             if sliceCount >= 256 || tick - sliceStart >= 8_000_000 {
                 if publishedAt == 0 || tick - publishedAt >= 100_000_000 {
