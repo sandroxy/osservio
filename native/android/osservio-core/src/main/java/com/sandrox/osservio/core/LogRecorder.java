@@ -6,7 +6,7 @@ import java.util.Objects;
 public final class LogRecorder {
     public enum Result {
         RECORDED, INACTIVE, RATE_LIMITED, BUSY, INVALID_CATEGORY, INVALID_MESSAGE,
-        INVALID_LEVEL, TOO_LARGE, SINK_FAILURE, SEQUENCE_EXHAUSTED
+        INVALID_LEVEL, TOO_LARGE, PROTECTED_CAPACITY, SINK_FAILURE, SEQUENCE_EXHAUSTED
     }
 
     public static final class Status {
@@ -25,9 +25,11 @@ public final class LogRecorder {
     private final LogSink sink;
     private final int messageByteLimit;
     private final int eventsPerSecond;
+    private final int errorReservePerSecond;
     private String sessionId = "";
     private long windowStart;
     private int windowCount;
+    private int reservedErrors;
     private long rateLimited;
 
     public LogRecorder(LogSink sink) { this(sink, 4096, 200, LogClock.SYSTEM); }
@@ -41,13 +43,19 @@ public final class LogRecorder {
     }
 
     public LogRecorder(LogSink sink, CaptureController captureController, int messageByteLimit, int eventsPerSecond) {
-        if (messageByteLimit < 9 || messageByteLimit > 65536 || eventsPerSecond < 1 || eventsPerSecond > 10000) {
+        this(sink, captureController, messageByteLimit, eventsPerSecond, Math.min(20, Math.max(1, eventsPerSecond / 10)));
+    }
+
+    public LogRecorder(LogSink sink, CaptureController captureController, int messageByteLimit, int eventsPerSecond, int errorReservePerSecond) {
+        if (messageByteLimit < 9 || messageByteLimit > 65536 || eventsPerSecond < 1 || eventsPerSecond > 10000
+            || errorReservePerSecond < 0 || errorReservePerSecond > 100) {
             throw new IllegalArgumentException("Invalid log capture limit");
         }
         this.sink = Objects.requireNonNull(sink, "sink");
         this.captureController = Objects.requireNonNull(captureController, "captureController");
         this.messageByteLimit = messageByteLimit;
         this.eventsPerSecond = eventsPerSecond;
+        this.errorReservePerSecond = errorReservePerSecond;
     }
 
     public void start() { start(900_000L); }
@@ -87,6 +95,7 @@ public final class LogRecorder {
             sessionId = context.sessionId;
             windowStart = context.sessionStartMillis;
             windowCount = 0;
+            reservedErrors = 0;
         }
         if (level == null) return Result.INVALID_LEVEL;
         if (!validCategory(category)) return Result.INVALID_CATEGORY;
@@ -94,12 +103,14 @@ public final class LogRecorder {
         if (now >= windowStart && now - windowStart >= 1000L) {
             windowStart = now;
             windowCount = 0;
+            reservedErrors = 0;
         }
-        if (windowCount >= eventsPerSecond) {
+        if (windowCount < eventsPerSecond) windowCount++;
+        else if (level == LogLevel.ERROR && reservedErrors < errorReservePerSecond) reservedErrors++;
+        else {
             if (rateLimited < Long.MAX_VALUE) rateLimited++;
             return Result.RATE_LIMITED;
         }
-        windowCount++;
         BoundedText bounded = BoundedText.prefix(message.text, messageByteLimit);
         if (bounded == null) return Result.INVALID_MESSAGE;
         LogEvent event = new LogEvent(sessionId, context.sequence, captureController.clock.wallTimeMillis(), level,
@@ -109,6 +120,7 @@ public final class LogRecorder {
             if (result == LogSink.WriteResult.STORED) return Result.RECORDED;
             if (result == LogSink.WriteResult.BUSY) return Result.BUSY;
             if (result == LogSink.WriteResult.TOO_LARGE) return Result.TOO_LARGE;
+            if (result == LogSink.WriteResult.PROTECTED_CAPACITY) return Result.PROTECTED_CAPACITY;
             return Result.SINK_FAILURE;
         } catch (RuntimeException failure) {
             return Result.SINK_FAILURE;

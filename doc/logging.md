@@ -79,14 +79,21 @@ which content the host permits.
 | --- | --- | --- |
 | Message UTF-8 bytes | 4,096 | 9–65,536 |
 | Admission attempts per rate window | 200 | 1–10,000 |
+| Additional error attempts per window | `min(20, max(1, rate / 10))` | 0–100 |
 | Rate window | 1,000 milliseconds | Fixed |
 | Retained events | 500 | 1–10,000 |
 | Retained message and category UTF-8 bytes | 524,288 | 1–16,777,216 |
+| Recently protected error records | `min(32, max(1, count / 4))` | 0–64, no greater than record count |
+| Error protection after admission | 30 seconds | 1 millisecond–5 minutes |
 
 The rate limiter uses a tumbling window beginning at session start or the first
 attempt after the previous window expires. It is not a rolling one-second quota;
 bursts can occur on either side of a window boundary. Attempts reaching this
 stage consume the budget even if the store subsequently rejects them.
+Once the shared window is exhausted, only error-level attempts may consume the
+separate error reserve. The reserve also expires with the rate window. Setting
+`errorReservePerSecond` to zero disables it. This is not guaranteed delivery:
+contention, invalid input, sink failure and retention budgets still apply.
 
 Message truncation preserves complete Unicode scalars within the byte limit.
 It may split a multi-scalar grapheme, such as a combined emoji. An event indicates
@@ -94,9 +101,16 @@ whether truncation occurred. Android rejects null messages, null levels, and
 unpaired UTF-16 surrogates encountered while scanning the retained prefix.
 Swift's input types exclude these representations.
 
-The store evicts the oldest events until both count and text-byte limits fit.
-An individual event that cannot fit is rejected without evicting existing
-history. Eviction and rate-limit counters accumulate for the lifetime of their
+The store evicts the oldest eligible events until both count and text-byte limits
+fit. Up to `errorReserve` of the newest errors are protected from ordinary
+eviction for `errorProtectionMillis`, measured from store admission with a
+monotonic clock. New errors can displace older errors beyond that reserve;
+protection never expands the count or byte budget. Setting the reserve to zero
+restores FIFO eviction. Ordinary history remains useful alongside errors.
+If protected records leave insufficient capacity, `protectedCapacity` /
+`PROTECTED_CAPACITY` rejects the new event without deleting any history. An
+individual event larger than the entire byte budget is also rejected atomically.
+Eviction and rate-limit counters accumulate for the lifetime of their
 store and recorder, respectively; clearing history or starting a new session
 does not reset those counters.
 
@@ -116,7 +130,7 @@ snapshots. Capture may lose events under contention; it is not a lossless log.
 
 Inspect the result of `record` when completeness matters. Results distinguish
 recorded, inactive, rate-limited, busy, invalid category or message, oversized
-event, sink failure, and sequence exhaustion. Android additionally reports an
+event, protected capacity, sink failure, and sequence exhaustion. Android additionally reports an
 invalid level. A sink exception is converted into sink failure; the SDK does not
 attempt to recover from process-wide failures such as an out-of-memory error.
 Do not recursively log a rejection into the same recorder.

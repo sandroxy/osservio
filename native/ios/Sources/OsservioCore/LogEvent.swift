@@ -57,9 +57,9 @@ public struct LogEvent: Sendable {
     }
 }
 
-public enum LogWriteResult: Sendable { case stored, busy, tooLarge }
+public enum LogWriteResult: Sendable { case stored, busy, tooLarge, protectedCapacity }
 public enum LogCaptureResult: Sendable {
-    case recorded, inactive, rateLimited, busy, invalidCategory, invalidMessage, tooLarge, sinkFailure, sequenceExhausted
+    case recorded, inactive, rateLimited, busy, invalidCategory, invalidMessage, tooLarge, protectedCapacity, sinkFailure, sequenceExhausted
 }
 
 public protocol LogSink: Sendable {

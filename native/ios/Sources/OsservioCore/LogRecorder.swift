@@ -6,26 +6,30 @@ public final class LogRecorder: @unchecked Sendable {
     private let sink: any LogSink
     private let messageByteLimit: Int
     private let eventsPerSecond: Int
+    private let errorReservePerSecond: Int
     private var sessionID = ""
     private var windowStart: UInt64 = 0
     private var windowCount = 0
+    private var reservedErrors = 0
     private var rateLimited: Int64 = 0
 
     public convenience init(sink: any LogSink, messageByteLimit: Int = 4_096,
-                eventsPerSecond: Int = 200, clock: any LogClock = SystemLogClock()) throws {
+                eventsPerSecond: Int = 200, errorReservePerSecond: Int? = nil, clock: any LogClock = SystemLogClock()) throws {
         try self.init(sink: sink, captureController: CaptureController(clock: clock),
-                      messageByteLimit: messageByteLimit, eventsPerSecond: eventsPerSecond)
+                      messageByteLimit: messageByteLimit, eventsPerSecond: eventsPerSecond, errorReservePerSecond: errorReservePerSecond)
     }
 
     public init(sink: any LogSink, captureController: CaptureController,
-                messageByteLimit: Int = 4_096, eventsPerSecond: Int = 200) throws {
-        guard (9...65_536).contains(messageByteLimit), (1...10_000).contains(eventsPerSecond) else {
+                messageByteLimit: Int = 4_096, eventsPerSecond: Int = 200, errorReservePerSecond: Int? = nil) throws {
+        let reserve = errorReservePerSecond ?? min(20, max(1, eventsPerSecond / 10))
+        guard (9...65_536).contains(messageByteLimit), (1...10_000).contains(eventsPerSecond), (0...100).contains(reserve) else {
             throw CaptureConfigurationError.invalidLimit
         }
         self.sink = sink
         self.captureController = captureController
         self.messageByteLimit = messageByteLimit
         self.eventsPerSecond = eventsPerSecond
+        self.errorReservePerSecond = reserve
     }
 
     /// Starts detailed capture for all recorders sharing this controller, without clearing history.
@@ -67,17 +71,20 @@ public final class LogRecorder: @unchecked Sendable {
             sessionID = context.sessionID
             windowStart = context.sessionStartMillis
             windowCount = 0
+            reservedErrors = 0
         }
         guard Self.validCategory(category) else { return .invalidCategory }
         if now >= windowStart, now - windowStart >= 1_000 {
             windowStart = now
             windowCount = 0
+            reservedErrors = 0
         }
-        guard windowCount < eventsPerSecond else {
+        if windowCount < eventsPerSecond { windowCount += 1 }
+        else if level == .error && reservedErrors < errorReservePerSecond { reservedErrors += 1 }
+        else {
             if rateLimited < Int64.max { rateLimited += 1 }
             return .rateLimited
         }
-        windowCount += 1
         guard let bounded = BoundedText.prefix(message.text, bytes: messageByteLimit) else { return .invalidMessage }
         let event = LogEvent(sessionID: sessionID, sequence: context.sequence,
                              timestampMillis: captureController.clock.wallTimeMillis(), level: level,
@@ -88,6 +95,7 @@ public final class LogRecorder: @unchecked Sendable {
             case .stored: return .recorded
             case .busy: return .busy
             case .tooLarge: return .tooLarge
+            case .protectedCapacity: return .protectedCapacity
             }
         } catch {
             return .sinkFailure
