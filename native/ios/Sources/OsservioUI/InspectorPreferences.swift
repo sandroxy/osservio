@@ -36,9 +36,19 @@ final class InspectorPreferences {
 }
 
 enum InspectorLocalization {
+    private static let bundles: [String: Bundle] = {
+        var result: [String: Bundle] = [:]
+        for language in InspectorPreferences.Language.allCases {
+            // SwiftPM may normalize language-directory casing; use the bundle's declared identifier.
+            guard let identifier = Bundle.module.localizations.first(where: { $0.caseInsensitiveCompare(language.rawValue) == .orderedSame }),
+                  let path = Bundle.module.path(forResource: identifier, ofType: "lproj"),
+                  let bundle = Bundle(path: path) else { continue }
+            result[language.rawValue] = bundle
+        }
+        return result
+    }()
     static func text(_ key: String) -> String {
-        guard let path = Bundle.module.path(forResource: InspectorPreferences.shared.language.rawValue, ofType: "lproj"),
-              let bundle = Bundle(path: path) else { return key }
+        guard let bundle = bundles[InspectorPreferences.shared.language.rawValue] else { return key }
         return bundle.localizedString(forKey: key, value: nil, table: key.hasPrefix("ui_") ? "Inspector" : nil)
     }
     static func date(_ millis: Int64, timeOnly: Bool = false) -> String {
