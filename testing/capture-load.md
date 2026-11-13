@@ -14,7 +14,10 @@ Each batch offers five mixed ticks followed by 10 ms idle, without catching up
 after scheduler delays. A tick offers a log, breadcrumb, HTTP exchange and
 WebSocket connection/message/close. The recorders use their normal rate limits.
 Logs alternate public 8 KiB synthetic text and private text; every fiftieth tick
-uses error severity to exercise finite error protection during the flood. Synthetic HTTP and
+uses error severity and bounded typed context to exercise finite error protection
+and separate context retention during the flood. The supplied context includes
+a precise integer, a boolean, one attribute and an explicitly synthetic error
+stack. Its payload store is limited to 256 KiB. Synthetic HTTP and
 WebSocket content uses a 1 KiB prefix. Complete URLs and 1,207-byte synthetic
 Authorization values exercise the local-debugging policy without redaction. This intentionally overloads admission and fills
 retained windows repeatedly; the offered load is not a production traffic model.
