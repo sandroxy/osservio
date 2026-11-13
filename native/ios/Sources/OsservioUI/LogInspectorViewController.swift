@@ -86,7 +86,11 @@ public final class LogInspectorViewController: UITableViewController {
     }
     private func render() {
         let query = query, anchor = anchor
-        if !query.searchesPayload { events = (latest?.events ?? []).reversed().filter { query.matchesFacets($0, now: anchor) }; result = nil; dirty = false; display(); return }
+        if !query.searchesPayload {
+            let retained = (latest?.events ?? []).reversed()
+            events = query.activeCount == 0 ? Array(retained) : retained.filter { query.matchesFacets($0, now: anchor) }
+            result = nil; dirty = false; display(); return
+        }
         let records = (latest?.events ?? []).reversed().map(InspectorSearchRecord.log)
         let current = generation, detailsHistory = history as? any LogDetailsHistory
         let showProgress = result == nil || result?.complete == false

@@ -132,7 +132,9 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         Collections.sort(records, InspectorRecordSearch::newestFirst); available = records.size();
         InspectorQuery query = state.query.copy(); long anchor = state.timeAnchor;
         if (!query.searchesPayload()) {
-            items.clear(); for (InspectorRecordSearch.Record record : records) if (record.matchesFacets(query, anchor)) items.add(record);
+            items.clear();
+            if (query.activeCount() == 0) items.addAll(records);
+            else for (InspectorRecordSearch.Record record : records) if (record.matchesFacets(query, anchor)) items.add(record);
             result = null; dirty = false; display(); return;
         }
         HTTPHistory requests = httpHistory; WebSocketHistory socketEvents = socketHistory; long current = generation;

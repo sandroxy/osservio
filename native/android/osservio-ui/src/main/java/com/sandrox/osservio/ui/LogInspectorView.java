@@ -128,14 +128,17 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         header.setPaused(state.paused);
     }
     private void search() {
-        List<InspectorRecordSearch.Record> records = new ArrayList<>();
         List<LogEvent> retained = retained();
-        for (int i = retained.size() - 1; i >= 0; i--) records.add(new InspectorRecordSearch.Record(retained.get(i)));
         InspectorQuery query = state.query.copy(); long anchor = state.timeAnchor;
         if (!query.searchesPayload()) {
-            events.clear(); for (InspectorRecordSearch.Record record : records) if (record.matchesFacets(query, anchor)) events.add(record.log);
+            events.clear(); boolean filtered = query.activeCount() > 0;
+            for (int i = retained.size() - 1; i >= 0; i--) {
+                LogEvent event = retained.get(i); if (!filtered || query.matchesFacets(event, anchor)) events.add(event);
+            }
             result = null; dirty = false; display(); return;
         }
+        List<InspectorRecordSearch.Record> records = new ArrayList<>(retained.size());
+        for (int i = retained.size() - 1; i >= 0; i--) records.add(new InspectorRecordSearch.Record(retained.get(i)));
         long current = generation; java.lang.ref.WeakReference<LogInspectorView> owner = new java.lang.ref.WeakReference<>(this);
         InspectorRecordSearch.Preparation preparation = InspectorRecordPresentation.searchPreparation(getContext(), query);
         boolean showProgress = result == null || !result.complete;

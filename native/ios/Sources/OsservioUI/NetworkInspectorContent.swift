@@ -90,7 +90,8 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         let records = records, query = query, anchor = anchor
         available = records.count
         if !query.searchesPayload {
-            rows = records.filter { $0.matchesFacets(query, now: anchor) }; result = nil; dirty = false; display(); return
+            rows = query.activeCount == 0 ? records : records.filter { $0.matchesFacets(query, now: anchor) }
+            result = nil; dirty = false; display(); return
         }
         let requestHistory = http?.history, socketHistory = sockets?.history, current = generation
         let showProgress = result == nil || result?.complete == false
