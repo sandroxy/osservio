@@ -37,6 +37,11 @@ final class InspectorCaptureSettingsViewController: UITableViewController {
         if baseline?.setBaselineEnabled(baselineSwitch.isOn) != true { inspectorNotice(InspectorLocalization.text("busy")) }
         refresh()
     }
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard indexPath.section == 1 else { return }
+        inspectorPush(InspectorCaptureStatisticsViewController(controllers[indexPath.row].1.statistics))
+    }
     override func numberOfSections(in tableView: UITableView) -> Int { 2 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? (baseline == nil ? 0 : 1) : controllers.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { section == 0 ? nil : InspectorLocalization.text("ui_capture_status") }
@@ -48,6 +53,8 @@ final class InspectorCaptureSettingsViewController: UITableViewController {
         cell.backgroundColor = InspectorTheme.surface; cell.selectionStyle = .none
         if indexPath.section == 0 { cell.textLabel?.text = InspectorLocalization.text("ui_baseline_capture"); cell.accessoryView = baselineSwitch }
         else {
+            cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator
+            cell.accessibilityTraits.insert(.button)
             let key = controllers[indexPath.row].0
             cell.textLabel?.text = controllers.count == 1 ? "Osservio" : ["HTTP", "WebSocket"].contains(key) ? key : InspectorLocalization.text(key)
             cell.detailTextLabel?.text = indexPath.row < statuses.count ? statuses[indexPath.row] : InspectorLocalization.text("busy")

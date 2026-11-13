@@ -40,6 +40,7 @@ private final class WeakCaptureObserver {
 
 /// Shared admission and lifecycle for native recorders. No collectors are installed automatically.
 public final class CaptureController: @unchecked Sendable {
+    public let statistics: CaptureStatistics
     private let lock = NSLock()
     let clock: any LogClock
     private var closed = false
@@ -59,6 +60,7 @@ public final class CaptureController: @unchecked Sendable {
         self.baselineEnabled = baselineEnabled
         self.detailed = debugEnabled
         self.clock = clock
+        self.statistics = CaptureStatistics(startedAtMillis: clock.wallTimeMillis())
         self.sessionStartMillis = clock.monotonicMillis()
     }
 

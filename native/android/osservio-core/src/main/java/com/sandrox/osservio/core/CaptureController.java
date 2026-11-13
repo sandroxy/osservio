@@ -60,6 +60,7 @@ public final class CaptureController {
 
     private final ReentrantLock lock = new ReentrantLock();
     final LogClock clock;
+    public final CaptureStatistics statistics;
     private boolean closed;
     private boolean baselineEnabled;
     private boolean detailed;
@@ -88,6 +89,7 @@ public final class CaptureController {
         this.baselineEnabled = baselineEnabled;
         this.debugAutoOffAfterMillis = debugAutoOffAfterMillis;
         this.clock = Objects.requireNonNull(clock, "clock");
+        statistics = new CaptureStatistics(clock.wallTimeMillis());
         sessionStartMillis = clock.monotonicMillis();
         if (debugEnabled) setDebugEnabled(true);
     }

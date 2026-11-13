@@ -134,7 +134,7 @@ public final class WebSocketRecorder {
         return binary(token, direction, outcome, byteCount, UUID.randomUUID());
     }
     public Result binary(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, long byteCount, UUID messageId) {
-        if (byteCount < 0) return Result.INVALID;
+        if (byteCount < 0) return captureController.statistics.observe(Result.INVALID);
         return message(token, direction, outcome, messageId, id -> new Payload(WebSocketEvent.PayloadState.BINARY, byteCount, null));
     }
     /** Correlates a completion without retaining its original content. The submission may have been evicted. */
@@ -177,10 +177,10 @@ public final class WebSocketRecorder {
     private Result access(CaptureController.Operation<CaptureController.Context, Result> body) {
         CaptureController.Access<Result> result = captureController.record(true, body);
         switch (result.admission) {
-            case VALUE: return result.value;
-            case INACTIVE: return Result.INACTIVE;
-            case BUSY: return Result.BUSY;
-            case SEQUENCE_EXHAUSTED: return Result.SEQUENCE_EXHAUSTED;
+            case VALUE: return captureController.statistics.observe(result.value);
+            case INACTIVE: return captureController.statistics.observe(Result.INACTIVE);
+            case BUSY: return captureController.statistics.observe(Result.BUSY);
+            case SEQUENCE_EXHAUSTED: return captureController.statistics.observe(Result.SEQUENCE_EXHAUSTED);
             default: throw new IllegalStateException("Unknown capture admission");
         }
     }

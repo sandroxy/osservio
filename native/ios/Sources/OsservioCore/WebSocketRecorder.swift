@@ -131,7 +131,7 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
     @discardableResult
     public func binary(_ token: WebSocketToken, direction: WebSocketDirection, outcome: WebSocketMessageOutcome,
                        byteCount: Int64, messageID: UUID = UUID()) -> WebSocketRecordResult {
-        guard byteCount >= 0 else { return .invalid }
+        guard byteCount >= 0 else { return captureController.statistics.observe(WebSocketRecordResult.invalid) }
         return message(token, direction: direction, outcome: outcome, messageID: messageID) { _ in
             (WebSocketPayloadReference(state: .binary, blobID: nil, byteCount: byteCount), nil)
         }
@@ -183,12 +183,14 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
         windowCount += 1; return true
     }
     private func access(_ body: (CaptureContext) -> WebSocketRecordResult) -> WebSocketRecordResult {
+        let observed: WebSocketRecordResult
         switch captureController.record(requiresDetailed: true, body) {
-        case .value(let value): return value
-        case .inactive: return .inactive
-        case .busy: return .busy
-        case .sequenceExhausted: return .sequenceExhausted
+        case .value(let value): observed = value
+        case .inactive: observed = .inactive
+        case .busy: observed = .busy
+        case .sequenceExhausted: observed = .sequenceExhausted
         }
+        return captureController.statistics.observe(observed)
     }
     private func write(_ event: WebSocketEvent, payload: WebSocketPayload? = nil) -> WebSocketRecordResult {
         do {

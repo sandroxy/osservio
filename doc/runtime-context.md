@@ -36,7 +36,8 @@ meaning depends on the kind and label.
 Admission precedes text inspection. Capture uses try-locks and never schedules
 an unbounded queue. Rate rejection, invalid labels/messages, contention, oversized
 events, and sink failures are explicit results. The rate-limited count is not a
-complete measure of all losses. Memory snapshots are immutable and clearing
+complete measure of all losses. [Capture statistics](capture-statistics.md)
+aggregate the recorder's other outcomes without recording payloads. Memory snapshots are immutable and clearing
 does not stop observation. These budgets are not measured production guarantees.
 
 Each event carries `memoryOnly` or `restartRelevant` retention intent. The default

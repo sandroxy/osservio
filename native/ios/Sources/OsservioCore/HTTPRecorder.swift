@@ -78,12 +78,15 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
                                   supportsRequest: privacy.supportsBody(headers, decoded: false))
             return HTTPBeginResult(result: .recorded, token: HTTPExchangeToken(id: id, sessionID: context.sessionID))
         }
+        let observed: HTTPBeginResult
         switch access {
-        case .value(let value): return value
-        case .inactive: return HTTPBeginResult(result: .inactive, token: nil)
-        case .busy: return HTTPBeginResult(result: .busy, token: nil)
-        case .sequenceExhausted: return HTTPBeginResult(result: .sequenceExhausted, token: nil)
+        case .value(let value): observed = value
+        case .inactive: observed = HTTPBeginResult(result: .inactive, token: nil)
+        case .busy: observed = HTTPBeginResult(result: .busy, token: nil)
+        case .sequenceExhausted: observed = HTTPBeginResult(result: .sequenceExhausted, token: nil)
         }
+        captureController.statistics.observe(observed.result)
+        return observed
     }
 
     /// The copy closure receives a bounded prefix size. It must copy from already-observed memory, never read a stream.
@@ -165,14 +168,14 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
     }
 
     func captureSessionDidEnd() {
-        for exchange in active.values { _ = endObservation(exchange) }
+        for exchange in active.values { captureController.statistics.observe(endObservation(exchange)) }
         active.removeAll()
     }
 
     private func expire(at now: UInt64) {
         let expired = active.filter { now >= $0.value.started && now - $0.value.started >= exchangeLifetimeMillis }.map(\.key)
         for id in expired {
-            if let exchange = active.removeValue(forKey: id) { _ = endObservation(exchange) }
+            if let exchange = active.removeValue(forKey: id) { captureController.statistics.observe(endObservation(exchange)) }
         }
     }
 
@@ -193,12 +196,14 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
     }
 
     private func result(_ access: CaptureAccess<HTTPRecordResult>) -> HTTPRecordResult {
+        let observed: HTTPRecordResult
         switch access {
-        case .value(let result): return result
-        case .inactive: return .inactive
-        case .busy: return .busy
-        case .sequenceExhausted: return .sequenceExhausted
+        case .value(let result): observed = result
+        case .inactive: observed = .inactive
+        case .busy: observed = .busy
+        case .sequenceExhausted: observed = .sequenceExhausted
         }
+        return captureController.statistics.observe(observed)
     }
 
     private func write(_ update: HTTPUpdate) -> HTTPRecordResult {

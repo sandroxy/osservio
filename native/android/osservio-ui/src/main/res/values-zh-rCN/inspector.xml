@@ -169,4 +169,25 @@
     <string name="osservio_ui_palette_rose">玫瑰</string>
     <string name="osservio_ui_header_value">请求头内容</string>
     <string name="osservio_ui_content_processed">内容已由宿主策略处理，字节数仍指原始观测数据。</string>
+    <string name="osservio_stats_title">采集结果</string>
+    <string name="osservio_stats_window">统计开始时间</string>
+    <string name="osservio_stats_hint">统计自当前采集控制器创建以来的操作次数，包含 HTTP 观察自动结束，不等于记录条数或落盘条数。本页是读取时的快照，重新进入可更新。历史淘汰及落盘情况请查看对应的历史与存储状态。</string>
+    <string name="osservio_stats_incomplete">部分统计因并发争用被跳过或已达到上限，当前数值仅为下限。</string>
+    <string name="osservio_stats_empty">尚无采集操作</string>
+    <string name="osservio_stats_logs">日志</string>
+    <string name="osservio_stats_http">HTTP</string>
+    <string name="osservio_stats_web_socket">WebSocket</string>
+    <string name="osservio_stats_breadcrumbs">运行线索</string>
+    <string name="osservio_stats_accepted">已接受</string>
+    <string name="osservio_stats_inactive">采集未开启</string>
+    <string name="osservio_stats_busy">采集或存储繁忙</string>
+    <string name="osservio_stats_rate_limited">达到速率上限</string>
+    <string name="osservio_stats_active_limit">达到同时观察上限</string>
+    <string name="osservio_stats_oversized">超过单项存储上限</string>
+    <string name="osservio_stats_protected_capacity">容量正用于保留近期错误</string>
+    <string name="osservio_stats_invalid">观察数据无效</string>
+    <string name="osservio_stats_missing">原记录已不在历史中</string>
+    <string name="osservio_stats_stale">观察已结束</string>
+    <string name="osservio_stats_sink_failure">存储操作失败</string>
+    <string name="osservio_stats_sequence_exhausted">会话序号已用尽</string>
 </resources>

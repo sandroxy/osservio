@@ -172,7 +172,9 @@ its window, back dispatch and system/keyboard insets. iOS provides UIKit
 controllers with native navigation. Standalone views require host-owned
 presentation and dismissal.
 
-The current inspector shows retained, evicted, and rate-limited counts.
+The inspector shows retained and evicted history separately from capture
+outcomes. Open a controller's status in Capture settings to inspect its
+[capture statistics](capture-statistics.md).
 Other rejections are exposed to the calling host through return values, not yet
 aggregated in the UI. Filtering and paused views operate on a bounded snapshot;
 they cannot recover data already evicted from the store. Process termination

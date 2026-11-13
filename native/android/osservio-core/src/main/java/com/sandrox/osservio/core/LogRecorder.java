@@ -81,11 +81,11 @@ public final class LogRecorder {
         CaptureController.Access<Result> result = captureController.record(true,
             context -> ingest(level, category, message, context));
         switch (result.admission) {
-            case VALUE: return result.value;
-            case INACTIVE: return Result.INACTIVE;
-            case BUSY: return Result.BUSY;
-            case SEQUENCE_EXHAUSTED: return Result.SEQUENCE_EXHAUSTED;
-            default: return Result.SINK_FAILURE;
+            case VALUE: return captureController.statistics.observe(result.value);
+            case INACTIVE: return captureController.statistics.observe(Result.INACTIVE);
+            case BUSY: return captureController.statistics.observe(Result.BUSY);
+            case SEQUENCE_EXHAUSTED: return captureController.statistics.observe(Result.SEQUENCE_EXHAUSTED);
+            default: return captureController.statistics.observe(Result.SINK_FAILURE);
         }
     }
 

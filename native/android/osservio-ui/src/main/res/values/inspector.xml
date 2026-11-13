@@ -170,4 +170,25 @@
     <string name="osservio_ui_palette_rose">Rose</string>
     <string name="osservio_ui_header_value">Header value</string>
     <string name="osservio_ui_content_processed">Content modified by the host policy. Byte counts refer to the original observation.</string>
+    <string name="osservio_stats_title">Capture outcomes</string>
+    <string name="osservio_stats_window">Counting since</string>
+    <string name="osservio_stats_hint">Counts are recorder operations since this capture controller was created, including automatic HTTP observation endings. They are not unique records or durable writes. This page is a snapshot; reopen it to update. Evictions and disk writes are reported by the corresponding history and storage status.</string>
+    <string name="osservio_stats_incomplete">Some accounting was skipped under contention or reached its limit. These values are lower bounds.</string>
+    <string name="osservio_stats_empty">No capture operations observed</string>
+    <string name="osservio_stats_logs">Logs</string>
+    <string name="osservio_stats_http">HTTP</string>
+    <string name="osservio_stats_web_socket">WebSocket</string>
+    <string name="osservio_stats_breadcrumbs">Runtime breadcrumbs</string>
+    <string name="osservio_stats_accepted">Accepted</string>
+    <string name="osservio_stats_inactive">Capture not enabled</string>
+    <string name="osservio_stats_busy">Capture or storage busy</string>
+    <string name="osservio_stats_rate_limited">Rate limit reached</string>
+    <string name="osservio_stats_active_limit">Active observation limit reached</string>
+    <string name="osservio_stats_oversized">Storage item limit exceeded</string>
+    <string name="osservio_stats_protected_capacity">Capacity reserved for recent errors</string>
+    <string name="osservio_stats_invalid">Invalid observation</string>
+    <string name="osservio_stats_missing">Original record no longer available</string>
+    <string name="osservio_stats_stale">Observation already ended</string>
+    <string name="osservio_stats_sink_failure">Storage rejected the operation</string>
+    <string name="osservio_stats_sequence_exhausted">Session sequence limit reached</string>
 </resources>

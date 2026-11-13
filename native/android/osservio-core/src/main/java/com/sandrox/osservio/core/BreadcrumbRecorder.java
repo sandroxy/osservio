@@ -30,10 +30,10 @@ public final class BreadcrumbRecorder {
     public Result record(BreadcrumbEvent.Kind kind, String label, LogMessage message, Long value, BreadcrumbEvent.Retention retention) {
         CaptureController.Access<Result> access = captureController.record(false, context -> ingest(context, kind, label, message, value, retention));
         switch (access.admission) {
-            case VALUE: return access.value;
-            case INACTIVE: return Result.INACTIVE;
-            case BUSY: return Result.BUSY;
-            case SEQUENCE_EXHAUSTED: return Result.SEQUENCE_EXHAUSTED;
+            case VALUE: return captureController.statistics.observe(access.value);
+            case INACTIVE: return captureController.statistics.observe(Result.INACTIVE);
+            case BUSY: return captureController.statistics.observe(Result.BUSY);
+            case SEQUENCE_EXHAUSTED: return captureController.statistics.observe(Result.SEQUENCE_EXHAUSTED);
             default: throw new IllegalStateException("Unknown capture admission");
         }
     }

@@ -308,3 +308,25 @@
 "ui_platform" = "Platform";
 
 "ui_saved_breadcrumbs_empty" = "No breadcrumbs were retained in this snapshot.";
+
+"stats_title" = "Capture outcomes";
+"stats_window" = "Counting since";
+"stats_hint" = "Counts are recorder operations since this capture controller was created, including automatic HTTP observation endings. They are not unique records or durable writes. This page is a snapshot; reopen it to update. Evictions and disk writes are reported by the corresponding history and storage status.";
+"stats_incomplete" = "Some accounting was skipped under contention or reached its limit. These values are lower bounds.";
+"stats_empty" = "No capture operations observed";
+"stats_logs" = "Logs";
+"stats_http" = "HTTP";
+"stats_web_socket" = "WebSocket";
+"stats_breadcrumbs" = "Runtime breadcrumbs";
+"stats_accepted" = "Accepted";
+"stats_inactive" = "Capture not enabled";
+"stats_busy" = "Capture or storage busy";
+"stats_rate_limited" = "Rate limit reached";
+"stats_active_limit" = "Active observation limit reached";
+"stats_oversized" = "Storage item limit exceeded";
+"stats_protected_capacity" = "Capacity reserved for recent errors";
+"stats_invalid" = "Invalid observation";
+"stats_missing" = "Original record no longer available";
+"stats_stale" = "Observation already ended";
+"stats_sink_failure" = "Storage rejected the operation";
+"stats_sequence_exhausted" = "Session sequence limit reached";

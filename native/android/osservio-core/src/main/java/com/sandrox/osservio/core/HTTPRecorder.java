@@ -84,7 +84,7 @@ public final class HTTPRecorder {
     }
 
     public BeginResult begin(String method, String url, List<HTTPHeader> headers, HTTPEvent.Source source) {
-        if (source == null) return new BeginResult(Result.INVALID, null);
+        if (source == null) return new BeginResult(captureController.statistics.observe(Result.INVALID), null);
         CaptureController.Access<BeginResult> access = captureController.record(true, context -> {
             expire(context.monotonicMillis);
             if (!rateSession.equals(context.sessionId)) { rateSession = context.sessionId; windowStart = context.sessionStartMillis; windowCount = 0; }
@@ -100,7 +100,9 @@ public final class HTTPRecorder {
             active.put(id, new Exchange(event, context.monotonicMillis, privacy.supportsBody(headers, false)));
             return new BeginResult(Result.RECORDED, new Token(id, context.sessionId));
         });
-        return access.admission == CaptureController.Admission.VALUE ? access.value : new BeginResult(admission(access.admission), null);
+        BeginResult observed = access.admission == CaptureController.Admission.VALUE ? access.value : new BeginResult(admission(access.admission), null);
+        captureController.statistics.observe(observed.result);
+        return observed;
     }
 
     /** Callers must report any rejected chunk as incomplete when finishing that body. */
@@ -177,7 +179,7 @@ public final class HTTPRecorder {
     }
 
     private void captureSessionDidEnd() {
-        for (Exchange exchange : active.values()) endObservation(exchange);
+        for (Exchange exchange : active.values()) captureController.statistics.observe(endObservation(exchange));
         active.clear();
     }
 
@@ -185,7 +187,7 @@ public final class HTTPRecorder {
         Iterator<Exchange> iterator = active.values().iterator();
         while (iterator.hasNext()) {
             Exchange exchange = iterator.next();
-            if (now >= exchange.started && now - exchange.started >= exchangeLifetimeMillis) { iterator.remove(); endObservation(exchange); }
+            if (now >= exchange.started && now - exchange.started >= exchangeLifetimeMillis) { iterator.remove(); captureController.statistics.observe(endObservation(exchange)); }
         }
     }
 
@@ -198,7 +200,7 @@ public final class HTTPRecorder {
     }
 
     private Result update(Token token, ExchangeOperation body) {
-        if (token == null) return Result.INVALID;
+        if (token == null) return captureController.statistics.observe(Result.INVALID);
         return result(captureController.record(true, context -> {
             expire(context.monotonicMillis);
             Exchange exchange = active.get(token.id);
@@ -207,8 +209,8 @@ public final class HTTPRecorder {
         }));
     }
 
-    private static Result result(CaptureController.Access<Result> access) {
-        return access.admission == CaptureController.Admission.VALUE ? access.value : admission(access.admission);
+    private Result result(CaptureController.Access<Result> access) {
+        return captureController.statistics.observe(access.admission == CaptureController.Admission.VALUE ? access.value : admission(access.admission));
     }
     private static Result admission(CaptureController.Admission admission) {
         switch (admission) {

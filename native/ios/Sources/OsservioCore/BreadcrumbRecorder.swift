@@ -27,14 +27,16 @@ public final class BreadcrumbRecorder: @unchecked Sendable {
     @discardableResult
     public func record(_ kind: BreadcrumbKind, label: String, message: LogMessage? = nil,
                        value: Int64? = nil, retention: BreadcrumbRetention = .memoryOnly) -> BreadcrumbRecordResult {
+        let observed: BreadcrumbRecordResult
         switch captureController.record(requiresDetailed: false, { context in
             self.ingest(context, kind: kind, label: label, message: message, value: value, retention: retention)
         }) {
-        case .value(let result): return result
-        case .inactive: return .inactive
-        case .busy: return .busy
-        case .sequenceExhausted: return .sequenceExhausted
+        case .value(let result): observed = result
+        case .inactive: observed = .inactive
+        case .busy: observed = .busy
+        case .sequenceExhausted: observed = .sequenceExhausted
         }
+        return captureController.statistics.observe(observed)
     }
     public func status() -> BreadcrumbCaptureStatus? {
         captureController.inspect { _ in BreadcrumbCaptureStatus(rateLimitedCount: rateLimited) }

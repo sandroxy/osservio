@@ -54,14 +54,16 @@ public final class LogRecorder: @unchecked Sendable {
     /// Category is a static ASCII label, not a place for user or request data.
     @discardableResult
     public func record(_ level: LogLevel, category: String, message: LogMessage) -> LogCaptureResult {
+        let observed: LogCaptureResult
         switch captureController.record(requiresDetailed: true, { context in
             ingest(level, category: category, message: message, context: context)
         }) {
-        case .value(let result): return result
-        case .inactive: return .inactive
-        case .busy: return .busy
-        case .sequenceExhausted: return .sequenceExhausted
+        case .value(let result): observed = result
+        case .inactive: observed = .inactive
+        case .busy: observed = .busy
+        case .sequenceExhausted: observed = .sequenceExhausted
         }
+        return captureController.statistics.observe(observed)
     }
 
     private func ingest(_ level: LogLevel, category: String, message: LogMessage,
