@@ -14,6 +14,9 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     private let origin = InspectorTheme.label(.caption1, secondary: true)
     private let notice = InspectorTheme.label(.caption1, secondary: true)
     private let tree = InspectorJSONTreeView()
+    private let form = InspectorFormView()
+    private var formParsing: InspectorFormTask?
+    private var searchable: String { mode.selectedIndex == 0 ? form.document?.searchText ?? content : content }
     private let count = InspectorTheme.label(.caption1, secondary: true)
     private let previous = UIButton(type: .system), nextButton = UIButton(type: .system)
     private lazy var matchNavigation = InspectorControls(buttons: [previous, nextButton])
@@ -44,7 +47,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
-    deinit { work?.cancel(); parsing?.cancel(); NotificationCenter.default.removeObserver(self) }
+    deinit { work?.cancel(); parsing?.cancel(); formParsing?.cancel(); NotificationCenter.default.removeObserver(self) }
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
         inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyContent))
@@ -58,7 +61,11 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         nextButton.setTitle(InspectorLocalization.text("ui_next_match"), for: .normal)
         previous.addTarget(self, action: #selector(previousMatch), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextMatch), for: .touchUpInside)
-        mode.isHidden = true; mode.onSelect = { [weak self] _ in self?.render(reveal: true) }
+        mode.isHidden = true; mode.onSelect = { [weak self] _ in self?.applySearch() }
+        form.open = { [weak self] field in
+            self?.inspectorPush(InspectorContentViewController(titleKey: "form_field", value: InspectorReadContent(text: field.value,
+                notice: { field.hasEquals ? "" : InspectorLocalization.text("form_missing_equals") }, allowsJSON: true, context: { field.name })))
+        }
         origin.numberOfLines = 3
         let stack = UIStackView(arrangedSubviews: [origin, mode, notice, search, count, matchNavigation])
         stack.axis = .vertical; stack.spacing = 6; stack.isLayoutMarginsRelativeArrangement = true
@@ -71,6 +78,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         text.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(text)
         text.accessibilityIdentifier = "Osservio.JSON.Raw"
         tree.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(tree)
+        form.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(form)
         let readingArea = UILayoutGuide(); view.addLayoutGuide(readingArea)
         let desired = controls.heightAnchor.constraint(equalTo: stack.heightAnchor); desired.priority = .defaultHigh
         bottom = readingArea.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
@@ -88,7 +96,9 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
             text.topAnchor.constraint(equalTo: controls.bottomAnchor), bottom!, text.bottomAnchor.constraint(equalTo: readingArea.bottomAnchor),
             text.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor), text.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             tree.leadingAnchor.constraint(equalTo: text.leadingAnchor), tree.trailingAnchor.constraint(equalTo: text.trailingAnchor),
-            tree.topAnchor.constraint(equalTo: text.topAnchor), tree.bottomAnchor.constraint(equalTo: text.bottomAnchor)
+            tree.topAnchor.constraint(equalTo: text.topAnchor), tree.bottomAnchor.constraint(equalTo: text.bottomAnchor),
+            form.leadingAnchor.constraint(equalTo: text.leadingAnchor), form.trailingAnchor.constraint(equalTo: text.trailingAnchor),
+            form.topAnchor.constraint(equalTo: text.topAnchor), form.bottomAnchor.constraint(equalTo: text.bottomAnchor)
         ])
         NotificationCenter.default.addObserver(self, selector: #selector(keyboard(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(suspendParsing), name: UIApplication.willResignActiveNotification, object: nil)
@@ -106,12 +116,12 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         previous.setTitle(InspectorLocalization.text("ui_previous_match"), for: .normal)
         nextButton.setTitle(InspectorLocalization.text("ui_next_match"), for: .normal)
         let query = search.text ?? ""
-        if query != appliedQuery { matches = InspectorTextMatches(content: content, query: query); appliedQuery = query; position = 0 }
-        tree.refreshPresentation(); startParsing(); render()
+        if query != appliedQuery { matches = InspectorTextMatches(content: searchable, query: query); appliedQuery = query; position = 0 }
+        tree.refreshPresentation(); form.refreshPresentation(); startParsing(); render()
     }
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        if isViewLoaded { tree.refreshPresentation(); render() }
+        if isViewLoaded { tree.refreshPresentation(); form.refreshPresentation(); render() }
     }
     @objc private func keyboard(_ notification: Notification) {
         guard view.window != nil, let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
@@ -119,12 +129,13 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         bottom?.constant = intersection.maxY >= view.bounds.maxY - 1 ? -max(0, intersection.height - view.safeAreaInsets.bottom) : 0
     }
     @objc private func copyContent() { UIPasteboard.general.string = content }
-    @objc private func suspendParsing() { generation &+= 1; parsing?.cancel(); parsing = nil }
+    @objc private func suspendParsing() { generation &+= 1; parsing?.cancel(); parsing = nil; formParsing?.cancel(); formParsing = nil }
     @objc private func resumeParsing() {
         guard active, viewIfLoaded?.window?.isHidden == false else { return }; startParsing()
     }
     private func startParsing() {
-        guard !parsed, parsing == nil, value.allowsJSON else { return }
+        guard !parsed, parsing == nil, formParsing == nil, value.allowsJSON else { return }
+        if value.isForm { startFormParsing(); return }
         let first = content.utf16.prefix(128).first { ![9, 10, 13, 32].contains($0) }
         if let first, first != 123 && first != 91 { parsed = true; return }
         generation &+= 1; let ticket = generation
@@ -146,13 +157,36 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         }
         if parsing == nil { parserNotice = "json_busy" }
     }
+    private func startFormParsing() {
+        generation &+= 1; let ticket = generation; parserNotice = "form_loading"
+        formParsing = InspectorFormTask.submit(content) { [weak self] result in
+            guard let self, self.active, self.generation == ticket else { return }
+            self.formParsing = nil; self.parsed = true
+            switch result {
+            case .success(let document): self.form.display(document); self.parserNotice = nil; self.mode.isHidden = false
+            case .failure(let reason):
+                switch reason {
+                case .invalid: self.parserNotice = "form_invalid"
+                case .limited: self.parserNotice = "form_limited"
+                case .cancelled: self.parsed = false; return
+                }
+            }
+            self.applySearch()
+        }
+        if formParsing == nil { parserNotice = "json_busy" }
+    }
+    private func applySearch() {
+        let query = search.text ?? ""
+        matches = InspectorTextMatches(content: searchable, query: query); appliedQuery = query; position = 0
+        render(reveal: true)
+    }
     @objc private func searchChanged() {
         guard search.markedTextRange == nil else { return }
         work?.cancel()
         let query = String((search.text ?? "").prefix(512)); if query != search.text { search.text = query }
         let task = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            self.matches = InspectorTextMatches(content: self.content, query: query); self.appliedQuery = query; self.position = 0; self.render(reveal: true)
+            self.applySearch()
         }
         work = task; DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(120), execute: task)
     }
@@ -160,16 +194,18 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
     @objc private func nextMatch() { guard !matches.ranges.isEmpty else { return }; position = (position + 1) % matches.ranges.count; render(reveal: true) }
     private func render(reveal: Bool = false) {
         origin.text = value.context(); origin.isHidden = origin.text?.isEmpty != false
-        mode.setTitles(["json_structure", "json_raw"].map(InspectorLocalization.text))
+        mode.setTitles([value.isForm ? "form_fields" : "json_structure", "json_raw"].map(InspectorLocalization.text))
+        let showForm = form.document != nil && mode.selectedIndex == 0
         let structured = tree.document != nil && mode.selectedIndex == 0
-        tree.isHidden = !structured; text.isHidden = structured
-        let notes = [value.notice, parserNotice.map(InspectorLocalization.text) ?? "", structured ? InspectorLocalization.text("json_hint") : ""].filter { !$0.isEmpty }
+        form.isHidden = !showForm; tree.isHidden = !structured; text.isHidden = structured || showForm
+        let notes = [value.notice, parserNotice.map(InspectorLocalization.text) ?? "", structured ? InspectorLocalization.text("json_hint") : showForm ? InspectorLocalization.text(form.document?.fields.isEmpty == true ? "form_empty" : "form_hint") : ""].filter { !$0.isEmpty }
         notice.text = notes.joined(separator: "\n"); notice.isHidden = notes.isEmpty
         let match = matches.ranges.isEmpty ? nil : matches.ranges[position]
         if structured { tree.focus(match, reveal: reveal) }
+        if showForm { form.focus(match, reveal: reveal) }
         let font = code ? UIFontMetrics(forTextStyle: .body).scaledFont(for: .monospacedSystemFont(ofSize: 15, weight: .regular), compatibleWith: traitCollection)
             : UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
-        if !structured {
+        if !structured && !showForm {
             let value = NSMutableAttributedString(string: content, attributes: [.font: font, .foregroundColor: UIColor.label])
             if let match { value.addAttribute(.backgroundColor, value: InspectorTheme.tint, range: match) }
             let offset = text.contentOffset; text.attributedText = value

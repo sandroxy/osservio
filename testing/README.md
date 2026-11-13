@@ -58,6 +58,11 @@ Both native viewers consume the same cases; readability tests additionally check
 exact sanitized copying, labeled connection identity, unavailable saved content
 and frozen search without live-store fallback.
 
+`form-reader-cases.tsv` covers ordered duplicate fields, empty names/values,
+missing equals signs, plus and percent decoding, Unicode, and malformed input.
+Both native readers consume these fixtures, with independent resource and
+cancellation tests. Form parsing is a display projection, not a protocol change.
+
 `json-reader-cases.tsv` covers strict container syntax, exact number tokens,
 duplicate members, Unicode, escapes, incomplete input and non-JSON text. Its
 columns are a case name, expected result (`ok`, `invalid`, `notJSON`), and Base64

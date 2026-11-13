@@ -286,6 +286,24 @@ an explanation; the reader does not repair JSON, strip arbitrary log prefixes
 or decode a JSON string as a second document. These implementation limits are
 resource bounds, not physical-device performance guarantees.
 
+Complete HTTP bodies whose observed Content-Type is unambiguously
+`application/x-www-form-urlencoded` also offer a Fields view. Ordered rows
+preserve duplicate names, distinguish empty values from a missing equals sign,
+and open full decoded values in the existing reader. Long-press copies the
+encoded field; the page's copy action always copies the original whole body.
+Fields search uses decoded names and values, while Raw searches the original
+text. Neither projection changes stored content or exports, including bodies
+read from saved incidents.
+
+Form reading follows the name/value splitting, plus-as-space and percent-byte
+decoding rules of the [URL Standard](https://url.spec.whatwg.org/#urlencoded-parsing),
+preserving source distinctions useful for diagnosis. Unlike a browser parser,
+this reader declines malformed escapes or invalid UTF-8 rather than silently
+repairing them. It also declines unsupported charsets, incomplete content,
+more than 256 fields or more than 65,536 UTF-16 units. The original source stays
+readable. JSON and form parsing share the same bounded worker budget; opening
+a reader does not add background capture work.
+
 Runtime event details group the event, content and retention intent. Event and
 session identifiers expand on demand. Live history, retained runs and saved
 problems share this immutable presentation, with exact full-snapshot copying and

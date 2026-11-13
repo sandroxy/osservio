@@ -191,4 +191,15 @@
     <string name="osservio_stats_stale">Observation already ended</string>
     <string name="osservio_stats_sink_failure">Storage rejected the operation</string>
     <string name="osservio_stats_sequence_exhausted">Session sequence limit reached</string>
+    <string name="osservio_form_fields">Fields</string>
+    <string name="osservio_form_field">Form field</string>
+    <string name="osservio_form_loading">Reading form fields…</string>
+    <string name="osservio_form_invalid">Encoding could not be decoded reliably. Showing the original source.</string>
+    <string name="osservio_form_limited">Structured reading limit reached. Showing the original source.</string>
+    <string name="osservio_form_hint">Field order and duplicate names are preserved. Search reads decoded names and values; Raw searches the original source. Open a field for its full value; long-press to copy its encoded source.</string>
+    <string name="osservio_form_empty">This body contains no form fields.</string>
+    <string name="osservio_form_empty_name">(Empty name)</string>
+    <string name="osservio_form_empty_value">(Empty value)</string>
+    <string name="osservio_form_missing_equals">(No equals sign)</string>
+    <string name="osservio_form_copy_source">Copy encoded field</string>
 </resources>

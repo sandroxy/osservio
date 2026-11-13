@@ -330,3 +330,15 @@
 "stats_stale" = "观察已结束";
 "stats_sink_failure" = "存储操作失败";
 "stats_sequence_exhausted" = "会话序号已用尽";
+
+"form_fields" = "字段";
+"form_field" = "表单字段";
+"form_loading" = "正在读取表单字段…";
+"form_invalid" = "编码无法可靠解读，显示原文。";
+"form_limited" = "已达到结构化阅读上限，显示原文。";
+"form_hint" = "保留字段顺序及重名字段。此处搜索解码后的名称和值，原文模式搜索原始内容。点开字段查看完整值，长按可复制该字段的编码原文。";
+"form_empty" = "此正文不包含表单字段。";
+"form_empty_name" = "（空字段名）";
+"form_empty_value" = "（空值）";
+"form_missing_equals" = "（未包含等号）";
+"form_copy_source" = "复制字段编码原文";

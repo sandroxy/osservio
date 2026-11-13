@@ -36,6 +36,10 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     private final LinearLayout actions, matchNavigation;
     private final android.widget.ImageButton copy;
     private final InspectorJsonTreeView tree;
+    private final InspectorFormView form;
+    private InspectorFormTask formParsing;
+    private InspectorScreen fieldReader;
+    private String searchable() { return structured && form.document() != null ? form.document().searchText : content; }
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String content = "";
     private InspectorTextSearch matches = new InspectorTextSearch("", "");
@@ -49,7 +53,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     private int parserNotice;
     private final Runnable searchContent = this::searchContent;
     private void searchContent() {
-        matches = new InspectorTextSearch(content, search.getText().toString()); selection = 0; searchDirty = false; highlight(true);
+        matches = new InspectorTextSearch(searchable(), search.getText().toString()); selection = 0; searchDirty = false; highlight(true);
     }
     InspectorContentReader(Context context) {
         super(context); setOrientation(VERTICAL);
@@ -57,7 +61,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
         controls = new InspectorScroll.Page(context); controls.addView(header); addView(controls, new LayoutParams(-1, -2));
         mode = (RadioGroup) InspectorWidgets.segments(context, new int[] {R.string.osservio_json_structure, R.string.osservio_json_raw}, 0,
-            selected -> { structured = selected == 0; highlight(true); });
+            selected -> { structured = selected == 0; searchContent(); });
         LayoutParams modeLayout = new LayoutParams(-1, -2); modeLayout.bottomMargin = gap;
         mode.setVisibility(GONE); header.addView(mode, modeLayout);
         origin = InspectorWidgets.caption(context); origin.setMaxLines(3); origin.setPadding(inset, gap, inset, gap); header.addView(origin, 0);
@@ -82,6 +86,13 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         text = InspectorTheme.text(context, 14, false); text.setTextIsSelectable(true); text.setPadding(0, inset, 0, inset);
         text.setLineSpacing(InspectorTheme.dp(context, 3), 1); scroll = new InspectorScroll.Page(context); scroll.addView(text);
         tree = new InspectorJsonTreeView(context); tree.setVisibility(GONE);
+        form = new InspectorFormView(context); form.setVisibility(GONE);
+        form.open = field -> {
+            InspectorContentReader reader = new InspectorContentReader(context);
+            reader.display(new InspectorReadContent(field.value, () -> field.hasEquals ? "" : context.getString(R.string.osservio_form_missing_equals), true).withContext(() -> field.name), true);
+            fieldReader = InspectorDialogs.screen(context, R.string.osservio_form_field, reader);
+        };
+        InspectorAppearance.text((android.widget.RadioButton) mode.getChildAt(0), () -> context.getString(value.isForm ? R.string.osservio_form_fields : R.string.osservio_json_structure));
         InspectorAppearance.content(this, () -> {
             previous.setContentDescription(context.getString(R.string.osservio_ui_previous_match));
             next.setContentDescription(context.getString(R.string.osservio_ui_next_match));
@@ -91,6 +102,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         InspectorAppearance.style(reading, () -> reading.setBackgroundColor(InspectorTheme.canvas(context)));
         reading.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
         reading.addView(tree, new FrameLayout.LayoutParams(-1, -1));
+        reading.addView(form, new FrameLayout.LayoutParams(-1, -1));
         LayoutParams readingLayout = new LayoutParams(-1, 0, 1); readingLayout.topMargin = gap; addView(reading, readingLayout);
     }
     @Override public void bindScreen(InspectorScreen screen) { screen.addAction(copy); actions.setVisibility(GONE); }
@@ -109,7 +121,8 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     }
     void display(InspectorReadContent value, boolean code) {
         cancelParsing(); handler.removeCallbacks(searchContent); content = value.text; this.value = value;
-        parsed = false; parserNotice = 0; structured = true; tree.clear(); mode.setVisibility(GONE);
+        parsed = false; parserNotice = 0; structured = true; tree.clear(); form.display(null); mode.setVisibility(GONE);
+        ((android.widget.RadioButton) mode.getChildAt(0)).setText(getContext().getString(value.isForm ? R.string.osservio_form_fields : R.string.osservio_json_structure));
         ((android.widget.RadioButton) mode.getChildAt(0)).setChecked(true);
         text.setTypeface(code ? Typeface.MONOSPACE : Typeface.DEFAULT);
         matches = new InspectorTextSearch(content, searching.getVisibility() == VISIBLE ? search.getText().toString() : "");
@@ -122,15 +135,18 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     }
     private void highlight(boolean reveal) {
         matchNavigation.setVisibility(search.length() == 0 ? GONE : VISIBLE);
-        boolean showTree = structured && tree.hasDocument(); tree.setVisibility(showTree ? VISIBLE : GONE); scroll.setVisibility(showTree ? GONE : VISIBLE);
+        boolean showTree = structured && tree.hasDocument(), showForm = structured && form.document() != null;
+        tree.setVisibility(showTree ? VISIBLE : GONE); form.setVisibility(showForm ? VISIBLE : GONE); scroll.setVisibility(showTree || showForm ? GONE : VISIBLE);
         origin.setText(value.context()); origin.setVisibility(value.context().isEmpty() ? GONE : VISIBLE);
         String message = value.notice();
         if (parserNotice != 0) message += (message.isEmpty() ? "" : "\n") + getContext().getString(parserNotice);
         if (showTree) message += (message.isEmpty() ? "" : "\n") + getContext().getString(R.string.osservio_json_hint);
+        if (showForm) message += (message.isEmpty() ? "" : "\n") + getContext().getString(form.document().fields.isEmpty() ? R.string.osservio_form_empty : R.string.osservio_form_hint);
         notice.setText(message); notice.setVisibility(message.isEmpty() ? GONE : VISIBLE);
         count.setText(matches.limited ? getContext().getString(R.string.osservio_ui_match_limit, InspectorTextSearch.LIMIT)
             : getContext().getString(R.string.osservio_ui_match_position, matches.matches.isEmpty() ? 0 : selection + 1, matches.matches.size()));
         previous.setEnabled(!matches.matches.isEmpty()); next.setEnabled(!matches.matches.isEmpty());
+        if (showForm) { form.focus(matches.matches.isEmpty() ? -1 : matches.matches.get(selection)[0], reveal); return; }
         if (showTree) { tree.focus(matches.matches.isEmpty() ? -1 : matches.matches.get(selection)[0], reveal); return; }
         if (matches.matches.isEmpty()) { text.setText(content); return; }
         int[] match = matches.matches.get(selection);
@@ -145,9 +161,10 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
         if (clipboard != null) { clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", content)); Toast.makeText(getContext(), R.string.osservio_ui_copied, Toast.LENGTH_SHORT).show(); }
     }
-    private void cancelParsing() { generation++; if (parsing != null) parsing.cancel(); parsing = null; }
+    private void cancelParsing() { generation++; if (parsing != null) parsing.cancel(); parsing = null; if (formParsing != null) formParsing.cancel(); formParsing = null; }
     private void startParsing() {
-        if (parsed || parsing != null || !value.allowsJson || !isShown() || getWindowVisibility() != VISIBLE) return;
+        if (parsed || parsing != null || formParsing != null || !value.allowsJson || !isShown() || getWindowVisibility() != VISIBLE) return;
+        if (value.isForm) { startFormParsing(); return; }
         int first = 0;
         while (first < Math.min(content.length(), 128) && (content.charAt(first) == ' ' || content.charAt(first) == '\n' || content.charAt(first) == '\r' || content.charAt(first) == '\t')) first++;
         if (first < Math.min(content.length(), 128) && content.charAt(first) != '{' && content.charAt(first) != '[') { parsed = true; return; }
@@ -166,6 +183,22 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         if (parsing == null) parserNotice = R.string.osservio_json_busy;
         highlight(false);
     }
+    private void startFormParsing() {
+        int ticket = ++generation; parserNotice = R.string.osservio_form_loading;
+        WeakReference<InspectorContentReader> owner = new WeakReference<>(this);
+        formParsing = InspectorFormTask.submit(content, (document, failure) -> {
+            InspectorContentReader reader = owner.get();
+            if (reader == null || reader.generation != ticket || !reader.isAttachedToWindow()) return;
+            reader.formParsing = null; reader.parsed = true; reader.parserNotice = 0;
+            if (document != null) { reader.form.display(document); reader.mode.setVisibility(VISIBLE); }
+            else if (failure == InspectorFormDocument.Failure.INVALID) reader.parserNotice = R.string.osservio_form_invalid;
+            else if (failure == InspectorFormDocument.Failure.LIMITED) reader.parserNotice = R.string.osservio_form_limited;
+            else if (failure == InspectorFormDocument.Failure.CANCELLED) { reader.parsed = false; return; }
+            reader.searchContent();
+        });
+        if (formParsing == null) parserNotice = R.string.osservio_json_busy;
+        highlight(false);
+    }
     @Override protected void onVisibilityChanged(View changed, int visibility) {
         super.onVisibilityChanged(changed, visibility);
         if (tree == null) return;
@@ -179,7 +212,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         if (tree == null) return;
         if (visibility == VISIBLE && isAttachedToWindow()) startParsing(); else cancelParsing();
     }
-    @Override protected void onDetachedFromWindow() { cancelParsing(); handler.removeCallbacksAndMessages(null); super.onDetachedFromWindow(); }
+    @Override protected void onDetachedFromWindow() { if (!InspectorNavigation.owns(getContext()) && fieldReader != null) fieldReader.dismiss(); cancelParsing(); handler.removeCallbacksAndMessages(null); super.onDetachedFromWindow(); }
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         if (searchDirty && searching.getVisibility() == VISIBLE) handler.post(searchContent);

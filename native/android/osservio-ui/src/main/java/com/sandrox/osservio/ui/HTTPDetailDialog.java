@@ -85,6 +85,7 @@ final class HTTPDetailDialog {
     private InspectorReadContent bodyContent() {
         HTTPEvent.BodyReference reference = section == 1 ? event.requestBody : event.responseBody;
         InspectorReadContent content = savedPayloads != null ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
+        content.isForm = InspectorHTTPContent.isForm(section == 1 ? event.requestHeaders : event.responseHeaders);
         return content.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail))
             .withContext(() -> InspectorRecordPresentation.context(context, event));
     }

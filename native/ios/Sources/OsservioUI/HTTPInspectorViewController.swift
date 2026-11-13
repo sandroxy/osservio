@@ -101,6 +101,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         else { content = InspectorReadContent(notice: { InspectorLocalization.text("incident_payload_missing") }) }
         if let noticeKey { content = content.withNoticePrefix { InspectorLocalization.text(noticeKey) } }
         content.context = { [event] in InspectorRecordPresentation.context(event) }
+        content.isForm = InspectorHTTPContent.isForm(selection.selectedIndex == 1 ? event.requestHeaders : event.responseHeaders)
         return content
     }
     private func openBody() {

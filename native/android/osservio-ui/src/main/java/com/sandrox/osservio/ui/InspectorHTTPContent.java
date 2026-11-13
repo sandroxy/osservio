@@ -8,6 +8,23 @@ import java.util.Locale;
 final class InspectorHTTPContent {
     static final String[] CATEGORIES = {"json", "text", "image", "media", "other", "unknown"};
     private InspectorHTTPContent() { }
+    static boolean isForm(List<HTTPHeader> headers) {
+        boolean found = false;
+        for (HTTPHeader header : headers) {
+            if (!header.name.equalsIgnoreCase("content-type")) continue;
+            found = true;
+            String[] parts = header.value.toLowerCase(Locale.ROOT).split(";", -1);
+            if (!parts[0].trim().equals("application/x-www-form-urlencoded")) return false;
+            for (int i = 1; i < parts.length; i++) {
+                String[] pair = parts[i].trim().split("=", 2);
+                if (!pair[0].trim().equals("charset")) continue;
+                if (pair.length != 2) return false;
+                String charset = pair[1].trim();
+                if (!charset.equals("utf-8") && !charset.equals("us-ascii") && !charset.equals("\"utf-8\"") && !charset.equals("\"us-ascii\"")) return false;
+            }
+        }
+        return found;
+    }
     static String category(List<HTTPHeader> headers) {
         String type = null;
         for (HTTPHeader header : headers) {

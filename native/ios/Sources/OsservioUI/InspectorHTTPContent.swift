@@ -4,6 +4,18 @@ import OsservioCore
 /// Classifies observed response metadata only. URL extensions and request bodies are not response-type evidence.
 enum InspectorHTTPContent {
     static let categories = ["json", "text", "image", "media", "other", "unknown"]
+    static func isForm(_ headers: [HTTPHeader]) -> Bool {
+        let values = headers.filter { $0.name.lowercased() == "content-type" }.map(\.value)
+        guard !values.isEmpty else { return false }
+        return values.allSatisfy { value in
+            let parts = value.lowercased().split(separator: ";", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.first == "application/x-www-form-urlencoded" else { return false }
+            return parts.dropFirst().allSatisfy { parameter in
+                let pair = parameter.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+                return pair.first != "charset" || (pair.count == 2 && ["utf-8", "us-ascii", "\"utf-8\"", "\"us-ascii\""].contains(pair[1]))
+            }
+        }
+    }
     static func category(_ headers: [HTTPHeader]) -> String {
         let types = headers.filter { $0.name.lowercased() == "content-type" }.map {
             $0.value.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false)[0]

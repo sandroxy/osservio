@@ -1,0 +1,17 @@
+# name	result	source(base64 UTF-8)	fields(name:value:hasEquals:original, base64 strings)
+duplicates	ok	YT0xJmE9Mg==	YQ==:MQ==:1:YT0x,YQ==:Mg==:1:YT0y
+encoding	ok	dXNlcj0lRTQlQkQlQTAlRTUlQTUlQkQrJUYwJTlGJTk5JTgyJnN5bWJvbD0lMkIlMjYlM0Qmb25jZT0lMjUyRg==	dXNlcg==:5L2g5aW9IPCfmYI=:1:dXNlcj0lRTQlQkQlQTAlRTUlQTUlQkQrJUYwJTlGJTk5JTgy,c3ltYm9s:KyY9:1:c3ltYm9sPSUyQiUyNiUzRA==,b25jZQ==:JTJG:1:b25jZT0lMjUyRg==
+empty	ok	JiY9eCZlbXB0eT0mZmxhZyYmPQ==	:eA==:1:PXg=,ZW1wdHk=::1:ZW1wdHk9,ZmxhZw==::0:ZmxhZw==,::1:PQ==
+first-equal	ok	YT1iPWMmbmFtZQ==	YQ==:Yj1j:1:YT1iPWM=,bmFtZQ==::0:bmFtZQ==
+raw-unicode	ok	5pi156ewPeeskfCfmYImc3BhY2U9Kw==	5pi156ew:56yR8J+Zgg==:1:5pi156ewPeeskfCfmYI=,c3BhY2U=:IA==:1:c3BhY2U9Kw==
+empty-body	ok		-
+empty-segments	ok	JiYm	-
+bom-and-null	ok	YT0lRUYlQkIlQkYmYj0lMDA=	YQ==:77u/:1:YT0lRUYlQkIlQkY=,Yg==:AA==:1:Yj0lMDA=
+invalid-0	invalid	YT0l	-
+invalid-1	invalid	YT0lMg==	-
+invalid-2	invalid	YT0lR0c=	-
+invalid-3	invalid	YT0lRkY=	-
+invalid-4	invalid	YT0lQzAlQUY=	-
+invalid-5	invalid	YT0lRUQlQTAlODA=	-
+invalid-6	invalid	YT0lRjAlOUY=	-
+invalid-7	invalid	YT1vayZiPSVRMA==	-

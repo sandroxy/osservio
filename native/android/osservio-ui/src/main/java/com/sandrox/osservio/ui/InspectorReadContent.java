@@ -9,6 +9,7 @@ final class InspectorReadContent {
     private final InspectorAppearance.Value<String> notice;
     final boolean allowsJson;
     final boolean available;
+    boolean isForm;
     private InspectorAppearance.Value<String> context = () -> "";
     InspectorReadContent(String text, String notice, boolean allowsJson) { this(text, () -> notice, allowsJson); }
     InspectorReadContent(String text, InspectorAppearance.Value<String> notice, boolean allowsJson) {
@@ -21,9 +22,10 @@ final class InspectorReadContent {
     InspectorReadContent withContext(InspectorAppearance.Value<String> context) { this.context = context; return this; }
     String notice() { return notice.get(); }
     InspectorReadContent withNoticePrefix(InspectorAppearance.Value<String> prefix) {
-        return new InspectorReadContent(text, () -> {
+        InspectorReadContent copy = new InspectorReadContent(text, () -> {
             String heading = prefix.get(); return (heading.isEmpty() ? "" : heading + "\n") + notice();
         }, allowsJson, available).withContext(context);
+        copy.isForm = isForm; return copy;
     }
     static InspectorReadContent unavailable(String notice) { return new InspectorReadContent("", () -> notice, false, false); }
     static InspectorReadContent unavailable(InspectorAppearance.Value<String> notice) { return new InspectorReadContent("", notice, false, false); }

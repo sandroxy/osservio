@@ -8,14 +8,16 @@ struct InspectorReadContent {
     var notice: String { noticeValue() }
     let allowsJSON: Bool
     let isAvailable: Bool
+    var isForm = false
     var context: () -> String
     init(text: String? = nil, notice: @escaping () -> String = { "" }, allowsJSON: Bool = false, context: @escaping () -> String = { "" }) {
         self.text = text ?? ""; noticeValue = notice; self.allowsJSON = allowsJSON; isAvailable = text != nil; self.context = context
     }
     func withNoticePrefix(_ prefix: @escaping () -> String) -> Self {
-        Self(text: isAvailable ? text : nil, notice: {
+        var copy = Self(text: isAvailable ? text : nil, notice: {
             [prefix(), notice].filter { !$0.isEmpty }.joined(separator: "\n")
         }, allowsJSON: allowsJSON, context: context)
+        copy.isForm = isForm; return copy
     }
     static func saved(_ payload: IncidentPayload?, notice: @escaping () -> String, complete: Bool) -> Self {
         guard let payload, payload.state == .available, let text = payload.text else {
