@@ -283,6 +283,23 @@ separately by `swift test` and Android Export instrumentation.
 
 ## Review and acceptance
 
+The `Native checks` GitHub Actions workflow runs portable protocol validation,
+Android compilation/lint/JVM and emulator instrumentation tests, and Swift
+package plus iOS simulator tests. Actions are pinned to commit hashes; the
+workflow declares its runner images, JDK, Xcode and simulator runtime. Update
+those choices deliberately against the
+[runner image inventory](https://github.com/actions/runner-images), rather than
+silently selecting whatever SDK happens to be newest. A missing declared iOS
+runtime fails the job instead of degrading to compilation-only coverage.
+
+The workflow uses read-only repository permissions, does not publish packages,
+and keeps synthetic native test reports for seven days. Hosted tests do not
+replace consumer integration, visual review, lowest-supported-OS coverage,
+physical-device performance or fatal-crash acceptance. Opt-in sustained-load
+measurements remain separate so competing jobs cannot be mistaken for useful
+device measurements. A locally validated workflow is not a successful hosted
+run; check its actual result after a push or pull request.
+
 For documentation and repository configuration changes, check relative links,
 required translation parity, terminology, whitespace, and ignore rules. Verify
 claims against the repository state. These checks do not establish runtime

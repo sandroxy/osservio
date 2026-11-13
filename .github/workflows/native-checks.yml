@@ -1,0 +1,110 @@
+name: Native checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: protocol/requirements.txt
+      - name: Validate portable evidence
+        run: |
+          python -m pip install -r protocol/requirements.txt
+          python -m unittest discover -s protocol -v
+
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            native/android/**/*.gradle
+            native/android/**/gradle.lockfile
+            native/android/gradle/wrapper/gradle-wrapper.properties
+      - name: Install the declared Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Compile, lint and run JVM tests
+        working-directory: native/android
+        run: ./gradlew --no-daemon assembleDebug lintDebug testDebugUnitTest
+      - name: Enable the runner's hardware acceleration
+        run: sudo chmod a+rw /dev/kvm
+      - name: Run native instrumentation
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: '36'
+          target: google_apis
+          arch: x86_64
+          ram-size: 2048M
+          disable-animations: true
+          working-directory: native/android
+          script: ./gradlew --no-daemon connectedDebugAndroidTest
+      - name: Verify locked inputs stayed unchanged
+        run: git diff --exit-code -- native/android
+      - name: Keep test reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: android-test-reports
+          path: native/android/**/build/reports/
+          retention-days: 7
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 40
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Test the Swift package on macOS
+        run: swift test --force-resolved-versions -Xswiftc -warnings-as-errors
+      - name: Select an available iOS 26.5 simulator
+        id: simulator
+        run: |
+          OSSERVIO_SIMULATOR_ID=$(python3 testing/select-ios-simulator.py com.apple.CoreSimulator.SimRuntime.iOS-26-5)
+          echo "id=$OSSERVIO_SIMULATOR_ID" >> "$GITHUB_OUTPUT"
+      - name: Test native iOS targets
+        env:
+          OSSERVIO_SIMULATOR_ID: ${{ steps.simulator.outputs.id }}
+        run: |
+          xcodebuild -scheme Osservio-Package -disableAutomaticPackageResolution -skipPackageUpdates \
+            -destination "platform=iOS Simulator,id=$OSSERVIO_SIMULATOR_ID,arch=arm64" \
+            -derivedDataPath .build/ios-ci -resultBundlePath .build/ios-results.xcresult \
+            CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES SWIFT_SUPPRESS_WARNINGS=NO test
+      - name: Verify locked inputs stayed unchanged
+        run: git diff --exit-code -- Package.resolved
+      - name: Keep native test results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ios-test-results
+          path: .build/ios-results.xcresult
+          include-hidden-files: true
+          retention-days: 7
