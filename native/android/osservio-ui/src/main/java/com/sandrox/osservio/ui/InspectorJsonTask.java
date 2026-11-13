@@ -17,12 +17,15 @@ final class InspectorJsonTask implements Runnable {
     }
     void cancel() { cancelled = true; InspectorReadWorker.cancel(this); MAIN.removeCallbacksAndMessages(this); }
     @Override public void run() {
-        if (cancelled) return;
-        InspectorJsonDocument document = null; InspectorJsonDocument.Failure failure = null;
-        try { document = InspectorJsonDocument.parse(source, () -> cancelled); }
-        catch (InspectorJsonDocument.ParseFailure invalid) { failure = invalid.reason; }
-        if (cancelled) return;
-        InspectorJsonDocument result = document; InspectorJsonDocument.Failure reason = failure;
-        MAIN.postAtTime(() -> { if (!cancelled) completion.complete(result, reason); }, this, android.os.SystemClock.uptimeMillis());
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.JSON_PARSE);
+        try {
+            if (cancelled) return;
+            InspectorJsonDocument document = null; InspectorJsonDocument.Failure failure = null;
+            try { document = InspectorJsonDocument.parse(source, () -> cancelled); }
+            catch (InspectorJsonDocument.ParseFailure invalid) { failure = invalid.reason; }
+            if (cancelled) return;
+            InspectorJsonDocument result = document; InspectorJsonDocument.Failure reason = failure;
+            MAIN.postAtTime(() -> { if (!cancelled) completion.complete(result, reason); }, this, android.os.SystemClock.uptimeMillis());
+        } finally { InspectorPerformance.end(tracing); }
     }
 }

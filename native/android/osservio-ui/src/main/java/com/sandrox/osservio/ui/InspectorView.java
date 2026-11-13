@@ -203,6 +203,7 @@ public final class InspectorView extends FrameLayout {
         compactChrome(getHeight());
     }
     private void select(int index) {
+        InspectorPerformance.mark(InspectorPerformance.Point.TAB);
         View focused = findFocus(); if (focused != null) focused.clearFocus();
         InputMethodManager keyboard = getContext().getSystemService(InputMethodManager.class);
         if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);

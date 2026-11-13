@@ -165,6 +165,7 @@ final class InspectorRecordSearchTask: Operation, @unchecked Sendable {
         let task = InspectorRecordSearchTask(search: search, completion: completion); worker.addOperation(task); return task
     }
     override func main() {
+        let span = InspectorPerformance.begin(.recordSearch); defer { span?.end() }
         guard !isCancelled, let result = search({ [weak self] in self?.isCancelled ?? true }), !isCancelled else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self, !self.isCancelled else { return }; self.completion(result)

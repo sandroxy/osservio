@@ -17,12 +17,15 @@ final class InspectorFormTask implements Runnable {
     }
     void cancel() { cancelled = true; InspectorReadWorker.cancel(this); MAIN.removeCallbacksAndMessages(this); }
     @Override public void run() {
-        if (cancelled) return;
-        InspectorFormDocument document = null; InspectorFormDocument.Failure failure = null;
-        try { document = InspectorFormDocument.parse(source, () -> cancelled); }
-        catch (InspectorFormDocument.ParseFailure invalid) { failure = invalid.reason; }
-        if (cancelled) return;
-        InspectorFormDocument result = document; InspectorFormDocument.Failure reason = failure;
-        MAIN.postAtTime(() -> { if (!cancelled) completion.complete(result, reason); }, this, android.os.SystemClock.uptimeMillis());
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.FORM_PARSE);
+        try {
+            if (cancelled) return;
+            InspectorFormDocument document = null; InspectorFormDocument.Failure failure = null;
+            try { document = InspectorFormDocument.parse(source, () -> cancelled); }
+            catch (InspectorFormDocument.ParseFailure invalid) { failure = invalid.reason; }
+            if (cancelled) return;
+            InspectorFormDocument result = document; InspectorFormDocument.Failure reason = failure;
+            MAIN.postAtTime(() -> { if (!cancelled) completion.complete(result, reason); }, this, android.os.SystemClock.uptimeMillis());
+        } finally { InspectorPerformance.end(tracing); }
     }
 }

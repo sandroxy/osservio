@@ -99,14 +99,17 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         if (list != null) { display(); schedule(); }
     }
     private void refresh() {
-        if (list == null) return;
-        long now = android.os.SystemClock.uptimeMillis();
-        if (!state.paused && task == null) {
-            LogSnapshot snapshot = history.snapshot(); stale = snapshot == null;
-            if (snapshot != null) { dirty |= state.snapshot == null || state.snapshot.revision != snapshot.revision; state.snapshot = snapshot; state.timeAnchor = System.currentTimeMillis(); }
-            if (state.query.recentMinutes > 0 && now - timeCheck >= 5000) { dirty = true; timeCheck = now; }
-        }
-        if (dirty && task == null && now >= nextSearchAt) search(); status();
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.LOG_REFRESH);
+        try {
+            if (list == null) return;
+            long now = android.os.SystemClock.uptimeMillis();
+            if (!state.paused && task == null) {
+                LogSnapshot snapshot = history.snapshot(); stale = snapshot == null;
+                if (snapshot != null) { dirty |= state.snapshot == null || state.snapshot.revision != snapshot.revision; state.snapshot = snapshot; state.timeAnchor = System.currentTimeMillis(); }
+                if (state.query.recentMinutes > 0 && now - timeCheck >= 5000) { dirty = true; timeCheck = now; }
+            }
+            if (dirty && task == null && now >= nextSearchAt) search(); status();
+        } finally { InspectorPerformance.end(tracing); }
     }
     private void status() {
         List<String> notes = new ArrayList<>(); Context context = getContext();
@@ -137,12 +140,15 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         if (task == null) nextSearchAt = android.os.SystemClock.uptimeMillis() + 500;
     }
     private void display() {
-        header.setQuery(state.query, InspectorFilterOptions.logs(getContext(), retained()), events.size(), retained().size());
-        LogRecorder.Status status = recorder.status();
-        header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
-            : stale || status == null ? R.string.osservio_busy : status.isRecording ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
-        rows.notifyDataSetChanged(); status();
-        if (!state.paused) list.setSelectionFromTop(0, 0);
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.LOG_APPLY);
+        try {
+            header.setQuery(state.query, InspectorFilterOptions.logs(getContext(), retained()), events.size(), retained().size());
+            LogRecorder.Status status = recorder.status();
+            header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
+                : stale || status == null ? R.string.osservio_busy : status.isRecording ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
+            rows.notifyDataSetChanged(); status();
+            if (!state.paused) list.setSelectionFromTop(0, 0);
+        } finally { InspectorPerformance.end(tracing); }
     }
     private void filters() { dialog = InspectorFilterSheet.show(getContext(), state.query, InspectorFilterOptions.logs(getContext(), retained()), true, this::apply); watchDialog(); }
     private void confirmClear() {

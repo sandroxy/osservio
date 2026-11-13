@@ -51,7 +51,7 @@ final class CaptureLoadTests: XCTestCase {
             autoreleasepool {
                 for _ in 0..<5 {
                     let before = DispatchTime.now().uptimeNanoseconds
-                    count("log", log.record(.info, category: "load",
+                    count("log", log.record(ticks % 50 == 0 ? .error : .info, category: "load",
                         message: ticks % 2 == 0 ? .publicText(text) : .privateText("synthetic-secret")))
                     count("breadcrumb", breadcrumb.record(.hostMarker, label: "load.tick"))
                     let request = http.begin(method: "POST", url: "https://example.com/private?secret=value", headers: headers)

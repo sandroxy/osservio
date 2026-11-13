@@ -67,6 +67,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.2; display(); refresh()
     }
     private func refresh() {
+        let span = InspectorPerformance.begin(.networkRefresh); defer { span?.end() }
         guard owner?.presentedViewController == nil else { return }
         let now = Date.timeIntervalSinceReferenceDate
         if !paused && task == nil {
@@ -113,6 +114,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         header.relabel(paused: paused, query: query); table.setNeedsLayout()
     }
     private func display() {
+        let span = InspectorPerformance.begin(.networkApply); defer { span?.end() }
         table.reloadData()
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
         let active = http?.recorder.captureController.status()?.debugEnabled == true || sockets?.recorder.captureController.status()?.debugEnabled == true

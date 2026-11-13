@@ -101,22 +101,25 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         if (list != null) { display(); schedule(); }
     }
     private void refresh() {
-        if (list == null) return;
-        long now = android.os.SystemClock.uptimeMillis();
-        if (!state.paused && task == null) {
-            state.timeAnchor = System.currentTimeMillis(); stale = false;
-            if (httpRecorder != null) httpRecorder.maintenance();
-            if (httpHistory != null) {
-                HTTPSnapshot snapshot = httpHistory.snapshot(); stale |= snapshot == null;
-                if (snapshot != null) { dirty |= state.http == null || snapshot.revision != state.http.revision; state.http = snapshot; }
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.NETWORK_REFRESH);
+        try {
+            if (list == null) return;
+            long now = android.os.SystemClock.uptimeMillis();
+            if (!state.paused && task == null) {
+                state.timeAnchor = System.currentTimeMillis(); stale = false;
+                if (httpRecorder != null) httpRecorder.maintenance();
+                if (httpHistory != null) {
+                    HTTPSnapshot snapshot = httpHistory.snapshot(); stale |= snapshot == null;
+                    if (snapshot != null) { dirty |= state.http == null || snapshot.revision != state.http.revision; state.http = snapshot; }
+                }
+                if (socketHistory != null) {
+                    WebSocketSnapshot snapshot = socketHistory.snapshot(); stale |= snapshot == null;
+                    if (snapshot != null) { dirty |= state.sockets == null || snapshot.revision != state.sockets.revision; state.sockets = snapshot; }
+                }
+                if (state.query.recentMinutes > 0 && now - timeCheck >= 5000) { dirty = true; timeCheck = now; }
             }
-            if (socketHistory != null) {
-                WebSocketSnapshot snapshot = socketHistory.snapshot(); stale |= snapshot == null;
-                if (snapshot != null) { dirty |= state.sockets == null || snapshot.revision != state.sockets.revision; state.sockets = snapshot; }
-            }
-            if (state.query.recentMinutes > 0 && now - timeCheck >= 5000) { dirty = true; timeCheck = now; }
-        }
-        if (dirty && task == null && now >= nextSearchAt) search(); status(); requestPreviews();
+            if (dirty && task == null && now >= nextSearchAt) search(); status(); requestPreviews();
+        } finally { InspectorPerformance.end(tracing); }
     }
     private void search() {
         List<InspectorRecordSearch.Record> records = new ArrayList<>();
@@ -151,12 +154,15 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         header.status.setText(android.text.TextUtils.join(" · ", notes)); header.setPaused(state.paused);
     }
     private void display() {
-        header.setQuery(state.query, groups(), items.size(), available);
-        header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
-            : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
-        rows.notifyDataSetChanged(); status();
-        if (!state.paused) list.setSelectionFromTop(0, 0);
-        list.post(this::requestPreviews);
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.NETWORK_APPLY);
+        try {
+            header.setQuery(state.query, groups(), items.size(), available);
+            header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
+                : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
+            rows.notifyDataSetChanged(); status();
+            if (!state.paused) list.setSelectionFromTop(0, 0);
+            list.post(this::requestPreviews);
+        } finally { InspectorPerformance.end(tracing); }
     }
     private void requestPreviews() {
         if (!attached || !isShown() || scrolling || dialog != null || task != null || previewTask != null || socketHistory == null) return;

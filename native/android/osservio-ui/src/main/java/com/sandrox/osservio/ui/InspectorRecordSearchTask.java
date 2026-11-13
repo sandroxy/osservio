@@ -25,9 +25,12 @@ final class InspectorRecordSearchTask implements Runnable {
     }
     void cancel() { cancelled = true; WORKER.remove(this); MAIN.removeCallbacksAndMessages(this); }
     @Override public void run() {
-        if (cancelled) return;
-        InspectorRecordSearch.Result result = work.run(() -> cancelled);
-        if (cancelled || result == null) return;
-        MAIN.postAtTime(() -> { if (!cancelled) completion.complete(result); }, this, android.os.SystemClock.uptimeMillis());
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.RECORD_SEARCH);
+        try {
+            if (cancelled) return;
+            InspectorRecordSearch.Result result = work.run(() -> cancelled);
+            if (cancelled || result == null) return;
+            MAIN.postAtTime(() -> { if (!cancelled) completion.complete(result); }, this, android.os.SystemClock.uptimeMillis());
+        } finally { InspectorPerformance.end(tracing); }
     }
 }

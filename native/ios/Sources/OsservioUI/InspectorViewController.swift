@@ -73,7 +73,7 @@ public final class InspectorViewController: UITabBarController, UITabBarControll
     public override func viewDidLoad() { super.viewDidLoad(); delegate = self; style.changed() }
     public override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); updateDebugPolling() }
     public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); debugLoop.hide() }
-    public func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) { updateDebugPolling() }
+    public func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) { InspectorPerformance.mark(.tab); updateDebugPolling() }
     private func updateDebugPolling() {
         guard isViewLoaded else { return }
         if let navigation = selectedViewController as? UINavigationController, navigation.viewControllers.count == 1 {

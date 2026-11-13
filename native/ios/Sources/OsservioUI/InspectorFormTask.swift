@@ -13,6 +13,7 @@ final class InspectorFormTask: Operation, @unchecked Sendable {
         return InspectorReadQueue.submit(task) ? task : nil
     }
     override func main() {
+        let span = InspectorPerformance.begin(.formParse); defer { span?.end() }
         guard !isCancelled else { return }
         let result: Result<InspectorFormDocument, InspectorFormDocument.Failure>
         do { result = .success(try InspectorFormDocument.parse(source, cancelled: { [weak self] in self?.isCancelled ?? true })) }

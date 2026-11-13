@@ -54,6 +54,7 @@ public final class LogInspectorViewController: UITableViewController {
     public override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); refreshLoop.show(in: view) }
     public override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); refreshLoop.hide(); view.endEditing(true) }
     private func refresh() {
+        let span = InspectorPerformance.begin(.logRefresh); defer { span?.end() }
         guard presentedViewController == nil else { return }
         if !paused && task == nil {
             anchor = Int64(Date().timeIntervalSince1970 * 1_000)
@@ -96,6 +97,7 @@ public final class LogInspectorViewController: UITableViewController {
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }
     private func display() {
+        let span = InspectorPerformance.begin(.logApply); defer { span?.end() }
         table.reloadData()
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
         let key = dirty && query.searchesPayload ? "ui_searching" : latest == nil ? attemptedRead ? "busy" : "ui_reading"

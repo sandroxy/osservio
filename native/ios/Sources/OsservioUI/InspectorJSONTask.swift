@@ -13,6 +13,7 @@ final class InspectorJSONTask: Operation, @unchecked Sendable {
         return InspectorReadQueue.submit(task) ? task : nil
     }
     override func main() {
+        let span = InspectorPerformance.begin(.jsonParse); defer { span?.end() }
         guard !isCancelled else { return }
         let result: Result<InspectorJSONDocument, InspectorJSONDocument.Failure>
         do { result = .success(try InspectorJSONDocument.parse(source, cancelled: { [weak self] in self?.isCancelled ?? true })) }

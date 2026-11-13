@@ -71,14 +71,20 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         reconcile(); return true;
     }
     public boolean expand() {
-        mainThread(); if (!available()) return false;
-        if (presentation == Presentation.EXPANDED) return true;
-        presentation = Presentation.EXPANDED; reconcile(); return !disposed && presentation == Presentation.EXPANDED;
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.OPEN);
+        try {
+            mainThread(); if (!available()) return false;
+            if (presentation == Presentation.EXPANDED) return true;
+            presentation = Presentation.EXPANDED; reconcile(); return !disposed && presentation == Presentation.EXPANDED;
+        } finally { InspectorPerformance.end(tracing); }
     }
     public void collapse() {
-        mainThread(); if (disposed || presentation != Presentation.EXPANDED) return;
-        if (inspector != null) inspector.discardTransientPanels();
-        presentation = Presentation.ENTRY; reconcile();
+        boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.COLLAPSE);
+        try {
+            mainThread(); if (disposed || presentation != Presentation.EXPANDED) return;
+            if (inspector != null) inspector.discardTransientPanels();
+            presentation = Presentation.ENTRY; reconcile();
+        } finally { InspectorPerformance.end(tracing); }
     }
     public void hideEntry() {
         mainThread(); if (disposed) return;

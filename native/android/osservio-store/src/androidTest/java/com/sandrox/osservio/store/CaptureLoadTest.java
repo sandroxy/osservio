@@ -62,7 +62,7 @@ public final class CaptureLoadTest {
             // A fixed offered load: five mixed observations, then 10 ms idle. No catch-up burst.
             for (int index = 0; index < 5; index++) {
                 long before = SystemClock.elapsedRealtimeNanos();
-                count(outcomes, "log", log.record(LogLevel.INFO, "load",
+                count(outcomes, "log", log.record(ticks % 50 == 0 ? LogLevel.ERROR : LogLevel.INFO, "load",
                     ticks % 2 == 0 ? LogMessage.publicText(TEXT) : LogMessage.privateText("synthetic-secret")));
                 count(outcomes, "breadcrumb", breadcrumb.record(BreadcrumbEvent.Kind.HOST_MARKER, "load.tick"));
                 HTTPRecorder.BeginResult request = http.begin("POST", "https://example.com/private?secret=value", HEADERS);

@@ -53,12 +53,14 @@ public final class InspectorSession: NSObject {
     }
     /// Opens or restores this session. Repeated calls never create another inspector.
     @discardableResult public func expand() -> Bool {
+        let span = InspectorPerformance.begin(.open); defer { span?.end() }
         guard available else { return false }
         guard presentation != .expanded else { return true }
         presentation = .expanded; reconcile(animated: true); return !isDisposed
     }
     /// Returns to the host without applying a filter draft or saving an unfinished problem.
     public func collapse() {
+        let span = InspectorPerformance.begin(.collapse); defer { span?.end() }
         guard !isDisposed, presentation == .expanded else { return }
         endEditing(); discardTransientPanels(); presentation = .entry; reconcile(animated: true)
     }

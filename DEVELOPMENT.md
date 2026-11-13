@@ -323,6 +323,9 @@ baseline, detailed and periodically queried operation with the same synthetic
 inputs on both native platforms. It checks overload and retention invariants
 while collecting latency, CPU and process-memory observations. It does not
 measure visible UI, persistent storage or production energy consumption.
+Use the [native inspector profiling markers](testing/inspector-performance.md)
+to locate visible-query, presentation and reading costs before changing the
+list/query architecture.
 
 Publication instructions belong in a maintained release guide when the release
 workflow exists. Publication must use the same immutable artifacts that were
