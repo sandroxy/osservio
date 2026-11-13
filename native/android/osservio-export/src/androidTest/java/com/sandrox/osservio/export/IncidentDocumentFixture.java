@@ -15,6 +15,18 @@ final class IncidentDocumentFixture {
     private static final String HTTP_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private IncidentDocumentFixture() { }
     static IncidentSnapshot make(String name) {
+        if (name.equals("structured-log")) {
+            String blob = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+            String text = "{\"arguments\":[9223372036854775807,\"例\"],\"attributes\":{\"requestId\":\"fixture-42\"}}";
+            List<LogEvent> events = new ArrayList<>(); int bytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            for (LogDetailsReference.State state : LogDetailsReference.State.values()) {
+                boolean available = state == LogDetailsReference.State.AVAILABLE;
+                events.add(LogEvent.restore(SESSION, events.size() + 1, 17, LogLevel.ERROR, "fixture", "Request failed", false, false,
+                    LogDetailsReference.restore(state, available ? blob : null, available ? bytes : 0)));
+            }
+            return IncidentSnapshot.restore(ID, Long.MIN_VALUE, null, null, null,
+                IncidentLogs.restore(events, 23, 5, 2, Collections.singletonMap(blob, IncidentPayload.restore(blob, IncidentPayload.State.AVAILABLE, text)), 7), null, null);
+        }
         if (name.equals("trusted-content")) {
             IncidentSnapshot base = make("complete"); HTTPEvent old = base.http.events.get(0);
             HTTPEvent event = HTTPEvent.restore(old.id, old.sessionId, old.sequence, old.revision, old.timestampMillis, "PROPFIND", old.source,

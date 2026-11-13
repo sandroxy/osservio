@@ -7,6 +7,27 @@ import XCTest
 
 final class IncidentComposerTests: XCTestCase {
     @MainActor
+    func testLogContextIsOptInAndCopiedOnlyOnceWhileEditing() async throws {
+        let id = UUID().uuidString, text = "{\"arguments\":[\"captured\"]}"
+        let event = try LogEvent.restore(sessionID: id, sequence: 1, timestampMillis: 1, level: .info, category: "fixture", message: "Summary",
+            isPrivate: false, isTruncated: false, details: .restore(state: .available, blobID: id, textByteCount: text.utf8.count))
+        let logs = try IncidentLogs.capture(LogSnapshot(events: [event], retainedTextBytes: event.textByteCount, evictedCount: 0, revision: 1), observedAtMillis: 3)
+        let mark = try IncidentSnapshot.capture(logs: logs), history = ComposerLogs(try .restore(id: id, text: text))
+        let archive = RecordingArchive(), saved = expectation(description: "saved context")
+        let composer = IncidentComposerViewController(mark: mark, archive: archive, provider: ControlledEnvironment(), logHistory: history) { saved.fulfill() }
+        let window = show(composer); defer { window.isHidden = true; window.rootViewController = nil }
+        let environment = try control(composer, row: 0); environment.isOn = false; try sendChange(environment)
+        let cell = composer.tableView(composer.tableView, cellForRowAt: IndexPath(row: 3, section: 1))
+        let details = try XCTUnwrap(cell.accessoryView as? UISwitch)
+        XCTAssertFalse(details.isOn); XCTAssertEqual(history.reads, 0)
+        details.isOn = true; try sendChange(details); XCTAssertEqual(history.reads, 1)
+        history.clear(); details.isOn = false; try sendChange(details); details.isOn = true; try sendChange(details)
+        XCTAssertEqual(history.reads, 1)
+        try send(XCTUnwrap(composer.navigationItem.rightBarButtonItem)); await fulfillment(of: [saved], timeout: 3)
+        XCTAssertEqual(archive.snapshot?.logs?.payloads[id]?.text, text)
+        XCTAssertEqual(archive.snapshot?.logs?.observedAtMillis, 3)
+    }
+    @MainActor
     func testDismissalTracksDraftChangesAndAllowsRevertedOptions() async throws {
         let archive = RecordingArchive(), provider = ControlledEnvironment()
         let composer = IncidentComposerViewController(mark: try IncidentSnapshot.capture(), archive: archive, provider: provider) { XCTFail("Dismissal must not save") }
@@ -219,5 +240,12 @@ private final class ComposerWebSockets: WebSocketHistory, @unchecked Sendable {
     func snapshot() -> WebSocketSnapshot? { XCTFail("Composer must not refresh metadata"); return nil }
     func payload(id: String) -> WebSocketPayloadLookup { reads += 1; return .busy }
     func clear() { XCTFail("Composer must not clear live history") }
+}
+private final class ComposerLogs: LogDetailsHistory, @unchecked Sendable {
+    var value: LogDetailsContent?; var reads = 0
+    init(_ value: LogDetailsContent) { self.value = value }
+    func details(id: String) -> LogDetailsLookup { reads += 1; return value.map(LogDetailsLookup.available) ?? .unavailable }
+    func snapshot() -> LogSnapshot? { XCTFail("Composer must not refresh metadata"); return nil }
+    func clear() { value = nil }
 }
 #endif

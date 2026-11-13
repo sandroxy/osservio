@@ -1,0 +1,1 @@
+{"arguments":[null,true,-9223372036854775808,9223372036854775807,1.25,"中文🙂\u0000\u000a\"\\",[false],{"attempt":1,"attempt":2}],"attributes":{"requestId":"fixture-42"},"error":{"type":"TimeoutError","message":"Try again","domain":"transport","code":"E_TIMEOUT","stackTrace":"Origin.run\u000aCaller.run"},"callSite":{"file":"Host/Client.swift","function":"send()","line":42}}

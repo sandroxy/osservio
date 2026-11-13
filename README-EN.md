@@ -21,7 +21,8 @@ account isolation, resource limits and system-diagnostic boundaries.
 
 ## Available now
 
-- Explicit host logging with levels and categories. `publicText` permits
+- Explicit host logging with levels and categories, plus optional bounded typed
+  arguments, attributes, call sites and supplied error details. `publicText` permits
   diagnostic retention; `privateText` deliberately discards the original and
   records `[private]`. Neither choice scans the content for secrets.
 - Complete JSON log messages and network content support hierarchical expansion,
@@ -75,7 +76,7 @@ Native APIs and the Problems view support explicit manual snapshots with optiona
 descriptions, environment information, bounded breadcrumbs, logs, HTTP requests,
 and WebSocket activity. Saved snapshots remain browsable after restart, with
 search, copying, and confirmed deletion. Marking freezes the time and recent
-history windows. Network content is excluded by default; the first explicit
+history windows. Log context and network content are excluded by default; the first explicit
 selection reads a bounded copy, which is reused on reselection or save retry.
 Description text also requires opt-in. It is public diagnostic content and is
 not automatically scrubbed for secrets. Snapshots have independent count, age,

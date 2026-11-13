@@ -18,4 +18,12 @@
     <string name="osservio_copy">Copy message</string>
     <string name="osservio_close">Close</string>
     <string name="osservio_busy">Recorder is busy. Try again.</string>
+    <string name="osservio_ui_log_context">Log context</string>
+    <string name="osservio_ui_log_context_open">View arguments, attributes and error details</string>
+    <string name="osservio_ui_log_context_omitted">Context omitted by the host</string>
+    <string name="osservio_ui_log_context_limited">Context exceeded capture limits; the summary was retained</string>
+    <string name="osservio_ui_log_context_invalid">Context contained an invalid value; the summary was retained</string>
+    <string name="osservio_ui_log_context_unsupported">The configured log store does not support context</string>
+    <string name="osservio_ui_search_log_details">Log context</string>
+    <string name="osservio_incident_include_log_details">Include log context</string>
 </resources>

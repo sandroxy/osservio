@@ -50,8 +50,9 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 5, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 5, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 6, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 6, "incidentID", snapshot.id,
+            "logs", content(snapshot.logs == null ? null : snapshot.logs.payloads),
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
         if (metadata == null || payloads == null) throw new IllegalArgumentException("Snapshot cannot be represented as JSON");
@@ -151,9 +152,11 @@ public final class IncidentDocuments {
         List<Object> events = new ArrayList<>();
         for (LogEvent event : value.events) events.add(object("sessionID", event.sessionId, "sequence", Long.toString(event.sequence),
             "timestampMillis", Long.toString(event.timestampMillis), "level", code(event.level), "category", event.category,
-            "message", event.message, "isPrivate", event.isPrivate, "isTruncated", event.isTruncated));
+            "message", event.message, "isPrivate", event.isPrivate, "isTruncated", event.isTruncated,
+            "details", event.details == null ? null : object("state", code(event.details.state), "blobID", event.details.blobId, "textByteCount", event.details.textByteCount)));
         return object("observedAtMillis", Long.toString(value.observedAtMillis), "sourceEventCount", value.sourceEventCount, "omittedEventCount", value.omittedEventCount,
-            "sourceEvictedCount", Long.toString(value.sourceEvictedCount), "retainedTextBytes", value.retainedTextBytes, "events", events);
+            "sourceEvictedCount", Long.toString(value.sourceEvictedCount), "retainedTextBytes", value.retainedTextBytes, "events", events,
+            "sourceEvictedDetails", Long.toString(value.sourceEvictedDetails), "retainedPayloadBytes", value.retainedPayloadBytes, "payloads", selection(value.payloads));
     }
     private static Map<String, Object> http(IncidentHTTP value) {
         List<Object> events = new ArrayList<>();

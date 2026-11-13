@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:payloads:5",
-  "title": "Osservio incident content revision 5",
+  "$id": "urn:osservio:payloads:6",
+  "title": "Osservio incident content revision 6",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident.payloads"
     },
     "revision": {
-      "const": 5
+      "const": 6
     },
     "incidentID": {
       "$ref": "urn:osservio:incident:1#/$defs/uuid"
@@ -36,6 +36,18 @@
         "maxLength": 65536,
         "format": "utf8-65536"
       }
+    },
+    "logs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "urn:osservio:incident:1#/$defs/uuid"
+      },
+      "maxProperties": 2000,
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 65536,
+        "format": "utf8-65536"
+      }
     }
   },
   "required": [
@@ -43,7 +55,8 @@
     "revision",
     "incidentID",
     "http",
-    "webSockets"
+    "webSockets",
+    "logs"
   ],
   "additionalProperties": false
 }

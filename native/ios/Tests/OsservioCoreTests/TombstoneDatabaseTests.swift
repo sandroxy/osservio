@@ -139,7 +139,7 @@ final class TombstoneDatabaseTests: XCTestCase {
             XCTAssertEqual(try store.recover(.init(source: .metricKit, observedAtMillis: 2000, diagnostics: [metric]), now: 2000).alreadyProcessedCount, 1)
             try store.save(.captureDiagnostic(try TombstoneFixture.evidence(), observedAtMillis: 2000), now: 2000); store.close()
             let raw = try SQLiteConnection(url: url); defer { raw.close() }
-            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 7) }
+            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 8) }
             try raw.statement("SELECT saved_at FROM incidents WHERE id='eeeeeeee-eeee-eeee-eeee-000000000003'") {
                 XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 100)
             }

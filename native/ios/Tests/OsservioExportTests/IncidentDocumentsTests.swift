@@ -7,7 +7,7 @@ final class IncidentDocumentsTests: XCTestCase {
     func testDocumentsMatchIndependentSharedFixtures() throws {
         var root = URL(fileURLWithPath: #filePath)
         for _ in 0..<5 { root.deleteLastPathComponent() }
-        for name in ["absent", "empty", "complete", "trusted-content", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"] {
+        for name in ["absent", "empty", "complete", "trusted-content", "structured-log", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"] {
             let expected = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("testing/incident-export/\(name).json"))) as? [String: Any])
             let documents = try IncidentDocuments.encode(IncidentDocumentFixture.make(name))
             let metadata = try XCTUnwrap(JSONSerialization.jsonObject(with: documents.metadataJSON) as? NSDictionary)

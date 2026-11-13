@@ -238,7 +238,8 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
             snapshot = IncidentSnapshot.restore(mark.id, mark.timestampMillis, null, null, mark.breadcrumbs, logWindow, httpWindow, socketWindow);
         }
         catch (IllegalArgumentException failure) { notice.setText(R.string.osservio_incident_mark_failed); return; }
-        composer = new IncidentComposer(getContext(), snapshot, archive, environment, http, webSockets, () -> {
+        composer = new IncidentComposer(getContext(), snapshot, archive, environment, http, webSockets,
+            logs instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) logs : null, () -> {
             justSaved = true;
             if (isAttachedToWindow() && isShown() && getWindowVisibility() == VISIBLE) read();
             else attempted = false;

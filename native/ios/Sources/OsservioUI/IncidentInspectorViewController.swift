@@ -143,7 +143,7 @@ public final class IncidentInspectorViewController: UITableViewController {
             let snapshot = try IncidentSnapshot.restore(id: mark.id, timestampMillis: mark.timestampMillis, note: nil, environment: nil,
                 breadcrumbs: mark.breadcrumbs, logs: logWindow, http: httpWindow, webSockets: socketWindow)
             let editor = IncidentComposerViewController(mark: snapshot, archive: archive, provider: environment,
-                httpHistory: http, webSocketHistory: webSockets) { [weak self] in
+                httpHistory: http, webSocketHistory: webSockets, logHistory: logs as? any LogDetailsHistory) { [weak self] in
                 self?.justSaved = true; self?.read()
             }
             inspectorPresent(editor)

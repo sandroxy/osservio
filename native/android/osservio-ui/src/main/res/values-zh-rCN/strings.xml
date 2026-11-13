@@ -16,4 +16,12 @@
     <string name="osservio_copy">复制日志内容</string>
     <string name="osservio_close">关闭</string>
     <string name="osservio_busy">采集器正忙，请重试。</string>
+    <string name="osservio_ui_log_context">日志上下文</string>
+    <string name="osservio_ui_log_context_open">查看参数、属性与错误信息</string>
+    <string name="osservio_ui_log_context_omitted">宿主已省略上下文</string>
+    <string name="osservio_ui_log_context_limited">上下文超出采集限制，已保留日志摘要</string>
+    <string name="osservio_ui_log_context_invalid">上下文包含无效值，已保留日志摘要</string>
+    <string name="osservio_ui_log_context_unsupported">当前日志存储不支持上下文</string>
+    <string name="osservio_ui_search_log_details">日志上下文</string>
+    <string name="osservio_incident_include_log_details">包含日志上下文</string>
 </resources>

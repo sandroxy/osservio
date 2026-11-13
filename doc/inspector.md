@@ -259,7 +259,7 @@ Other long metadata values can also open the reader. Technical fields expand on 
 Environment sizes use readable binary units, with exact byte counts available
 separately; unavailable platform metrics are grouped without inventing values.
 
-Complete JSON objects and arrays in HTTP bodies, WebSocket text and log messages
+Complete JSON objects and arrays in HTTP bodies, WebSocket text, log messages and structured log context
 open in Structure mode after on-demand background parsing. Tap a nonempty
 object or array row to expand or collapse it. The root stays expanded; empty
 containers and scalar values need no expansion. Indentation, brackets and token
@@ -429,3 +429,10 @@ with its Close action. Custom containers must forward appearance transitions.
 Standalone controllers need host-provided navigation and dismissal. See the
 [Android](../native/android/README.md) and [iOS](../native/ios/README.md) integration
 guides for source dependencies and collector setup.
+
+Structured log context appears only on records that have it. The summary stays
+on the list and at the top of log details; the context reader exposes typed
+arguments, attributes and supplied error/call-site fields without expanding the
+list row. Context participates in the message search scope and JSON-field
+matching through the same bounded background worker. Missing content remains
+unknown for exclusions. Saved context searches use the frozen attachment only.

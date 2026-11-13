@@ -122,7 +122,7 @@ final class DiagnosticPolicyTests: XCTestCase {
                 store.close()
             }
             let check = try SQLiteConnection(url: url); defer { check.close() }
-            try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 6 : 7) }
+            try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 6 : 8) }
             var requestColumn = false
             try check.statement("PRAGMA table_info(incident_http)") { row in
                 while try row.step() { if try row.text(1, byteLimit: 64) == "request_processed" { requestColumn = true } }

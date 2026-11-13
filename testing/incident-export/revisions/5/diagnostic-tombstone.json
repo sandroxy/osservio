@@ -1,0 +1,61 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 5,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "9223372036854775807",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": null,
+      "http": null,
+      "webSockets": null,
+      "origin": "systemDiagnostic",
+      "systemDiagnostic": {
+        "source": "androidExitInfo",
+        "kind": "nativeCrash",
+        "intervalStartMillis": "1000",
+        "intervalEndMillis": "1000",
+        "androidExit": {
+          "reasonCode": 5,
+          "status": 6,
+          "processID": 123,
+          "importance": 100,
+          "pssKiB": null,
+          "rssKiB": null,
+          "tombstoneState": "available",
+          "tombstone": {
+            "architectureCode": 1,
+            "signalNumber": 6,
+            "signalCode": -6,
+            "threadID": 99,
+            "faultAddress": "18446744073709551615",
+            "frames": [
+              {
+                "programCounter": "18446744073709551615",
+                "relativeProgramCounter": "18446744073709551615",
+                "buildID": "0123456789abcdef0123456789abcdef01234567"
+              },
+              {
+                "programCounter": "0",
+                "relativeProgramCounter": "0",
+                "buildID": null
+              }
+            ]
+          }
+        },
+        "metricKit": null,
+        "appleSignal": null
+      }
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 5,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {}
+  }
+}

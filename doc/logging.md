@@ -1,8 +1,9 @@
 # Native log capture
 
-The native logging modules record text explicitly submitted by the host. They do
+The native logging modules record messages and optional structured context explicitly submitted by the host. They do
 not intercept `Logcat`, `print`, `NSLog`, JavaScript, network traffic, or crashes.
-There is no disk storage, export service, or automatic startup hook.
+The live logger has no automatic disk retention or startup hook. Explicit
+[incident attachments](incidents.md) can preserve selected messages and context.
 
 ## Ownership and lifecycle
 
@@ -175,9 +176,80 @@ presentation and dismissal.
 The inspector shows retained and evicted history separately from capture
 outcomes. Open a controller's status in Capture settings to inspect its
 [capture statistics](capture-statistics.md).
-Other rejections are exposed to the calling host through return values, not yet
-aggregated in the UI. Filtering and paused views operate on a bounded snapshot;
+Recorder return values provide the per-operation result. Filtering and paused views operate on a bounded snapshot;
 they cannot recover data already evicted from the store. Process termination
 loses this live history. Saving a selected log window as a
 [problem snapshot](incidents.md) is a separate, explicit workflow with its own
 retention policy.
+
+## Structured context and supplied errors
+
+`record` accepts an optional `LogDetails` independently from its summary
+`LogMessage`. The list continues to emphasize that summary. Arguments, attributes,
+call-site information and supplied error fields are read on demand in the
+existing JSON reader, with exact source, search and copy support. An error log
+does not create a problem snapshot or claim a process crash.
+
+```swift
+logger.record(.error, category: "transport", message: .publicText("Request failed"),
+    details: .publicValues(
+        arguments: [.integer(42), .boolean(false)],
+        attributes: [LogField("requestId", .string("local-reference"))],
+        error: LogError(type: "TimeoutError", domain: "transport", code: "E_TIMEOUT"),
+        callSite: LogCallSite(file: #fileID, function: #function, line: #line)))
+```
+
+```java
+logger.record(LogLevel.ERROR, "transport", LogMessage.publicText("Request failed"),
+    LogDetails.publicValues(
+        new LogValue[] {LogValue.integer(42), LogValue.bool(false)},
+        new LogField[] {new LogField("requestId", LogValue.string("local-reference"))},
+        new LogError("TimeoutError", null, "transport", "E_TIMEOUT", null),
+        new LogCallSite("Client.java", "send", 42)));
+```
+
+Only explicit null, Boolean, signed 64-bit integer, finite floating-point number,
+string, array and ordered object values are accepted. Integer digits are encoded
+exactly; consumers should not coerce them through JavaScript floating-point
+numbers. Duplicate object names and array order are preserved. No arbitrary
+object reflection, property access, cycle traversal, `description` or `toString`
+callback occurs. Java collection factories copy at most 64 entries; oversized
+collections become a bounded limit marker without retaining the original array.
+
+`LogError` carries a supplied type plus optional message, domain, code and stack
+text. Supply a stack only when the host actually has that evidence. The SDK never
+substitutes the logger's current stack for the original error stack. Call sites
+are explicit and optional; prefer logical filenames over absolute machine paths.
+No Throwable/NSError graph or exception object is retained.
+
+`publicValues` authorizes local capture; it does not assert that values are safe
+to publish. Process or remove fields before constructing them when needed.
+`privateValues` records an omission without retaining any original context.
+Summary and context classification are independent: choosing `privateText` for
+the message does not implicitly change explicitly supplied public context.
+
+Admission and rate limits run before encoding. The JSON writer stops at the
+configured `detailsByteLimit` (default 16 KiB, 256–65,536 bytes). It also enforces
+32 top-level arguments, 64 top-level attributes, 64 children per container,
+256 value nodes, depth 8 including the envelope, 256-byte object names and
+16-KiB scalar strings. Limits include the fixed arguments/attributes/error/
+callSite envelope. Escaping counts toward the encoded byte budget.
+An over-budget or invalid context is omitted atomically with `limited` or
+`invalid` evidence; it never leaves misleading partial JSON or erases the
+summary. A custom sink without `LogDetailsSink` records `unsupported` without
+encoding the input. Plain-message integrations remain source-compatible.
+
+`MemoryLogStore` implements `LogDetailsSink` and `LogDetailsHistory`. Context is
+a separate immutable blob; metadata snapshots never load it. Its independent
+`detailsByteLimit` defaults to 256 KiB and accepts 0–16 MiB. Oldest context is
+evicted within that budget, and removing its metadata also removes any retained
+blob. A zero budget retains references but no context content. Error retention
+protects summaries, not an unlimited set of error payloads. `retainedDetailsBytes`
+and `evictedDetails` expose this independently from event and message limits.
+
+Details and JSON-field searches perform bounded on-demand reads of retained
+context. An open content reader keeps its immutable source even if history is
+cleared. [Incident selection](incidents.md#structured-log-attachments) can freeze
+context separately; it survives restart and explicit export only when included.
+Capture state and incident inclusion state are independent: `available` at
+capture does not promise that its blob is still retained or was saved.

@@ -1,6 +1,7 @@
 package com.sandrox.osservio.core;
 
 import java.util.Objects;
+import java.util.UUID;
 
 /** A finite capture session. Capture uses try-lock admission and has no async queue. */
 public final class LogRecorder {
@@ -26,6 +27,7 @@ public final class LogRecorder {
     private final int messageByteLimit;
     private final int eventsPerSecond;
     private final int errorReservePerSecond;
+    private final int detailsByteLimit;
     private String sessionId = "";
     private long windowStart;
     private int windowCount;
@@ -47,8 +49,11 @@ public final class LogRecorder {
     }
 
     public LogRecorder(LogSink sink, CaptureController captureController, int messageByteLimit, int eventsPerSecond, int errorReservePerSecond) {
+        this(sink, captureController, messageByteLimit, eventsPerSecond, errorReservePerSecond, 16384);
+    }
+    public LogRecorder(LogSink sink, CaptureController captureController, int messageByteLimit, int eventsPerSecond, int errorReservePerSecond, int detailsByteLimit) {
         if (messageByteLimit < 9 || messageByteLimit > 65536 || eventsPerSecond < 1 || eventsPerSecond > 10000
-            || errorReservePerSecond < 0 || errorReservePerSecond > 100) {
+            || errorReservePerSecond < 0 || errorReservePerSecond > 100 || detailsByteLimit < 256 || detailsByteLimit > 65536) {
             throw new IllegalArgumentException("Invalid log capture limit");
         }
         this.sink = Objects.requireNonNull(sink, "sink");
@@ -56,6 +61,7 @@ public final class LogRecorder {
         this.messageByteLimit = messageByteLimit;
         this.eventsPerSecond = eventsPerSecond;
         this.errorReservePerSecond = errorReservePerSecond;
+        this.detailsByteLimit = detailsByteLimit;
     }
 
     public void start() { start(900_000L); }
@@ -78,8 +84,11 @@ public final class LogRecorder {
 
     /** Category is a static ASCII label, not a place for user or request data. */
     public Result record(LogLevel level, String category, LogMessage message) {
+        return record(level, category, message, null);
+    }
+    public Result record(LogLevel level, String category, LogMessage message, LogDetails details) {
         CaptureController.Access<Result> result = captureController.record(true,
-            context -> ingest(level, category, message, context));
+            context -> ingest(level, category, message, details, context));
         switch (result.admission) {
             case VALUE: return captureController.statistics.observe(result.value);
             case INACTIVE: return captureController.statistics.observe(Result.INACTIVE);
@@ -89,7 +98,7 @@ public final class LogRecorder {
         }
     }
 
-    private Result ingest(LogLevel level, String category, LogMessage message, CaptureController.Context context) {
+    private Result ingest(LogLevel level, String category, LogMessage message, LogDetails details, CaptureController.Context context) {
         long now = context.monotonicMillis;
         if (!sessionId.equals(context.sessionId)) {
             sessionId = context.sessionId;
@@ -113,10 +122,22 @@ public final class LogRecorder {
         }
         BoundedText bounded = BoundedText.prefix(message.text, messageByteLimit);
         if (bounded == null) return Result.INVALID_MESSAGE;
+        LogDetailsReference reference = null; LogDetailsContent content = null;
+        if (details != null) {
+            LogDetailsReference.State state = details.isPrivate ? LogDetailsReference.State.OMITTED : LogDetailsReference.State.UNSUPPORTED;
+            if (!details.isPrivate && sink instanceof LogDetailsSink) {
+                try {
+                    String text = LogDetailsEncoding.encode(details, detailsByteLimit);
+                    content = LogDetailsContent.restore(UUID.randomUUID().toString(), text);
+                    state = LogDetailsReference.State.AVAILABLE;
+                } catch (LogDetailsEncoding.Failure failure) { state = failure.state; }
+            }
+            reference = LogDetailsReference.restore(state, content == null ? null : content.id, content == null ? 0 : content.byteCount);
+        }
         LogEvent event = new LogEvent(sessionId, context.sequence, captureController.clock.wallTimeMillis(), level,
-            category, bounded.text, message.isPrivate, bounded.truncated);
+            category, bounded.text, message.isPrivate, bounded.truncated, reference);
         try {
-            LogSink.WriteResult result = sink.append(event);
+            LogSink.WriteResult result = content == null ? sink.append(event) : ((LogDetailsSink) sink).append(event, content);
             if (result == LogSink.WriteResult.STORED) return Result.RECORDED;
             if (result == LogSink.WriteResult.BUSY) return Result.BUSY;
             if (result == LogSink.WriteResult.TOO_LARGE) return Result.TOO_LARGE;

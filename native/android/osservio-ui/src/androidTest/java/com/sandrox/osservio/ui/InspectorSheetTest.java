@@ -20,6 +20,39 @@ import static org.junit.Assert.*;
 /** Exercises sheet dismissal and actual surface/inset geometry without consumer data. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorSheetTest {
+    @Test public void logContextSelectionIsOptInAndDoesNotReadAgainAfterEviction() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            String id = "11111111-1111-1111-1111-111111111111", value = "{\"arguments\":[\"captured\"]}";
+            LogEvent event = LogEvent.restore(id, 1, 1, LogLevel.INFO, "fixture", "Summary", false, false,
+                LogDetailsReference.restore(LogDetailsReference.State.AVAILABLE, id, value.length()));
+            LogSnapshot source = new LogSnapshot(java.util.Collections.singletonList(event), event.textByteCount, 0, 1);
+            IncidentSnapshot mark = IncidentSnapshot.capture(null, null, null, IncidentLogs.capture(source, 3), null, null);
+            LogDetailsContent[] payload = {LogDetailsContent.restore(id, value)}; int[] reads = {0};
+            LogDetailsHistory history = new LogDetailsHistory() {
+                @Override public Lookup details(String key) { reads[0]++; return payload[0] == null ? Lookup.unavailable() : Lookup.available(payload[0]); }
+                @Override public LogSnapshot snapshot() { fail("Composer must not refresh metadata"); return null; }
+                @Override public void clear() { payload[0] = null; }
+            };
+            Context base = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            FrameLayout container = new FrameLayout(base); InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, new View(base));
+            Context context = new InspectorNavigation.OwnerContext(base, navigation, 0);
+            IncidentSnapshot[] saved = {null};
+            IncidentArchive archive = new NoWritesArchive() {
+                @Override public void save(IncidentSnapshot snapshot, Completion completion) { saved[0] = snapshot; completion.complete(null); }
+            };
+            IncidentComposer composer = new IncidentComposer(context, mark, archive, completion -> { }, null, null, history, () -> { }, () -> { });
+            composer.show();
+            ((Switch) text(container, context.getString(R.string.osservio_incident_include_environment))).setChecked(false);
+            Switch details = (Switch) text(container, context.getString(R.string.osservio_incident_include_log_details));
+            assertFalse(details.isChecked()); assertEquals(0, reads[0]); details.setChecked(true); assertEquals(1, reads[0]);
+            InspectorReadContent opened = InspectorLogDetails.content(context, event, history, null); history.clear();
+            int readCount = reads[0]; details.setChecked(false); details.setChecked(true); assertEquals(readCount, reads[0]);
+            assertEquals(value, opened.text); assertTrue(opened.available);
+            text(container, context.getString(R.string.osservio_incident_save)).performClick();
+            assertNotNull(saved[0]); assertEquals(value, saved[0].logs.payloads.get(id).text); assertEquals(3, saved[0].logs.observedAtMillis);
+            composer.dismiss(); navigation.dispose();
+        });
+    }
     @Test public void sheetSurfaceReachesBottomWhileContentRespectsNavigationAndKeyboardInsets() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
@@ -95,7 +128,7 @@ public final class InspectorSheetTest {
         }
         return null;
     }
-    private static final class NoWritesArchive implements IncidentArchive {
+    private static class NoWritesArchive implements IncidentArchive {
         @Override public PersistenceStatus persistenceStatus() { return null; }
         @Override public void save(IncidentSnapshot snapshot, Completion completion) { fail("Dismissal must not write"); }
         @Override public void readIncidents(SummariesCompletion completion) { fail("Composer must not query the archive"); }

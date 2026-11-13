@@ -95,6 +95,10 @@ final class InspectorRecordSearch {
     }
     static Result run(List<Record> records, InspectorQuery query, long now, HTTPHistory http, WebSocketHistory sockets,
                       Map<String, IncidentPayload> saved, int unitLimit, InspectorJsonDocument.Cancellation cancelled) {
+        return run(records, query, now, http, sockets, saved, null, unitLimit, cancelled);
+    }
+    static Result run(List<Record> records, InspectorQuery query, long now, HTTPHistory http, WebSocketHistory sockets,
+                      Map<String, IncidentPayload> saved, com.sandrox.osservio.core.LogDetailsHistory logs, int unitLimit, InspectorJsonDocument.Cancellation cancelled) {
         Result result = new Result(); int spent = 0; long started = System.nanoTime();
         for (int position = 0; position < records.size(); position++) {
             if (cancelled.isCancelled()) return null;
@@ -110,7 +114,7 @@ final class InspectorRecordSearch {
             if (metadata && query.fieldPath.isEmpty() && query.excludedText.isEmpty()) { result.keys.add(record.key()); continue; }
             if (spent >= unitLimit) { result.limited = true; result.previews.remove(record.key()); result.previewSources.remove(record.key()); continue; }
             boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = incompleteHeaders;
-            for (Payload payload : payloads(record, query, http, sockets, saved)) {
+            for (Payload payload : payloads(record, query, http, sockets, saved, logs)) {
                 if (cancelled.isCancelled()) return null;
                 String text = payload.text;
                 if (text == null) { result.unavailable++; exclusionUnknown |= query.searches(payload.scope()); continue; }
@@ -137,8 +141,20 @@ final class InspectorRecordSearch {
         }
         return cancelled.isCancelled() ? null : result;
     }
-    private static List<Payload> payloads(Record record, InspectorQuery query, HTTPHistory http, WebSocketHistory sockets, Map<String, IncidentPayload> saved) {
-        if (record.log != null) return query.searches("message") || !query.fieldPath.isEmpty() ? Collections.singletonList(new Payload(record.log.isPrivate ? null : record.log.message, record.log.isTruncated)) : Collections.emptyList();
+    private static List<Payload> payloads(Record record, InspectorQuery query, HTTPHistory http, WebSocketHistory sockets, Map<String, IncidentPayload> saved, com.sandrox.osservio.core.LogDetailsHistory logs) {
+        if (record.log != null) {
+            if (!query.searches("message") && query.fieldPath.isEmpty()) return Collections.emptyList();
+            List<Payload> result = new ArrayList<>(2); result.add(new Payload(record.log.isPrivate ? null : record.log.message, record.log.isTruncated));
+            if (record.log.details != null) {
+                String text = null, id = record.log.details.blobId;
+                if (id != null) {
+                    if (saved != null) { IncidentPayload payload = saved.get(id); if (payload != null && payload.state == IncidentPayload.State.AVAILABLE) text = payload.text; }
+                    else if (logs != null) { com.sandrox.osservio.core.LogDetailsHistory.Lookup lookup = logs.details(id); if (lookup.content != null) text = lookup.content.text; }
+                }
+                result.add(new Payload(text, false, "logDetails"));
+            }
+            return result;
+        }
         if (record.http != null) {
             List<Payload> result = new ArrayList<>(2); int index = 0;
             for (HTTPEvent.BodyReference reference : new HTTPEvent.BodyReference[] {record.http.requestBody, record.http.responseBody}) {

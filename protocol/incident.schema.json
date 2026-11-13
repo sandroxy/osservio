@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:incident:5",
-  "title": "Osservio incident metadata revision 5",
+  "$id": "urn:osservio:incident:6",
+  "title": "Osservio incident metadata revision 6",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident"
     },
     "revision": {
-      "const": 5
+      "const": 6
     },
     "payloadFile": {
       "const": "payloads.json"
@@ -749,6 +749,16 @@
         },
         "isTruncated": {
           "type": "boolean"
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/logDetails"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -759,7 +769,8 @@
         "category",
         "message",
         "isPrivate",
-        "isTruncated"
+        "isTruncated",
+        "details"
       ],
       "additionalProperties": false,
       "allOf": [
@@ -1297,6 +1308,24 @@
             "$ref": "#/$defs/log"
           },
           "maxItems": 2000
+        },
+        "retainedPayloadBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 262144
+        },
+        "payloads": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/uuid"
+          },
+          "maxProperties": 2000,
+          "additionalProperties": {
+            "$ref": "#/$defs/selection"
+          }
+        },
+        "sourceEvictedDetails": {
+          "$ref": "#/$defs/uint63"
         }
       },
       "required": [
@@ -1305,7 +1334,10 @@
         "retainedTextBytes",
         "observedAtMillis",
         "sourceEvictedCount",
-        "events"
+        "events",
+        "retainedPayloadBytes",
+        "payloads",
+        "sourceEvictedDetails"
       ],
       "additionalProperties": false
     },
@@ -2095,6 +2127,72 @@
         "frames"
       ],
       "additionalProperties": false
+    },
+    "logDetails": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "available",
+            "omitted",
+            "limited",
+            "invalid",
+            "unsupported"
+          ]
+        },
+        "blobID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "textByteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        }
+      },
+      "required": [
+        "state",
+        "blobID",
+        "textByteCount"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "blobID": {
+                "$ref": "#/$defs/uuid"
+              },
+              "textByteCount": {
+                "minimum": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "blobID": {
+                "type": "null"
+              },
+              "textByteCount": {
+                "const": 0
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 5,
+    "revision": 6,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -15,7 +15,10 @@
         "sourceEventCount": 4,
         "omittedEventCount": 4,
         "sourceEvictedCount": "2",
-        "retainedTextBytes": 0
+        "retainedTextBytes": 0,
+        "payloads": {},
+        "retainedPayloadBytes": 0,
+        "sourceEvictedDetails": "0"
       },
       "http": null,
       "webSockets": null,
@@ -25,9 +28,10 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 5,
+    "revision": 6,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {},
-    "webSockets": {}
+    "webSockets": {},
+    "logs": {}
   }
 }

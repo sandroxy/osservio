@@ -77,7 +77,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             int index = position - list.getHeaderViewsCount();
             if (index < 0 || index >= events.size()) return;
             InspectorWidgets.hideKeyboard(this);
-            dialog = LogDetailDialog.create(context, events.get(index)); watchDialog(); dialog.show();
+            dialog = LogDetailDialog.create(context, events.get(index), history instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) history : null, null); watchDialog(); dialog.show();
         });
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override public void onScrollStateChanged(AbsListView view, int scrollState) {
@@ -117,7 +117,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         if (result != null && (result.limited || result.unavailable > 0 || result.truncated > 0)) notes.add(context.getString(R.string.osservio_ui_search_partial));
         if (stale) notes.add(context.getString(R.string.osservio_ui_previous_window));
         LogRecorder.Status status = recorder.status();
-        if ((state.snapshot != null && state.snapshot.evictedCount > 0) || status != null && status.rateLimitedCount > 0) notes.add(context.getString(R.string.osservio_ui_retention_loss));
+        if ((state.snapshot != null && (state.snapshot.evictedCount > 0 || state.snapshot.evictedDetails > 0)) || status != null && status.rateLimitedCount > 0) notes.add(context.getString(R.string.osservio_ui_retention_loss));
         header.status.setText(android.text.TextUtils.join(" · ", notes)); header.setPaused(state.paused);
     }
     private void search() {
@@ -131,7 +131,8 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         }
         long current = generation; java.lang.ref.WeakReference<LogInspectorView> owner = new java.lang.ref.WeakReference<>(this);
         InspectorRecordPresentation.prepareSearch(getContext(), records);
-        task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(records, query, anchor, null, null, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
+        task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(records, query, anchor, null, null, null,
+            history instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) history : null, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
             LogInspectorView view = owner.get(); if (view == null || view.generation != current) return;
             view.task = null; view.result = found; view.events.clear();
             for (InspectorRecordSearch.Record record : records) if (found.keys.contains(record.key())) view.events.add(record.log);

@@ -20,7 +20,7 @@ public struct IncidentSnapshot: Sendable {
             return total
         } ?? 0
         return (note?.text.utf8.count ?? 0) + environmentBytes + (breadcrumbs?.retainedTextBytes ?? 0)
-            + (logs?.retainedTextBytes ?? 0) + (http?.retainedTextBytes ?? 0) + (http?.retainedPayloadBytes ?? 0)
+            + (logs?.retainedTextBytes ?? 0) + (logs?.retainedPayloadBytes ?? 0) + (http?.retainedTextBytes ?? 0) + (http?.retainedPayloadBytes ?? 0)
             + (webSockets?.retainedTextBytes ?? 0) + (webSockets?.retainedPayloadBytes ?? 0)
             + (systemDiagnostic?.textByteCount ?? 0)
     }

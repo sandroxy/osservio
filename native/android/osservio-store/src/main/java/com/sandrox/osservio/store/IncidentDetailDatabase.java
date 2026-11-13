@@ -18,6 +18,7 @@ import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentWebSockets;
 import com.sandrox.osservio.core.LogEvent;
 import com.sandrox.osservio.core.LogLevel;
+import com.sandrox.osservio.core.LogDetailsReference;
 import com.sandrox.osservio.core.WebSocketEvent;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -47,6 +48,12 @@ final class IncidentDetailDatabase {
     private final SQLiteDatabase database;
     IncidentDetailDatabase(SQLiteDatabase database) { this.database = database; }
 
+    static final String[] LOG_DETAILS_SCHEMA = {
+        "ALTER TABLE incident_logs ADD COLUMN details_state TEXT",
+        "ALTER TABLE incident_logs ADD COLUMN details_blob TEXT",
+        "ALTER TABLE incident_logs ADD COLUMN details_bytes INTEGER NOT NULL DEFAULT 0",
+        "UPDATE incident_windows SET payload_evicted=0 WHERE kind='logs' AND payload_evicted IS NULL"
+    };
     static final String[] CONTENT_POLICY_SCHEMA = {
         "ALTER TABLE incident_http ADD COLUMN request_processed INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE incident_http ADD COLUMN response_processed INTEGER NOT NULL DEFAULT 0",
@@ -81,13 +88,15 @@ final class IncidentDetailDatabase {
         String id = snapshot.id;
         if (snapshot.logs != null) {
             IncidentLogs logs = snapshot.logs;
-            saveWindow(id, Kind.LOGS, logs.observedAtMillis, logs.events.size(), logs.sourceEventCount, logs.sourceEvictedCount, null, logs.retainedTextBytes, 0);
+            saveWindow(id, Kind.LOGS, logs.observedAtMillis, logs.events.size(), logs.sourceEventCount, logs.sourceEvictedCount, logs.sourceEvictedDetails, logs.retainedTextBytes, logs.retainedPayloadBytes);
             for (int position = 0; position < logs.events.size(); position++) {
                 LogEvent event = logs.events.get(position);
-                database.execSQL("INSERT INTO incident_logs(incident_id, position, session_id, sequence, timestamp, level, category, message, private, truncated) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {id, position, event.sessionId, event.sequence, event.timestampMillis,
-                        name(event.level), event.category, event.message, event.isPrivate ? 1 : 0, event.isTruncated ? 1 : 0});
+                database.execSQL("INSERT INTO incident_logs(incident_id, position, session_id, sequence, timestamp, level, category, message, private, truncated, details_state, details_blob, details_bytes) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", new Object[] {id, position, event.sessionId, event.sequence, event.timestampMillis,
+                        name(event.level), event.category, event.message, event.isPrivate ? 1 : 0, event.isTruncated ? 1 : 0,
+                        event.details == null ? null : name(event.details.state), event.details == null ? null : event.details.blobId, event.details == null ? 0 : event.details.textByteCount});
             }
+            savePayloads(id, Kind.LOGS, logs.payloads);
         }
         if (snapshot.http != null) {
             IncidentHTTP http = snapshot.http;
@@ -153,7 +162,7 @@ final class IncidentDetailDatabase {
                 long bytes = integer(row, 6), payloadBytes = integer(row, 7);
                 if (windows.containsKey(kind) || count < 0 || count > 2000 || source < count || source > Integer.MAX_VALUE || evicted < 0
                     || bytes < 0 || bytes > 1048576 || payloadBytes < 0 || payloadBytes > 262144
-                    || (kind == Kind.LOGS ? (payloadEvicted != null || payloadBytes != 0) : (payloadEvicted == null || payloadEvicted < 0))) throw EvidenceStorageException.invalid();
+                    || payloadEvicted == null || payloadEvicted < 0) throw EvidenceStorageException.invalid();
                 windows.put(kind, new Window(integer(row, 1), (int) count, (int) source, evicted, payloadEvicted, (int) bytes, (int) payloadBytes));
             }
         }
@@ -162,7 +171,7 @@ final class IncidentDetailDatabase {
     Detail read(String id, Map<Kind, Window> windows) {
         Rows rows = new Rows();
         try {
-            IncidentLogs logs = readLogs(id, windows.get(Kind.LOGS));
+            IncidentLogs logs = readLogs(id, windows.get(Kind.LOGS), rows);
             IncidentHTTP http = readHTTP(id, windows.get(Kind.HTTP), rows);
             IncidentWebSockets sockets = readWebSockets(id, windows.get(Kind.WEBSOCKET), rows);
             // Unknown families and references outside the declared windows cannot become invisible evidence.
@@ -173,22 +182,28 @@ final class IncidentDetailDatabase {
             EvidenceStorageException invalid = EvidenceStorageException.invalid(); invalid.initCause(failure); throw invalid;
         }
     }
-    private IncidentLogs readLogs(String id, Window window) {
+    private IncidentLogs readLogs(String id, Window window, Rows rows) {
         List<LogEvent> events = new ArrayList<>(); int bytes = 0;
         String projection = "position," + textColumn("session_id", 36) + ",sequence,timestamp," + textColumn("level", 16) + ","
-            + textColumn("category", 64) + "," + textColumn("message", 65536) + ",private,truncated";
+            + textColumn("category", 64) + "," + textColumn("message", 65536) + ",private,truncated," + textColumn("details_state", 32) + "," + textColumn("details_blob", 36) + ",details_bytes";
         try (Cursor row = query("SELECT " + projection + " FROM incident_logs WHERE incident_id=? ORDER BY position LIMIT 2001", id)) {
             while (row.moveToNext()) {
                 if (window == null || events.size() >= window.count || integer(row, 0) != events.size()) throw EvidenceStorageException.invalid();
+                LogDetailsReference.State state = optionalEnum(row, 9, LogDetailsReference.State.values());
+                String blob = optionalText(row, 10, 36); long amount = integer(row, 11);
+                if (amount < 0 || amount > 65536 || state == null && (blob != null || amount != 0)) throw EvidenceStorageException.invalid();
+                LogDetailsReference reference = state == null ? null : LogDetailsReference.restore(state, blob, (int) amount);
                 LogEvent event = LogEvent.restore(text(row, 1, 36), integer(row, 2), integer(row, 3), parse(LogLevel.values(), text(row, 4, 16)),
-                    text(row, 5, 64), text(row, 6, 65536), flag(row, 7), flag(row, 8));
+                    text(row, 5, 64), text(row, 6, 65536), flag(row, 7), flag(row, 8), reference);
                 if (event.textByteCount > window.bytes - bytes) throw EvidenceStorageException.invalid();
                 bytes += event.textByteCount; events.add(event);
             }
         }
+        Map<String, IncidentPayload> payloads = readPayloads(id, Kind.LOGS, window == null ? 0 : window.count, window == null ? 0 : window.payloadBytes);
+        rows.payloads += payloads.size();
         if (window == null) return null;
-        if (events.size() != window.count || bytes != window.bytes) throw EvidenceStorageException.invalid();
-        return IncidentLogs.restore(events, window.observedAt, window.sourceCount, window.evicted);
+        if (events.size() != window.count || bytes != window.bytes || window.evictedPayloads == null) throw EvidenceStorageException.invalid();
+        return IncidentLogs.restore(events, window.observedAt, window.sourceCount, window.evicted, payloads, window.evictedPayloads);
     }
     private IncidentHTTP readHTTP(String id, Window window, Rows rows) {
         List<HTTPEvent> events = new ArrayList<>(); int bytes = 0;

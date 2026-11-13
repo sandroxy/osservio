@@ -2,11 +2,18 @@ package com.sandrox.osservio.ui;
 
 import android.content.Context;
 import com.sandrox.osservio.core.LogEvent;
+import com.sandrox.osservio.core.LogDetailsHistory;
+import com.sandrox.osservio.core.LogDetailsReference;
+import com.sandrox.osservio.core.IncidentPayload;
+import java.util.Map;
 
-/** An immutable log reader can display live or saved evidence without a history dependency. */
+/** Metadata is immutable; context content is read only on demand from live or saved evidence. */
 final class LogDetailDialog {
     private LogDetailDialog() { }
     static InspectorScreen create(Context context, LogEvent event) {
+        return create(context, event, null, null);
+    }
+    static InspectorScreen create(Context context, LogEvent event, LogDetailsHistory history, Map<String, IncidentPayload> saved) {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_read_content);
         InspectorWidgets.ValueRow reader = page.value(() -> RuntimePresentation.message(context, event.message.length() > 600 ? event.message.substring(0, 600) + "…" : event.message, event.isPrivate),
@@ -15,6 +22,12 @@ final class LogDetailDialog {
         if (!event.isPrivate) { InspectorAppearance.content(page, label); label.run(); }
         if (event.isPrivate) page.note(R.string.osservio_crumb_private);
         if (event.isTruncated) page.note(R.string.osservio_truncated);
+        if (event.details != null) {
+            page.section(R.string.osservio_ui_log_context);
+            page.value(() -> context.getString(InspectorLogDetails.label(event.details.state)),
+                event.details.state == LogDetailsReference.State.AVAILABLE ? () -> page.read(R.string.osservio_ui_log_context,
+                    InspectorLogDetails.content(context, event, history, saved)) : null);
+        }
         page.section(R.string.osservio_ui_overview);
         page.field(R.string.osservio_ui_level, event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name());
         page.field(R.string.osservio_ui_category, event.category);

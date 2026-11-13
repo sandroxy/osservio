@@ -125,7 +125,7 @@ final class IncidentDatabaseTests: XCTestCase {
                 if revision == 6 { let store = try IncidentDatabase(url: url, options: options, now: 0); store.close() }
                 let raw = try SQLiteConnection(url: url)
                 if revision == 0 { try raw.execute("CREATE TABLE other_data(value TEXT)") }
-                else { try raw.execute("PRAGMA user_version=8") }
+                else { try raw.execute("PRAGMA user_version=9") }
                 raw.close()
                 let before = try Data(contentsOf: url)
                 XCTAssertThrowsError(try IncidentDatabase(url: url, options: options, now: 1)) { XCTAssertEqual($0 as? PersistenceError, .unsupportedSchema) }

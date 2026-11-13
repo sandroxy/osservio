@@ -4,7 +4,7 @@ import OsservioCore
 public enum LogStoreConfigurationError: Error { case invalidLimit }
 
 /// Bounded by event count and UTF-8 text bytes. Object overhead is bounded by count.
-public final class MemoryLogStore: LogSink, LogHistory, @unchecked Sendable {
+public final class MemoryLogStore: LogDetailsSink, LogDetailsHistory, @unchecked Sendable {
     private let lock = NSLock()
     private struct Entry { let event: LogEvent; let admittedAt: UInt64 }
     private var entries: [Entry?]
@@ -18,20 +18,34 @@ public final class MemoryLogStore: LogSink, LogHistory, @unchecked Sendable {
     private var errors = 0
     private var evicted: Int64 = 0
     private var revision: UInt64 = 0
+    private let detailsByteLimit: Int
+    private var detailOrder: [String] = []
+    private var detailContents: [String: LogDetailsContent] = [:]
+    private var detailBytes = 0
+    private var evictedDetails: Int64 = 0
 
     public init(recordLimit: Int = 500, textByteLimit: Int = 524_288, errorReserve: Int? = nil,
-                errorProtectionMillis: UInt64 = 30_000, clock: any LogClock = SystemLogClock()) throws {
+                errorProtectionMillis: UInt64 = 30_000, clock: any LogClock = SystemLogClock(), detailsByteLimit: Int = 262_144) throws {
         let reserve = errorReserve ?? min(32, max(1, recordLimit / 4))
         guard (1...10_000).contains(recordLimit), (1...16_777_216).contains(textByteLimit),
-              (0...min(64, recordLimit)).contains(reserve), (1...300_000).contains(errorProtectionMillis) else {
+              (0...min(64, recordLimit)).contains(reserve), (1...300_000).contains(errorProtectionMillis), (0...16_777_216).contains(detailsByteLimit) else {
             throw LogStoreConfigurationError.invalidLimit
         }
         entries = Array(repeating: nil, count: recordLimit)
         byteLimit = textByteLimit
         self.errorReserve = reserve; self.errorProtectionMillis = errorProtectionMillis; self.clock = clock
+        self.detailsByteLimit = detailsByteLimit
     }
 
     public func append(_ event: LogEvent) -> LogWriteResult {
+        write(event, details: nil)
+    }
+    public func append(_ event: LogEvent, details: LogDetailsContent) throws -> LogWriteResult {
+        guard event.details?.state == .available, event.details?.blobID == details.id,
+              event.details?.textByteCount == details.byteCount else { throw PersistenceError.invalidRecord }
+        return write(event, details: details)
+    }
+    private func write(_ event: LogEvent, details: LogDetailsContent?) -> LogWriteResult {
         guard lock.try() else { return .busy }
         defer { lock.unlock() }
         guard event.textByteCount <= byteLimit else { return .tooLarge }
@@ -54,6 +68,7 @@ public final class MemoryLogStore: LogSink, LogHistory, @unchecked Sendable {
             if entry.event.level == .error { remainingErrors -= 1 }
             if protected { offset += 1; continue }
             bytes -= entry.event.textByteCount
+            if let id = entry.event.details?.blobID { removeDetails(id) }
             if entry.event.level == .error { errors -= 1 }
             // Only the protected prefix moves; it is bounded by the error reserve (at most 64).
             for index in stride(from: offset, to: 0, by: -1) {
@@ -68,6 +83,15 @@ public final class MemoryLogStore: LogSink, LogHistory, @unchecked Sendable {
         count += 1
         errors += incomingErrors
         bytes += event.textByteCount
+        if let details {
+            if details.byteCount > detailsByteLimit {
+                if evictedDetails < Int64.max { evictedDetails += 1 }
+            } else {
+                while detailBytes > detailsByteLimit - details.byteCount, let oldest = detailOrder.first { removeDetails(oldest) }
+                if detailContents[details.id] != nil { removeDetails(details.id) }
+                detailContents[details.id] = details; detailOrder.append(details.id); detailBytes += details.byteCount
+            }
+        }
         revision &+= 1
         return .stored
     }
@@ -81,7 +105,18 @@ public final class MemoryLogStore: LogSink, LogHistory, @unchecked Sendable {
         guard lock.try() else { return nil }
         defer { lock.unlock() }
         let events = (0..<count).compactMap { entries[(head + $0) % entries.count]?.event }
-        return LogSnapshot(events: events, retainedTextBytes: bytes, evictedCount: evicted, revision: revision)
+        return LogSnapshot(events: events, retainedTextBytes: bytes, evictedCount: evicted, revision: revision,
+                           retainedDetailsBytes: detailBytes, evictedDetails: evictedDetails)
+    }
+
+    public func details(id: String) -> LogDetailsLookup {
+        guard lock.try() else { return .busy }; defer { lock.unlock() }
+        return detailContents[id].map(LogDetailsLookup.available) ?? .unavailable
+    }
+    private func removeDetails(_ id: String) {
+        guard let content = detailContents.removeValue(forKey: id) else { return }
+        detailBytes -= content.byteCount; detailOrder.removeAll { $0 == id }
+        if evictedDetails < Int64.max { evictedDetails += 1 }
     }
 
     public func clear() {
@@ -92,6 +127,7 @@ public final class MemoryLogStore: LogSink, LogHistory, @unchecked Sendable {
         count = 0
         bytes = 0
         errors = 0
+        detailContents.removeAll(); detailOrder.removeAll(); detailBytes = 0
         revision &+= 1
     }
 }

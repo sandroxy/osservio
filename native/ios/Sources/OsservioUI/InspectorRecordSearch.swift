@@ -66,7 +66,7 @@ enum InspectorRecordSearch {
     }
     static func run(_ records: [InspectorSearchRecord], query: InspectorQuery, now: Int64,
                     http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?,
-                    savedPayloads: [String: IncidentPayload]? = nil, unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool) -> Result? {
+                    savedPayloads: [String: IncidentPayload]? = nil, logs: (any LogDetailsHistory)? = nil, unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool) -> Result? {
         var result = Result(), spent = 0
         let started = DispatchTime.now().uptimeNanoseconds
         for (position, record) in records.enumerated() {
@@ -82,7 +82,7 @@ enum InspectorRecordSearch {
             if metadata && query.fieldPath.isEmpty && query.excludedText.isEmpty { result.keys.insert(record.key); continue }
             if spent >= unitLimit { result.limited = true; result.previews[record.key] = nil; result.previewSources[record.key] = nil; continue }
             var matched = metadata && query.fieldPath.isEmpty, excluded = false, exclusionUnknown = incompleteHeaders
-            for payload in payloads(record, query: query, http: http, sockets: sockets, saved: savedPayloads) {
+            for payload in payloads(record, query: query, http: http, sockets: sockets, saved: savedPayloads, logs: logs) {
                 if cancelled() { return nil }
                 guard let text = payload.text else { result.unavailable += 1; exclusionUnknown = exclusionUnknown || query.searches(payload.scope); continue }
                 let count = text.utf16.count
@@ -110,9 +110,20 @@ enum InspectorRecordSearch {
         }
         return cancelled() ? nil : result
     }
-    private static func payloads(_ record: InspectorSearchRecord, query: InspectorQuery, http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?, saved: [String: IncidentPayload]?) -> [Payload] {
+    private static func payloads(_ record: InspectorSearchRecord, query: InspectorQuery, http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?, saved: [String: IncidentPayload]?, logs: (any LogDetailsHistory)?) -> [Payload] {
         switch record {
-        case .log(let event): return query.searches("message") || !query.fieldPath.isEmpty ? [Payload(text: event.isPrivate ? nil : event.message, truncated: event.isTruncated, source: "ui_search_log_message")] : []
+        case .log(let event):
+            guard query.searches("message") || !query.fieldPath.isEmpty else { return [] }
+            var result = [Payload(text: event.isPrivate ? nil : event.message, truncated: event.isTruncated, source: "ui_search_log_message")]
+            if let reference = event.details {
+                var text: String?
+                if let id = reference.blobID {
+                    if let saved { if let payload = saved[id], payload.state == .available { text = payload.text } }
+                    else if let logs, case .available(let payload) = logs.details(id: id) { text = payload.text }
+                }
+                result.append(Payload(text: text, truncated: false, source: "ui_search_log_details"))
+            }
+            return result
         case .http(let event):
             let references: [HTTPBodyReference] = [event.requestBody, event.responseBody]
             return references.enumerated().compactMap { index, reference in

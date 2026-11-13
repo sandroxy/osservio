@@ -26,18 +26,58 @@ public struct IncidentLogs: Sendable {
     public let sourceEventCount: Int
     public let sourceEvictedCount: Int64
     public let retainedTextBytes: Int
+    public let payloads: [String: IncidentPayload]
+    public let retainedPayloadBytes: Int
+    public let sourceEvictedDetails: Int64
     public var omittedEventCount: Int { sourceEventCount - events.count }
 
     public static func capture(_ source: LogSnapshot, observedAtMillis: Int64,
-                               eventLimit: Int = 200, textByteLimit: Int = 65_536) throws -> IncidentLogs {
+                               eventLimit: Int = 200, textByteLimit: Int = 65_536,
+                               history: (any LogDetailsHistory)? = nil, includeDetails: Bool = false, payloadByteLimit: Int = 65_536) throws -> IncidentLogs {
         let chosen = try IncidentWindow.select(source.events, count: eventLimit, bytes: textByteLimit, size: { $0.textByteCount })
-        return try restore(events: chosen, observedAtMillis: observedAtMillis, sourceEventCount: source.events.count, sourceEvictedCount: source.evictedCount)
+        return try restore(events: chosen, observedAtMillis: observedAtMillis, sourceEventCount: source.events.count, sourceEvictedCount: source.evictedCount,
+            payloads: selectPayloads(chosen, history: history, include: includeDetails, byteLimit: payloadByteLimit), sourceEvictedDetails: source.evictedDetails)
     }
-    public static func restore(events: [LogEvent], observedAtMillis: Int64, sourceEventCount: Int, sourceEvictedCount: Int64) throws -> IncidentLogs {
+    public func includingDetails(from history: any LogDetailsHistory, payloadByteLimit: Int = 65_536) throws -> IncidentLogs {
+        try Self.restore(events: events, observedAtMillis: observedAtMillis, sourceEventCount: sourceEventCount, sourceEvictedCount: sourceEvictedCount,
+            payloads: Self.selectPayloads(events, history: history, include: true, byteLimit: payloadByteLimit), sourceEvictedDetails: sourceEvictedDetails)
+    }
+    private static func selectPayloads(_ events: [LogEvent], history: (any LogDetailsHistory)?, include: Bool, byteLimit: Int) throws -> [String: IncidentPayload] {
+        guard (0...262_144).contains(byteLimit) else { throw CaptureConfigurationError.invalidLimit }
+        var payloads: [String: IncidentPayload] = [:], remaining = byteLimit
+        for event in events.reversed() {
+            guard let id = event.details?.blobID else { continue }
+            var state: IncidentPayloadState = include ? .unavailable : .notSelected, text: String?
+            if include, let history {
+                switch history.details(id: id) {
+                case .available(let content):
+                    guard content.id == id, content.byteCount == event.details?.textByteCount else { throw PersistenceError.invalidRecord }
+                    state = content.byteCount <= remaining ? .available : .budgetExceeded
+                    if state == .available { text = content.text; remaining -= content.byteCount }
+                case .unavailable: break
+                case .busy: state = .busy
+                }
+            }
+            guard payloads.updateValue(try .restore(id: id, state: state, text: text), forKey: id) == nil else { throw PersistenceError.invalidRecord }
+        }
+        return payloads
+    }
+    public static func restore(events: [LogEvent], observedAtMillis: Int64, sourceEventCount: Int, sourceEvictedCount: Int64,
+                               payloads: [String: IncidentPayload] = [:], sourceEvictedDetails: Int64 = 0) throws -> IncidentLogs {
         let bytes = try IncidentWindow.validate(events, sourceCount: sourceEventCount, evicted: sourceEvictedCount,
             size: { $0.textByteCount }, identity: { $0.sessionID.lowercased() + ":" + String($0.sequence) })
+        let payloadBytes = try IncidentWindow.payloadBytes(payloads, maximumCount: events.count)
+        guard sourceEvictedDetails >= 0 else { throw PersistenceError.invalidRecord }
+        var references = Set<String>()
+        for event in events {
+            guard let reference = event.details, let id = reference.blobID else { continue }
+            guard references.insert(id).inserted, let payload = payloads[id],
+                  payload.state != .available || payload.textByteCount == reference.textByteCount else { throw PersistenceError.invalidRecord }
+        }
+        guard references.count == payloads.count else { throw PersistenceError.invalidRecord }
         return IncidentLogs(observedAtMillis: observedAtMillis, events: events, sourceEventCount: sourceEventCount,
-            sourceEvictedCount: sourceEvictedCount, retainedTextBytes: bytes)
+            sourceEvictedCount: sourceEvictedCount, retainedTextBytes: bytes, payloads: payloads,
+            retainedPayloadBytes: payloadBytes, sourceEvictedDetails: sourceEvictedDetails)
     }
 }
 

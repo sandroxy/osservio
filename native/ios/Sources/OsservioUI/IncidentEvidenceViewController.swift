@@ -25,7 +25,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         }
     }()
     private var payloads: [String: IncidentPayload] {
-        switch evidence { case .logs: return [:]; case .http(let value): return value.payloads; case .webSockets(let value): return value.payloads }
+        switch evidence { case .logs(let value): return value.payloads; case .http(let value): return value.payloads; case .webSockets(let value): return value.payloads }
     }
     private var observedAt: Int64 {
         switch evidence { case .logs(let value): return value.observedAtMillis; case .http(let value): return value.observedAtMillis; case .webSockets(let value): return value.observedAtMillis }
@@ -81,7 +81,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         if query.searchesPayload && result == nil { notes.append(InspectorLocalization.text(searchBusy ? "busy" : "ui_searching")) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
         switch evidence {
-        case .logs(let value): if value.omittedEventCount > 0 || value.sourceEvictedCount > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
+        case .logs(let value): if value.omittedEventCount > 0 || value.sourceEvictedCount > 0 || value.sourceEvictedDetails > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
         case .http(let value): if value.omittedEventCount > 0 || value.sourceEvictedEvents > 0 || value.sourceEvictedBodies > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
         case .webSockets(let value): if value.omittedEventCount > 0 || value.sourceEvictedEvents > 0 || value.sourceEvictedPayloads > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
         }
@@ -133,7 +133,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         table.deselectRow(at: indexPath, animated: true)
         let index = indices[indexPath.row], controller: UIViewController
         switch evidence {
-        case .logs(let value): controller = LogDetailViewController(event: value.events[index])
+        case .logs(let value): controller = LogDetailViewController(event: value.events[index], saved: value.payloads)
         case .http(let value):
             let detail = HTTPDetailViewController(event: value.events[index], savedPayloads: value.payloads)
             detail.searchSource = result?.previewSources[records[index].key]; controller = detail

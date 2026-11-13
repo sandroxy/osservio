@@ -375,3 +375,12 @@
 
 "incident_private_note" = "Description omitted at capture";
 "incident_no_attachments" = "No evidence attached";
+
+"ui_log_context" = "Log context";
+"ui_log_context_open" = "View arguments, attributes and error details";
+"ui_log_context_omitted" = "Context omitted by the host";
+"ui_log_context_limited" = "Context exceeded capture limits; the summary was retained";
+"ui_log_context_invalid" = "Context contained an invalid value; the summary was retained";
+"ui_log_context_unsupported" = "The configured log store does not support context";
+"ui_search_log_details" = "Log context";
+"incident_include_log_details" = "Include log context";

@@ -34,7 +34,7 @@ public final class IncidentSnapshot {
         if (environment != null) for (EnvironmentSnapshot.Value value : environment.values.values()) {
             if (value.fact.type == EnvironmentSnapshot.Fact.Type.TEXT) bytes += value.fact.text.getBytes(StandardCharsets.UTF_8).length;
         }
-        textByteCount = bytes + (breadcrumbs == null ? 0 : breadcrumbs.retainedTextBytes) + (logs == null ? 0 : logs.retainedTextBytes)
+        textByteCount = bytes + (breadcrumbs == null ? 0 : breadcrumbs.retainedTextBytes) + (logs == null ? 0 : logs.retainedTextBytes + logs.retainedPayloadBytes)
             + (http == null ? 0 : http.retainedTextBytes + http.retainedPayloadBytes)
             + (webSockets == null ? 0 : webSockets.retainedTextBytes + webSockets.retainedPayloadBytes)
             + (systemDiagnostic == null ? 0 : systemDiagnostic.textByteCount());

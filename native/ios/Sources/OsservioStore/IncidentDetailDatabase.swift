@@ -21,6 +21,12 @@ final class IncidentDetailDatabase {
     private let connection: SQLiteConnection
     init(connection: SQLiteConnection) { self.connection = connection }
 
+    static let logDetailsSchema = [
+        "ALTER TABLE incident_logs ADD COLUMN details_state TEXT",
+        "ALTER TABLE incident_logs ADD COLUMN details_blob TEXT",
+        "ALTER TABLE incident_logs ADD COLUMN details_bytes INTEGER NOT NULL DEFAULT 0",
+        "UPDATE incident_windows SET payload_evicted=0 WHERE kind='logs' AND payload_evicted IS NULL"
+    ]
     static let contentPolicySchema = [
         "ALTER TABLE incident_http ADD COLUMN request_processed INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE incident_http ADD COLUMN response_processed INTEGER NOT NULL DEFAULT 0",
@@ -71,14 +77,16 @@ final class IncidentDetailDatabase {
         let id = snapshot.id
         if let logs = snapshot.logs {
             try saveWindow(id, .logs, time: logs.observedAtMillis, count: logs.events.count, source: logs.sourceEventCount,
-                evicted: logs.sourceEvictedCount, payloadEvicted: nil, bytes: logs.retainedTextBytes, payloadBytes: 0)
+                evicted: logs.sourceEvictedCount, payloadEvicted: logs.sourceEvictedDetails, bytes: logs.retainedTextBytes, payloadBytes: logs.retainedPayloadBytes)
             for (position, event) in logs.events.enumerated() {
                 try connection.execute("""
-                    INSERT INTO incident_logs(incident_id, position, session_id, sequence, timestamp, level, category, message, private, truncated)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO incident_logs(incident_id, position, session_id, sequence, timestamp, level, category, message, private, truncated, details_state, details_blob, details_bytes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, [.text(id), .integer(Int64(position)), .text(event.sessionID), .integer(event.sequence), .integer(event.timestampMillis),
-                             .text(event.level.rawValue), .text(event.category), .text(event.message), .integer(event.isPrivate ? 1 : 0), .integer(event.isTruncated ? 1 : 0)])
+                             .text(event.level.rawValue), .text(event.category), .text(event.message), .integer(event.isPrivate ? 1 : 0), .integer(event.isTruncated ? 1 : 0),
+                             optional(event.details?.state.rawValue), optional(event.details?.blobID), .integer(Int64(event.details?.textByteCount ?? 0))])
             }
+            try savePayloads(id, .logs, logs.payloads)
         }
         if let http = snapshot.http {
             try saveWindow(id, .http, time: http.observedAtMillis, count: http.events.count, source: http.sourceEventCount,
@@ -147,7 +155,7 @@ final class IncidentDetailDatabase {
                 let payloadEvicted = try row.isNull(5) ? nil : row.integer(5), bytes = try row.integer(6), payloadBytes = try row.integer(7)
                 guard (0...2_000).contains(count), source >= count, source <= Int32.max, evicted >= 0,
                       (0...1_048_576).contains(bytes), (0...262_144).contains(payloadBytes),
-                      kind == .logs ? (payloadEvicted == nil && payloadBytes == 0) : (payloadEvicted != nil && payloadEvicted! >= 0) else { throw PersistenceError.invalidRecord }
+                      payloadEvicted != nil && payloadEvicted! >= 0 else { throw PersistenceError.invalidRecord }
                 windows[kind] = try Window(observedAt: row.integer(1), count: Int(count), sourceCount: Int(source), evicted: evicted,
                     evictedPayloads: payloadEvicted, bytes: Int(bytes), payloadBytes: Int(payloadBytes))
             }
@@ -156,7 +164,7 @@ final class IncidentDetailDatabase {
     }
     func read(id: String, windows: [Kind: Window]) throws -> Detail {
         var headerRows = 0, payloadRows = 0
-        let logs = try readLogs(id, windows[.logs])
+        let logs = try readLogs(id, windows[.logs], payloadRows: &payloadRows)
         let http = try readHTTP(id, windows[.http], headerRows: &headerRows, payloadRows: &payloadRows)
         let sockets = try readWebSockets(id, windows[.websocket], headerRows: &headerRows, payloadRows: &payloadRows)
         // Reject rows with unknown families or references to events that are not in the declared windows.
@@ -167,21 +175,28 @@ final class IncidentDetailDatabase {
         }
         return Detail(logs: logs, http: http, webSockets: sockets)
     }
-    private func readLogs(_ id: String, _ window: Window?) throws -> IncidentLogs? {
+    private func readLogs(_ id: String, _ window: Window?, payloadRows: inout Int) throws -> IncidentLogs? {
         var events: [LogEvent] = [], bytes = 0
-        try connection.statement("SELECT position, session_id, sequence, timestamp, level, category, message, private, truncated FROM incident_logs WHERE incident_id=? ORDER BY position LIMIT 2001", [.text(id)]) { row in
+        try connection.statement("SELECT position, session_id, sequence, timestamp, level, category, message, private, truncated, details_state, details_blob, details_bytes FROM incident_logs WHERE incident_id=? ORDER BY position LIMIT 2001", [.text(id)]) { row in
             while try row.step() {
                 guard let window, events.count < window.count, try row.integer(0) == events.count,
                       let level = LogLevel(rawValue: try row.text(4, byteLimit: 16)) else { throw PersistenceError.invalidRecord }
+                let state: LogDetailsState? = try enumeration(row, 9)
+                let blob = try text(row, 10, 36), amount = try row.integer(11)
+                guard (0...65_536).contains(amount), state != nil || (blob == nil && amount == 0) else { throw PersistenceError.invalidRecord }
+                let reference = try state.map { try LogDetailsReference.restore(state: $0, blobID: blob, textByteCount: Int(amount)) }
                 let event = try LogEvent.restore(sessionID: row.text(1, byteLimit: 36), sequence: row.integer(2), timestampMillis: row.integer(3),
-                    level: level, category: row.text(5, byteLimit: 64), message: row.text(6, byteLimit: 65_536), isPrivate: row.flag(7), isTruncated: row.flag(8))
+                    level: level, category: row.text(5, byteLimit: 64), message: row.text(6, byteLimit: 65_536), isPrivate: row.flag(7), isTruncated: row.flag(8), details: reference)
                 guard event.textByteCount <= window.bytes - bytes else { throw PersistenceError.invalidRecord }
                 bytes += event.textByteCount; events.append(event)
             }
         }
+        let payloads = try readPayloads(id, .logs, maximumCount: window?.count ?? 0, byteLimit: window?.payloadBytes ?? 0)
+        payloadRows += payloads.count
         guard let window else { return nil }
-        guard events.count == window.count, bytes == window.bytes else { throw PersistenceError.invalidRecord }
-        return try IncidentLogs.restore(events: events, observedAtMillis: window.observedAt, sourceEventCount: window.sourceCount, sourceEvictedCount: window.evicted)
+        guard events.count == window.count, bytes == window.bytes, let evicted = window.evictedPayloads else { throw PersistenceError.invalidRecord }
+        return try IncidentLogs.restore(events: events, observedAtMillis: window.observedAt, sourceEventCount: window.sourceCount, sourceEvictedCount: window.evicted,
+            payloads: payloads, sourceEvictedDetails: evicted)
     }
     private func readHTTP(_ id: String, _ window: Window?, headerRows: inout Int, payloadRows: inout Int) throws -> IncidentHTTP? {
         var events: [HTTPEvent] = [], bytes = 0

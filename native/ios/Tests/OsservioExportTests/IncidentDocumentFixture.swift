@@ -6,6 +6,19 @@ enum IncidentDocumentFixture {
     static let session = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     static let httpID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     static func make(_ name: String) throws -> IncidentSnapshot {
+        if name == "structured-log" {
+            let blob = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+            let text = "{\"arguments\":[9223372036854775807,\"例\"],\"attributes\":{\"requestId\":\"fixture-42\"}}"
+            let states: [LogDetailsState] = [.available, .omitted, .limited, .invalid, .unsupported]
+            let events = try states.enumerated().map { index, state in
+                try LogEvent.restore(sessionID: session, sequence: Int64(index + 1), timestampMillis: 17, level: .error,
+                    category: "fixture", message: "Request failed", isPrivate: false, isTruncated: false,
+                    details: .restore(state: state, blobID: state == .available ? blob : nil, textByteCount: state == .available ? text.utf8.count : 0))
+            }
+            return try .restore(id: id, timestampMillis: .min, note: nil, environment: nil, breadcrumbs: nil,
+                logs: .restore(events: events, observedAtMillis: 23, sourceEventCount: 5, sourceEvictedCount: 2,
+                    payloads: [blob: .restore(id: blob, state: .available, text: text)], sourceEvictedDetails: 7))
+        }
         if name == "trusted-content" {
             let base = try make("complete"), old = base.http!.events[0]
             let event = try HTTPEvent.restore(id: old.id, sessionID: old.sessionID, sequence: old.sequence, revision: old.revision,

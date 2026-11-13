@@ -29,11 +29,12 @@ public struct LogEvent: Sendable {
     public let message: String
     public let isPrivate: Bool
     public let isTruncated: Bool
+    public let details: LogDetailsReference?
     public let textByteCount: Int
 
     init(sessionID: String, sequence: Int64, timestampMillis: Int64,
          level: LogLevel, category: String, message: String,
-         isPrivate: Bool, isTruncated: Bool) {
+         isPrivate: Bool, isTruncated: Bool, details: LogDetailsReference? = nil) {
         self.sessionID = sessionID
         self.sequence = sequence
         self.timestampMillis = timestampMillis
@@ -42,18 +43,19 @@ public struct LogEvent: Sendable {
         self.message = message
         self.isPrivate = isPrivate
         self.isTruncated = isTruncated
+        self.details = details
         textByteCount = category.utf8.count + message.utf8.count
     }
 
     /// Restores already sanitized evidence. Oversized or inconsistent values are rejected, never truncated.
     public static func restore(sessionID: String, sequence: Int64, timestampMillis: Int64,
                                level: LogLevel, category: String, message: String,
-                               isPrivate: Bool, isTruncated: Bool) throws -> LogEvent {
+                               isPrivate: Bool, isTruncated: Bool, details: LogDetailsReference? = nil) throws -> LogEvent {
         guard EvidenceValidation.id(sessionID), sequence > 0, EvidenceValidation.label(category),
               EvidenceValidation.text(message, limit: 65_536),
               !isPrivate || (message == "[private]" && !isTruncated) else { throw PersistenceError.invalidRecord }
         return LogEvent(sessionID: sessionID, sequence: sequence, timestampMillis: timestampMillis,
-            level: level, category: category, message: message, isPrivate: isPrivate, isTruncated: isTruncated)
+            level: level, category: category, message: message, isPrivate: isPrivate, isTruncated: isTruncated, details: details)
     }
 }
 
@@ -72,12 +74,16 @@ public struct LogSnapshot: Sendable {
     public let retainedTextBytes: Int
     public let evictedCount: Int64
     public let revision: UInt64
+    public let retainedDetailsBytes: Int
+    public let evictedDetails: Int64
 
-    public init(events: [LogEvent], retainedTextBytes: Int, evictedCount: Int64, revision: UInt64) {
+    public init(events: [LogEvent], retainedTextBytes: Int, evictedCount: Int64, revision: UInt64,
+                retainedDetailsBytes: Int = 0, evictedDetails: Int64 = 0) {
         self.events = events
         self.retainedTextBytes = retainedTextBytes
         self.evictedCount = evictedCount
         self.revision = revision
+        self.retainedDetailsBytes = retainedDetailsBytes; self.evictedDetails = evictedDetails
     }
 }
 

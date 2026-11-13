@@ -78,16 +78,16 @@ public final class LogInspectorViewController: UITableViewController {
         if task != nil || dirty && query.searchesPayload { notes.append(InspectorLocalization.text("ui_searching")) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
         if stale { notes.append(InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window")) }
-        if (latest?.evictedCount ?? 0) > 0 || (recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
+        if (latest?.evictedCount ?? 0) > 0 || (latest?.evictedDetails ?? 0) > 0 || (recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
         header.status.text = notes.joined(separator: " · ")
         header.relabel(paused: paused, query: query); table.setNeedsLayout()
     }
     private func render() {
         let records = (latest?.events ?? []).reversed().map(InspectorSearchRecord.log), query = query, anchor = anchor
         if !query.searchesPayload { events = (latest?.events ?? []).reversed().filter { query.matchesFacets($0, now: anchor) }; result = nil; dirty = false; display(); return }
-        let current = generation
+        let current = generation, detailsHistory = history as? any LogDetailsHistory
         task = InspectorRecordSearchTask.submit(search: { cancelled in
-            InspectorRecordSearch.run(records, query: query, now: anchor, http: nil, sockets: nil, cancelled: cancelled)
+            InspectorRecordSearch.run(records, query: query, now: anchor, http: nil, sockets: nil, logs: detailsHistory, cancelled: cancelled)
         }, completion: { [weak self] result in
             guard let self, self.generation == current else { return }
             self.task = nil; self.result = result
@@ -130,14 +130,18 @@ public final class LogInspectorViewController: UITableViewController {
         return cell
     }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        table.deselectRow(at: indexPath, animated: true); inspectorPush(LogDetailViewController(event: events[indexPath.row]))
+        table.deselectRow(at: indexPath, animated: true); inspectorPush(LogDetailViewController(event: events[indexPath.row], history: history as? any LogDetailsHistory))
     }
 }
 
 @MainActor
 final class LogDetailViewController: InspectorDetailViewController {
     private let event: LogEvent
-    init(event: LogEvent) { self.event = event; super.init() }
+    private let history: (any LogDetailsHistory)?
+    private let saved: [String: IncidentPayload]?
+    init(event: LogEvent, history: (any LogDetailsHistory)? = nil, saved: [String: IncidentPayload]? = nil) {
+        self.event = event; self.history = history; self.saved = saved; super.init()
+    }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func viewWillAppear(_ animated: Bool) {
@@ -157,6 +161,15 @@ final class LogDetailViewController: InspectorDetailViewController {
             ]), Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
                 Row(InspectorLocalization.text("http_session"), event.sessionID + " · #\(event.sequence)")
             ], collapsible: true)]
+        if let reference = event.details {
+            let action: (() -> Void)? = reference.state == .available ? { [weak self] in
+                guard let self else { return }
+                self.read(titleKey: "ui_log_context", content: InspectorLogDetails.content(self.event, history: self.history, saved: self.saved))
+            } : nil
+            sections.insert(Section(title: InspectorLocalization.text("ui_log_context"), rows: [
+                Row(InspectorLocalization.text(InspectorLogDetails.label(reference.state)), action: action)
+            ]), at: 1)
+        }
     }
     @objc private func copyMessage() { UIPasteboard.general.string = event.message }
 }

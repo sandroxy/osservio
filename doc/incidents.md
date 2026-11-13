@@ -115,7 +115,7 @@ alter an already saved snapshot. Neither opening the browser nor marking a
 problem enables capture or flushes pending breadcrumb persistence.
 
 The user chooses which groups to attach. Available history groups are initially
-selected; unavailable groups are disclosed and disabled. Network bodies are
+selected; unavailable groups are disclosed and disabled. Log context and network bodies are
 excluded by default. The first explicit content selection looks up only the
 frozen metadata references and keeps that copy, including unavailable/busy/budget
 states. Deselecting a group excludes it from the saved report; reselecting or
@@ -139,6 +139,7 @@ window defaults:
 | Logs | 200 | 16 KiB |
 | HTTP metadata | 50 | 16 KiB |
 | WebSocket metadata | 100 | 16 KiB |
+| Selected log context | Referenced contexts only | 12 KiB |
 | Selected HTTP bodies | Referenced bodies only | 12 KiB |
 | Selected WebSocket text | Referenced payloads only | 12 KiB |
 
@@ -324,10 +325,10 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `7`. Product versions
+application ID `0x4f535649`, and private schema revision `8`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. Network
-headers and payload text use separate tables; list queries do not load them.
+headers and log/network payload text use separate tables; list queries do not load them.
 System numeric facts and bounded historical metadata have separate normalized
 tables. Reads validate source-specific fields, classification, nullability,
 exact numbers, text budgets, and the presence of expected diagnostic rows.
@@ -350,7 +351,10 @@ the report acknowledgement table. Revision `4` adds the signal header, frame and
 image tables. Revision `5` adds Android tombstone state, header and frame tables;
 older Android records retain their facts and use `notRequested` for native traces.
 Upgrading from revision `6` to `7` adds body-processing flags with false defaults, preserving old
-observed-byte accounting and existing content. The complete upgrade
+observed-byte accounting and existing content. Revision `8` adds nullable log
+context references and independent log-payload accounting. Older log entries
+keep their summary and have no invented context; their historical context
+eviction count starts at zero. The complete upgrade
 and revision change share one transaction. Existing identities, save times,
 and evidence remain unchanged; records from revisions 1 and 2 have no system diagnostic. A failed
 upgrade rolls back its added columns and tables without resetting the database.
@@ -360,3 +364,20 @@ Android account owners can use
 `SQLiteIncidentStore(context, UUID namespace, options)` to isolate persisted
 snapshots under the app's no-backup directory. The application-level constructor
 keeps its existing path. No records are automatically moved between owners.
+
+### Structured log attachments
+
+`IncidentLogs.capture` freezes the selected metadata window without reading
+context by default. Each available context reference receives a `notSelected`
+payload entry. Supply `history`, `includeDetails: true` and a payload budget, or
+call `includingDetails` on that frozen window, to copy still-retained context.
+Android provides the equivalent explicit overload and `includingDetails`.
+
+Selection visits newest references first. Its default budget is 65,536 bytes,
+configurable from 0 to 262,144. The native composer uses 12 KiB and exposes the
+choice only when context references exist. Like network bodies, the first
+selection is frozen: toggling it or retrying save does not recapture content.
+`retainedPayloadBytes` and `sourceEvictedDetails` stay separate from log message
+bytes and event eviction. Missing, busy, unselected and over-budget payloads
+remain distinguishable after persistence and export. Saved readers never fill
+a missing attachment from a later live history.

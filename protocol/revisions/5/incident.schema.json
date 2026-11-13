@@ -1,0 +1,2100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:osservio:incident:5",
+  "title": "Osservio incident metadata revision 5",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "osservio.incident"
+    },
+    "revision": {
+      "const": 5
+    },
+    "payloadFile": {
+      "const": "payloads.json"
+    },
+    "incident": {
+      "$ref": "#/$defs/incident"
+    }
+  },
+  "required": [
+    "format",
+    "revision",
+    "payloadFile",
+    "incident"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?![\\s\\S])"
+    },
+    "bodyID": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.(request|response)(?![\\s\\S])"
+    },
+    "int64": {
+      "type": "string",
+      "pattern": "^(0|-?[1-9][0-9]{0,18})(?![\\s\\S])",
+      "format": "int64"
+    },
+    "uint63": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,18})(?![\\s\\S])",
+      "format": "uint63"
+    },
+    "positive64": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,18}(?![\\s\\S])",
+      "format": "positive64"
+    },
+    "uint64": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})(?![\\s\\S])",
+      "format": "uint64"
+    },
+    "label": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,64}(?![\\s\\S])"
+    },
+    "url": {
+      "type": "string",
+      "maxLength": 4128,
+      "format": "utf8-4128"
+    },
+    "note": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 4096,
+          "format": "utf8-4096"
+        },
+        "isPrivate": {
+          "type": "boolean"
+        },
+        "isTruncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text",
+        "isPrivate",
+        "isTruncated"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "isPrivate": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "text": {
+                "const": "[private]"
+              },
+              "isTruncated": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "header": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]{1,64}(?![\\s\\S])"
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 16384,
+          "format": "utf8-16384"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "environmentValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "text"
+            },
+            "value": {
+              "minLength": 1,
+              "type": "string",
+              "maxLength": 256,
+              "format": "utf8-256"
+            },
+            "isTruncated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "value",
+            "isTruncated"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "number"
+            },
+            "value": {
+              "$ref": "#/$defs/uint63"
+            },
+            "isTruncated": {
+              "const": false
+            }
+          },
+          "required": [
+            "type",
+            "value",
+            "isTruncated"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "flag"
+            },
+            "value": {
+              "type": "boolean"
+            },
+            "isTruncated": {
+              "const": false
+            }
+          },
+          "required": [
+            "type",
+            "value",
+            "isTruncated"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "unavailable"
+            },
+            "value": {
+              "type": "null"
+            },
+            "isTruncated": {
+              "const": false
+            }
+          },
+          "required": [
+            "type",
+            "value",
+            "isTruncated"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "unsupported"
+            },
+            "value": {
+              "type": "null"
+            },
+            "isTruncated": {
+              "const": false
+            }
+          },
+          "required": [
+            "type",
+            "value",
+            "isTruncated"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "enum": [
+            "android",
+            "ios"
+          ]
+        },
+        "timestampMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "values": {
+          "type": "object",
+          "properties": {
+            "osVersion": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "appIdentifier": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "appVersion": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "appBuild": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "manufacturer": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "deviceModel": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "architecture": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "thermalState": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "text",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "physicalMemoryBytes": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "processResidentBytes": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "processProportionalBytes": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "processFootprintBytes": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "runtimeHeapBytes": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "runtimeHeapLimitBytes": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "processID": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "batteryPercent": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "number",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "lowPowerMode": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/environmentValue"
+                },
+                {
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "flag",
+                        "unavailable",
+                        "unsupported"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "osVersion",
+            "appIdentifier",
+            "appVersion",
+            "appBuild",
+            "manufacturer",
+            "deviceModel",
+            "architecture",
+            "thermalState",
+            "physicalMemoryBytes",
+            "processResidentBytes",
+            "processProportionalBytes",
+            "processFootprintBytes",
+            "runtimeHeapBytes",
+            "runtimeHeapLimitBytes",
+            "processID",
+            "batteryPercent",
+            "lowPowerMode"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "platform",
+        "timestampMillis",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "breadcrumb": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sessionID": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/positive64"
+        },
+        "timestampMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "sessionElapsedMillis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uint64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "hostMarker",
+            "appActive",
+            "appInactive",
+            "appForeground",
+            "appBackground",
+            "activityStarted",
+            "activityResumed",
+            "activityPaused",
+            "activityStopped",
+            "activityDestroyed",
+            "memoryWarning",
+            "memoryTrim",
+            "thermalState",
+            "responsiveness"
+          ]
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 4096,
+              "format": "utf8-4096"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isPrivate": {
+          "type": "boolean"
+        },
+        "isTruncated": {
+          "type": "boolean"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/int64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retention": {
+          "enum": [
+            "memoryOnly",
+            "restartRelevant"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sessionID",
+        "sequence",
+        "timestampMillis",
+        "sessionElapsedMillis",
+        "kind",
+        "label",
+        "message",
+        "isPrivate",
+        "isTruncated",
+        "value",
+        "retention"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "isPrivate": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "message": {
+                "const": "[private]"
+              },
+              "isTruncated": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "isTruncated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "log": {
+      "type": "object",
+      "properties": {
+        "sessionID": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/positive64"
+        },
+        "timestampMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "level": {
+          "enum": [
+            "debug",
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "category": {
+          "$ref": "#/$defs/label"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 65536,
+          "format": "utf8-65536"
+        },
+        "isPrivate": {
+          "type": "boolean"
+        },
+        "isTruncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessionID",
+        "sequence",
+        "timestampMillis",
+        "level",
+        "category",
+        "message",
+        "isPrivate",
+        "isTruncated"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "isPrivate": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "message": {
+                "const": "[private]"
+              },
+              "isTruncated": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "isTruncated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "httpBody": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "pending",
+            "omitted",
+            "unsupported",
+            "incomplete",
+            "invalidText",
+            "available",
+            "truncated"
+          ]
+        },
+        "blobID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/bodyID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observedBytes": {
+          "$ref": "#/$defs/uint63"
+        },
+        "isProcessed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "blobID",
+        "observedBytes",
+        "isProcessed"
+      ],
+      "additionalProperties": false
+    },
+    "socketPayload": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "omitted",
+            "binary",
+            "available",
+            "truncated",
+            "invalidText"
+          ]
+        },
+        "blobID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "byteCount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uint63"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isProcessed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "blobID",
+        "byteCount",
+        "isProcessed"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "enum": [
+        "host",
+        "okHttp",
+        "urlSession"
+      ]
+    },
+    "failure": {
+      "enum": [
+        "transport",
+        "timeout",
+        "tls",
+        "connection",
+        "unknown"
+      ]
+    },
+    "statusCode": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 599
+    },
+    "httpEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sessionID": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/positive64"
+        },
+        "timestampMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "revision": {
+          "$ref": "#/$defs/uint63"
+        },
+        "method": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,16}(?![\\s\\S])"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "url": {
+          "$ref": "#/$defs/url"
+        },
+        "responseURL": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/url"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requestHeaders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/header"
+          },
+          "maxItems": 32
+        },
+        "responseHeaders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/header"
+          },
+          "maxItems": 32
+        },
+        "headersLimited": {
+          "type": "boolean"
+        },
+        "statusCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/statusCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "receiving",
+            "completed",
+            "failed",
+            "cancelled",
+            "closedEarly",
+            "captureEnded"
+          ]
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/failure"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durationMillis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uint64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requestBody": {
+          "$ref": "#/$defs/httpBody"
+        },
+        "responseBody": {
+          "$ref": "#/$defs/httpBody"
+        }
+      },
+      "required": [
+        "id",
+        "sessionID",
+        "sequence",
+        "timestampMillis",
+        "revision",
+        "method",
+        "source",
+        "url",
+        "responseURL",
+        "requestHeaders",
+        "responseHeaders",
+        "headersLimited",
+        "statusCode",
+        "state",
+        "failure",
+        "durationMillis",
+        "requestBody",
+        "responseBody"
+      ],
+      "additionalProperties": false
+    },
+    "socketEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "connectionID": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sessionID": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/positive64"
+        },
+        "timestampMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "url": {
+          "$ref": "#/$defs/url"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "kind": {
+          "enum": [
+            "connecting",
+            "attached",
+            "opened",
+            "message",
+            "messageResult",
+            "closeRequested",
+            "closing",
+            "closed",
+            "failed",
+            "cancelled",
+            "cancelRequested",
+            "observationEnded",
+            "observationLimited"
+          ]
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/header"
+          },
+          "maxItems": 32
+        },
+        "headersLimited": {
+          "type": "boolean"
+        },
+        "statusCode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/statusCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "closeCode": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 4999
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/failure"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "incoming",
+                "outgoing"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "enum": [
+                "received",
+                "submitted",
+                "queued",
+                "sent",
+                "rejected",
+                "failed",
+                "unobserved"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "relatedMessageID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/socketPayload"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "connectionID",
+        "sessionID",
+        "sequence",
+        "timestampMillis",
+        "url",
+        "source",
+        "kind",
+        "headers",
+        "headersLimited",
+        "statusCode",
+        "closeCode",
+        "failure",
+        "direction",
+        "outcome",
+        "relatedMessageID",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    "selection": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "available",
+            "notSelected",
+            "unavailable",
+            "busy",
+            "budgetExceeded"
+          ]
+        },
+        "textByteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        }
+      },
+      "required": [
+        "state",
+        "textByteCount"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "not": {
+                  "const": "available"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "textByteCount": {
+                "const": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "breadcrumbs": {
+      "type": "object",
+      "properties": {
+        "sourceEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "omittedEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "retainedTextBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "sourceEvictedCount": {
+          "$ref": "#/$defs/uint63"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/breadcrumb"
+          },
+          "maxItems": 2000
+        }
+      },
+      "required": [
+        "sourceEventCount",
+        "omittedEventCount",
+        "retainedTextBytes",
+        "sourceEvictedCount",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "logs": {
+      "type": "object",
+      "properties": {
+        "sourceEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "omittedEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "retainedTextBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "observedAtMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "sourceEvictedCount": {
+          "$ref": "#/$defs/uint63"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/log"
+          },
+          "maxItems": 2000
+        }
+      },
+      "required": [
+        "sourceEventCount",
+        "omittedEventCount",
+        "retainedTextBytes",
+        "observedAtMillis",
+        "sourceEvictedCount",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "http": {
+      "type": "object",
+      "properties": {
+        "sourceEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "omittedEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "retainedTextBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "observedAtMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "sourceEvictedEvents": {
+          "$ref": "#/$defs/uint63"
+        },
+        "sourceEvictedBodies": {
+          "$ref": "#/$defs/uint63"
+        },
+        "retainedPayloadBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 262144
+        },
+        "payloads": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/bodyID"
+          },
+          "maxProperties": 4000,
+          "additionalProperties": {
+            "$ref": "#/$defs/selection"
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/httpEvent"
+          },
+          "maxItems": 2000
+        }
+      },
+      "required": [
+        "sourceEventCount",
+        "omittedEventCount",
+        "retainedTextBytes",
+        "observedAtMillis",
+        "sourceEvictedEvents",
+        "sourceEvictedBodies",
+        "retainedPayloadBytes",
+        "payloads",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "webSockets": {
+      "type": "object",
+      "properties": {
+        "sourceEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "omittedEventCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "retainedTextBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1048576
+        },
+        "observedAtMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "sourceEvictedEvents": {
+          "$ref": "#/$defs/uint63"
+        },
+        "sourceEvictedPayloads": {
+          "$ref": "#/$defs/uint63"
+        },
+        "retainedPayloadBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 262144
+        },
+        "payloads": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/uuid"
+          },
+          "maxProperties": 2000,
+          "additionalProperties": {
+            "$ref": "#/$defs/selection"
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/socketEvent"
+          },
+          "maxItems": 2000
+        }
+      },
+      "required": [
+        "sourceEventCount",
+        "omittedEventCount",
+        "retainedTextBytes",
+        "observedAtMillis",
+        "sourceEvictedEvents",
+        "sourceEvictedPayloads",
+        "retainedPayloadBytes",
+        "payloads",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "incident": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "timestampMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/note"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/environment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "breadcrumbs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/breadcrumbs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "logs": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/logs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "http": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/http"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "webSockets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/webSockets"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "enum": [
+            "manual",
+            "systemDiagnostic"
+          ]
+        },
+        "systemDiagnostic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/systemDiagnostic"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "timestampMillis",
+        "note",
+        "environment",
+        "breadcrumbs",
+        "logs",
+        "http",
+        "webSockets",
+        "origin",
+        "systemDiagnostic"
+      ],
+      "additionalProperties": false
+    },
+    "systemDiagnostic": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "enum": [
+            "androidExitInfo",
+            "metricKit",
+            "appleSignal"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "managedCrash",
+            "nativeCrash",
+            "anr",
+            "lowMemoryTermination",
+            "signalTermination",
+            "otherExit",
+            "crash",
+            "hang"
+          ]
+        },
+        "intervalStartMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "intervalEndMillis": {
+          "$ref": "#/$defs/int64"
+        },
+        "androidExit": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "reasonCode": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": -2147483648,
+                  "maximum": 2147483647
+                },
+                "processID": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "importance": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                },
+                "pssKiB": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/positive64"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rssKiB": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/positive64"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tombstoneState": {
+                  "enum": [
+                    "notRequested",
+                    "notApplicable",
+                    "unsupported",
+                    "unavailable",
+                    "invalid",
+                    "tooLarge",
+                    "limitReached",
+                    "available"
+                  ]
+                },
+                "tombstone": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/androidTombstone"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "reasonCode",
+                "status",
+                "processID",
+                "importance",
+                "pssKiB",
+                "rssKiB",
+                "tombstoneState",
+                "tombstone"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metricKit": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "appVersion": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "appBuild": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "osVersion": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "deviceModel": {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256,
+                          "format": "utf8-256"
+                        },
+                        "isTruncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isTruncated"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "signal": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exceptionType": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/uint63"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exceptionCode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9][0-9]*)(?![\\s\\S])",
+                      "format": "diagnosticCode"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "hangDurationMillis": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/uint63"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "metadata",
+                "signal",
+                "exceptionType",
+                "exceptionCode",
+                "hangDurationMillis"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "appleSignal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/appleSignal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "kind",
+        "intervalStartMillis",
+        "intervalEndMillis",
+        "androidExit",
+        "metricKit",
+        "appleSignal"
+      ],
+      "additionalProperties": false
+    },
+    "appleSignal": {
+      "type": "object",
+      "properties": {
+        "reportID": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\\s\\S])"
+        },
+        "signal": {
+          "enum": [
+            "SIGABRT",
+            "SIGBUS",
+            "SIGFPE",
+            "SIGILL",
+            "SIGSEGV",
+            "SIGTRAP"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 16
+        },
+        "faultAddress": {
+          "$ref": "#/$defs/uint64"
+        },
+        "threadNumber": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/uint64"
+          }
+        },
+        "images": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "properties": {
+              "baseAddress": {
+                "$ref": "#/$defs/uint64"
+              },
+              "size": {
+                "$ref": "#/$defs/uint64"
+              },
+              "uuid": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cpuType": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/uint64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cpuSubtype": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/uint64"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "baseAddress",
+              "size",
+              "uuid",
+              "cpuType",
+              "cpuSubtype"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "appVersion": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "appBuild": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "osVersion": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            },
+            "deviceModel": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "format": "utf8-256",
+                  "pattern": "^[^\\u0000]*(?![\\s\\S])"
+                },
+                "isTruncated": {
+                  "const": false
+                }
+              },
+              "required": [
+                "text",
+                "isTruncated"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "imageCacheIncomplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reportID",
+        "signal",
+        "code",
+        "faultAddress",
+        "threadNumber",
+        "frames",
+        "images",
+        "metadata",
+        "imageCacheIncomplete"
+      ],
+      "additionalProperties": false
+    },
+    "androidTombstone": {
+      "type": "object",
+      "properties": {
+        "architectureCode": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "signalNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "signalCode": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "threadID": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "faultAddress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uint64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "properties": {
+              "programCounter": {
+                "$ref": "#/$defs/uint64"
+              },
+              "relativeProgramCounter": {
+                "$ref": "#/$defs/uint64"
+              },
+              "buildID": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 128,
+                    "pattern": "^(?:[0-9a-f]{2}){1,64}(?![\\s\\S])"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "programCounter",
+              "relativeProgramCounter",
+              "buildID"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "architectureCode",
+        "signalNumber",
+        "signalCode",
+        "threadID",
+        "faultAddress",
+        "frames"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

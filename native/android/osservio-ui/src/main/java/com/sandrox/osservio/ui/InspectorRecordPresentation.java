@@ -117,6 +117,7 @@ final class InspectorRecordPresentation {
             case "identity": return R.string.osservio_ui_search_identity;
             case "metadata": return R.string.osservio_ui_search_metadata;
             case "log": return R.string.osservio_ui_search_log_message;
+            case "logDetails": return R.string.osservio_ui_search_log_details;
             default: return R.string.osservio_ui_search_message;
         }
     }

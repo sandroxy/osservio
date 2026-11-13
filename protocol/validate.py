@@ -130,6 +130,8 @@ def selections(group, content, references, family):
         if family == "http":
             require(amount == int(original["observedBytes"]) if original["state"] == "available"
                     else original["state"] == "truncated" and amount < int(original["observedBytes"]), "Body disagrees with its observation")
+        elif family == "logs":
+            require(amount == original["textByteCount"], "Log details disagree with their reference")
         elif original["state"] == "available":
             require(amount == int(original["byteCount"]), "Payload disagrees with its observation")
     require(group["retainedPayloadBytes"] == sum(utf8(value) for value in content.values()), "Wrong payload total")
@@ -153,8 +155,9 @@ def semantics(metadata, payloads):
                 require(int(value["value"]) <= 100, "Battery percentage out of range")
     for family in ("breadcrumbs", "logs", "http", "webSockets"):
         group = incident[family]
+        has_payloads = family in ("http", "webSockets") or family == "logs" and metadata["revision"] >= 6
         if group is None:
-            require(family not in payloads or not payloads[family], "Content has no attached group")
+            require(not has_payloads or not payloads[family], "Content has no attached group")
             continue
         events = group["events"]
         require(group["sourceEventCount"] - len(events) == group["omittedEventCount"], "Wrong source event accounting")
@@ -172,14 +175,14 @@ def semantics(metadata, payloads):
             else:
                 socket_event(event, metadata["revision"])
                 size += utf8(event["url"]) + header_bytes(event["headers"])
-            bodies = [event["requestBody"], event["responseBody"]] if family == "http" else [event.get("payload")]
+            bodies = [event["requestBody"], event["responseBody"]] if family == "http" else [event.get("details") if family == "logs" and has_payloads else event.get("payload") if family == "webSockets" else None]
             for body in bodies:
                 if body is not None and body["blobID"] is not None:
                     require(body["blobID"] not in references, "Duplicate body reference")
                     references[body["blobID"]] = body
         require(group["retainedTextBytes"] == size, "Wrong metadata text total")
         total += size
-        if family in ("http", "webSockets"):
+        if has_payloads:
             selections(group, payloads[family], references, family)
             total += group["retainedPayloadBytes"]
     require(total <= 2097152, "Export exceeds text admission limit")
@@ -251,10 +254,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=5):
-    require(type(revision) is int and revision in (1, 2, 3, 4, 5), "Unsupported incident revision")
+def validators(reader=False, revision=6):
+    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)

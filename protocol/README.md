@@ -6,10 +6,10 @@ validated, host-policy-processed `IncidentSnapshot` into two UTF-8 JSON document
 | Document | Content |
 | --- | --- |
 | `incident.json` | Identity, mark/recovery time, origin, optional system evidence and attachments, loss counters, and body inclusion states |
-| `payloads.json` | Available copied HTTP and WebSocket text, keyed by the referenced body identity |
+| `payloads.json` | Available copied log context, HTTP and WebSocket text, keyed by the referenced body identity |
 
 The format identifiers are `osservio.incident` and `osservio.incident.payloads`.
-Both declare compatibility revision `5`, independently of SDK and private
+Both declare compatibility revision `6`, independently of SDK and private
 SQLite schema versions. The metadata's `payloadFile` is the fixed literal
 `payloads.json`, not an arbitrary path. The schema URNs identify local definitions;
 validation does not fetch a remote schema.
@@ -140,7 +140,7 @@ bound concurrent encodes and the lifetime of returned data.
 
 ## Compatibility and conformance
 
-The root schemas describe strict revision-5 writers. Preserved
+The root schemas describe strict revision-6 writers. Preserved
 [revision-1 metadata](revisions/1/incident.schema.json) and
 [payload schemas](revisions/1/payloads.schema.json), and
 [revision-2 metadata](revisions/2/incident.schema.json) and
@@ -148,17 +148,26 @@ The root schemas describe strict revision-5 writers. Preserved
 [revision-3 metadata](revisions/3/incident.schema.json) and
 [payload schemas](revisions/3/payloads.schema.json), and
 [revision-4 metadata](revisions/4/incident.schema.json) and
-[payload schemas](revisions/4/payloads.schema.json), remain readable by the
+[payload schemas](revisions/4/payloads.schema.json), and [revision-5 metadata](revisions/5/incident.schema.json) and
+[payload schemas](revisions/5/payloads.schema.json), remain readable by the
 conformance checker. Revisions 2 through 4 reference unchanged revision-1 event definitions.
 Revision 5 has self-contained definitions and admits complete valid URLs,
 RFC token method/header names, header values up to 16,384 UTF-8 bytes, and
 body-processing flags. Earlier revision constraints remain unchanged.
+Revision 6 adds nullable log `details` references and a separate `logs` map in
+`payloads.json`. Log windows report payload selection, retained bytes and source
+context eviction independently from message metadata. Available references
+carry a UUID and exact encoded UTF-8 byte count; omitted, limited, invalid and
+unsupported contexts carry no blob or invented byte count. Context text uses the
+[bounded structured-log contract](../doc/logging.md#structured-context-and-supplied-errors).
+These are log observations, not automatic crash records. Older snapshots
+encoded by current writers have null details and empty log payload maps.
 A reader may ignore unknown optional object fields within a supported revision,
 while still validating every known
 field, required field, enum, identifier, revision-specific content constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
 Unsupported revisions and mixed document revisions are rejected. Native writers
-always emit revision 5, including for manual snapshots. Earlier readers must
+always emit revision 6, including for manual snapshots. Earlier readers must
 reject newer revisions rather than overlook their evidence. No automatic
 document rewriting, downgrade, or SDK runtime importer is provided.
 Private incident database migrations are tested separately in native Store
@@ -174,5 +183,5 @@ archive-import API. It does not extract ZIP files or accept remote data.
 The independent fixtures in `testing/incident-export` cover absent and empty
 groups, exact 64-bit values, host processing, historical redaction, Unicode and escaping, body states, HTTP
 lifecycles, system source/time invariants, corruption, and compatibility.
-Unmodified revision-1, revision-2, revision-3 and revision-4 golden documents are retained separately. Both native encoders compare their
+Unmodified revision-1 through revision-5 golden documents are retained separately. Both native encoders compare their
 output with the same golden documents. See [development checks](../DEVELOPMENT.md).

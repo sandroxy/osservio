@@ -23,9 +23,9 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 5, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 5, "incidentID": snapshot.id,
-            "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 6, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 6, "incidentID": snapshot.id,
+            "logs": content(snapshot.logs?.payloads ?? [:]), "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
             metadataJSON = try JSONSerialization.data(withJSONObject: metadata, options: [.sortedKeys])
@@ -106,10 +106,12 @@ public struct IncidentDocuments: Sendable {
     private static func logs(_ value: IncidentLogs) -> [String: Any] {
         ["observedAtMillis": String(value.observedAtMillis), "sourceEventCount": value.sourceEventCount, "omittedEventCount": value.omittedEventCount,
          "sourceEvictedCount": String(value.sourceEvictedCount), "retainedTextBytes": value.retainedTextBytes,
+         "sourceEvictedDetails": String(value.sourceEvictedDetails), "retainedPayloadBytes": value.retainedPayloadBytes, "payloads": selection(value.payloads),
          "events": value.events.map { event -> [String: Any] in
             ["sessionID": event.sessionID, "sequence": String(event.sequence), "timestampMillis": String(event.timestampMillis),
              "level": event.level.rawValue, "category": event.category, "message": event.message,
-             "isPrivate": event.isPrivate, "isTruncated": event.isTruncated]
+             "isPrivate": event.isPrivate, "isTruncated": event.isTruncated,
+             "details": optional(event.details.map { ["state": $0.state.rawValue, "blobID": optional($0.blobID), "textByteCount": $0.textByteCount] as [String: Any] })]
          }]
     }
     private static func http(_ value: IncidentHTTP) -> [String: Any] {

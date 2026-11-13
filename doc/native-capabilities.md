@@ -13,7 +13,7 @@ and observation points.
 | Capability | Android | iOS | Boundary |
 | --- | --- | --- | --- |
 | Capture controls | Off, baseline, finite detailed session | Same states | Core defaults to off. The host selects collectors and entry policy; presenting an inspector does not enable capture. |
-| Text logs | Explicit `LogRecorder` calls | Explicit `LogRecorder` calls | Levels, categories, text limits and private-text replacement. No automatic Logcat, `Log.*`, console or `os_log` interception. |
+| Logs and supplied errors | Explicit `LogRecorder` calls | Explicit `LogRecorder` calls | Levels, categories, bounded typed context, explicit error/call-site fields, and host-selected omission. No automatic Logcat, `Log.*`, console or `os_log` interception. |
 | HTTP | Host observations and optional OkHttp application interceptor | Host observations and optional URLSession data-task wrapper | Only integrated methods are observed. Redirect/retry and streaming semantics differ. Body content is omitted by default. |
 | WebSocket | Host observations and optional OkHttp factory wrapper | Host observations and optional URLSession task wrapper | The iOS host forwards selected delegate events explicitly. Submission, queue acceptance, completion and peer receipt are distinct. Binary content is never copied. |
 | Environment | Explicit app, OS, device and process queries | Corresponding native queries | Allowlisted fields only. Unavailable and unsupported are separate from zero. No stable device identifier or user-assigned device name. |

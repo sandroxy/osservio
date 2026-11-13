@@ -375,3 +375,12 @@
 
 "incident_private_note" = "采集时已省略说明";
 "incident_no_attachments" = "未附带现场记录";
+
+"ui_log_context" = "日志上下文";
+"ui_log_context_open" = "查看参数、属性与错误信息";
+"ui_log_context_omitted" = "宿主已省略上下文";
+"ui_log_context_limited" = "上下文超出采集限制，已保留日志摘要";
+"ui_log_context_invalid" = "上下文包含无效值，已保留日志摘要";
+"ui_log_context_unsupported" = "当前日志存储不支持上下文";
+"ui_search_log_details" = "日志上下文";
+"incident_include_log_details" = "包含日志上下文";

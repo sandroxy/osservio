@@ -96,7 +96,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         for (int i = count() - 1; i >= 0; i--) if (inScope(i) && records.get(i).matchesFacets(query, now)) indices.add(i);
         if (query.searchesPayload()) {
             indices.clear(); long current = generation; InspectorQuery selected = query.copy();
-            java.util.Map<String, IncidentPayload> saved = http != null ? http.payloads : sockets != null ? sockets.payloads : java.util.Collections.emptyMap();
+            java.util.Map<String, IncidentPayload> saved = http != null ? http.payloads : sockets != null ? sockets.payloads : logs.payloads;
             List<InspectorRecordSearch.Record> searchRecords = new ArrayList<>();
             for (int i = count() - 1; i >= 0; i--) if (inScope(i)) searchRecords.add(records.get(i));
             InspectorRecordPresentation.prepareSearch(getContext(), searchRecords);
@@ -119,7 +119,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         footer.setVisibility(indices.isEmpty() ? VISIBLE : GONE);
         long time = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
         String note = getContext().getString(R.string.osservio_ui_evidence_saved) + " · " + InspectorValuePresentation.eventTime(time, true);
-        boolean loss = logs != null ? logs.omittedEventCount > 0 || logs.sourceEvictedCount > 0
+        boolean loss = logs != null ? logs.omittedEventCount > 0 || logs.sourceEvictedCount > 0 || logs.sourceEvictedDetails > 0
             : http != null ? http.omittedEventCount > 0 || http.sourceEvictedEvents > 0 || http.sourceEvictedBodies > 0
             : sockets.omittedEventCount > 0 || sockets.sourceEvictedEvents > 0 || sockets.sourceEvictedPayloads > 0;
         if (loss) note += "\n" + getContext().getString(R.string.osservio_ui_retention_loss);
@@ -129,7 +129,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private void show(int index) {
         if (detail != null) return;
         InspectorWidgets.hideKeyboard(this);
-        if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index));
+        if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index), null, logs.payloads);
         else if (http != null) detail = new HTTPDetailDialog(getContext(), http.events.get(index), http.payloads, result == null ? null : result.previewSources.get(records.get(index).key())).dialog;
         else {
             WebSocketDetailDialog message = new WebSocketDetailDialog(getContext(), sockets.events.get(index), sockets.payloads);

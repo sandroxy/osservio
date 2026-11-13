@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 5,
+    "revision": 6,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -135,7 +135,8 @@
             "category": "fixture",
             "message": "Quote\"\\\n汉😀\u0000",
             "isPrivate": false,
-            "isTruncated": true
+            "isTruncated": true,
+            "details": null
           },
           {
             "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
@@ -145,13 +146,17 @@
             "category": "fixture",
             "message": "[private]",
             "isPrivate": true,
-            "isTruncated": false
+            "isTruncated": false,
+            "details": null
           }
         ],
         "sourceEventCount": 3,
         "omittedEventCount": 1,
         "sourceEvictedCount": "9",
-        "retainedTextBytes": 39
+        "retainedTextBytes": 39,
+        "payloads": {},
+        "retainedPayloadBytes": 0,
+        "sourceEvictedDetails": "0"
       },
       "http": {
         "observedAtMillis": "457",
@@ -428,7 +433,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 5,
+    "revision": 6,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {
       "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",
@@ -437,6 +442,7 @@
     "webSockets": {
       "eeeeeeee-eeee-eeee-eeee-000000000005": "",
       "eeeeeeee-eeee-eeee-eeee-000000000006": "😀"
-    }
+    },
+    "logs": {}
   }
 }
