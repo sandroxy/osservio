@@ -309,36 +309,10 @@
 
 "ui_saved_breadcrumbs_empty" = "这份快照中没有留存运行线索。";
 
-"stats_title" = "采集结果";
-"stats_window" = "统计开始时间";
-"stats_hint" = "统计自当前采集控制器创建以来的操作次数，包含 HTTP 观察自动结束，不等于记录条数或落盘条数。本页是读取时的快照，重新进入可更新。历史淘汰及落盘情况请查看对应的历史与存储状态。";
-"stats_incomplete" = "部分统计因并发争用被跳过或已达到上限，当前数值仅为下限。";
-"stats_empty" = "尚无采集操作";
-"stats_logs" = "日志";
-"stats_http" = "HTTP";
-"stats_web_socket" = "WebSocket";
-"stats_breadcrumbs" = "运行线索";
-"stats_accepted" = "已接受";
-"stats_inactive" = "采集未开启";
-"stats_busy" = "采集或存储繁忙";
-"stats_rate_limited" = "达到速率上限";
-"stats_active_limit" = "达到同时观察上限";
-"stats_oversized" = "超过单项存储上限";
-"stats_protected_capacity" = "容量正用于保留近期错误";
-"stats_invalid" = "观察数据无效";
-"stats_missing" = "原记录已不在历史中";
-"stats_stale" = "观察已结束";
-"stats_sink_failure" = "存储操作失败";
-"stats_sequence_exhausted" = "会话序号已用尽";
-
-"form_fields" = "字段";
-"form_field" = "表单字段";
-"form_loading" = "正在读取表单字段…";
-"form_invalid" = "编码无法可靠解读，显示原文。";
-"form_limited" = "已达到结构化阅读上限，显示原文。";
-"form_hint" = "保留字段顺序及重名字段。此处搜索解码后的名称和值，原文模式搜索原始内容。点开字段查看完整值，长按可复制该字段的编码原文。";
-"form_empty" = "此正文不包含表单字段。";
-"form_empty_name" = "（空字段名）";
-"form_empty_value" = "（空值）";
-"form_missing_equals" = "（未包含等号）";
-"form_copy_source" = "复制字段编码原文";
+"ui_log_context" = "日志上下文";
+"ui_log_context_open" = "查看参数、属性与错误信息";
+"ui_log_context_omitted" = "宿主已省略上下文";
+"ui_log_context_limited" = "上下文超出采集限制，已保留日志摘要";
+"ui_log_context_invalid" = "上下文包含无效值，已保留日志摘要";
+"ui_log_context_unsupported" = "当前日志存储不支持上下文";
+"ui_search_log_details" = "日志上下文";

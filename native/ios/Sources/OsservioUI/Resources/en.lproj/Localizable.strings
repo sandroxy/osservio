@@ -376,13 +376,6 @@
 "incident_private_note" = "Description omitted at capture";
 "incident_no_attachments" = "No evidence attached";
 
-"ui_log_context" = "Log context";
-"ui_log_context_open" = "View arguments, attributes and error details";
-"ui_log_context_omitted" = "Context omitted by the host";
-"ui_log_context_limited" = "Context exceeded capture limits; the summary was retained";
-"ui_log_context_invalid" = "Context contained an invalid value; the summary was retained";
-"ui_log_context_unsupported" = "The configured log store does not support context";
-"ui_search_log_details" = "Log context";
 "incident_include_log_details" = "Include log context";
 
 "http_metrics" = "Timing and connection";
@@ -411,3 +404,36 @@
 "http_phase_response" = "Response transfer";
 "http_phase_responseHeaders" = "Response headers";
 "http_phase_responseBody" = "Response body reads";
+
+"stats_title" = "Capture outcomes";
+"stats_window" = "Counting since";
+"stats_hint" = "Counts are recorder operations since this capture controller was created, including automatic HTTP observation endings. They are not unique records or durable writes. This page is a snapshot; reopen it to update. Evictions and disk writes are reported by the corresponding history and storage status.";
+"stats_incomplete" = "Some accounting was skipped under contention or reached its limit. These values are lower bounds.";
+"stats_empty" = "No capture operations observed";
+"stats_logs" = "Logs";
+"stats_http" = "HTTP";
+"stats_web_socket" = "WebSocket";
+"stats_breadcrumbs" = "Runtime breadcrumbs";
+"stats_accepted" = "Accepted";
+"stats_inactive" = "Capture not enabled";
+"stats_busy" = "Capture or storage busy";
+"stats_rate_limited" = "Rate limit reached";
+"stats_active_limit" = "Active observation limit reached";
+"stats_oversized" = "Storage item limit exceeded";
+"stats_protected_capacity" = "Capacity reserved for recent errors";
+"stats_invalid" = "Invalid observation";
+"stats_missing" = "Original record no longer available";
+"stats_stale" = "Observation already ended";
+"stats_sink_failure" = "Storage rejected the operation";
+"stats_sequence_exhausted" = "Session sequence limit reached";
+"form_fields" = "Fields";
+"form_field" = "Form field";
+"form_loading" = "Reading form fields…";
+"form_invalid" = "Encoding could not be decoded reliably. Showing the original source.";
+"form_limited" = "Structured reading limit reached. Showing the original source.";
+"form_hint" = "Field order and duplicate names are preserved. Search reads decoded names and values; Raw searches the original source. Open a field for its full value; long-press to copy its encoded source.";
+"form_empty" = "This body contains no form fields.";
+"form_empty_name" = "(Empty name)";
+"form_empty_value" = "(Empty value)";
+"form_missing_equals" = "(No equals sign)";
+"form_copy_source" = "Copy encoded field";
