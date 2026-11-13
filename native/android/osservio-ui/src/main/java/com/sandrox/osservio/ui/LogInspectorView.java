@@ -118,7 +118,9 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         if (stale) notes.add(context.getString(R.string.osservio_ui_previous_window));
         LogRecorder.Status status = recorder.status();
         if ((state.snapshot != null && (state.snapshot.evictedCount > 0 || state.snapshot.evictedDetails > 0)) || status != null && status.rateLimitedCount > 0) notes.add(context.getString(R.string.osservio_ui_retention_loss));
-        header.status.setText(android.text.TextUtils.join(" · ", notes)); header.setPaused(state.paused);
+        String text = android.text.TextUtils.join(" · ", notes);
+        if (!text.contentEquals(header.status.getText())) header.status.setText(text);
+        header.setPaused(state.paused);
     }
     private void search() {
         List<InspectorRecordSearch.Record> records = new ArrayList<>();
@@ -143,7 +145,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
     private void display() {
         boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.LOG_APPLY);
         try {
-            header.setQuery(state.query, InspectorFilterOptions.logs(getContext(), retained()), events.size(), retained().size());
+            header.setQuery(state.query, () -> InspectorFilterOptions.logs(getContext(), retained()), events.size(), retained().size());
             LogRecorder.Status status = recorder.status();
             header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
                 : stale || status == null ? R.string.osservio_busy : status.isRecording ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);

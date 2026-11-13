@@ -151,12 +151,14 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         if ((state.http != null && (state.http.evictedEvents > 0 || state.http.evictedBodies > 0))
             || (state.sockets != null && (state.sockets.evictedEvents > 0 || state.sockets.evictedPayloads > 0))
             || (socket != null && socket.rateLimitedCount > 0)) notes.add(context.getString(R.string.osservio_ui_retention_loss));
-        header.status.setText(android.text.TextUtils.join(" · ", notes)); header.setPaused(state.paused);
+        String text = android.text.TextUtils.join(" · ", notes);
+        if (!text.contentEquals(header.status.getText())) header.status.setText(text);
+        header.setPaused(state.paused);
     }
     private void display() {
         boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.NETWORK_APPLY);
         try {
-            header.setQuery(state.query, groups(), items.size(), available);
+            header.setQuery(state.query, this::groups, items.size(), available);
             header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
                 : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
             rows.notifyDataSetChanged(); status();
@@ -191,8 +193,13 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             view.previewTask = null; if (result.previews.isEmpty()) return;
             for (java.util.Map.Entry<String, String> entry : result.previews.entrySet()) { view.previews.remove(entry.getKey()); view.previews.put(entry.getKey(), entry.getValue()); }
             while (view.previews.size() > 64) view.previews.remove(view.previews.keySet().iterator().next());
-            int position = view.list.getFirstVisiblePosition(); View first = view.list.getChildAt(0); int offset = first == null ? 0 : first.getTop();
-            view.rows.notifyDataSetChanged(); view.list.setSelectionFromTop(position, offset);
+            // Payload delivery does not change membership. Rebind only affected visible rows.
+            for (int child = 0; child < view.list.getChildCount(); child++) {
+                int index = view.list.getFirstVisiblePosition() + child - view.list.getHeaderViewsCount();
+                if (index < 0 || index >= view.items.size()) continue;
+                WebSocketEvent event = view.items.get(index).socket;
+                if (event != null && result.previews.containsKey(event.id)) view.rows.getView(index, view.list.getChildAt(child), view.list);
+            }
         });
     }
     private boolean isDetailed() {

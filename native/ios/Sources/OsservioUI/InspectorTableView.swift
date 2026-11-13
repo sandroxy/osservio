@@ -24,6 +24,22 @@ final class InspectorTableView: UITableView {
         setNeedsLayout()
         UIView.performWithoutAnimation { layoutIfNeeded() }
     }
+    /// Retained windows often replace records without changing their count. Preserve
+    /// UIKit's reusable cells and offscreen height estimates in that case; cells
+    /// entering the viewport still bind against the current data source.
+    func refreshFeed(rowCount: Int) {
+        guard numberOfSections == 1, numberOfRows(inSection: 0) == rowCount,
+              rowCount > 0, window != nil else { reloadData(); return }
+        refreshRows(indexPathsForVisibleRows ?? [])
+    }
+
+    func refreshRows(_ positions: [IndexPath]) {
+        guard !positions.isEmpty else { return }
+        UIView.performWithoutAnimation {
+            if #available(iOS 15, *) { reconfigureRows(at: positions) }
+            else { reloadRows(at: positions, with: .none) }
+        }
+    }
     var followLatestButton: UIButton? {
         didSet {
             oldValue?.removeFromSuperview()
@@ -33,6 +49,7 @@ final class InspectorTableView: UITableView {
     }
 
     func setEmptyState(_ label: UILabel?) {
+        if label == nil && emptyFooter == nil { return }
         emptyFooter = label.map {
             let footer = UIStackView(arrangedSubviews: [$0])
             footer.axis = .vertical; footer.isLayoutMarginsRelativeArrangement = true

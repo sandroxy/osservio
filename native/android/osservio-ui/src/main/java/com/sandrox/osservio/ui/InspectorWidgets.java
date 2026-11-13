@@ -344,6 +344,7 @@ final class InspectorWidgets {
         return new java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.ROOT).format(new java.util.Date(millis));
     }
     static final class EventRow extends LinearLayout {
+        private Boolean firstInGroup, lastInGroup;
         private final LinearLayout card;
         private final TextView badge;
         private final TextView time;
@@ -377,12 +378,17 @@ final class InspectorWidgets {
             labels.addView(metadata, new LayoutParams(-1, -2));
         }
         void grouped(boolean first, boolean last) {
+            if (firstInGroup != null && firstInGroup == first && lastInGroup == last) return;
+            firstInGroup = first; lastInGroup = last;
             InspectorAppearance.style(card, () -> groupedRow(card, first, last));
         }
-        void timestamp(String value) { time.setText(value); }
+        void timestamp(String value) { if (!value.contentEquals(time.getText())) time.setText(value); }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {
-            badge.setText(label); badge.setTextColor(tone); title.setText(primary); metadata.setText(secondary);
-            time.setText(time(timestamp));
+            if (!label.contentEquals(badge.getText())) badge.setText(label);
+            if (badge.getCurrentTextColor() != tone) badge.setTextColor(tone);
+            if (!primary.contentEquals(title.getText())) title.setText(primary);
+            if (!secondary.contentEquals(metadata.getText())) metadata.setText(secondary);
+            timestamp(time(timestamp));
         }
     }
 }

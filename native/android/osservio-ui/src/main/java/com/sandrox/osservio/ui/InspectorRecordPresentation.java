@@ -31,12 +31,14 @@ final class InspectorRecordPresentation {
         return android.text.TextUtils.join(" · ", result);
     }
     static String path(Context context, String source) {
-        InspectorURL url = new InspectorURL(source);
+        return path(context, new InspectorURL(source));
+    }
+    private static String path(Context context, InspectorURL url) {
         return !url.available ? context.getString(R.string.osservio_ui_url_unavailable) : url.pathHidden ? context.getString(R.string.osservio_ui_path_hidden) : url.path;
     }
     static String address(Context context, String source) {
         InspectorURL url = new InspectorURL(source);
-        return joined(url.origin, path(context, source), url.queryHidden ? context.getString(R.string.osservio_ui_query_hidden) : "");
+        return joined(url.origin, path(context, url), url.queryHidden ? context.getString(R.string.osservio_ui_query_hidden) : "");
     }
     static Row log(Context context, LogEvent event, String preview) { return log(context, event, preview, null); }
     static Row log(Context context, LogEvent event, String preview, String matchSource) {

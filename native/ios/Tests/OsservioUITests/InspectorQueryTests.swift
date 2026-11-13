@@ -4,6 +4,15 @@ import OsservioCore
 import XCTest
 
 final class InspectorQueryTests: XCTestCase {
+    func testUnselectedFacetDoesNotParseAnUnusedValue() {
+        var query = InspectorQuery(), reads = 0
+        func host() -> String { reads += 1; return "example.test" }
+        XCTAssertTrue(query.allows(.host, host())); XCTAssertEqual(reads, 0)
+        query.values[.host] = ["other.test"]
+        XCTAssertFalse(query.allows(.host, host())); XCTAssertEqual(reads, 1)
+        query.values[.host] = []
+        XCTAssertTrue(query.allows(.host, host())); XCTAssertEqual(reads, 1)
+    }
     private let id = "00000000-0000-0000-0000-000000000001"
 
     func testUnionWithinFieldIntersectionAcrossFieldsAndText() throws {

@@ -4,6 +4,13 @@ import OsservioCore
 import XCTest
 
 final class InspectorRecordSearchTests: XCTestCase {
+    func testNetworkOrderingPreservesTiedSocketCaptureOrderAndDifferentTimes() throws {
+        let history = History()
+        let first = InspectorSearchRecord.socket(try message(1, connection: 10, text: "first", history: history))
+        let second = InspectorSearchRecord.socket(try message(2, connection: 20, text: "second", history: history))
+        let newest = InspectorSearchRecord.socket(try message(3, connection: 10, text: "newest", history: history, time: 101))
+        XCTAssertEqual(InspectorSearchRecord.ordered([first, newest, second]).map(\.key), [newest.key, second.key, first.key])
+    }
     func testShortSearchPreviewKeepsTheWholeMessage() {
         let text = "{\"type\":\"beta\",\"data\":{\"lookup\":\"lookup-42\",\"sequence\":2}}"
         XCTAssertEqual(InspectorRecordSearch.preview(text, term: "lookup-42"), text)

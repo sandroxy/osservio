@@ -22,6 +22,9 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     private var tokenQuery: InspectorQuery?
     private var tokenStyle = ""
     private var latestStyle = ""
+    private var displayedQuery: InspectorQuery?
+    private var displayedPaused: Bool?
+    private var displayedStyle = ""
 
 
     init(compact: Bool = false, actionLabel: String = "clear") {
@@ -67,7 +70,15 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     }
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
-    func relabel(paused: Bool, query: InspectorQuery) {
+    @discardableResult
+    func relabel(paused: Bool, query: InspectorQuery) -> Bool {
+        let style = InspectorLocalization.text("ui_filters") + InspectorPreferences.shared.appearance.rawValue
+            + InspectorPreferences.shared.palette.rawValue + traitCollection.preferredContentSizeCategory.rawValue
+        let hidesStatus = compact && status.text?.isEmpty != false
+        let statusChanged = compact && status.isHidden != hidesStatus
+        if compact { status.isHidden = hidesStatus }
+        guard displayedQuery != query || displayedPaused != paused || displayedStyle != style else { return statusChanged }
+        displayedQuery = query; displayedPaused = paused; displayedStyle = style
         if compact {
             let style = InspectorLocalization.text("ui_follow_latest") + InspectorPreferences.shared.appearance.rawValue
                 + InspectorPreferences.shared.palette.rawValue + traitCollection.preferredContentSizeCategory.rawValue
@@ -92,6 +103,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         criteria.text = InspectorFilterOptions.summary(query)
         criteria.isHidden = query.activeCount == 0
         if compact { updateTokens(query); status.isHidden = status.text?.isEmpty != false }
+        return true
     }
     private func updateTokens(_ query: InspectorQuery) {
         tokenScroll.isHidden = query.activeCount == 0
@@ -191,9 +203,12 @@ final class InspectorEventCell: UITableViewCell {
             color: row.tone == .error ? .systemRed : row.tone == .warning ? .systemOrange : .secondaryLabel)
     }
     func configure(badge: String, time: Int64, title: String, subtitle: String, color: UIColor? = nil) {
-        self.badge.text = badge; self.badge.textColor = color ?? InspectorTheme.accent
-        timestamp.text = InspectorValuePresentation.eventTime(time)
-        primary.text = title; secondary.text = subtitle
+        if self.badge.text != badge { self.badge.text = badge }
+        self.badge.textColor = color ?? InspectorTheme.accent
+        let formatted = InspectorValuePresentation.eventTime(time)
+        if timestamp.text != formatted { timestamp.text = formatted }
+        if primary.text != title { primary.text = title }
+        if secondary.text != subtitle { secondary.text = subtitle }
         accessibilityLabel = [badge, title, subtitle, timestamp.text ?? ""].joined(separator: ", ")
     }
 }

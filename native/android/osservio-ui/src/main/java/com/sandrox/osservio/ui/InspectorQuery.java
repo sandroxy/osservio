@@ -33,6 +33,12 @@ final class InspectorQuery {
         for (Map.Entry<Field, Set<String>> entry : values.entrySet()) result.values.put(entry.getKey(), new HashSet<>(entry.getValue()));
         return result;
     }
+    boolean sameAs(InspectorQuery other) {
+        return other != null && text.equals(other.text) && excludedText.equals(other.excludedText)
+            && fieldPath.equals(other.fieldPath) && fieldValue.equals(other.fieldValue)
+            && minimumDurationMillis == other.minimumDurationMillis && recentMinutes == other.recentMinutes && values.equals(other.values);
+    }
+    private boolean selected(Field field) { Set<String> selected = values.get(field); return selected != null && !selected.isEmpty(); }
     int activeCount() {
         int result = (recentMinutes > 0 ? 1 : 0) + (minimumDurationMillis > 0 ? 1 : 0)
             + (fieldPath.isEmpty() ? 0 : 1) + (excludedText.isEmpty() ? 0 : 1);
@@ -116,8 +122,8 @@ final class InspectorQuery {
     boolean matchesFacets(HTTPEvent event, long now) {
         return allows(Field.TRANSPORT, "http") && allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
             && allowsStatus(event.statusCode)
-            && allows(Field.HOST, host(event.url)) && allows(Field.SOURCE, event.source.name())
-            && allows(Field.CONTENT, InspectorHTTPContent.category(event.responseHeaders))
+            && (!selected(Field.HOST) || allows(Field.HOST, host(event.url))) && allows(Field.SOURCE, event.source.name())
+            && (!selected(Field.CONTENT) || allows(Field.CONTENT, InspectorHTTPContent.category(event.responseHeaders)))
             && (minimumDurationMillis == 0 || event.durationMillis != null && event.durationMillis >= minimumDurationMillis)
             && empty(SOCKET_FIELDS) && includesTime(event.timestampMillis, now);
     }
@@ -130,7 +136,7 @@ final class InspectorQuery {
             && allows(Field.DIRECTION, event.direction == null ? "none" : event.direction.name())
             && allows(Field.OUTCOME, event.outcome == null ? "none" : event.outcome.name())
             && allows(Field.CLOSE_CODE, event.closeCode == null ? "none" : event.closeCode.toString())
-            && allows(Field.KIND, event.kind.name()) && allows(Field.HOST, host(event.url))
+            && allows(Field.KIND, event.kind.name()) && (!selected(Field.HOST) || allows(Field.HOST, host(event.url)))
             && allows(Field.SOURCE, event.source.name()) && empty(HTTP_FIELDS) && minimumDurationMillis == 0 && includesTime(event.timestampMillis, now);
     }
     boolean matches(Connection connection, long now) {

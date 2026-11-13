@@ -79,12 +79,14 @@ public final class LogInspectorViewController: UITableViewController {
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
         if stale { notes.append(InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window")) }
         if (latest?.evictedCount ?? 0) > 0 || (latest?.evictedDetails ?? 0) > 0 || (recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
-        header.status.text = notes.joined(separator: " · ")
-        header.relabel(paused: paused, query: query); table.setNeedsLayout()
+        let text = notes.joined(separator: " · "), changed = header.status.text != text
+        if changed { header.status.text = text }
+        if header.relabel(paused: paused, query: query) || changed { table.setNeedsLayout() }
     }
     private func render() {
-        let records = (latest?.events ?? []).reversed().map(InspectorSearchRecord.log), query = query, anchor = anchor
+        let query = query, anchor = anchor
         if !query.searchesPayload { events = (latest?.events ?? []).reversed().filter { query.matchesFacets($0, now: anchor) }; result = nil; dirty = false; display(); return }
+        let records = (latest?.events ?? []).reversed().map(InspectorSearchRecord.log)
         let current = generation, detailsHistory = history as? any LogDetailsHistory
         task = InspectorRecordSearchTask.submit(search: { cancelled in
             InspectorRecordSearch.run(records, query: query, now: anchor, http: nil, sockets: nil, logs: detailsHistory, cancelled: cancelled)
@@ -98,8 +100,9 @@ public final class LogInspectorViewController: UITableViewController {
     }
     private func display() {
         let span = InspectorPerformance.begin(.logApply); defer { span?.end() }
-        table.reloadData()
-        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
+        table.refreshFeed(rowCount: events.count)
+        let count = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
+        if header.count.text != count { header.count.text = count }
         let key = dirty && query.searchesPayload ? "ui_searching" : latest == nil ? attemptedRead ? "busy" : "ui_reading"
             : latest?.events.isEmpty == false ? "ui_filtered_empty" : recorder.status()?.isRecording == true ? "ui_waiting" : "ui_inactive_empty"
         table.setEmptyState(events.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()

@@ -48,6 +48,10 @@ enum InspectorSearchRecord: Sendable {
         if case .socket(let lhs) = left, case .socket(let rhs) = right { return InspectorQuery.timelineNewestFirst(lhs, rhs) }
         return left.time == right.time ? left.key < right.key : left.time > right.time
     }
+    /// Sort lightweight indices rather than repeatedly moving payload-bearing enum values.
+    static func ordered(_ records: [Self]) -> [Self] {
+        records.indices.sorted { newestFirst(records[$0], records[$1]) }.map { records[$0] }
+    }
 }
 
 /// On-demand search of sanitized retained evidence, never a host stream. No body index is kept.

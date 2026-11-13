@@ -59,9 +59,9 @@ struct InspectorQuery: Equatable {
         values.removeAll(); recentMinutes = 0; minimumDurationMillis = 0
         fieldPath = ""; fieldValue = ""; excludedText = ""
     }
-    func allows(_ field: Field, _ value: String) -> Bool {
+    func allows(_ field: Field, _ value: @autoclosure () -> String) -> Bool {
         guard let selected = values[field], !selected.isEmpty else { return true }
-        return selected.contains(value)
+        return selected.contains(value())
     }
     func includesTime(_ timestamp: Int64, now: Int64) -> Bool {
         guard recentMinutes > 0 else { return true }

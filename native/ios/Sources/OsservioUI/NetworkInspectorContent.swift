@@ -83,8 +83,8 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     }
     private var records: [InspectorSearchRecord] {
         let requests = connectionID == nil ? (latestHTTP?.events ?? []).map(InspectorSearchRecord.http) : []
-        return (requests + (latestSockets?.events ?? []).filter { connectionID == nil || $0.connectionID == connectionID }.map(InspectorSearchRecord.socket))
-            .sorted(by: InspectorSearchRecord.newestFirst)
+        return InspectorSearchRecord.ordered(requests + (latestSockets?.events ?? [])
+            .filter { connectionID == nil || $0.connectionID == connectionID }.map(InspectorSearchRecord.socket))
     }
     private func search() {
         let records = records, query = query, anchor = anchor
@@ -110,13 +110,15 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         if (latestHTTP?.evictedEvents ?? 0) > 0 || (latestHTTP?.evictedBodies ?? 0) > 0
             || (latestSockets?.evictedEvents ?? 0) > 0 || (latestSockets?.evictedPayloads ?? 0) > 0
             || (sockets?.recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
-        header.status.text = notes.joined(separator: " · ")
-        header.relabel(paused: paused, query: query); table.setNeedsLayout()
+        let text = notes.joined(separator: " · "), changed = header.status.text != text
+        if changed { header.status.text = text }
+        if header.relabel(paused: paused, query: query) || changed { table.setNeedsLayout() }
     }
     private func display() {
         let span = InspectorPerformance.begin(.networkApply); defer { span?.end() }
-        table.reloadData()
-        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
+        table.refreshFeed(rowCount: rows.count)
+        let count = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
+        if header.count.text != count { header.count.text = count }
         let active = http?.recorder.captureController.status()?.debugEnabled == true || sockets?.recorder.captureController.status()?.debugEnabled == true
         let key = dirty && query.searchesPayload ? "ui_searching" : available > 0 ? "ui_filtered_empty" : !attemptedRead ? "ui_reading"
             : staleHTTP || staleSockets ? "busy" : active ? "ui_waiting" : "ui_inactive_empty"
@@ -153,8 +155,19 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
                 self.previews[key] = value; self.previewOrder.removeAll { $0 == key }; self.previewOrder.append(key)
             }
             while self.previewOrder.count > 64 { self.previews.removeValue(forKey: self.previewOrder.removeFirst()) }
-            let offset = self.table.contentOffset
-            UIView.performWithoutAnimation { self.table.reloadData(); self.table.layoutIfNeeded(); self.table.setContentOffset(offset, animated: false) }
+            let positions = (self.table.indexPathsForVisibleRows ?? []).filter { index in
+                guard index.row < self.rows.count, case .socket(let event) = self.rows[index.row] else { return false }
+                return result.previews[event.id] != nil
+            }
+            guard !positions.isEmpty else { return }
+            let first = self.table.indexPathsForVisibleRows?.sorted().first
+            let distance = first.map { self.table.contentOffset.y - self.table.rectForRow(at: $0).minY }
+            UIView.performWithoutAnimation {
+                self.table.refreshRows(positions); self.table.layoutIfNeeded()
+                if !self.table.followsLatest, let first, let distance {
+                    self.table.setContentOffset(CGPoint(x: self.table.contentOffset.x, y: self.table.rectForRow(at: first).minY + distance), animated: false)
+                }
+            }
         })
     }
     @objc private func followLatest() {

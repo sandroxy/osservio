@@ -20,12 +20,14 @@ enum InspectorRecordPresentation {
     static func identity(_ id: String) -> String { id.count <= 16 ? id : String(id.prefix(8)) + "…" + id.suffix(4) }
     static func connection(_ id: String) -> String { text("connection") + " · " + identity(id) }
     static func path(_ source: String) -> String {
-        let url = InspectorURL(source)
-        return !url.available ? text("url_unavailable") : url.pathHidden ? text("path_hidden") : url.path
+        path(InspectorURL(source))
+    }
+    private static func path(_ url: InspectorURL) -> String {
+        !url.available ? text("url_unavailable") : url.pathHidden ? text("path_hidden") : url.path
     }
     static func address(_ source: String) -> String {
         let url = InspectorURL(source)
-        return joined([url.origin, path(source), url.queryHidden ? text("query_hidden") : ""])
+        return joined([url.origin, path(url), url.queryHidden ? text("query_hidden") : ""])
     }
     static func joined(_ values: [String]) -> String { values.filter { !$0.isEmpty }.joined(separator: " · ") }
     static func log(_ event: LogEvent, preview: String? = nil, matchSource: String? = nil) -> Row {
@@ -39,7 +41,7 @@ enum InspectorRecordPresentation {
         let url = InspectorURL(event.url)
         let result = event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) }
             ?? (event.state == .completed ? "" : HTTPPresentation.state(event.state))
-        return Row(badge: event.method + (event.statusCode.map { " · \($0)" } ?? ""), title: path(event.url),
+        return Row(badge: event.method + (event.statusCode.map { " · \($0)" } ?? ""), title: path(url),
             subtitle: joined([url.origin, result, event.durationMillis.map { "\($0) ms" } ?? "", url.queryHidden ? text("query_hidden") : ""])
                 + (preview.map { "\n" + $0 } ?? ""), time: event.timestampMillis,
             tone: event.state == .failed || (event.statusCode ?? 0) >= 400 ? .error : .ordinary)

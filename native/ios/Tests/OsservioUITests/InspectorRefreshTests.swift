@@ -6,6 +6,34 @@ import XCTest
 
 final class InspectorRefreshTests: XCTestCase {
     @MainActor
+    func testFeedReplacementResizesVisibleCellsAndRebindsOffscreenRows() async throws {
+        let controller = UITableViewController(style: .insetGrouped)
+        let table = InspectorTableView(frame: .zero, style: .insetGrouped), source = FeedSource()
+        controller.tableView = table; table.dataSource = source
+        table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 100
+        table.followsLatest = true
+        let window = show(controller)
+        defer { dismiss(window) }
+        table.reloadData(); table.layoutIfNeeded()
+        let first = IndexPath(row: 0, section: 0), cell = table.cellForRow(at: first)
+        let height = table.rectForRow(at: first).height
+        source.expanded = true
+        table.refreshFeed(rowCount: source.count); table.layoutIfNeeded()
+        try await waitUntil { table.rectForRow(at: first).height > height }
+        if #available(iOS 15, *) { XCTAssertTrue(table.cellForRow(at: first) === cell) }
+        XCTAssertTrue(table.cellForRow(at: first)?.accessibilityLabel?.contains("updated-0") == true)
+        XCTAssertEqual(table.contentOffset.y, -table.adjustedContentInset.top, accuracy: 1)
+        table.followsLatest = false
+        let distant = IndexPath(row: 80, section: 0)
+        table.scrollToRow(at: distant, at: .top, animated: false); table.layoutIfNeeded()
+        XCTAssertTrue(table.cellForRow(at: distant)?.accessibilityLabel?.contains("updated-80") == true)
+        source.count = 3
+        table.refreshFeed(rowCount: source.count); table.showLatest(); table.layoutIfNeeded()
+        XCTAssertEqual(table.numberOfRows(inSection: 0), 3)
+        XCTAssertNotNil(table.cellForRow(at: first))
+    }
+
+    @MainActor
     func testMinimizeStopsBeforeWindowHidesAndInterruptedResumeStartsOnlyOnce() async throws {
         let window = show(UIViewController()), foreign = UIWindow()
         defer { dismiss(window) }
@@ -200,6 +228,18 @@ final class InspectorRefreshTests: XCTestCase {
             try await Task.sleep(nanoseconds: 20_000_000)
             guard condition() else { XCTFail("Polling continued while suspended", file: file, line: line); return }
         }
+    }
+}
+
+@MainActor
+private final class FeedSource: NSObject, UITableViewDataSource {
+    var count = 100, expanded = false
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { count }
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "feed") as? InspectorEventCell
+            ?? InspectorEventCell(style: .default, reuseIdentifier: "feed")
+        cell.configure(badge: "INFO", time: 1, title: expanded ? "updated-\(indexPath.row) " + String(repeating: "long content ", count: 40) : "short", subtitle: "source")
+        return cell
     }
 }
 

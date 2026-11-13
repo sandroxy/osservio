@@ -45,3 +45,11 @@ Change incremental querying or list update algorithms only when a trace locates
 a material cost. Any replacement must preserve stable reading positions,
 filter generations, immutable detail reads, bounded indices and inactive-view
 suspension; reducing a trace duration is not sufficient if these regress.
+
+Live feed controls keep their existing instances when only counts change. On
+iOS, unchanged row counts reconfigure the visible cells instead of discarding
+the entire table's layout; a changed count still reconciles the data source.
+Socket preview delivery updates only affected visible rows. Verify both short
+and wrapped content, offscreen reuse, theme changes and a paused reading anchor
+when changing these paths. `InspectorRefreshTests` and `InspectorFeedUpdateTest`
+cover cell rebinding and current filter state; they do not measure frame latency.

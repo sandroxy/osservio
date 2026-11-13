@@ -14,6 +14,7 @@ import java.util.List;
 // Callbacks and query state are required; this view is never inflated from XML.
 @SuppressLint("ViewConstructor")
 final class InspectorFeedHeader extends LinearLayout {
+    interface Groups { List<InspectorFilterSheet.Group> get(); }
     final TextView status;
     final TextView results;
     final TextView empty;
@@ -27,6 +28,8 @@ final class InspectorFeedHeader extends LinearLayout {
     private final android.widget.ProgressBar activity;
     private final android.widget.HorizontalScrollView tokenScroll;
     private final LinearLayout tokens;
+    private InspectorQuery displayedQuery;
+    private String displayedStyle;
     InspectorFilterSheet.Applied onQueryChange;
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
                         Runnable togglePause, Runnable showFilters, Runnable actions) {
@@ -90,13 +93,23 @@ final class InspectorFeedHeader extends LinearLayout {
         empty.setPadding(inset, inset * 2, inset, inset * 2); addView(empty, new LayoutParams(-1, -2));
     }
     void setQuery(InspectorQuery query, List<InspectorFilterSheet.Group> groups, int visible, int total) {
-        filters.setContentDescription(getContext().getString(R.string.osservio_ui_filters));
-        if (android.os.Build.VERSION.SDK_INT >= 30) filters.setStateDescription(getContext().getString(R.string.osservio_ui_filter_count, query.activeCount()));
-        filters.setSelected(query.activeCount() > 0);
-        criteria.setText(InspectorFilterOptions.summary(getContext(), query, groups));
-        criteria.setVisibility(compact || query.activeCount() == 0 ? GONE : VISIBLE);
-        if (compact) updateTokens(query, groups);
-        results.setText(getContext().getString(R.string.osservio_ui_result_count, visible, total));
+        setQuery(query, () -> groups, visible, total);
+    }
+    void setQuery(InspectorQuery query, Groups groups, int visible, int total) {
+        String style = getContext().getString(R.string.osservio_ui_filters) + InspectorTheme.accent(getContext())
+            + getResources().getConfiguration().fontScale;
+        if (!query.sameAs(displayedQuery) || !style.equals(displayedStyle)) {
+            displayedQuery = query.copy(); displayedStyle = style;
+            filters.setContentDescription(getContext().getString(R.string.osservio_ui_filters));
+            if (android.os.Build.VERSION.SDK_INT >= 30) filters.setStateDescription(getContext().getString(R.string.osservio_ui_filter_count, query.activeCount()));
+            filters.setSelected(query.activeCount() > 0);
+            List<InspectorFilterSheet.Group> choices = query.activeCount() == 0 ? java.util.Collections.emptyList() : groups.get();
+            criteria.setText(InspectorFilterOptions.summary(getContext(), query, choices));
+            criteria.setVisibility(compact || query.activeCount() == 0 ? GONE : VISIBLE);
+            if (compact) updateTokens(query, choices);
+        }
+        String count = getContext().getString(R.string.osservio_ui_result_count, visible, total);
+        if (!count.contentEquals(results.getText())) results.setText(count);
         empty.setVisibility(visible == 0 ? VISIBLE : GONE);
     }
     View navigationAction() {
