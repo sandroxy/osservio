@@ -13,14 +13,15 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** A page or editing panel in the inspector. Standalone viewers use a native dialog container. */
+/** Pages and transient surfaces share navigation, accessibility and host-dismissal ownership. */
 final class InspectorScreen implements DialogInterface {
+    enum Presentation { PAGE, SHEET, CONFIRMATION }
     interface Content { void bindScreen(InspectorScreen screen); }
     interface BackInterceptor { boolean consume(); }
     private BackInterceptor backInterceptor;
     void setBackInterceptor(BackInterceptor interceptor) { backInterceptor = interceptor; }
     final FrameLayout view;
-    final boolean panel;
+    private final Presentation presentation;
     private final InspectorNavigation navigation;
     private final InspectorToolbar bar;
     private final LinearLayout card;
@@ -38,11 +39,11 @@ final class InspectorScreen implements DialogInterface {
     private OnShowListener appeared;
     private OnCancelListener cancelled;
 
-    InspectorScreen(Context context, String title, View content, boolean panel) {
-        this.panel = panel; this.content = content; navigation = InspectorNavigation.from(context);
+    InspectorScreen(Context context, String title, View content, Presentation presentation) {
+        this.presentation = presentation; this.content = content; navigation = InspectorNavigation.from(context);
         view = new InspectorKeyboardDismissal.Frame(context) {
             @Override protected void onMeasure(int widthSpec, int heightSpec) {
-                if (panel) {
+                if (presentation == Presentation.SHEET) {
                     int bottomInset = getPaddingBottom();
                     int available = View.MeasureSpec.getSize(heightSpec) - getPaddingTop() - bottomInset;
                     FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
@@ -50,22 +51,36 @@ final class InspectorScreen implements DialogInterface {
                     // Extend the surface beneath system insets; keep the content above them.
                     params.bottomMargin = -bottomInset;
                     card.setPadding(0, 0, 0, bottomInset);
+                } else if (presentation == Presentation.CONFIRMATION) {
+                    FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
+                    int margin = InspectorTheme.dp(context, 24);
+                    int available = View.MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight() - margin * 2;
+                    params.width = Math.min(InspectorTheme.dp(context, 360), Math.max(0, available));
+                    params.setMargins(margin, margin, margin, margin);
                 }
                 super.onMeasure(widthSpec, heightSpec);
             }
         };
-        view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context));
         card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL); card.setClipToOutline(true);
-        InspectorAppearance.style(view, () -> view.setBackgroundColor(panel ? 0x44000000 : InspectorTheme.canvas(context)));
+        InspectorAppearance.style(view, () -> view.setBackgroundColor(isTransient() ? 0x44000000 : InspectorTheme.canvas(context)));
         InspectorAppearance.style(card, () -> {
-            android.graphics.drawable.GradientDrawable background = InspectorTheme.shape(context, InspectorTheme.canvas(context), 0, false);
-            if (panel) {
+            boolean confirmation = presentation == Presentation.CONFIRMATION;
+            android.graphics.drawable.GradientDrawable background = InspectorTheme.shape(context,
+                confirmation ? InspectorTheme.surface(context) : InspectorTheme.canvas(context), confirmation ? 28 : 0, false);
+            if (presentation == Presentation.SHEET) {
                 float radius = InspectorTheme.dp(context, 24);
                 background.setCornerRadii(new float[] {radius, radius, radius, radius, 0, 0, 0, 0});
             }
             card.setBackground(background);
         });
-        view.addView(card, new FrameLayout.LayoutParams(-1, -1, Gravity.BOTTOM));
+        view.addView(card, new FrameLayout.LayoutParams(-1, -1, presentation == Presentation.CONFIRMATION ? Gravity.CENTER : Gravity.BOTTOM));
+        if (isTransient()) { view.setClickable(true); card.setClickable(true); }
+        if (presentation == Presentation.CONFIRMATION) {
+            bar = null; back = null; heading = null; minimize = null;
+            card.addView(content, new LinearLayout.LayoutParams(-1, -2));
+            compact(); return;
+        }
+        boolean panel = presentation == Presentation.SHEET;
         if (panel) {
             view.setClipToPadding(false);
             view.setOnClickListener(ignored -> cancel()); card.setClickable(true);
@@ -92,23 +107,24 @@ final class InspectorScreen implements DialogInterface {
     void animateEntry() {
         long duration = InspectorFloatingEntry.motionDuration(view.getContext());
         if (duration == 0) return;
-        card.setAlpha(0); card.setTranslationY(InspectorTheme.dp(view.getContext(), panel ? 24 : 8));
+        card.setAlpha(0); card.setTranslationY(InspectorTheme.dp(view.getContext(), presentation == Presentation.SHEET ? 24 : presentation == Presentation.PAGE ? 8 : 0));
         card.animate().alpha(1).translationY(0).setDuration(duration).start();
     }
     Button action(int label, Runnable operation) {
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
-        if (panel) InspectorWidgets.sheetAction(action, true);
+        if (presentation == Presentation.SHEET) InspectorWidgets.sheetAction(action, true);
         bar.pageActions.add(action);
         return action;
     }
     Button leadingAction(int label, Runnable operation) {
         back.setVisibility(View.GONE);
         Button action = InspectorWidgets.button(view.getContext(), label, operation);
-        if (panel) InspectorWidgets.sheetAction(action, false);
+        if (presentation == Presentation.SHEET) InspectorWidgets.sheetAction(action, false);
         bar.leading.addView(action, 0, new LinearLayout.LayoutParams(-2, -2));
         return action;
     }
-    boolean coversTabs() { return panel; }
+    boolean isTransient() { return presentation != Presentation.PAGE; }
+    boolean coversTabs() { return isTransient(); }
     ImageButton iconAction(int icon, int label, Runnable operation) {
         ImageButton action = InspectorWidgets.icon(view.getContext(), icon, label, operation);
         addAction(action); return action;
@@ -117,7 +133,10 @@ final class InspectorScreen implements DialogInterface {
         bar.pageActions.add(action);
     }
     void refreshActions() { bar.pageActions.render(); }
-    void updateMinimize() { minimize.setVisibility(!panel && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); bar.pageActions.render(); }
+    void updateMinimize() {
+        if (minimize == null) return;
+        minimize.setVisibility(!isTransient() && navigation != null && navigation.canMinimize() ? View.VISIBLE : View.GONE); bar.pageActions.render();
+    }
     void show() {
         if (showing) return;
         if (navigation != null) { navigation.push(this); return; }
@@ -154,7 +173,7 @@ final class InspectorScreen implements DialogInterface {
         if (cancelled != null) cancelled.onCancel(this);
         dismiss();
     }
-    void setCancelable(boolean value) { cancelable = value; if (handle != null) handle.setEnabled(value); back.setEnabled(value); if (fallback != null) fallback.setCancelable(value); }
+    void setCancelable(boolean value) { cancelable = value; if (handle != null) handle.setEnabled(value); if (back != null) back.setEnabled(value); if (fallback != null) fallback.setCancelable(value); }
     void setOnDismissListener(OnDismissListener listener) { dismissed = listener; }
     void setOnShowListener(OnShowListener listener) { appeared = listener; }
     void setOnCancelListener(OnCancelListener listener) { cancelled = listener; }

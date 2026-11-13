@@ -122,11 +122,8 @@ final class BreadcrumbArchiveViewController: UITableViewController {
     @objc private func deleteAll() { if !runs.isEmpty { confirmDeletion(id: nil) } }
     private func confirmDeletion(id: String?) {
         guard !reading else { return }
-        let alert = UIAlertController(title: RuntimePresentation.text(id == nil ? "archive_delete_all" : "archive_delete_run"),
-            message: RuntimePresentation.text("archive_delete_confirmation"), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_cancel"), style: .cancel))
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_delete_confirm"), style: .destructive) { [weak self] _ in self?.delete(id: id) })
-        present(alert, animated: true)
+        inspectorConfirm(RuntimePresentation.text(id == nil ? "archive_delete_all" : "archive_delete_run"),
+            message: RuntimePresentation.text("archive_delete_confirmation")) { [weak self] in self?.delete(id: id) }
     }
     private func delete(id: String?) {
         guard !reading else { return }

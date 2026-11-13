@@ -6,6 +6,30 @@ import XCTest
 
 final class InspectorRecordDeletionTests: XCTestCase {
     @MainActor
+    func testOpeningConfirmationPreservesEvidenceAndUsesTheOwnersAppearance() throws {
+        let detail = UIViewController(), window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        detail.overrideUserInterfaceStyle = .dark; window.overrideUserInterfaceStyle = .light
+        window.rootViewController = detail; window.makeKeyAndVisible(); detail.loadViewIfNeeded(); window.layoutIfNeeded()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        let deletion = InspectorRecordDeletion(owner: detail, label: "incident_delete", confirmation: "incident_delete_confirmation",
+            operation: { _ in XCTFail("Opening confirmation must not delete") }, state: { _, _ in })
+        let target = try XCTUnwrap(deletion.button.target as? NSObject), action = try XCTUnwrap(deletion.button.action)
+        _ = target.perform(action)
+        let alert = try XCTUnwrap(detail.presentedViewController as? UIAlertController)
+        XCTAssertEqual(alert.preferredStyle, .alert)
+        XCTAssertEqual(alert.actions.map(\.title), [RuntimePresentation.text("archive_cancel"), RuntimePresentation.text("incident_delete")])
+        XCTAssertEqual(alert.actions.map(\.style), [.cancel, .destructive])
+        XCTAssertEqual(alert.overrideUserInterfaceStyle, .dark)
+        XCTAssertEqual(alert.view.accessibilityIdentifier, "Osservio.TransientNotice")
+        let traits = UITraitCollection(userInterfaceStyle: .dark)
+        XCTAssertEqual(alert.view.tintColor.resolvedColor(with: traits), InspectorTheme.accent.resolvedColor(with: traits))
+        _ = target.perform(action)
+        XCTAssertTrue(detail.presentedViewController === alert, "Repeated activation must not stack confirmations")
+        XCTAssertTrue(deletion.button.isEnabled)
+        // Modal dismissal is exercised in a running host; package tests cannot finish UIKit alert transitions.
+    }
+
+    @MainActor
     func testFailureRetryAndDuplicateSubmissionKeepTheDetailUntilSuccess() async throws {
         let root = UIViewController(), detail = UIViewController()
         let navigation = UINavigationController(rootViewController: root)

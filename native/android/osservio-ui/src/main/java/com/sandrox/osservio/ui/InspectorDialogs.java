@@ -12,33 +12,26 @@ import android.widget.TextView;
 final class InspectorDialogs {
     private InspectorDialogs() { }
     static InspectorScreen screen(Context context, String title, View content) {
-        InspectorScreen screen = new InspectorScreen(context, title, content, false); screen.bindContent(); return screen;
+        InspectorScreen screen = new InspectorScreen(context, title, content, InspectorScreen.Presentation.PAGE); screen.bindContent(); return screen;
     }
     static InspectorScreen screen(Context context, int title, View content) {
-        InspectorScreen screen = new InspectorScreen(context, context.getString(title), content, false); screen.title(title); screen.bindContent(); return screen;
+        InspectorScreen screen = new InspectorScreen(context, context.getString(title), content, InspectorScreen.Presentation.PAGE); screen.title(title); screen.bindContent(); return screen;
     }
     static InspectorScreen panel(Context context, int title, View content) {
-        return new InspectorScreen(context, context.getString(title), content, true);
+        return new InspectorScreen(context, context.getString(title), content, InspectorScreen.Presentation.SHEET);
     }
     static InspectorScreen message(Context context, int title, String message) {
         InspectorScreen screen = panel(context, title, messageView(context, message)); screen.compact(); screen.show(); return screen;
     }
-    static InspectorScreen confirm(Context context, int title, String message, int confirm,
+    static InspectorScreen confirm(Context context, int title, int message, int confirm,
                                    android.content.DialogInterface.OnClickListener action) {
-        android.widget.LinearLayout content = new android.widget.LinearLayout(context); content.setOrientation(android.widget.LinearLayout.VERTICAL);
-        content.addView(messageText(context, message));
-        android.widget.ScrollView scroll = new InspectorScroll.Page(context); scroll.addView(content);
-        InspectorScreen screen = panel(context, title, scroll);
-        screen.compact();
-        android.widget.Button button = InspectorWidgets.button(context, confirm,
-            () -> { screen.dismiss(); action.onClick(screen, android.content.DialogInterface.BUTTON_POSITIVE); });
-        InspectorAppearance.style(button, () -> {
-            button.setTextColor(InspectorTheme.color(context, R.color.osservio_error));
-            InspectorTheme.surface(button, true, 24);
-        });
-        android.widget.LinearLayout.LayoutParams layout = new android.widget.LinearLayout.LayoutParams(-1, -2);
-        int inset = InspectorTheme.dp(context, 16); layout.setMargins(inset, 0, inset, inset);
-        content.addView(button, layout);
+        return confirm(context, title, message, confirm, R.string.osservio_archive_cancel, action);
+    }
+    static InspectorScreen confirm(Context context, int title, int message, int confirm, int cancel,
+                                   android.content.DialogInterface.OnClickListener action) {
+        InspectorConfirmation content = new InspectorConfirmation(context, title, message, confirm, cancel, action);
+        InspectorScreen screen = new InspectorScreen(context, context.getString(title), content, InspectorScreen.Presentation.CONFIRMATION);
+        screen.bindContent();
         screen.show(); return screen;
     }
     static InspectorScreen menu(Context context, int title, String[] labels, android.content.DialogInterface.OnClickListener chosen) {
@@ -60,7 +53,8 @@ final class InspectorDialogs {
             }
         });
         if (selected >= 0) { list.setChoiceMode(android.widget.ListView.CHOICE_MODE_SINGLE); list.setItemChecked(selected, true); }
-        InspectorScreen screen = new InspectorScreen(context, context.getString(title), list, panel);
+        InspectorScreen screen = new InspectorScreen(context, context.getString(title), list,
+            panel ? InspectorScreen.Presentation.SHEET : InspectorScreen.Presentation.PAGE);
         if (panel) screen.compact();
         list.setOnItemClickListener((parent, view, index, id) -> { screen.dismiss(); chosen.onClick(screen, index); });
         screen.show(); return screen;

@@ -30,7 +30,14 @@ note require confirmation before user dismissal. Saving prevents duplicate
 submission and user dismissal; failure preserves the draft for retry. Explicit
 host collapse or hide discards temporary drafts without prompting or saving. A
 write already admitted by Save may still finish after the view is removed.
-Platform alerts and system share interfaces keep their native behavior. Tapping
+Clear, delete and discard confirmations use a compact centered dialog on both
+platforms, with an explicit Cancel (or Keep editing) and a named destructive
+action. They have no drag handle or Minimize action. Long labels wrap, and
+constrained layouts can scroll to keep every action reachable.
+Cancel, Android Back, host collapse and disposal never confirm the operation;
+confirmations are not restored when reopening the inspector. Filters, editing
+sheets and action menus retain their separate presentation. System share interfaces
+keep their native behavior. Tapping
 outside an SDK input dismisses its keyboard without consuming
 the target control's action; host application inputs are unaffected.
 

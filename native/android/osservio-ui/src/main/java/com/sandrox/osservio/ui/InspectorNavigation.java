@@ -108,7 +108,7 @@ final class InspectorNavigation extends FrameLayout {
     void discardPanels() {
         for (List<InspectorScreen> stack : stacks) {
             // Host-driven hiding discards transient UI, even when user dismissal needs confirmation.
-            for (InspectorScreen screen : new ArrayList<>(stack)) if (screen.panel) { screen.discard(); break; }
+            for (InspectorScreen screen : new ArrayList<>(stack)) if (screen.isTransient()) { screen.discard(); break; }
         }
     }
     void dispose() {
@@ -119,7 +119,7 @@ final class InspectorNavigation extends FrameLayout {
     private void reconcile() {
         List<InspectorScreen> active = stacks.get(selection);
         int first = active.size() - 1;
-        while (first >= 0 && active.get(first).panel) first--;
+        while (first >= 0 && active.get(first).isTransient()) first--;
         boolean modal = !active.isEmpty() && active.get(active.size() - 1).coversTabs();
         rootPage.setVisibility(first < 0 ? VISIBLE : GONE);
         workspace.setImportantForAccessibility(modal ? IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS : IMPORTANT_FOR_ACCESSIBILITY_AUTO);

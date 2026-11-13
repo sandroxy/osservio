@@ -171,11 +171,14 @@ extension UIViewController {
         alert.overrideUserInterfaceStyle = overrideUserInterfaceStyle
         present(alert, animated: true)
     }
-    func inspectorConfirm(_ title: String, message: String, action: @escaping () -> Void) {
+    func inspectorConfirm(_ title: String, message: String, confirm: String? = nil, cancel: String? = nil, action: @escaping () -> Void) {
+        guard presentedViewController == nil else { return }
+        view.endEditing(true)
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: InspectorLocalization.text("archive_cancel"), style: .cancel))
-        alert.addAction(UIAlertAction(title: title, style: .destructive) { _ in action() })
+        alert.addAction(UIAlertAction(title: cancel ?? InspectorLocalization.text("archive_cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: confirm ?? title, style: .destructive) { _ in action() })
         alert.view.accessibilityIdentifier = "Osservio.TransientNotice"
+        alert.view.tintColor = InspectorTheme.accent
         alert.overrideUserInterfaceStyle = overrideUserInterfaceStyle
         present(alert, animated: true)
     }

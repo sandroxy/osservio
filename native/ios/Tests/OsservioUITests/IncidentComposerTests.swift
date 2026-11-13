@@ -50,6 +50,9 @@ final class IncidentComposerTests: XCTestCase {
         XCTAssertFalse(composer.presentationControllerShouldDismiss(presentation))
         composer.presentationControllerDidAttemptToDismiss(presentation)
         let alert = try XCTUnwrap(composer.presentedViewController as? UIAlertController)
+        XCTAssertEqual(alert.preferredStyle, .alert)
+        XCTAssertEqual(alert.view.accessibilityIdentifier, "Osservio.TransientNotice")
+        XCTAssertEqual(alert.overrideUserInterfaceStyle, composer.overrideUserInterfaceStyle)
         XCTAssertEqual(alert.actions.map(\.title), [RuntimePresentation.text("incident_keep_editing"), RuntimePresentation.text("incident_discard")])
         XCTAssertEqual(editor.text, "Keep this observation"); XCTAssertTrue(archive.attempts.isEmpty)
     }

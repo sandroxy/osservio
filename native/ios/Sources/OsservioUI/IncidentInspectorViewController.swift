@@ -176,11 +176,8 @@ public final class IncidentInspectorViewController: UITableViewController {
     }
     private func confirmDeletion(id: String?) {
         guard !reading else { return }
-        let alert = UIAlertController(title: RuntimePresentation.text(id == nil ? "incident_delete_all" : "incident_delete"),
-            message: RuntimePresentation.text("incident_delete_confirmation"), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_cancel"), style: .cancel))
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_delete_confirm"), style: .destructive) { [weak self] _ in self?.delete(id: id) })
-        present(alert, animated: true)
+        inspectorConfirm(RuntimePresentation.text(id == nil ? "incident_delete_all" : "incident_delete"),
+            message: RuntimePresentation.text("incident_delete_confirmation")) { [weak self] in self?.delete(id: id) }
     }
     private func delete(id: String?) {
         guard !reading else { return }

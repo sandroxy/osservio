@@ -218,7 +218,6 @@
 "archive_delete_all" = "删除全部留存记录";
 "archive_delete_run" = "删除这次记录";
 "archive_delete_confirmation" = "所选留存记录将永久删除，实时历史仍然保留。采集不会停止，后续新采集的线索仍可能再次留存。";
-"archive_delete_confirm" = "删除";
 "archive_cancel" = "取消";
 "archive_deleting" = "正在删除留存记录…";
 

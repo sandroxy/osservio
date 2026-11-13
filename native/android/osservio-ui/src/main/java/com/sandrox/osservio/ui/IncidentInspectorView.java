@@ -250,8 +250,8 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         if (reading || confirmation != null) return;
         confirmation = InspectorDialogs.confirm(getContext(),
             id == null ? R.string.osservio_incident_delete_all : R.string.osservio_incident_delete,
-            getContext().getString(R.string.osservio_incident_delete_confirmation),
-            R.string.osservio_archive_delete_confirm, (dialog, which) -> delete(id));
+            R.string.osservio_incident_delete_confirmation,
+            id == null ? R.string.osservio_incident_delete_all : R.string.osservio_incident_delete, (dialog, which) -> delete(id));
         confirmation.setOnDismissListener(ignored -> confirmation = null); confirmation.show();
     }
     private void delete(String id) {

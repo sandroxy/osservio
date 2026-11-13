@@ -218,7 +218,6 @@
 "archive_delete_all" = "Delete saved runs";
 "archive_delete_run" = "Delete run";
 "archive_delete_confirmation" = "This permanently removes the selected saved evidence. Live history stays available. Capture continues, so newly collected evidence can appear again.";
-"archive_delete_confirm" = "Delete";
 "archive_cancel" = "Cancel";
 "archive_deleting" = "Deleting saved evidence…";
 

@@ -30,7 +30,6 @@
     <string name="osservio_archive_delete_all">删除全部留存记录</string>
     <string name="osservio_archive_delete_run">删除这次记录</string>
     <string name="osservio_archive_delete_confirmation">所选留存记录将永久删除，实时历史仍然保留。采集不会停止，后续新采集的线索仍可能再次留存。</string>
-    <string name="osservio_archive_delete_confirm">删除</string>
     <string name="osservio_archive_cancel">取消</string>
     <string name="osservio_archive_deleting">正在删除留存记录…</string>
 </resources>

@@ -156,6 +156,9 @@ public final class InspectorSession: NSObject {
                 navigation.discardPanel(); return
             }
             if presented.viewIfLoaded?.accessibilityIdentifier == "Osservio.TransientNotice" {
+                // UIKit can ignore dismissal during presentation; finish it before restoration.
+                if presented.isBeingPresented, let transition = presented.transitionCoordinator,
+                   transition.animate(alongsideTransition: nil, completion: { [weak presented] _ in presented?.dismiss(animated: false) }) { return }
                 presented.dismiss(animated: false); return
             }
             current = presented

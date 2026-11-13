@@ -204,23 +204,12 @@ final class IncidentComposer {
         if (saving || discardConfirmation != null) return true;
         if (!hasChanges()) return false;
         InspectorWidgets.hideKeyboard(dialog.view);
-        LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(16), 0, dp(16), dp(16));
-        content.addView(label(context.getString(R.string.osservio_incident_discard_hint)), params());
-        ScrollView scroll = new InspectorScroll.Page(context); scroll.addView(content);
-        InspectorScreen confirmation = InspectorDialogs.panel(context, R.string.osservio_incident_discard_title, scroll);
-        confirmation.compact();
-        LinearLayout choices = InspectorWidgets.group(context); content.addView(choices, params());
-        android.widget.Button keep = InspectorWidgets.button(context, R.string.osservio_incident_keep_editing, confirmation::dismiss);
-        android.widget.Button discard = InspectorWidgets.button(context, R.string.osservio_incident_discard,
-            () -> { confirmation.dismiss(); dialog.dismiss(); });
-        InspectorWidgets.addGrouped(choices, keep); InspectorWidgets.addGrouped(choices, discard);
-        InspectorAppearance.style(discard, () -> {
-            discard.setTextColor(InspectorTheme.color(context, R.color.osservio_error)); InspectorTheme.feedback(discard, 20);
-        });
+        InspectorScreen confirmation = InspectorDialogs.confirm(context, R.string.osservio_incident_discard_title,
+            R.string.osservio_incident_discard_hint, R.string.osservio_incident_discard, R.string.osservio_incident_keep_editing,
+            (ignored, which) -> dialog.dismiss());
         discardConfirmation = confirmation;
         confirmation.setOnDismissListener(ignored -> { if (discardConfirmation == confirmation) discardConfirmation = null; });
-        confirmation.show(); return true;
+        return true;
     }
     private void readEnvironment() {
         int request = ++generation;

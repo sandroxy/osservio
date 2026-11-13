@@ -74,7 +74,7 @@ public final class InspectorRetainedDeletionTest {
         void confirm() {
             int previous = archive.attempts; assertTrue(delete.performClick());
             assertEquals("Opening confirmation must not delete", previous, archive.attempts);
-            TextView confirmation = text(root, context.getString(R.string.osservio_archive_delete_confirm)); assertNotNull(confirmation);
+            TextView confirmation = button(root, context.getString(R.string.osservio_archive_delete_run)); assertNotNull(confirmation);
             assertTrue(confirmation.performClick());
         }
         void close() { root.disposePresentation(); capture.close(); }
@@ -102,6 +102,11 @@ public final class InspectorRetainedDeletionTest {
     private static TextView text(View view, String value) {
         if (view instanceof TextView && value.contentEquals(((TextView) view).getText())) return (TextView) view;
         if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) { TextView found = text(((ViewGroup) view).getChildAt(i), value); if (found != null) return found; }
+        return null;
+    }
+    private static TextView button(View view, String value) {
+        if (view instanceof android.widget.Button && value.contentEquals(((TextView) view).getText())) return (TextView) view;
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) { TextView found = button(((ViewGroup) view).getChildAt(i), value); if (found != null) return found; }
         return null;
     }
 }

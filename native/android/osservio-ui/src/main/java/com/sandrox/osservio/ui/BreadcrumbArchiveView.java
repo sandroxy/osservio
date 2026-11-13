@@ -146,8 +146,8 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         if (reading || detail != null) return;
         InspectorScreen dialog = InspectorDialogs.confirm(getContext(),
             R.string.osservio_archive_delete_all,
-            getContext().getString(R.string.osservio_archive_delete_confirmation),
-            R.string.osservio_archive_delete_confirm, (ignored, button) -> deleteAll());
+            R.string.osservio_archive_delete_confirmation,
+            R.string.osservio_archive_delete_all, (ignored, button) -> deleteAll());
         dialog.setOnDismissListener(ignored -> detail = null); detail = dialog; dialog.show();
     }
     private void deleteAll() {

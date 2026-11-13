@@ -78,7 +78,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         detail = InspectorFilterSheet.show(getContext(), query, groups(), value -> { query = value; dirty = true; refreshView(); }); watchDialog();
     }
     private void actions() {
-        detail = InspectorDialogs.confirm(getContext(), R.string.osservio_crumb_clear, getContext().getString(R.string.osservio_ui_clear_hint), R.string.osservio_crumb_clear, (ignored, value) -> {
+        detail = InspectorDialogs.confirm(getContext(), R.string.osservio_crumb_clear, R.string.osservio_ui_clear_hint, R.string.osservio_crumb_clear, (ignored, value) -> {
             history.clear(); latest = history.snapshot(); dirty = true; refreshView();
         }); watchDialog();
     }

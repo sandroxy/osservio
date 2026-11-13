@@ -30,7 +30,6 @@
     <string name="osservio_archive_delete_all">Delete saved runs</string>
     <string name="osservio_archive_delete_run">Delete run</string>
     <string name="osservio_archive_delete_confirmation">This permanently removes the selected saved evidence. Live history stays available. Capture continues, so newly collected evidence can appear again.</string>
-    <string name="osservio_archive_delete_confirm">Delete</string>
     <string name="osservio_archive_cancel">Cancel</string>
     <string name="osservio_archive_deleting">Deleting saved evidence…</string>
 </resources>

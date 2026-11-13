@@ -22,11 +22,7 @@ final class InspectorRecordDeletion: NSObject {
     func relabel() { button.accessibilityLabel = RuntimePresentation.text(label) }
     @objc private func confirm() {
         guard !busy, let owner, owner.presentedViewController == nil else { return }
-        let alert = UIAlertController(title: RuntimePresentation.text(label),
-            message: RuntimePresentation.text(confirmation), preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_cancel"), style: .cancel))
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("archive_delete_confirm"), style: .destructive) { [weak self] _ in self?.deleteConfirmed() })
-        owner.present(alert, animated: true)
+        owner.inspectorConfirm(RuntimePresentation.text(label), message: RuntimePresentation.text(confirmation)) { [weak self] in self?.deleteConfirmed() }
     }
     func deleteConfirmed() {
         guard !busy else { return }

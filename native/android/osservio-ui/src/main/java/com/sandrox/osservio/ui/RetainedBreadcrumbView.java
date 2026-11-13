@@ -76,7 +76,7 @@ final class RetainedBreadcrumbView extends LinearLayout implements InspectorScre
     }
     private void confirmDeletion() {
         show(InspectorDialogs.confirm(getContext(), R.string.osservio_archive_delete_run,
-            getContext().getString(R.string.osservio_archive_delete_confirmation), R.string.osservio_archive_delete_confirm, (ignored, button) -> deleteConfirmed()));
+            R.string.osservio_archive_delete_confirmation, R.string.osservio_archive_delete_run, (ignored, button) -> deleteConfirmed()));
     }
     private void deleteConfirmed() {
         if (deleting) return;

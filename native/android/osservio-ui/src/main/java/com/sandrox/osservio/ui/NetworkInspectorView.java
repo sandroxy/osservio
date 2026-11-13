@@ -219,7 +219,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
     }
     private void filters() { dialog = InspectorFilterSheet.show(getContext(), state.query, groups(), true, this::apply); watchDialog(); }
     private void confirmClear() {
-        dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_ui_network_clear, getContext().getString(R.string.osservio_ui_clear_hint), R.string.osservio_ui_network_clear, (ignored, which) -> {
+        dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_ui_network_clear, R.string.osservio_ui_clear_hint, R.string.osservio_ui_network_clear, (ignored, which) -> {
             cancelSearch(); if (httpHistory != null) { httpHistory.clear(); state.http = httpHistory.snapshot(); }
             if (socketHistory != null) { socketHistory.clear(); state.sockets = socketHistory.snapshot(); }
             result = null; items.clear(); nextSearchAt = 0; search();

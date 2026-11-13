@@ -196,14 +196,8 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
     @objc private func cancel() {
         guard !saving, presentedViewController == nil else { return }
         guard hasChanges else { abandon(); return }
-        view.endEditing(true)
-        let alert = UIAlertController(title: RuntimePresentation.text("incident_discard_title"),
-            message: RuntimePresentation.text("incident_discard_hint"), preferredStyle: .alert)
-        alert.overrideUserInterfaceStyle = overrideUserInterfaceStyle
-        alert.view.tintColor = InspectorTheme.accent
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("incident_keep_editing"), style: .cancel))
-        alert.addAction(UIAlertAction(title: RuntimePresentation.text("incident_discard"), style: .destructive) { [weak self] _ in self?.abandon() })
-        present(alert, animated: true)
+        inspectorConfirm(RuntimePresentation.text("incident_discard_title"), message: RuntimePresentation.text("incident_discard_hint"),
+            confirm: RuntimePresentation.text("incident_discard"), cancel: RuntimePresentation.text("incident_keep_editing")) { [weak self] in self?.abandon() }
     }
     private func abandon() {
         environmentGeneration += 1
