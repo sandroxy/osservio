@@ -4,7 +4,7 @@ Osservio observes selected host-owned networking APIs. It does not globally
 intercept traffic. [Android integration](../native/android/README.md) and
 [iOS integration](../native/ios/README.md) describe local source setup. Both
 HTTP collectors submit observations through [the HTTP contract](http.md), including
-its default body omission, finite capture lifetime, and bounded memory policy.
+its host-selected content policy, finite capture lifetime, and bounded memory policy.
 
 ## OkHttp
 
@@ -82,14 +82,67 @@ available in the inspector before completion through this integration. Native
 streaming delegate data tasks, uploads, downloads, background-session recovery,
 are not intercepted. WebSocket tasks have a separate explicit wrapper described
 below. Other APIs remain usable on the host's
-original session. No global swizzling, delegate proxy, or URLProtocol injection
-is installed by the SDK.
+original session. No global swizzling or URLProtocol injection is installed.
+Metrics use the task-local forwarding delegate described below; the session
+delegate is never replaced.
+
+### Phase timings and native hooks
+
+For OkHttp, pair one `OsservioEventListener` factory with the same interceptor:
+
+```java
+OsservioEventListener metrics = new OsservioEventListener(controller, existingClient.eventListenerFactory());
+OkHttpClient observedClient = existingClient.newBuilder()
+    .eventListenerFactory(metrics)
+    .addInterceptor(new OsservioInterceptor(httpRecorder, metrics))
+    .build();
+```
+
+Use a client that does not already have the interceptor installed. The factory
+forwards every callback in the compiled OkHttp API to the supplied host listener.
+It retains at most 64 weakly keyed call buffers, and activates phase collection
+only after HTTP admission. Calls created while debugging is off have no phase
+listener; enabling debugging later does not retrofit them. Each buffer uses a
+nonblocking lock and at most 32 phase occurrences. DNS and connection endpoints
+are paired by their callback keys, never by URL/time guesses. Ambiguous pairs
+and contention disclose incomplete evidence. TLS pairing uses a call-local
+thread token because that callback has no connection key. No endpoint or thread
+object becomes recorded evidence. The interceptor alone still records observed
+final-response protocol/cache facts, but cannot provide phase durations.
+
+Request headers/body and response headers/body keep their own intervals.
+Waiting measures a completed request phase to the next response-header start;
+it is omitted when those boundaries are unavailable or interleaved. Reading a
+response body includes application read scheduling; it is not pure wire download
+time. Connection reuse is left unknown: absence of a connect callback is not
+sufficient proof. Redirect/retry phase occurrences are retained separately,
+without asserting a one-to-one mapping between DNS, route attempts and requests.
+The collector snapshots available metrics when the existing interceptor ends
+observation, without delaying stream close or host callbacks. Later callbacks
+do not rewrite that snapshot. See OkHttp's [event contract](https://square.github.io/okhttp/5.x/okhttp/okhttp3/-event-listener/index.html).
+
+On iOS 15/macOS 12 or later, `ObservedURLSession` collects
+[URLSession task metrics](https://developer.apple.com/documentation/foundation/urlsessiontasktransactionmetrics)
+through a task-local delegate. Only the metrics callback is intercepted; other
+implemented selectors and the metrics callback are forwarded to the host's task
+or session delegate. `collectsMetrics: false` preserves direct delegation without
+this collector. Replacing the returned task's delegate also replaces its metrics
+hook. Earlier OS completion-handler tasks keep working without phase metrics.
+
+Foundation's task interval provides the origin. At most 32 transactions are
+inspected and 32 phase occurrences retained. DNS, connect, TLS, request,
+request-end-to-response-start waiting, and response intervals are recorded when
+provided. The last transaction supplies protocol, fetch type and explicit
+connection reuse. Empty/custom-URLProtocol metrics remain unavailable evidence.
+Unsupported, undelivered or late callbacks do not block host completion and are
+not reconstructed from total duration. These platform intervals differ from
+OkHttp's header/body callbacks; missing fields and overlapping phases are expected.
 
 ## WebSocket clients
 
 Both integrations use [the WebSocket contract](websocket.md). The host retains
 transport ownership, reconnect policy, message size limits, timeouts, and
-session/client configuration. Text is omitted by default; binary content and
+session/client configuration. Supported text is readable under the default policy; binary content and
 close reasons are never copied. A capture session can attach to a wrapper that
 was created earlier, preserving its connection UUID without inventing the
 unobserved handshake. Ending capture does not close the socket.

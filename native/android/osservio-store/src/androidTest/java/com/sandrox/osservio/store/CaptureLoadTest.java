@@ -39,6 +39,8 @@ public final class CaptureLoadTest {
     }
 
     private void measure(String mode, int seconds) throws Exception {
+        LogDetails context = LogDetails.publicValues(new LogValue[] {LogValue.integer(9007199254740993L), LogValue.bool(false)},
+            new LogField[] {new LogField("operation", LogValue.string("load"))}, new LogError("SyntheticError", null, null, null, "Fixture.run\nFixture.tick"), null);
         CaptureController capture = new CaptureController();
         MemoryLogStore logs = new MemoryLogStore(200, TEXT_LIMIT);
         MemoryBreadcrumbStore crumbs = new MemoryBreadcrumbStore(200, TEXT_LIMIT);
@@ -63,7 +65,7 @@ public final class CaptureLoadTest {
             for (int index = 0; index < 5; index++) {
                 long before = SystemClock.elapsedRealtimeNanos();
                 count(outcomes, "log", log.record(ticks % 50 == 0 ? LogLevel.ERROR : LogLevel.INFO, "load",
-                    ticks % 2 == 0 ? LogMessage.publicText(TEXT) : LogMessage.privateText("synthetic-secret")));
+                    ticks % 2 == 0 ? LogMessage.publicText(TEXT) : LogMessage.privateText("synthetic-secret"), ticks % 50 == 0 ? context : null));
                 count(outcomes, "breadcrumb", breadcrumb.record(BreadcrumbEvent.Kind.HOST_MARKER, "load.tick"));
                 HTTPRecorder.BeginResult request = http.begin("POST", "https://example.com/private?secret=value", HEADERS);
                 count(outcomes, "http.begin", request.result);
@@ -134,6 +136,7 @@ public final class CaptureLoadTest {
         LogSnapshot log = logs.snapshot(); BreadcrumbSnapshot breadcrumb = crumbs.snapshot();
         HTTPSnapshot http = requests.snapshot(); WebSocketSnapshot ws = sockets.snapshot();
         assertNotNull(log); assertNotNull(breadcrumb); assertNotNull(http); assertNotNull(ws);
+        assertTrue(log.retainedDetailsBytes <= 262144);
         assertTrue(log.events.size() <= 200 && log.retainedTextBytes <= TEXT_LIMIT);
         assertTrue(breadcrumb.events.size() <= 200 && breadcrumb.retainedTextBytes <= TEXT_LIMIT);
         assertTrue(http.events.size() <= 100 && http.retainedTextBytes <= TEXT_LIMIT && http.retainedBodyBytes <= 32768);

@@ -143,7 +143,7 @@ final class DiagnosticRecoveryDatabaseTests: XCTestCase {
             XCTAssertEqual(existing.timestampMillis, 123); XCTAssertEqual(existing.systemDiagnostic?.metricKit?.exceptionCode, "18446744073709551615")
             XCTAssertEqual(try store.recover(batch([exit(150)]), now: 200).savedCount, 1); store.close()
             let raw = try SQLiteConnection(url: url); defer { raw.close() }
-            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 8) }
+            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 9) }
             try raw.statement("SELECT saved_at FROM incidents WHERE id=?", [.text(id)]) { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 100) }
         }
         try fixture { url in

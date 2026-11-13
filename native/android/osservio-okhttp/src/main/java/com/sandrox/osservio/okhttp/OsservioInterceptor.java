@@ -3,6 +3,7 @@ package com.sandrox.osservio.okhttp;
 import com.sandrox.osservio.core.CaptureController;
 import com.sandrox.osservio.core.HTTPEvent;
 import com.sandrox.osservio.core.HTTPHeader;
+import com.sandrox.osservio.core.HTTPMetrics;
 import com.sandrox.osservio.core.HTTPRecorder;
 import java.io.IOException;
 import java.net.ConnectException;
@@ -32,8 +33,13 @@ import okio.Okio;
 /** Install once with addInterceptor, on a host-owned OkHttp client. No global hooks or client reconfiguration. */
 public final class OsservioInterceptor implements Interceptor {
     private final HTTPRecorder recorder;
+    private final OsservioEventListener metrics;
 
-    public OsservioInterceptor(HTTPRecorder recorder) { this.recorder = Objects.requireNonNull(recorder, "recorder"); }
+    public OsservioInterceptor(HTTPRecorder recorder) { this(recorder, null); }
+    public OsservioInterceptor(HTTPRecorder recorder, OsservioEventListener metrics) {
+        this.recorder = Objects.requireNonNull(recorder, "recorder"); this.metrics = metrics;
+        if (metrics != null && metrics.controller != recorder.captureController) throw new IllegalArgumentException("Mismatched capture controller");
+    }
 
     @Override public Response intercept(Chain chain) throws IOException {
         Request original = chain.request();
@@ -49,6 +55,9 @@ public final class OsservioInterceptor implements Interceptor {
         catch (IOException | RuntimeException hostFailure) { trace.failed(hostFailure); throw hostFailure; }
 
         try {
+            trace.protocol = response.protocol().toString();
+            trace.cache = response.cacheResponse() != null ? response.networkResponse() != null ? HTTPMetrics.Cache.VALIDATED : HTTPMetrics.Cache.LOCAL
+                : response.networkResponse() != null ? HTTPMetrics.Cache.NETWORK : HTTPMetrics.Cache.UNKNOWN;
             HTTPRecorder.Result result = recorder.receiveResponse(trace.token, response.code(), headers(response.headers()), false, response.request().url().toString());
             if (result != HTTPRecorder.Result.RECORDED) {
                 trace.finish(HTTPEvent.State.CLOSED_EARLY, null, false);
@@ -82,7 +91,7 @@ public final class OsservioInterceptor implements Interceptor {
         }
         HTTPRecorder.BeginResult begin = recorder.begin(original.method(), original.url().toString(), headers, HTTPEvent.Source.OKHTTP);
         if (begin.token == null) return null;
-        Trace trace = new Trace(begin.token, call, body == null);
+        Trace trace = new Trace(begin.token, call, body == null, metrics == null ? null : metrics.attach(call));
         // Duplex streams have independent lifetimes. Never wrap or attempt to replay their request body.
         Request observed = body == null || duplex ? original : original.newBuilder().method(original.method(), requestBody(body, trace)).build();
         return new Prepared(trace, observed);
@@ -154,13 +163,16 @@ public final class OsservioInterceptor implements Interceptor {
     private final class Trace {
         final HTTPRecorder.Token token;
         final Call call;
+        final HTTPMetricsBuffer metrics;
+        volatile String protocol;
+        volatile HTTPMetrics.Cache cache = HTTPMetrics.Cache.UNKNOWN;
         final AtomicInteger requestWrites = new AtomicInteger();
         final AtomicBoolean terminal = new AtomicBoolean();
         volatile boolean requestComplete;
         volatile boolean requestGap;
         volatile boolean responseGap;
-        Trace(HTTPRecorder.Token token, Call call, boolean requestComplete) {
-            this.token = token; this.call = call; this.requestComplete = requestComplete;
+        Trace(HTTPRecorder.Token token, Call call, boolean requestComplete, HTTPMetricsBuffer metrics) {
+            this.token = token; this.call = call; this.requestComplete = requestComplete; this.metrics = metrics;
         }
         void observe(HTTPRecorder.Direction direction, Buffer buffer, long offset, long count) {
             try {
@@ -177,7 +189,11 @@ public final class OsservioInterceptor implements Interceptor {
         }
         void finish(HTTPEvent.State state, HTTPEvent.Failure failure, boolean responseComplete) {
             if (!terminal.compareAndSet(false, true)) return;
-            try { recorder.finish(token, state, failure, requestComplete && !requestGap, responseComplete && !responseGap); }
+            try {
+                HTTPMetrics observed = metrics != null ? metrics.snapshot(protocol, cache) : protocol == null ? null
+                    : new HTTPMetrics(java.util.Collections.emptyList(), protocol, cache, null, false);
+                recorder.finish(token, state, failure, requestComplete && !requestGap, responseComplete && !responseGap, observed);
+            }
             catch (RuntimeException diagnosticFailure) { /* Diagnostics never replace a host result or exception. */ }
         }
         void failed(Exception failure) {

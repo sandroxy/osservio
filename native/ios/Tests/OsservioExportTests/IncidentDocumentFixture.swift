@@ -6,6 +6,22 @@ enum IncidentDocumentFixture {
     static let session = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     static let httpID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     static func make(_ name: String) throws -> IncidentSnapshot {
+        if name == "http-metrics" {
+            let base = try make("complete"), old = base.http!.events[0], group = base.http!
+            let metrics = try HTTPMetrics(phases: [
+                HTTPPhaseTiming(phase: .dns, startMillis: 0, endMillis: 4), HTTPPhaseTiming(phase: .connect, startMillis: 4, endMillis: 24),
+                HTTPPhaseTiming(phase: .tls, startMillis: 8, endMillis: 24), HTTPPhaseTiming(phase: .connect, startMillis: 25, endMillis: 30),
+                HTTPPhaseTiming(phase: .request, startMillis: 30, endMillis: 31), HTTPPhaseTiming(phase: .waiting, startMillis: 31, endMillis: 36),
+                HTTPPhaseTiming(phase: .response, startMillis: 36, endMillis: nil)], protocolName: "h2", cache: .validated, connectionReused: true, limited: true)
+            let event = try HTTPEvent.restore(id: old.id, sessionID: old.sessionID, sequence: old.sequence, revision: old.revision,
+                timestampMillis: old.timestampMillis, method: old.method, source: old.source, url: old.url, responseURL: old.responseURL,
+                requestHeaders: old.requestHeaders, responseHeaders: old.responseHeaders, headersLimited: old.headersLimited, statusCode: old.statusCode,
+                state: old.state, failure: old.failure, durationMillis: old.durationMillis, requestBody: old.requestBody, responseBody: old.responseBody, metrics: metrics)
+            return try .restore(id: base.id, timestampMillis: base.timestampMillis, note: base.note, environment: base.environment,
+                breadcrumbs: base.breadcrumbs, logs: base.logs,
+                http: .restore(events: [event], payloads: group.payloads, observedAtMillis: group.observedAtMillis,
+                    sourceEventCount: group.sourceEventCount, sourceEvictedEvents: group.sourceEvictedEvents, sourceEvictedBodies: group.sourceEvictedBodies), webSockets: base.webSockets)
+        }
         if name == "structured-log" {
             let blob = "cccccccc-cccc-cccc-cccc-cccccccccccc"
             let text = "{\"arguments\":[9223372036854775807,\"例\"],\"attributes\":{\"requestId\":\"fixture-42\"}}"

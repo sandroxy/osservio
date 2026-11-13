@@ -94,7 +94,7 @@ final class SignalCrashDatabaseTests: XCTestCase {
             XCTAssertEqual(try store.recover(.init(source: .metricKit, observedAtMillis: 2000, diagnostics: [old]), now: 2000).alreadyProcessedCount, 1)
             try store.save(.captureDiagnostic(try SignalCrashFixture.evidence(), observedAtMillis: 42), now: 2000); store.close()
             let raw = try SQLiteConnection(url: url); defer { raw.close() }
-            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 8) }
+            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 9) }
             try raw.statement("SELECT saved_at FROM incidents WHERE id='eeeeeeee-eeee-eeee-eeee-000000000001'") {
                 XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 100)
             }

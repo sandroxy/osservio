@@ -46,8 +46,26 @@ enum HTTPPresentation {
                 field("id", event.id), field("session", event.sessionID) + " · #\(event.sequence)",
                 "\n" + text("http_request_headers") + "\n" + headers(event.requestHeaders),
                 "\n" + text("http_response_headers") + "\n" + headers(event.responseHeaders),
+                metrics(event.metrics).map { $0.0 + ": " + $0.1 }.joined(separator: "\n"),
                 event.headersLimited ? text("http_headers_limited") : "", "\n" + text(note), text("http_result_note")]
             .filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    static func metrics(_ value: HTTPMetrics?) -> [(String, String)] {
+        guard let value else { return [(text("http_metrics"), text("http_metrics_missing"))] }
+        var rows = [(text("http_protocol"), value.protocolName ?? text("http_none")),
+                    (text("http_cache"), text("http_cache_" + value.cache.rawValue)),
+                    (text("http_reused"), value.connectionReused.map { text($0 ? "http_reused_yes" : "http_reused_no") } ?? text("http_none"))]
+        var occurrences: [HTTPPhase: Int] = [:]
+        for phase in value.phases {
+            let count = (occurrences[phase.phase] ?? 0) + 1; occurrences[phase.phase] = count
+            let duration = phase.endMillis.map { "\($0 - phase.startMillis) ms" } ?? text("http_phase_incomplete")
+            let offset = String(format: text("http_phase_offset"), String(phase.startMillis))
+            rows.append((text("http_phase_" + phase.phase.rawValue) + " · #\(count)", duration + " · " + offset))
+        }
+        if value.phases.isEmpty { rows.append((text("http_metrics"), text("http_metrics_missing"))) }
+        if value.limited { rows.append((text("http_metrics"), text("http_metrics_limited"))) }
+        return rows
     }
 
     static func body(_ reference: HTTPBodyReference, history: any HTTPHistory) -> InspectorReadContent {

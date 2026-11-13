@@ -129,7 +129,7 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
     /// Completed means the collector confirmed response-body completion, not server-side business success.
     @discardableResult
     public func finish(_ token: HTTPExchangeToken, state: HTTPState, failure: HTTPFailure? = nil,
-                       requestComplete: Bool = true, responseComplete: Bool = true) -> HTTPRecordResult {
+                       requestComplete: Bool = true, responseComplete: Bool = true, metrics: HTTPMetrics? = nil) -> HTTPRecordResult {
         update(token) { exchange, now in
             guard [.completed, .failed, .cancelled, .closedEarly].contains(state),
                   state != .completed || exchange.event.statusCode != nil,
@@ -138,7 +138,7 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
             let response = finalize(exchange.response, id: token.id + ".response", complete: responseComplete && state == .completed, field: .responseBody)
             exchange.event = HTTPEvent(previous: exchange.event, state: state, failure: failure,
                                        duration: now >= exchange.started ? now - exchange.started : nil,
-                                       request: request.reference, response: response.reference)
+                                       request: request.reference, response: response.reference, metrics: metrics)
             let result = write(HTTPUpdate(event: exchange.event, isNew: false,
                                          bodies: [request.body, response.body].compactMap { $0 }))
             // A terminal observation is never retried with raw content, even if storage is unavailable.

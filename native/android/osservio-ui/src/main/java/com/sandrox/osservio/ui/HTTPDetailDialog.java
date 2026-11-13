@@ -63,6 +63,15 @@ final class HTTPDetailDialog {
                 () -> InspectorRecordPresentation.address(context, event.responseURL), () -> page.read(R.string.osservio_http_final_url,
                     new InspectorReadContent(event.responseURL, "", false).withContext(() -> InspectorRecordPresentation.context(context, event))));
             page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
+            page.expandable(R.string.osservio_http_metrics, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details, () -> {
+                int count = HTTPPresentation.metrics(context, event.metrics).size();
+                for (int index = 0; index < count; index++) {
+                    final int position = index;
+                    page.field(() -> HTTPPresentation.metrics(context, event.metrics).get(position)[0],
+                        () -> HTTPPresentation.metrics(context, event.metrics).get(position)[1]);
+                }
+                page.value(() -> context.getString(R.string.osservio_http_metrics_note));
+            });
             page.expandable(R.string.osservio_ui_technical_details, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details, () -> {
                 page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
                 page.field(R.string.osservio_http_id, event.id); page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence);

@@ -9,15 +9,15 @@ final class IncidentDatabase {
     private let diagnostics: IncidentDiagnosticDatabase
     private let recovery: DiagnosticRecoveryDatabase
     private static let applicationID: Int64 = 0x4f535649
-    private static let revision: Int64 = 8
+    private static let revision: Int64 = 9
 
     init(url: URL, options: IncidentPersistenceOptions, now: Int64) throws {
         self.options = options
         connection = try EvidenceSQLite.open(url: url, byteLimit: options.databaseByteLimit,
             applicationID: Self.applicationID, revision: Self.revision,
-            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema + DiagnosticRecoveryDatabase.schema + SignalCrashDatabase.schema + TombstoneDatabase.schema + IncidentDetailDatabase.contentPolicySchema + IncidentDetailDatabase.logDetailsSchema,
+            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema + DiagnosticRecoveryDatabase.schema + SignalCrashDatabase.schema + TombstoneDatabase.schema + IncidentDetailDatabase.contentPolicySchema + IncidentDetailDatabase.logDetailsSchema + HTTPMetricsDatabase.schema,
             migrations: [1: IncidentDetailDatabase.schema, 2: IncidentDiagnosticDatabase.schema, 3: DiagnosticRecoveryDatabase.schema,
-                         4: SignalCrashDatabase.schema, 5: TombstoneDatabase.schema, 6: IncidentDetailDatabase.contentPolicySchema, 7: IncidentDetailDatabase.logDetailsSchema])
+                         4: SignalCrashDatabase.schema, 5: TombstoneDatabase.schema, 6: IncidentDetailDatabase.contentPolicySchema, 7: IncidentDetailDatabase.logDetailsSchema, 8: HTTPMetricsDatabase.schema])
         details = IncidentDetailDatabase(connection: connection)
         diagnostics = IncidentDiagnosticDatabase(connection: connection)
         recovery = DiagnosticRecoveryDatabase(connection: connection, options: options)

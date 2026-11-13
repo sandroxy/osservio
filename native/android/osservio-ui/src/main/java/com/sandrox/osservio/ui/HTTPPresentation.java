@@ -2,6 +2,7 @@ package com.sandrox.osservio.ui;
 
 import android.content.Context;
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.HTTPMetrics;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.HTTPHistory;
 import com.sandrox.osservio.core.IncidentPayload;
@@ -58,8 +59,27 @@ final class HTTPPresentation {
         headers(text, context, R.string.osservio_http_request_headers, event.requestHeaders);
         headers(text, context, R.string.osservio_http_response_headers, event.responseHeaders);
         if (event.headersLimited) text.append("\n\n").append(context.getString(R.string.osservio_http_headers_limited));
+        for (String[] row : metrics(context, event.metrics)) text.append("\n\n").append(row[0]).append(": ").append(row[1]);
         return text.append("\n\n").append(context.getString(note)).append("\n\n")
             .append(context.getString(R.string.osservio_http_result_note)).toString();
+    }
+    static List<String[]> metrics(Context context, HTTPMetrics value) {
+        List<String[]> rows = new java.util.ArrayList<>();
+        if (value == null) { rows.add(new String[] {context.getString(R.string.osservio_http_metrics), context.getString(R.string.osservio_http_metrics_missing)}); return rows; }
+        int[] cacheKeys = {R.string.osservio_http_cache_unknown, R.string.osservio_http_cache_network, R.string.osservio_http_cache_local, R.string.osservio_http_cache_validated, R.string.osservio_http_cache_server_push};
+        int[] phaseKeys = {R.string.osservio_http_phase_dns, R.string.osservio_http_phase_connect, R.string.osservio_http_phase_tls, R.string.osservio_http_phase_request, R.string.osservio_http_phase_request_headers, R.string.osservio_http_phase_request_body, R.string.osservio_http_phase_waiting, R.string.osservio_http_phase_response, R.string.osservio_http_phase_response_headers, R.string.osservio_http_phase_response_body};
+        rows.add(new String[] {context.getString(R.string.osservio_http_protocol), value.protocolName == null ? context.getString(R.string.osservio_http_none) : value.protocolName});
+        rows.add(new String[] {context.getString(R.string.osservio_http_cache), context.getString(cacheKeys[value.cache.ordinal()])});
+        rows.add(new String[] {context.getString(R.string.osservio_http_reused), context.getString(value.connectionReused == null ? R.string.osservio_http_none : value.connectionReused ? R.string.osservio_http_reused_yes : R.string.osservio_http_reused_no)});
+        int[] occurrences = new int[HTTPMetrics.Phase.values().length];
+        for (HTTPMetrics.Timing phase : value.phases) {
+            String duration = phase.endMillis == null ? context.getString(R.string.osservio_http_phase_incomplete) : (phase.endMillis - phase.startMillis) + " ms";
+            rows.add(new String[] {context.getString(phaseKeys[phase.phase.ordinal()]) + " · #" + (++occurrences[phase.phase.ordinal()]),
+                duration + " · " + context.getString(R.string.osservio_http_phase_offset, Long.toString(phase.startMillis))});
+        }
+        if (value.phases.isEmpty()) rows.add(new String[] {context.getString(R.string.osservio_http_metrics), context.getString(R.string.osservio_http_metrics_missing)});
+        if (value.limited) rows.add(new String[] {context.getString(R.string.osservio_http_metrics), context.getString(R.string.osservio_http_metrics_limited)});
+        return rows;
     }
     static String failure(Context context, HTTPEvent.Failure failure) {
         int key;

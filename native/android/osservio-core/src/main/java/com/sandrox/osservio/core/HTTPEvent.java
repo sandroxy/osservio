@@ -53,6 +53,7 @@ public final class HTTPEvent {
     public final State state;
     public final Failure failure;
     public final Long durationMillis;
+    public final HTTPMetrics metrics;
     public final BodyReference requestBody;
     public final BodyReference responseBody;
     public final int textByteCount;
@@ -62,20 +63,24 @@ public final class HTTPEvent {
         this.id = id; sessionId = context.sessionId; sequence = context.sequence; revision = 0;
         timestampMillis = timestamp; this.method = method; this.url = url; this.source = source; responseURL = null;
         requestHeaders = Collections.unmodifiableList(new ArrayList<>(headers)); responseHeaders = Collections.emptyList();
-        headersLimited = limited; statusCode = null; state = State.PENDING; failure = null; durationMillis = null;
+        headersLimited = limited; statusCode = null; state = State.PENDING; failure = null; durationMillis = null; metrics = null;
         requestBody = new BodyReference(BodyState.PENDING, null, 0); responseBody = new BodyReference(BodyState.PENDING, null, 0);
         textByteCount = size();
     }
 
     HTTPEvent(HTTPEvent previous, List<HTTPHeader> headers, boolean limited, Integer code, String responseURL, State state,
               Failure failure, Long duration, BodyReference request, BodyReference response) {
+        this(previous, headers, limited, code, responseURL, state, failure, duration, request, response, null);
+    }
+    HTTPEvent(HTTPEvent previous, List<HTTPHeader> headers, boolean limited, Integer code, String responseURL, State state,
+              Failure failure, Long duration, BodyReference request, BodyReference response, HTTPMetrics metrics) {
         id = previous.id; sessionId = previous.sessionId; sequence = previous.sequence; revision = previous.revision + 1;
         timestampMillis = previous.timestampMillis; method = previous.method; url = previous.url; source = previous.source;
         this.responseURL = responseURL == null ? previous.responseURL : responseURL;
         requestHeaders = previous.requestHeaders;
         responseHeaders = headers == null ? previous.responseHeaders : Collections.unmodifiableList(new ArrayList<>(headers));
         headersLimited = limited || previous.headersLimited; statusCode = code == null ? previous.statusCode : code;
-        this.state = state; this.failure = failure; durationMillis = duration;
+        this.state = state; this.failure = failure; durationMillis = duration; this.metrics = metrics;
         requestBody = request == null ? previous.requestBody : request;
         responseBody = response == null ? previous.responseBody : response;
         textByteCount = size();
@@ -86,7 +91,7 @@ public final class HTTPEvent {
         if (responseURL != null) count += responseURL.getBytes(StandardCharsets.UTF_8).length;
         for (HTTPHeader header : requestHeaders) count += header.name.getBytes(StandardCharsets.UTF_8).length + header.value.getBytes(StandardCharsets.UTF_8).length;
         for (HTTPHeader header : responseHeaders) count += header.name.getBytes(StandardCharsets.UTF_8).length + header.value.getBytes(StandardCharsets.UTF_8).length;
-        return count;
+        return count + (metrics == null ? 0 : metrics.textByteCount());
     }
 
     /** Validates sanitized metadata while preserving identity, revision, time, and transport outcome. */
@@ -94,6 +99,13 @@ public final class HTTPEvent {
                                     String method, Source source, String url, String responseURL, List<HTTPHeader> requestHeaders,
                                     List<HTTPHeader> responseHeaders, boolean headersLimited, Integer statusCode, State state,
                                     Failure failure, Long durationMillis, BodyReference requestBody, BodyReference responseBody) {
+        return restore(id, sessionId, sequence, revision, timestampMillis, method, source, url, responseURL, requestHeaders,
+            responseHeaders, headersLimited, statusCode, state, failure, durationMillis, requestBody, responseBody, null);
+    }
+    public static HTTPEvent restore(String id, String sessionId, long sequence, long revision, long timestampMillis,
+                                    String method, Source source, String url, String responseURL, List<HTTPHeader> requestHeaders,
+                                    List<HTTPHeader> responseHeaders, boolean headersLimited, Integer statusCode, State state,
+                                    Failure failure, Long durationMillis, BodyReference requestBody, BodyReference responseBody, HTTPMetrics metrics) {
         if (!EvidenceValidation.id(id) || !EvidenceValidation.id(sessionId) || sequence <= 0 || revision < 0 || source == null || state == null
             || !EvidenceValidation.method(method)
             || !EvidenceValidation.url(url) || (responseURL != null && !EvidenceValidation.url(responseURL))
@@ -105,11 +117,11 @@ public final class HTTPEvent {
             || (statusCode == null && (responseURL != null || !responseHeaders.isEmpty()))) throw EvidenceValidation.invalid();
         switch (state) {
             case PENDING: case RECEIVING:
-                if (durationMillis != null || requestBody.state != BodyState.PENDING || responseBody.state != BodyState.PENDING
+                if (metrics != null || durationMillis != null || requestBody.state != BodyState.PENDING || responseBody.state != BodyState.PENDING
                     || revision != (state == State.PENDING ? 0 : 1) || (state == State.RECEIVING) != (statusCode != null)) throw EvidenceValidation.invalid();
                 break;
             case CAPTURE_ENDED:
-                if (durationMillis != null || !unfinished(requestBody.state) || !unfinished(responseBody.state)
+                if (metrics != null || durationMillis != null || !unfinished(requestBody.state) || !unfinished(responseBody.state)
                     || revision != (statusCode == null ? 1 : 2)) throw EvidenceValidation.invalid();
                 break;
             case COMPLETED: case FAILED: case CANCELLED: case CLOSED_EARLY:
@@ -119,18 +131,18 @@ public final class HTTPEvent {
             default: throw EvidenceValidation.invalid();
         }
         return new HTTPEvent(id, sessionId, sequence, revision, timestampMillis, method, source, url, responseURL, requestHeaders,
-            responseHeaders, headersLimited, statusCode, state, failure, durationMillis, requestBody, responseBody);
+            responseHeaders, headersLimited, statusCode, state, failure, durationMillis, requestBody, responseBody, metrics);
     }
     private static boolean unfinished(BodyState state) { return state == BodyState.OMITTED || state == BodyState.INCOMPLETE; }
     private HTTPEvent(String id, String sessionId, long sequence, long revision, long timestampMillis, String method, Source source,
                       String url, String responseURL, List<HTTPHeader> requestHeaders, List<HTTPHeader> responseHeaders,
                       boolean headersLimited, Integer statusCode, State state, Failure failure, Long durationMillis,
-                      BodyReference requestBody, BodyReference responseBody) {
+                      BodyReference requestBody, BodyReference responseBody, HTTPMetrics metrics) {
         this.id = id; this.sessionId = sessionId; this.sequence = sequence; this.revision = revision; this.timestampMillis = timestampMillis;
         this.method = method; this.source = source; this.url = url; this.responseURL = responseURL;
         this.requestHeaders = Collections.unmodifiableList(new ArrayList<>(requestHeaders));
         this.responseHeaders = Collections.unmodifiableList(new ArrayList<>(responseHeaders)); this.headersLimited = headersLimited;
-        this.statusCode = statusCode; this.state = state; this.failure = failure; this.durationMillis = durationMillis;
+        this.statusCode = statusCode; this.state = state; this.failure = failure; this.durationMillis = durationMillis; this.metrics = metrics;
         this.requestBody = requestBody; this.responseBody = responseBody; textByteCount = size();
     }
 }

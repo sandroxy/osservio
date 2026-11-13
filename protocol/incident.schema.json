@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:incident:6",
-  "title": "Osservio incident metadata revision 6",
+  "$id": "urn:osservio:incident:7",
+  "title": "Osservio incident metadata revision 7",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident"
     },
     "revision": {
-      "const": 6
+      "const": 7
     },
     "payloadFile": {
       "const": "payloads.json"
@@ -1016,6 +1016,16 @@
         },
         "responseBody": {
           "$ref": "#/$defs/httpBody"
+        },
+        "metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/httpMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1036,7 +1046,8 @@
         "failure",
         "durationMillis",
         "requestBody",
-        "responseBody"
+        "responseBody",
+        "metrics"
       ],
       "additionalProperties": false
     },
@@ -2192,6 +2203,92 @@
             }
           }
         }
+      ]
+    },
+    "httpMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "pattern": "^[!-~]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cache": {
+          "enum": [
+            "unknown",
+            "network",
+            "local",
+            "validated",
+            "serverPush"
+          ]
+        },
+        "connectionReused": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "limited": {
+          "type": "boolean"
+        },
+        "phases": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "phase": {
+                "enum": [
+                  "dns",
+                  "connect",
+                  "tls",
+                  "request",
+                  "requestHeaders",
+                  "requestBody",
+                  "waiting",
+                  "response",
+                  "responseHeaders",
+                  "responseBody"
+                ]
+              },
+              "startMillis": {
+                "$ref": "#/$defs/uint63"
+              },
+              "endMillis": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/uint63"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "phase",
+              "startMillis",
+              "endMillis"
+            ]
+          }
+        }
+      },
+      "required": [
+        "protocol",
+        "cache",
+        "connectionReused",
+        "limited",
+        "phases"
       ]
     }
   }

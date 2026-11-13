@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 6,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "-9223372036854775808",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": {
+        "observedAtMillis": "0",
+        "events": [],
+        "sourceEventCount": 4,
+        "omittedEventCount": 4,
+        "sourceEvictedCount": "2",
+        "retainedTextBytes": 0,
+        "payloads": {},
+        "retainedPayloadBytes": 0,
+        "sourceEvictedDetails": "0"
+      },
+      "http": null,
+      "webSockets": null,
+      "origin": "manual",
+      "systemDiagnostic": null
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 6,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {},
+    "logs": {}
+  }
+}

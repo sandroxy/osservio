@@ -170,3 +170,28 @@ formats, truncation, contention and eviction remain distinct.
 Observation cleanup does not consume a sequence or cancel a host call. Expiry
 remains lazy. Neither the UI nor an HTTP status establishes business success,
 user intent or complete traffic coverage. See [network coverage](network-integration.md).
+
+## Phase observations
+
+`finish` accepts optional `HTTPMetrics` without changing the exchange lifecycle
+or adding late revisions. Metrics are frozen with the terminal observation;
+there is no timer, retry, or wait for a later callback. Old records and collectors
+without phase evidence keep `metrics` absent.
+
+The immutable contract permits at most 32 phase occurrences. Each records its
+phase, nonnegative signed-64-bit start offset in milliseconds and an optional
+end offset no earlier than the start. Offsets share that collector's call origin.
+Repeated DNS, connection and request phases remain separate, including failed
+attempts; an observed end means the phase ended, not necessarily that it succeeded.
+A missing end is incomplete. Millisecond rounding can produce a real observed
+zero duration; it is not a substitute for absent evidence. TLS may overlap the
+connection interval, and requests may overlap responses. Do not sum phases to
+invent total or server time, or equate per-phase occurrence numbers across types.
+
+Protocol (up to 32 printable ASCII bytes), cache origin and optional connection
+reuse describe the **final observed response/transaction**. Missing facts remain
+unknown. `limited` discloses bounded collection loss or ambiguous pairing.
+The metrics contain no addresses, certificate objects, request content or raw
+errors. The inspector's collapsed Timing and connection group shows these facts
+on demand. Copied metadata, frozen incidents and explicit exports retain them.
+Native collector differences are documented in [network coverage](network-integration.md).

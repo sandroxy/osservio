@@ -66,7 +66,7 @@ public final class DiagnosticPolicyDatabaseTest {
                 assertEquals("[private]", store.read("12345678-1234-1234-1234-123456789abc").logs.events.get(0).message);
             }
             try (SQLiteDatabase check = SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(conflict ? 6 : 8, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
+                assertEquals(conflict ? 6 : 9, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
                 boolean requestColumn = false;
                 try (Cursor row = check.rawQuery("PRAGMA table_info(incident_http)", null)) {
                     while (row.moveToNext()) if (row.getString(1).equals("request_processed")) requestColumn = true;

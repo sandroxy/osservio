@@ -141,6 +141,9 @@ public final class HTTPRecorder {
 
     /** Completed means the collector confirmed response-body completion, not server-side business success. */
     public Result finish(Token token, HTTPEvent.State state, HTTPEvent.Failure failure, boolean requestComplete, boolean responseComplete) {
+        return finish(token, state, failure, requestComplete, responseComplete, null);
+    }
+    public Result finish(Token token, HTTPEvent.State state, HTTPEvent.Failure failure, boolean requestComplete, boolean responseComplete, HTTPMetrics metrics) {
         return update(token, (exchange, now) -> {
             if ((state != HTTPEvent.State.COMPLETED && state != HTTPEvent.State.FAILED && state != HTTPEvent.State.CANCELLED && state != HTTPEvent.State.CLOSED_EARLY)
                 || (state == HTTPEvent.State.COMPLETED && exchange.event.statusCode == null)
@@ -148,7 +151,7 @@ public final class HTTPRecorder {
             FinalBody request = finalizeBody(exchange.request, token.id + ".request", requestComplete, DiagnosticTextPolicy.Field.REQUEST_BODY);
             FinalBody response = finalizeBody(exchange.response, token.id + ".response", responseComplete && state == HTTPEvent.State.COMPLETED, DiagnosticTextPolicy.Field.RESPONSE_BODY);
             exchange.event = new HTTPEvent(exchange.event, null, false, null, null, state, failure,
-                now >= exchange.started ? now - exchange.started : null, request.reference, response.reference);
+                now >= exchange.started ? now - exchange.started : null, request.reference, response.reference, metrics);
             List<HTTPBody> bodies = new ArrayList<>();
             if (request.body != null) bodies.add(request.body);
             if (response.body != null) bodies.add(response.body);

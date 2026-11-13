@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 6,
+    "revision": 7,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -199,7 +199,8 @@
               "blobID": "dddddddd-dddd-dddd-dddd-dddddddddddd.response",
               "observedBytes": "3",
               "isProcessed": false
-            }
+            },
+            "metrics": null
           }
         ],
         "sourceEventCount": 3,
@@ -425,7 +426,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 6,
+    "revision": 7,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {
       "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",

@@ -108,7 +108,7 @@ public final class SignalCrashDatabaseTest {
                 store.save(IncidentSnapshot.captureDiagnostic(evidence(), 42), 2000);
             }
             try (SQLiteDatabase raw = SQLiteDatabase.openDatabase(file(fixture).getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(8, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
+                assertEquals(9, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
                 assertEquals(100, EvidenceSQLite.scalar(raw, "SELECT saved_at FROM incidents WHERE id='eeeeeeee-eeee-eeee-eeee-000000000001'"));
             }
         }

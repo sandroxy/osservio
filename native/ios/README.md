@@ -103,7 +103,10 @@ preserves native task cancellation. The wrapper does not invalidate the session,
 replace its delegate, install a URL protocol, or modify requests.
 
 Only requests submitted through these methods are observed. The default policy
-omits bodies and sensitive URL/header content. On the main actor, retain one
+preserves valid URLs, headers and supported bounded text bodies for local debugging.
+Hosts can select omissions or apply their own processing. Task-local metrics on
+iOS 15+ preserve host delegate callbacks; use `collectsMetrics: false` to disable
+that hook. See [network coverage](../../doc/network-integration.md#phase-timings-and-native-hooks). On the main actor, retain one
 `InspectorSession` for each host window to provide the floating entry and
 full-screen Logs, Network, Problems and App workspace:
 

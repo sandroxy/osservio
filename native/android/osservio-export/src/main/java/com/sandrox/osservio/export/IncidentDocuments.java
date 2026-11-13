@@ -5,6 +5,7 @@ import com.sandrox.osservio.core.AndroidTombstone;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.HTTPMetrics;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.IncidentHTTP;
 import com.sandrox.osservio.core.IncidentLogs;
@@ -50,8 +51,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 6, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 6, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 7, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 7, "incidentID", snapshot.id,
             "logs", content(snapshot.logs == null ? null : snapshot.logs.payloads),
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
@@ -164,11 +165,16 @@ public final class IncidentDocuments {
             "revision", Long.toString(event.revision), "timestampMillis", Long.toString(event.timestampMillis), "method", event.method,
             "source", code(event.source), "url", event.url, "responseURL", event.responseURL, "requestHeaders", headers(event.requestHeaders),
             "responseHeaders", headers(event.responseHeaders), "headersLimited", event.headersLimited, "statusCode", event.statusCode,
-            "state", code(event.state), "failure", code(event.failure), "durationMillis", decimal(event.durationMillis),
+            "state", code(event.state), "failure", code(event.failure), "durationMillis", decimal(event.durationMillis), "metrics", event.metrics == null ? null : metrics(event.metrics),
             "requestBody", body(event.requestBody), "responseBody", body(event.responseBody)));
         return object("observedAtMillis", Long.toString(value.observedAtMillis), "sourceEventCount", value.sourceEventCount, "omittedEventCount", value.omittedEventCount,
             "sourceEvictedEvents", Long.toString(value.sourceEvictedEvents), "sourceEvictedBodies", Long.toString(value.sourceEvictedBodies),
             "retainedTextBytes", value.retainedTextBytes, "retainedPayloadBytes", value.retainedPayloadBytes, "payloads", selection(value.payloads), "events", events);
+    }
+    private static Map<String, Object> metrics(HTTPMetrics value) {
+        List<Object> phases = new ArrayList<>();
+        for (HTTPMetrics.Timing phase : value.phases) phases.add(object("phase", code(phase.phase), "startMillis", Long.toString(phase.startMillis), "endMillis", decimal(phase.endMillis)));
+        return object("protocol", value.protocolName, "cache", code(value.cache), "connectionReused", value.connectionReused, "limited", value.limited, "phases", phases);
     }
     private static Map<String, Object> body(HTTPEvent.BodyReference value) {
         return object("state", code(value.state), "blobID", value.blobId, "observedBytes", Long.toString(value.observedBytes), "isProcessed", value.isProcessed);

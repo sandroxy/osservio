@@ -48,7 +48,7 @@ final class StructuredLogDatabaseTests: XCTestCase {
                     XCTAssertEqual(old.logs?.sourceEvictedDetails, 0); store.close()
                 }
                 let check = try SQLiteConnection(url: url); defer { check.close() }
-                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 7 : 8) }
+                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 7 : 9) }
                 var column = false
                 try check.statement("PRAGMA table_info(incident_logs)") { row in while try row.step() { if try row.text(1, byteLimit: 64) == "details_state" { column = true } } }
                 XCTAssertEqual(column, !conflict)

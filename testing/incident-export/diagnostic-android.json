@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 6,
+    "revision": 7,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -35,7 +35,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 6,
+    "revision": 7,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {},
     "webSockets": {},

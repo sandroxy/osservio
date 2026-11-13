@@ -52,7 +52,7 @@ final class InspectorDetailPage extends InspectorScroll.Page {
             read(R.string.osservio_ui_header_value, new InspectorReadContent(header.value, "", false).withContext(() -> header.name)));
     }
     void field(String title, Object value) { field(() -> title, () -> value); }
-    private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) { field(title, value, null); }
+    void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) { field(title, value, null); }
     private void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value, Runnable action) {
         if (group == null) section(R.string.osservio_ui_metadata);
         Context context = getContext(); int inset = InspectorTheme.dp(context, 16);

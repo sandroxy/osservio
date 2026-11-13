@@ -100,7 +100,7 @@ final class IncidentDetailDatabaseTests: XCTestCase {
             let added = try IncidentDetailFixture.snapshot(); try store.save(added, now: 102)
             XCTAssertEqual(try store.read(id: added.id)?.textByteCount, added.textByteCount); store.close()
             let raw = try SQLiteConnection(url: url); defer { raw.close() }
-            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 8) }
+            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 9) }
             try raw.statement("SELECT saved_at FROM incidents WHERE id=?", [.text(legacyID)]) { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 100) }
         }
     }

@@ -41,7 +41,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 7, "6", None, True):
+        for revision in (0, 8, "7", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision

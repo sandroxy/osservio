@@ -53,6 +53,7 @@ public struct HTTPEvent: Sendable {
     public let state: HTTPState
     public let failure: HTTPFailure?
     public let durationMillis: UInt64?
+    public let metrics: HTTPMetrics?
     public let requestBody: HTTPBodyReference
     public let responseBody: HTTPBodyReference
     public let textByteCount: Int
@@ -62,7 +63,7 @@ public struct HTTPEvent: Sendable {
         self.id = id; sessionID = context.sessionID; sequence = context.sequence; revision = 0
         timestampMillis = timestamp; self.method = method; self.url = url; self.source = source; responseURL = nil
         requestHeaders = headers; responseHeaders = []; headersLimited = limited
-        statusCode = nil; state = .pending; failure = nil; durationMillis = nil
+        statusCode = nil; state = .pending; failure = nil; durationMillis = nil; metrics = nil
         requestBody = HTTPBodyReference(state: .pending, blobID: nil, observedBytes: 0)
         responseBody = HTTPBodyReference(state: .pending, blobID: nil, observedBytes: 0)
         textByteCount = Self.size(method: method, url: url, headers: headers)
@@ -70,15 +71,15 @@ public struct HTTPEvent: Sendable {
 
     init(previous: HTTPEvent, headers: [HTTPHeader]? = nil, limited: Bool = false,
          code: Int? = nil, responseURL: String? = nil, state: HTTPState, failure: HTTPFailure? = nil, duration: UInt64? = nil,
-         request: HTTPBodyReference? = nil, response: HTTPBodyReference? = nil) {
+         request: HTTPBodyReference? = nil, response: HTTPBodyReference? = nil, metrics: HTTPMetrics? = nil) {
         id = previous.id; sessionID = previous.sessionID; sequence = previous.sequence
         revision = previous.revision + 1; timestampMillis = previous.timestampMillis
         method = previous.method; url = previous.url; source = previous.source
         self.responseURL = responseURL ?? previous.responseURL; requestHeaders = previous.requestHeaders
         responseHeaders = headers ?? previous.responseHeaders; headersLimited = limited || previous.headersLimited
         statusCode = code ?? previous.statusCode; self.state = state; self.failure = failure
-        durationMillis = duration; requestBody = request ?? previous.requestBody; responseBody = response ?? previous.responseBody
-        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (self.responseURL?.utf8.count ?? 0)
+        durationMillis = duration; self.metrics = metrics; requestBody = request ?? previous.requestBody; responseBody = response ?? previous.responseBody
+        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (self.responseURL?.utf8.count ?? 0) + (metrics?.textByteCount ?? 0)
     }
 
     private static func size(method: String, url: String, headers: [HTTPHeader]) -> Int {
@@ -90,7 +91,7 @@ public struct HTTPEvent: Sendable {
                                method: String, source: HTTPSource, url: String, responseURL: String?,
                                requestHeaders: [HTTPHeader], responseHeaders: [HTTPHeader], headersLimited: Bool,
                                statusCode: Int?, state: HTTPState, failure: HTTPFailure?, durationMillis: UInt64?,
-                               requestBody: HTTPBodyReference, responseBody: HTTPBodyReference) throws -> HTTPEvent {
+                               requestBody: HTTPBodyReference, responseBody: HTTPBodyReference, metrics: HTTPMetrics? = nil) throws -> HTTPEvent {
         guard EvidenceValidation.id(id), EvidenceValidation.id(sessionID), sequence > 0, revision >= 0,
               EvidenceValidation.method(method),
               EvidenceValidation.url(url), responseURL.map(EvidenceValidation.url) ?? true,
@@ -102,10 +103,10 @@ public struct HTTPEvent: Sendable {
               statusCode != nil || (responseURL == nil && responseHeaders.isEmpty) else { throw PersistenceError.invalidRecord }
         switch state {
         case .pending, .receiving:
-            guard durationMillis == nil, requestBody.state == .pending, responseBody.state == .pending,
+            guard metrics == nil, durationMillis == nil, requestBody.state == .pending, responseBody.state == .pending,
                   revision == (state == .pending ? 0 : 1), (state == .receiving) == (statusCode != nil) else { throw PersistenceError.invalidRecord }
         case .captureEnded:
-            guard durationMillis == nil, [.omitted, .incomplete].contains(requestBody.state),
+            guard metrics == nil, durationMillis == nil, [.omitted, .incomplete].contains(requestBody.state),
                   [.omitted, .incomplete].contains(responseBody.state), revision == (statusCode == nil ? 1 : 2) else { throw PersistenceError.invalidRecord }
         case .completed, .failed, .cancelled, .closedEarly:
             guard requestBody.state != .pending, responseBody.state != .pending,
@@ -115,18 +116,18 @@ public struct HTTPEvent: Sendable {
         return HTTPEvent(id: id, sessionID: sessionID, sequence: sequence, revision: revision, timestampMillis: timestampMillis,
             method: method, source: source, url: url, responseURL: responseURL, requestHeaders: requestHeaders,
             responseHeaders: responseHeaders, headersLimited: headersLimited, statusCode: statusCode, state: state,
-            failure: failure, durationMillis: durationMillis, requestBody: requestBody, responseBody: responseBody)
+            failure: failure, durationMillis: durationMillis, requestBody: requestBody, responseBody: responseBody, metrics: metrics)
     }
     private init(id: String, sessionID: String, sequence: Int64, revision: Int64, timestampMillis: Int64,
                  method: String, source: HTTPSource, url: String, responseURL: String?, requestHeaders: [HTTPHeader],
                  responseHeaders: [HTTPHeader], headersLimited: Bool, statusCode: Int?, state: HTTPState,
-                 failure: HTTPFailure?, durationMillis: UInt64?, requestBody: HTTPBodyReference, responseBody: HTTPBodyReference) {
+                 failure: HTTPFailure?, durationMillis: UInt64?, requestBody: HTTPBodyReference, responseBody: HTTPBodyReference, metrics: HTTPMetrics?) {
         self.id = id; self.sessionID = sessionID; self.sequence = sequence; self.revision = revision; self.timestampMillis = timestampMillis
         self.method = method; self.source = source; self.url = url; self.responseURL = responseURL
         self.requestHeaders = requestHeaders; self.responseHeaders = responseHeaders; self.headersLimited = headersLimited
-        self.statusCode = statusCode; self.state = state; self.failure = failure; self.durationMillis = durationMillis
+        self.statusCode = statusCode; self.state = state; self.failure = failure; self.durationMillis = durationMillis; self.metrics = metrics
         self.requestBody = requestBody; self.responseBody = responseBody
-        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (responseURL?.utf8.count ?? 0)
+        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (responseURL?.utf8.count ?? 0) + (metrics?.textByteCount ?? 0)
     }
 }
 

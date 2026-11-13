@@ -121,7 +121,7 @@ final class IncidentDiagnosticDatabaseTests: XCTestCase {
             let added = IncidentSnapshot.captureDiagnostic(try evidence(), observedAtMillis: 102)
             try store.save(added, now: 102); XCTAssertNotNil(try store.read(id: added.id)?.systemDiagnostic); store.close()
             let raw = try SQLiteConnection(url: url); defer { raw.close() }
-            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 8) }
+            try raw.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 9) }
             try raw.statement("SELECT saved_at FROM incidents WHERE id=?", [.text(legacyID)]) { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 100) }
         }
     }

@@ -51,7 +51,7 @@ public final class StructuredLogDatabaseTest {
                 assertEquals("[private]", old.events.get(0).message); assertNull(old.events.get(0).details); assertEquals(0, old.sourceEvictedDetails);
             }
             try (SQLiteDatabase check = SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(conflict ? 7 : 8, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
+                assertEquals(conflict ? 7 : 9, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
                 boolean column = false;
                 try (Cursor row = check.rawQuery("PRAGMA table_info(incident_logs)", null)) { while (row.moveToNext()) if (row.getString(1).equals("details_state")) column = true; }
                 assertEquals(!conflict, column);

@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public final class IncidentDocumentsTest {
     @Test public void documentsMatchIndependentSharedFixtures() throws Exception {
-        for (String name : new String[] {"absent", "empty", "complete", "trusted-content", "structured-log", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"}) {
+        for (String name : new String[] {"absent", "empty", "complete", "trusted-content", "structured-log", "http-metrics", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"}) {
             JSONObject fixture;
             try (InputStream input = InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("incident-export/" + name + ".json");
                  ByteArrayOutputStream output = new ByteArrayOutputStream()) {

@@ -69,6 +69,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
                 }))
             }
             sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: overview, footer: noticeKey.map(InspectorLocalization.text)),
+                Section(title: InspectorLocalization.text("http_metrics"), rows: HTTPPresentation.metrics(event.metrics).map { Row($0.0, $0.1) } + [Row(InspectorLocalization.text("http_metrics_note"))], collapsible: true),
                 Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
                     field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)),
                     field("http_id", event.id), field("http_session", event.sessionID + " · #\(event.sequence)")

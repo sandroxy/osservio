@@ -6,6 +6,8 @@ import XCTest
 
 /// Opt-in synthetic load. Process measurements include the harness, not just the SDK.
 final class CaptureLoadTests: XCTestCase {
+    private let context = LogDetails.publicValues(arguments: [.integer(9_007_199_254_740_993), .boolean(false)],
+        attributes: [LogField("operation", .string("load"))], error: LogError(type: "SyntheticError", stackTrace: "Fixture.run\nFixture.tick"))
     private let text = String(repeating: "x", count: 8_192)
     private let headers = [HTTPHeader(name: "Authorization", value: "Bearer " + String(repeating: "x", count: 1_200)),
                            HTTPHeader(name: "Content-Type", value: "text/plain")]
@@ -52,7 +54,7 @@ final class CaptureLoadTests: XCTestCase {
                 for _ in 0..<5 {
                     let before = DispatchTime.now().uptimeNanoseconds
                     count("log", log.record(ticks % 50 == 0 ? .error : .info, category: "load",
-                        message: ticks % 2 == 0 ? .publicText(text) : .privateText("synthetic-secret")))
+                        message: ticks % 2 == 0 ? .publicText(text) : .privateText("synthetic-secret"), details: ticks % 50 == 0 ? context : nil))
                     count("breadcrumb", breadcrumb.record(.hostMarker, label: "load.tick"))
                     let request = http.begin(method: "POST", url: "https://example.com/private?secret=value", headers: headers)
                     count("http.begin", request.result)
@@ -129,6 +131,7 @@ final class CaptureLoadTests: XCTestCase {
                              _ requests: MemoryHTTPStore, _ sockets: MemoryWebSocketStore) throws {
         let log = try XCTUnwrap(logs.snapshot()), breadcrumb = try XCTUnwrap(crumbs.snapshot())
         let http = try XCTUnwrap(requests.snapshot()), ws = try XCTUnwrap(sockets.snapshot())
+        XCTAssertLessThanOrEqual(log.retainedDetailsBytes, 262_144)
         XCTAssertLessThanOrEqual(log.events.count, 200); XCTAssertLessThanOrEqual(log.retainedTextBytes, 65_536)
         XCTAssertLessThanOrEqual(breadcrumb.events.count, 200); XCTAssertLessThanOrEqual(breadcrumb.retainedTextBytes, 65_536)
         XCTAssertLessThanOrEqual(http.events.count, 100); XCTAssertLessThanOrEqual(http.retainedTextBytes, 65_536)

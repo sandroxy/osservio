@@ -10,6 +10,7 @@ import static com.sandrox.osservio.store.IncidentNames.parse;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.HTTPMetrics;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.IncidentHTTP;
 import com.sandrox.osservio.core.IncidentLogs;
@@ -106,11 +107,12 @@ final class IncidentDetailDatabase {
                 HTTPEvent event = http.events.get(position);
                 database.execSQL("INSERT INTO incident_http(incident_id, position, id, session_id, sequence, revision, timestamp, method, source, "
                     + "url, response_url, headers_limited, status_code, state, failure, duration, request_state, request_blob, request_bytes, "
-                    + "response_state, response_blob, response_bytes, request_processed, response_processed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    + "response_state, response_blob, response_bytes, request_processed, response_processed, metrics_present) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     new Object[] {id, position, event.id, event.sessionId, event.sequence, event.revision, event.timestampMillis, event.method,
                         name(event.source), event.url, event.responseURL, event.headersLimited ? 1 : 0, event.statusCode, name(event.state), name(event.failure),
                         event.durationMillis == null ? null : event.durationMillis.toString(), name(event.requestBody.state), event.requestBody.blobId,
-                        event.requestBody.observedBytes, name(event.responseBody.state), event.responseBody.blobId, event.responseBody.observedBytes, event.requestBody.isProcessed ? 1 : 0, event.responseBody.isProcessed ? 1 : 0});
+                        event.requestBody.observedBytes, name(event.responseBody.state), event.responseBody.blobId, event.responseBody.observedBytes, event.requestBody.isProcessed ? 1 : 0, event.responseBody.isProcessed ? 1 : 0, event.metrics == null ? 0 : 1});
+                new HTTPMetricsDatabase(database).save(event.metrics, id, position);
                 saveHeaders(id, Kind.HTTP, position, "request", event.requestHeaders);
                 saveHeaders(id, Kind.HTTP, position, "response", event.responseHeaders);
             }
@@ -207,20 +209,22 @@ final class IncidentDetailDatabase {
     }
     private IncidentHTTP readHTTP(String id, Window window, Rows rows) {
         List<HTTPEvent> events = new ArrayList<>(); int bytes = 0;
+        Map<Integer, HTTPMetrics> metrics = new HTTPMetricsDatabase(database).read(id, window == null ? 0 : window.count);
         String projection = "position," + textColumn("id", 36) + "," + textColumn("session_id", 36) + ",sequence,revision,timestamp,"
             + textColumn("method", 16) + "," + textColumn("source", 32) + "," + textColumn("url", 4128) + "," + textColumn("response_url", 4128)
             + ",headers_limited,status_code," + textColumn("state", 32) + "," + textColumn("failure", 32) + "," + textColumn("duration", 20) + ","
             + textColumn("request_state", 32) + "," + textColumn("request_blob", 45) + ",request_bytes," + textColumn("response_state", 32)
-            + "," + textColumn("response_blob", 45) + ",response_bytes,request_processed,response_processed";
+            + "," + textColumn("response_blob", 45) + ",response_bytes,request_processed,response_processed,metrics_present";
         try (Cursor row = query("SELECT " + projection + " FROM incident_http WHERE incident_id=? ORDER BY position LIMIT 2001", id)) {
             while (row.moveToNext()) {
                 if (window == null || events.size() >= window.count || integer(row, 0) != events.size()) throw EvidenceStorageException.invalid();
+                if (flag(row, 23) != metrics.containsKey(events.size())) throw EvidenceStorageException.invalid();
                 Map<String, List<HTTPHeader>> headers = readHeaders(id, Kind.HTTP, events.size(), rows, "request", "response");
                 HTTPEvent.BodyReference request = HTTPEvent.BodyReference.restore(parse(HTTPEvent.BodyState.values(), text(row, 15, 32)), optionalText(row, 16, 45), integer(row, 17), flag(row, 21));
                 HTTPEvent.BodyReference response = HTTPEvent.BodyReference.restore(parse(HTTPEvent.BodyState.values(), text(row, 18, 32)), optionalText(row, 19, 45), integer(row, 20), flag(row, 22));
                 HTTPEvent event = HTTPEvent.restore(text(row, 1, 36), text(row, 2, 36), integer(row, 3), integer(row, 4), integer(row, 5), text(row, 6, 16),
                     parse(HTTPEvent.Source.values(), text(row, 7, 32)), text(row, 8, 4128), optionalText(row, 9, 4128), headers.get("request"), headers.get("response"),
-                    flag(row, 10), optionalInt(row, 11), parse(HTTPEvent.State.values(), text(row, 12, 32)), optionalEnum(row, 13, HTTPEvent.Failure.values()), duration(row, 14), request, response);
+                    flag(row, 10), optionalInt(row, 11), parse(HTTPEvent.State.values(), text(row, 12, 32)), optionalEnum(row, 13, HTTPEvent.Failure.values()), duration(row, 14), request, response, metrics.get(events.size()));
                 if (event.textByteCount > window.bytes - bytes) throw EvidenceStorageException.invalid();
                 bytes += event.textByteCount; events.add(event);
             }

@@ -23,8 +23,8 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 6, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 6, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 7, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 7, "incidentID": snapshot.id,
             "logs": content(snapshot.logs?.payloads ?? [:]), "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
@@ -123,9 +123,14 @@ public struct IncidentDocuments: Sendable {
              "timestampMillis": String(event.timestampMillis), "method": event.method, "source": event.source.rawValue, "url": event.url,
              "responseURL": optional(event.responseURL), "requestHeaders": headers(event.requestHeaders), "responseHeaders": headers(event.responseHeaders),
              "headersLimited": event.headersLimited, "statusCode": optional(event.statusCode), "state": event.state.rawValue,
-             "failure": optional(event.failure?.rawValue), "durationMillis": decimal(event.durationMillis),
+             "failure": optional(event.failure?.rawValue), "durationMillis": decimal(event.durationMillis), "metrics": event.metrics.map(metrics) ?? NSNull(),
              "requestBody": body(event.requestBody), "responseBody": body(event.responseBody)]
          }]
+    }
+    private static func metrics(_ value: HTTPMetrics) -> [String: Any] {
+        ["protocol": optional(value.protocolName), "cache": value.cache.rawValue,
+         "connectionReused": optional(value.connectionReused), "limited": value.limited,
+         "phases": value.phases.map { ["phase": $0.phase.rawValue, "startMillis": String($0.startMillis), "endMillis": optional($0.endMillis.map(String.init))] as [String: Any] }]
     }
     private static func body(_ value: HTTPBodyReference) -> [String: Any] {
         ["state": value.state.rawValue, "blobID": optional(value.blobID), "observedBytes": String(value.observedBytes), "isProcessed": value.isProcessed]

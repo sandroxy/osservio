@@ -15,6 +15,20 @@ final class IncidentDocumentFixture {
     private static final String HTTP_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private IncidentDocumentFixture() { }
     static IncidentSnapshot make(String name) {
+        if (name.equals("http-metrics")) {
+            IncidentSnapshot base = make("complete"); HTTPEvent old = base.http.events.get(0); IncidentHTTP group = base.http;
+            HTTPMetrics metrics = new HTTPMetrics(Arrays.asList(
+                new HTTPMetrics.Timing(HTTPMetrics.Phase.DNS, 0, 4L), new HTTPMetrics.Timing(HTTPMetrics.Phase.CONNECT, 4, 24L),
+                new HTTPMetrics.Timing(HTTPMetrics.Phase.TLS, 8, 24L), new HTTPMetrics.Timing(HTTPMetrics.Phase.CONNECT, 25, 30L),
+                new HTTPMetrics.Timing(HTTPMetrics.Phase.REQUEST, 30, 31L), new HTTPMetrics.Timing(HTTPMetrics.Phase.WAITING, 31, 36L),
+                new HTTPMetrics.Timing(HTTPMetrics.Phase.RESPONSE, 36, null)), "h2", HTTPMetrics.Cache.VALIDATED, true, true);
+            HTTPEvent event = HTTPEvent.restore(old.id, old.sessionId, old.sequence, old.revision, old.timestampMillis, old.method, old.source,
+                old.url, old.responseURL, old.requestHeaders, old.responseHeaders, old.headersLimited, old.statusCode, old.state, old.failure,
+                old.durationMillis, old.requestBody, old.responseBody, metrics);
+            return IncidentSnapshot.restore(base.id, base.timestampMillis, base.note, base.environment, base.breadcrumbs, base.logs,
+                IncidentHTTP.restore(Collections.singletonList(event), group.payloads, group.observedAtMillis,
+                    group.sourceEventCount, group.sourceEvictedEvents, group.sourceEvictedBodies), base.webSockets);
+        }
         if (name.equals("structured-log")) {
             String blob = "cccccccc-cccc-cccc-cccc-cccccccccccc";
             String text = "{\"arguments\":[9223372036854775807,\"例\"],\"attributes\":{\"requestId\":\"fixture-42\"}}";

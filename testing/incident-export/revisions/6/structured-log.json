@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 6,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "-9223372036854775808",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": {
+        "observedAtMillis": "23",
+        "sourceEventCount": 5,
+        "omittedEventCount": 0,
+        "sourceEvictedCount": "2",
+        "retainedTextBytes": 105,
+        "events": [
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "1",
+            "timestampMillis": "17",
+            "level": "error",
+            "category": "fixture",
+            "message": "Request failed",
+            "isPrivate": false,
+            "isTruncated": false,
+            "details": {
+              "state": "available",
+              "blobID": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+              "textByteCount": 81
+            }
+          },
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "2",
+            "timestampMillis": "17",
+            "level": "error",
+            "category": "fixture",
+            "message": "Request failed",
+            "isPrivate": false,
+            "isTruncated": false,
+            "details": {
+              "state": "omitted",
+              "blobID": null,
+              "textByteCount": 0
+            }
+          },
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "3",
+            "timestampMillis": "17",
+            "level": "error",
+            "category": "fixture",
+            "message": "Request failed",
+            "isPrivate": false,
+            "isTruncated": false,
+            "details": {
+              "state": "limited",
+              "blobID": null,
+              "textByteCount": 0
+            }
+          },
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "4",
+            "timestampMillis": "17",
+            "level": "error",
+            "category": "fixture",
+            "message": "Request failed",
+            "isPrivate": false,
+            "isTruncated": false,
+            "details": {
+              "state": "invalid",
+              "blobID": null,
+              "textByteCount": 0
+            }
+          },
+          {
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "5",
+            "timestampMillis": "17",
+            "level": "error",
+            "category": "fixture",
+            "message": "Request failed",
+            "isPrivate": false,
+            "isTruncated": false,
+            "details": {
+              "state": "unsupported",
+              "blobID": null,
+              "textByteCount": 0
+            }
+          }
+        ],
+        "sourceEvictedDetails": "7",
+        "retainedPayloadBytes": 81,
+        "payloads": {
+          "cccccccc-cccc-cccc-cccc-cccccccccccc": {
+            "state": "available",
+            "textByteCount": 81
+          }
+        }
+      },
+      "http": null,
+      "webSockets": null,
+      "origin": "manual",
+      "systemDiagnostic": null
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 6,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {},
+    "logs": {
+      "cccccccc-cccc-cccc-cccc-cccccccccccc": "{\"arguments\":[9223372036854775807,\"例\"],\"attributes\":{\"requestId\":\"fixture-42\"}}"
+    }
+  }
+}

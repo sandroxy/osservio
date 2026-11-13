@@ -9,7 +9,7 @@ validated, host-policy-processed `IncidentSnapshot` into two UTF-8 JSON document
 | `payloads.json` | Available copied log context, HTTP and WebSocket text, keyed by the referenced body identity |
 
 The format identifiers are `osservio.incident` and `osservio.incident.payloads`.
-Both declare compatibility revision `6`, independently of SDK and private
+Both declare compatibility revision `7`, independently of SDK and private
 SQLite schema versions. The metadata's `payloadFile` is the fixed literal
 `payloads.json`, not an arbitrary path. The schema URNs identify local definitions;
 validation does not fetch a remote schema.
@@ -140,7 +140,7 @@ bound concurrent encodes and the lifetime of returned data.
 
 ## Compatibility and conformance
 
-The root schemas describe strict revision-6 writers. Preserved
+The root schemas describe strict revision-7 writers. Preserved
 [revision-1 metadata](revisions/1/incident.schema.json) and
 [payload schemas](revisions/1/payloads.schema.json), and
 [revision-2 metadata](revisions/2/incident.schema.json) and
@@ -149,7 +149,8 @@ The root schemas describe strict revision-6 writers. Preserved
 [payload schemas](revisions/3/payloads.schema.json), and
 [revision-4 metadata](revisions/4/incident.schema.json) and
 [payload schemas](revisions/4/payloads.schema.json), and [revision-5 metadata](revisions/5/incident.schema.json) and
-[payload schemas](revisions/5/payloads.schema.json), remain readable by the
+[payload schemas](revisions/5/payloads.schema.json), and [revision-6 metadata](revisions/6/incident.schema.json) and
+[payload schemas](revisions/6/payloads.schema.json), remain readable by the
 conformance checker. Revisions 2 through 4 reference unchanged revision-1 event definitions.
 Revision 5 has self-contained definitions and admits complete valid URLs,
 RFC token method/header names, header values up to 16,384 UTF-8 bytes, and
@@ -162,12 +163,18 @@ unsupported contexts carry no blob or invented byte count. Context text uses the
 [bounded structured-log contract](../doc/logging.md#structured-context-and-supplied-errors).
 These are log observations, not automatic crash records. Older snapshots
 encoded by current writers have null details and empty log payload maps.
+Revision 7 adds nullable HTTP `metrics`, with up to 32 ordered phase occurrences,
+exact decimal offsets, incomplete ends and final-response protocol/cache/reuse
+facts. Repeated and overlapping phases remain distinct; they are not a summed
+duration. Nonterminal observations cannot carry completed metric snapshots.
+Protocol-name bytes participate in metadata accounting. Older frozen records
+encode null metrics without inventing evidence.
 A reader may ignore unknown optional object fields within a supported revision,
 while still validating every known
 field, required field, enum, identifier, revision-specific content constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
 Unsupported revisions and mixed document revisions are rejected. Native writers
-always emit revision 6, including for manual snapshots. Earlier readers must
+always emit revision 7, including for manual snapshots. Earlier readers must
 reject newer revisions rather than overlook their evidence. No automatic
 document rewriting, downgrade, or SDK runtime importer is provided.
 Private incident database migrations are tested separately in native Store
@@ -183,5 +190,5 @@ archive-import API. It does not extract ZIP files or accept remote data.
 The independent fixtures in `testing/incident-export` cover absent and empty
 groups, exact 64-bit values, host processing, historical redaction, Unicode and escaping, body states, HTTP
 lifecycles, system source/time invariants, corruption, and compatibility.
-Unmodified revision-1 through revision-5 golden documents are retained separately. Both native encoders compare their
+Unmodified revision-1 through revision-6 golden documents are retained separately. Both native encoders compare their
 output with the same golden documents. See [development checks](../DEVELOPMENT.md).

@@ -63,6 +63,8 @@ account isolation, resource limits and system-diagnostic boundaries.
   browsers provide search, details, copying, storage health, and confirmed deletion. See [runtime context](doc/runtime-context.md) and
   [breadcrumb persistence](doc/breadcrumb-storage.md).
 
+HTTP details expose bounded phase observations, final-response protocol and cache origin without inventing missing timings. See [network coverage](doc/network-integration.md) for native hook and retry semantics.
+
 WebSocket observation supports explicit host events and opt-in OkHttp/URLSession
 wrappers, with a bounded timeline and independent text budget. Submission, queue
 admission, send results, and close events remain distinct; none proves peer

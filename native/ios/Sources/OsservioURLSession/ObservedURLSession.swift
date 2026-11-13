@@ -5,30 +5,35 @@ import OsservioCore
 public final class ObservedURLSession: @unchecked Sendable {
     public let session: URLSession
     public let recorder: HTTPRecorder
+    public let collectsMetrics: Bool
 
-    public init(session: URLSession, recorder: HTTPRecorder) {
-        self.session = session; self.recorder = recorder
+    public init(session: URLSession, recorder: HTTPRecorder, collectsMetrics: Bool = true) {
+        self.session = session; self.recorder = recorder; self.collectsMetrics = collectsMetrics
     }
 
     /// Returns the original suspended task. The host still owns resume, cancel, delegate, and session lifetime.
     public func dataTask(with request: URLRequest,
                          completionHandler: @escaping @Sendable (Data?, URLResponse?, Error?) -> Void) -> URLSessionDataTask {
         guard let observation = begin(request) else { return session.dataTask(with: request, completionHandler: completionHandler) }
-        return session.dataTask(with: request) { [recorder] data, response, error in
-            Self.finish(observation, recorder: recorder, data: data, response: response, error: error)
+        let metrics = collectsMetrics ? URLSessionMetricsDelegate(target: session.delegate as? any URLSessionTaskDelegate) : nil
+        let task = session.dataTask(with: request) { [recorder] data, response, error in
+            Self.finish(observation, recorder: recorder, data: data, response: response, error: error, metrics: metrics?.snapshot())
             completionHandler(data, response, error)
         }
+        if #available(iOS 15.0, macOS 12.0, *), let metrics { task.delegate = metrics }
+        return task
     }
 
     @available(iOS 15.0, macOS 12.0, *)
     public func data(for request: URLRequest, delegate: (any URLSessionTaskDelegate)? = nil) async throws -> (Data, URLResponse) {
         guard let observation = begin(request) else { return try await session.data(for: request, delegate: delegate) }
+        let metrics = collectsMetrics ? URLSessionMetricsDelegate(target: delegate ?? session.delegate as? any URLSessionTaskDelegate) : nil
         do {
-            let result = try await session.data(for: request, delegate: delegate)
-            Self.finish(observation, recorder: recorder, data: result.0, response: result.1, error: nil)
+            let result = try await session.data(for: request, delegate: metrics ?? delegate)
+            Self.finish(observation, recorder: recorder, data: result.0, response: result.1, error: nil, metrics: metrics?.snapshot())
             return result
         } catch {
-            Self.finish(observation, recorder: recorder, data: nil, response: nil, error: error)
+            Self.finish(observation, recorder: recorder, data: nil, response: nil, error: error, metrics: metrics?.snapshot())
             throw error
         }
     }
@@ -53,7 +58,7 @@ public final class ObservedURLSession: @unchecked Sendable {
     }
 
     private static func finish(_ observation: Observation, recorder: HTTPRecorder,
-                               data: Data?, response: URLResponse?, error: Error?) {
+                               data: Data?, response: URLResponse?, error: Error?, metrics: HTTPMetrics?) {
         var responseComplete = error == nil
         if let http = response as? HTTPURLResponse {
             let headers = http.allHeaderFields.prefix(33).map { pair -> HTTPHeader in
@@ -78,10 +83,10 @@ public final class ObservedURLSession: @unchecked Sendable {
             let cancelled = error is CancellationError || (native.domain == NSURLErrorDomain && native.code == NSURLErrorCancelled)
             recorder.finish(observation.token, state: cancelled ? .cancelled : .failed,
                             failure: cancelled ? nil : failureCategory(native),
-                            requestComplete: observation.requestComplete, responseComplete: false)
+                            requestComplete: observation.requestComplete, responseComplete: false, metrics: metrics)
         } else {
             recorder.finish(observation.token, state: .completed, requestComplete: observation.requestComplete,
-                            responseComplete: responseComplete)
+                            responseComplete: responseComplete, metrics: metrics)
         }
     }
 

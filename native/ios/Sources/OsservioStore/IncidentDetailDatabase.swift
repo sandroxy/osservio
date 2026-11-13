@@ -95,14 +95,15 @@ final class IncidentDetailDatabase {
                 try connection.execute("""
                     INSERT INTO incident_http(incident_id, position, id, session_id, sequence, revision, timestamp, method, source,
                         url, response_url, headers_limited, status_code, state, failure, duration, request_state, request_blob,
-                        request_bytes, response_state, response_blob, response_bytes, request_processed, response_processed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        request_bytes, response_state, response_blob, response_bytes, request_processed, response_processed, metrics_present) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, [.text(id), .integer(Int64(position)), .text(event.id), .text(event.sessionID), .integer(event.sequence), .integer(event.revision),
                              .integer(event.timestampMillis), .text(event.method), .text(event.source.rawValue), .text(event.url), optional(event.responseURL),
                              .integer(event.headersLimited ? 1 : 0), event.statusCode.map { .integer(Int64($0)) } ?? .null, .text(event.state.rawValue),
                              optional(event.failure?.rawValue), optional(event.durationMillis.map(String.init)), .text(event.requestBody.state.rawValue),
                              optional(event.requestBody.blobID), .integer(event.requestBody.observedBytes), .text(event.responseBody.state.rawValue),
                              optional(event.responseBody.blobID), .integer(event.responseBody.observedBytes),
-                             .integer(event.requestBody.isProcessed ? 1 : 0), .integer(event.responseBody.isProcessed ? 1 : 0)])
+                             .integer(event.requestBody.isProcessed ? 1 : 0), .integer(event.responseBody.isProcessed ? 1 : 0), .integer(event.metrics == nil ? 0 : 1)])
+                try HTTPMetricsDatabase(connection).save(event.metrics, incidentID: id, position: position)
                 try saveHeaders(id, .http, position, "request", event.requestHeaders)
                 try saveHeaders(id, .http, position, "response", event.responseHeaders)
             }
@@ -200,13 +201,15 @@ final class IncidentDetailDatabase {
     }
     private func readHTTP(_ id: String, _ window: Window?, headerRows: inout Int, payloadRows: inout Int) throws -> IncidentHTTP? {
         var events: [HTTPEvent] = [], bytes = 0
+        let metrics = try HTTPMetricsDatabase(connection).read(id, eventCount: window?.count ?? 0)
         try connection.statement("""
             SELECT position, id, session_id, sequence, revision, timestamp, method, source, url, response_url,
                 headers_limited, status_code, state, failure, duration, request_state, request_blob, request_bytes,
-                response_state, response_blob, response_bytes, request_processed, response_processed FROM incident_http WHERE incident_id=? ORDER BY position LIMIT 2001
+                response_state, response_blob, response_bytes, request_processed, response_processed, metrics_present FROM incident_http WHERE incident_id=? ORDER BY position LIMIT 2001
             """, [.text(id)]) { row in
             while try row.step() {
                 guard let window, events.count < window.count, try row.integer(0) == events.count else { throw PersistenceError.invalidRecord }
+                guard try row.flag(23) == (metrics[events.count] != nil) else { throw PersistenceError.invalidRecord }
                 let headers = try readHeaders(id, .http, position: events.count, scopes: ["request", "response"], total: &headerRows)
                 let request = try HTTPBodyReference.restore(state: required(row, 15), blobID: text(row, 16, 45), observedBytes: row.integer(17), isProcessed: row.flag(21))
                 let response = try HTTPBodyReference.restore(state: required(row, 18), blobID: text(row, 19, 45), observedBytes: row.integer(20), isProcessed: row.flag(22))
@@ -214,7 +217,7 @@ final class IncidentDetailDatabase {
                     revision: row.integer(4), timestampMillis: row.integer(5), method: row.text(6, byteLimit: 16), source: required(row, 7),
                     url: row.text(8, byteLimit: 4_128), responseURL: text(row, 9, 4_128), requestHeaders: headers["request"] ?? [], responseHeaders: headers["response"] ?? [],
                     headersLimited: row.flag(10), statusCode: number(row, 11), state: required(row, 12), failure: enumeration(row, 13), durationMillis: duration(row, 14),
-                    requestBody: request, responseBody: response)
+                    requestBody: request, responseBody: response, metrics: metrics[events.count])
                 guard event.textByteCount <= window.bytes - bytes else { throw PersistenceError.invalidRecord }
                 bytes += event.textByteCount; events.append(event)
             }

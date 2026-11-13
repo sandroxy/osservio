@@ -59,6 +59,11 @@ def valid_url(value, revision):
 
 def http_event(event, revision):
     status, state = event["statusCode"], event["state"]
+    metrics = event.get("metrics") if revision >= 7 else None
+    if metrics is not None:
+        require(state not in ("pending", "receiving", "captureEnded"), "Metrics require a terminal observation")
+        for phase in metrics["phases"]:
+            require(phase["endMillis"] is None or int(phase["endMillis"]) >= int(phase["startMillis"]), "Phase ends before its start")
     require((state == "failed") == (event["failure"] is not None), "HTTP failure mismatch")
     require(status is not None or (event["responseURL"] is None and not event["responseHeaders"]), "Response metadata without status")
     valid_url(event["url"], revision)
@@ -171,6 +176,7 @@ def semantics(metadata, payloads):
                 size += utf8(event["category"]) + utf8(event["message"])
             elif family == "http":
                 http_event(event, metadata["revision"])
+                if metadata["revision"] >= 7 and event["metrics"] is not None: size += utf8(event["metrics"]["protocol"])
                 size += utf8(event["method"]) + utf8(event["url"]) + utf8(event["responseURL"]) + header_bytes(event["requestHeaders"] + event["responseHeaders"])
             else:
                 socket_event(event, metadata["revision"])
@@ -254,10 +260,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=6):
-    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6), "Unsupported incident revision")
+def validators(reader=False, revision=7):
+    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)
