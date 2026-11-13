@@ -56,7 +56,7 @@ final class InspectorCaptureSettingsView extends InspectorScroll.Page {
             row.bind("", " ", true);
             InspectorAppearance.text(row.title, () -> controllers.size() == 1 ? "Osservio" : context.getString(label));
             CaptureController controller = controllers.get(index);
-            row.action(() -> InspectorDialogs.screen(context, R.string.osservio_stats_title, InspectorCaptureStatisticsView.create(context, controller.statistics)));
+            row.action(() -> InspectorDialogs.screen(context, R.string.osservio_stats_title, InspectorCaptureStatisticsView.create(context, controller.statistics)).show());
             InspectorWidgets.addGrouped(group, row); values.add(row.value);
         }
         InspectorAppearance.content(this, this::update); update();
