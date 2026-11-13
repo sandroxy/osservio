@@ -76,7 +76,11 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             @Override public void onScrollStateChanged(AbsListView view, int scrollState) {
                 scrolling = scrollState != SCROLL_STATE_IDLE;
                 if (scrollState == SCROLL_STATE_IDLE) requestPreviews();
-                if (scrollState == SCROLL_STATE_TOUCH_SCROLL) { state.paused = true; cancelSearch(); dirty = false; status(); }
+                if (scrollState == SCROLL_STATE_TOUCH_SCROLL) {
+                    state.paused = true;
+                    if (!state.query.searchesPayload() || result != null && result.complete) { cancelSearch(); dirty = false; }
+                    status();
+                }
                 else if (scrollState == SCROLL_STATE_IDLE && list.getFirstVisiblePosition() == 0 && list.getChildAt(0) != null && list.getChildAt(0).getTop() >= 0) { state.paused = false; refresh(); }
             }
             @Override public void onScroll(AbsListView view, int first, int visible, int total) { }
@@ -133,18 +137,22 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         }
         HTTPHistory requests = httpHistory; WebSocketHistory socketEvents = socketHistory; long current = generation;
         WeakReference<NetworkInspectorView> owner = new WeakReference<>(this);
-        InspectorRecordPresentation.prepareSearch(getContext(), records);
-        task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(records, query, anchor, requests, socketEvents, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
+        InspectorRecordSearch.Preparation preparation = InspectorRecordPresentation.searchPreparation(getContext(), query);
+        boolean showProgress = result == null || !result.complete;
+        task = InspectorRecordSearchTask.submitProgressive((cancelled, progress) -> InspectorRecordSearch.run(records, query, anchor, requests, socketEvents, null, null, InspectorRecordSearch.MAX_UNITS, cancelled, preparation, progress), found -> {
             NetworkInspectorView view = owner.get(); if (view == null || view.generation != current) return;
-            view.task = null; view.result = found; view.items.clear();
-            for (InspectorRecordSearch.Record record : records) if (found.keys.contains(record.key())) view.items.add(record);
-            view.dirty = false; view.nextSearchAt = android.os.SystemClock.uptimeMillis() + 1000; view.display();
+            if (!found.complete && !showProgress) return;
+            if (found.complete) { view.task = null; view.dirty = false; view.nextSearchAt = android.os.SystemClock.uptimeMillis() + 1000; }
+            view.result = found; view.items.clear();
+            for (int position : found.positions) view.items.add(records.get(position));
+            view.display();
         });
         if (task == null) nextSearchAt = android.os.SystemClock.uptimeMillis() + 500;
     }
     private void status() {
         List<String> notes = new ArrayList<>(); Context context = getContext();
-        if (task != null || dirty && state.query.searchesPayload()) notes.add(context.getString(R.string.osservio_ui_searching));
+        String activity = InspectorSearchFeedback.activity(context, result, task != null || dirty && state.query.searchesPayload(), state.paused);
+        if (activity != null) notes.add(activity);
         if (result != null && (result.limited || result.unavailable > 0 || result.truncated > 0)) notes.add(context.getString(R.string.osservio_ui_search_partial));
         if (stale) notes.add(context.getString(R.string.osservio_ui_previous_window));
         WebSocketRecorder.Status socket = socketRecorder == null ? null : socketRecorder.status();

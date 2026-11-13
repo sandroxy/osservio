@@ -61,11 +61,27 @@ There is one running job and one pending job across viewers. Cancellation stops
 subsequent reads and suppresses stale completion delivery. Jobs use an immutable
 metadata window; they never refresh or clear the supplied histories.
 
-A job examines at most 4,000 records and 2,097,152 UTF-16 content units. It checks
-a 750 ms elapsed-work budget between records; an individual bounded lookup or
-scan can complete after that check. JSON parsing keeps the reader's 65,536-unit,
-4,096-node and 48-level limits. Results retain IDs and at most a 180-unit preview
-per matching record, not a second body store or an unbounded search index.
+A job visits its entire retained metadata window in cooperative slices. It yields
+after 256 records or approximately 8 ms of work, checked between records. These
+are scheduling boundaries, not a limit on total search coverage; an individual
+lookup or scan can finish after the time check. Each content item remains limited
+to 65,536 UTF-16 units. JSON parsing also keeps the reader's 4,096-node and
+48-level limits. Results retain matched positions, IDs and at most a 180-unit
+preview per match, not a second body store or a persistent search index.
+
+The first slice can publish partial matches; subsequent progress is throttled
+to roughly 100 ms and coalesced into one pending UI delivery. Progress reports
+records examined separately from matches. New observations do not restart an
+unfinished window. While reading initial results, older matches may be appended
+without changing the reading anchor. Later live-window refreshes pause when the
+user scrolls away from the newest record. Hidden or detached viewers cancel work;
+returning to a paused view searches the same retained metadata window. Content
+already evicted by the store is reported as unavailable.
+
+Android captures a resource configuration before scheduling work; address and
+localized search preparation use that context on the worker, without accessing
+Views or retaining an Activity. Changing a query or presentation generation
+rejects stale deliveries on both platforms.
 
 A connection-context page restricts its source window independently of removable
 query conditions. Reset must not expand either live or saved evidence to another
@@ -76,8 +92,8 @@ excerpt. Saved attachments use their immutable payload map, never a current live
 history, even when a saved body is absent. This preserves the meaning of a frozen
 snapshot after live records have changed or been evicted.
 
-Missing, omitted, busy, truncated and uninspectable content, and exhausted query
-budgets, must be reported as incomplete coverage. A result count is not a claim
+Missing, omitted, busy, truncated and oversized content must be reported as
+incomplete content coverage, even after all records have been examined. A result count is not a claim
 about all historical application activity. Resource limits are safeguards, not
 physical-device performance measurements.
 

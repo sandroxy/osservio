@@ -4,6 +4,37 @@ import OsservioCore
 import XCTest
 
 final class InspectorRecordSearchTests: XCTestCase {
+    func testSearchCoversTheEntireWindowBeyondPreviousRecordAndAggregateLimits() throws {
+        let text = String(repeating: "x", count: 600)
+        let records: [InspectorSearchRecord] = try (0..<10_000).map { position in
+            .log(try .restore(sessionID: id(100), sequence: Int64(position + 1), timestampMillis: 100,
+                level: .info, category: "large-window", message: text + (position == 9_999 ? " needle" : ""), isPrivate: false, isTruncated: false))
+        }
+        var query = InspectorQuery(); query.text = "needle"
+        var first: InspectorRecordSearch.Result?
+        let result = try XCTUnwrap(InspectorRecordSearch.run(records, query: query, now: 100, http: nil, sockets: nil, cancelled: { false }, progress: {
+            if first == nil { first = $0 }
+        }))
+        XCTAssertEqual(result.positions, [9_999]); XCTAssertEqual(result.keys, [records[9_999].key])
+        XCTAssertEqual(result.scanned, 10_000); XCTAssertEqual(result.total, 10_000)
+        XCTAssertTrue(result.complete); XCTAssertFalse(result.limited)
+        XCTAssertFalse(try XCTUnwrap(first).complete); XCTAssertLessThan(try XCTUnwrap(first).scanned, result.scanned)
+        XCTAssertTrue(try XCTUnwrap(first).keys.isEmpty, "A progress snapshot must not mutate after delivery")
+    }
+    func testSocketSearchReachesOlderConnectionsAndCancellationStopsFurtherReads() throws {
+        let history = History(), text = String(repeating: "x", count: 600) + "needle"
+        let records = try (1...5_001).map { InspectorSearchRecord.socket(try message($0, connection: $0 % 7 + 10, text: text, history: history)) }
+        var query = InspectorQuery(); query.text = "needle"
+        let result = try XCTUnwrap(search(records, query, history))
+        XCTAssertEqual(result.keys.count, 5_001); XCTAssertEqual(result.positions.last, 5_000)
+        XCTAssertEqual(history.reads, 5_001); XCTAssertFalse(result.limited)
+        history.reads = 0
+        var stop = false, delivered = 0
+        XCTAssertNil(InspectorRecordSearch.run(records, query: query, now: 100, http: nil, sockets: history,
+            cancelled: { stop }, progress: { delivered = $0.scanned; stop = true }))
+        XCTAssertGreaterThan(delivered, 0); XCTAssertLessThan(delivered, records.count)
+        XCTAssertEqual(history.reads, delivered)
+    }
     func testNetworkOrderingPreservesTiedSocketCaptureOrderAndDifferentTimes() throws {
         let history = History()
         let first = InspectorSearchRecord.socket(try message(1, connection: 10, text: "first", history: history))

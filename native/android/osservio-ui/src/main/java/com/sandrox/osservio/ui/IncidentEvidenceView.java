@@ -93,28 +93,34 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         if (footer == null) return;
         cancelSearch(); result = null; searchBusy = false; indices.clear();
         long now = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
-        for (int i = count() - 1; i >= 0; i--) if (inScope(i) && records.get(i).matchesFacets(query, now)) indices.add(i);
+        if (!query.searchesPayload()) for (int i = count() - 1; i >= 0; i--) if (inScope(i) && records.get(i).matchesFacets(query, now)) indices.add(i);
         if (query.searchesPayload()) {
             indices.clear(); long current = generation; InspectorQuery selected = query.copy();
             java.util.Map<String, IncidentPayload> saved = http != null ? http.payloads : sockets != null ? sockets.payloads : logs.payloads;
             List<InspectorRecordSearch.Record> searchRecords = new ArrayList<>();
-            for (int i = count() - 1; i >= 0; i--) if (inScope(i)) searchRecords.add(records.get(i));
-            InspectorRecordPresentation.prepareSearch(getContext(), searchRecords);
+            List<Integer> scopedIndices = new ArrayList<>();
+            for (int i = count() - 1; i >= 0; i--) if (inScope(i)) { scopedIndices.add(i); searchRecords.add(records.get(i)); }
+            InspectorRecordSearch.Preparation preparation = InspectorRecordPresentation.searchPreparation(getContext(), selected);
             handler.postDelayed(() -> {
                 if (current != generation) return;
-                task = InspectorRecordSearchTask.submit(cancelled -> InspectorRecordSearch.run(searchRecords, selected, now, null, null, saved, InspectorRecordSearch.MAX_UNITS, cancelled), found -> {
-                    if (current != generation) return; task = null; result = found; indices.clear();
-                    for (int i = count() - 1; i >= 0; i--) if (found.keys.contains(records.get(i).key())) indices.add(i);
+                task = InspectorRecordSearchTask.submitProgressive((cancelled, progress) -> InspectorRecordSearch.run(searchRecords, selected, now, null, null, saved, null, InspectorRecordSearch.MAX_UNITS, cancelled, preparation, progress), found -> {
+                    if (current != generation) return;
+                    if (found.complete) task = null;
+                    result = found; indices.clear();
+                    for (int position : found.positions) indices.add(scopedIndices.get(position));
                     display();
                 });
-                if (task == null) { searchBusy = true; display(); }
+                if (task == null) {
+                    searchBusy = true; display();
+                    handler.postDelayed(() -> { if (current == generation && isAttachedToWindow()) filter(); }, 500);
+                }
             }, 200);
         }
         display();
     }
     private void cancelSearch() { generation++; handler.removeCallbacksAndMessages(null); if (task != null) task.cancel(); task = null; }
     private void display() {
-        header.setQuery(query, groups(), indices.size(), scopeCount()); header.empty.setVisibility(GONE);
+        header.setQuery(query, this::groups, indices.size(), scopeCount()); header.empty.setVisibility(GONE);
         footer.setText(query.searchesPayload() && result == null ? searchBusy ? R.string.osservio_busy : R.string.osservio_ui_searching : count() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty);
         footer.setVisibility(indices.isEmpty() ? VISIBLE : GONE);
         long time = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
@@ -122,6 +128,8 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         boolean loss = logs != null ? logs.omittedEventCount > 0 || logs.sourceEvictedCount > 0 || logs.sourceEvictedDetails > 0
             : http != null ? http.omittedEventCount > 0 || http.sourceEvictedEvents > 0 || http.sourceEvictedBodies > 0
             : sockets.omittedEventCount > 0 || sockets.sourceEvictedEvents > 0 || sockets.sourceEvictedPayloads > 0;
+        String activity = InspectorSearchFeedback.activity(getContext(), result, query.searchesPayload() && (result == null || !result.complete), false);
+        if (activity != null) note += "\n" + (searchBusy ? getContext().getString(R.string.osservio_busy) : activity);
         if (loss) note += "\n" + getContext().getString(R.string.osservio_ui_retention_loss);
         if (result != null && (result.unavailable > 0 || result.truncated > 0 || result.limited)) note += "\n" + getContext().getString(R.string.osservio_ui_search_partial);
         header.status.setText(note); header.setPaused(false); rows.notifyDataSetChanged();
@@ -141,7 +149,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         detail.setOnDismissListener(ignored -> detail = null); detail.show();
     }
     void dismissDialogs() { if (InspectorNavigation.owns(getContext())) return; if (detail != null) detail.dismiss(); }
-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (query.searchesPayload() && result == null) filter(); }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (query.searchesPayload() && (result == null || !result.complete)) filter(); }
     @Override protected void onDetachedFromWindow() { cancelSearch(); dismissDialogs(); super.onDetachedFromWindow(); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView caption(String value) { return caption(() -> value); }

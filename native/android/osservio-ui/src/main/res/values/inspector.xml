@@ -126,7 +126,9 @@
     <string name="osservio_ui_field_invalid">Enter a valid JSON Pointer starting with /, with at most 16 components. Duration must be a nonnegative integer.</string>
     <string name="osservio_ui_duration">Minimum HTTP duration (ms)</string>
     <string name="osservio_ui_searching">Searching retained content…</string>
-    <string name="osservio_ui_search_partial">Results cover searched content only: some content is unavailable, truncated, or beyond the search budget.</string>
+    <string name="osservio_ui_search_partial">Some retained content is unavailable, truncated, or too large to inspect.</string>
+    <string name="osservio_ui_search_progress">Searching records: %1$d / %2$d</string>
+    <string name="osservio_ui_search_paused">Search paused · Records checked: %1$d / %2$d</string>
     <string name="osservio_ui_retention_loss">Some history was discarded by retention or rate limits</string>
     <string name="osservio_ui_remove_filter">Remove this condition</string>
     <string name="osservio_ui_connection_context">View records for this connection</string>

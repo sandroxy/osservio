@@ -46,6 +46,7 @@ public final class LogInspectorViewController: UITableViewController {
         style.changed()
     }
     private func relabel() {
+        cancelSearch()
         InspectorTheme.apply(self); title = InspectorLocalization.text("logs")
         inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(clear), label: "clear")
         header.search.placeholder = InspectorLocalization.text("search"); display()
@@ -75,7 +76,7 @@ public final class LogInspectorViewController: UITableViewController {
     }
     private func updateStatus() {
         var notes: [String] = []
-        if task != nil || dirty && query.searchesPayload { notes.append(InspectorLocalization.text("ui_searching")) }
+        if let activity = InspectorSearchFeedback.activity(result, running: task != nil || dirty && query.searchesPayload, paused: paused) { notes.append(activity) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
         if stale { notes.append(InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window")) }
         if (latest?.evictedCount ?? 0) > 0 || (latest?.evictedDetails ?? 0) > 0 || (recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
@@ -88,19 +89,22 @@ public final class LogInspectorViewController: UITableViewController {
         if !query.searchesPayload { events = (latest?.events ?? []).reversed().filter { query.matchesFacets($0, now: anchor) }; result = nil; dirty = false; display(); return }
         let records = (latest?.events ?? []).reversed().map(InspectorSearchRecord.log)
         let current = generation, detailsHistory = history as? any LogDetailsHistory
-        task = InspectorRecordSearchTask.submit(search: { cancelled in
-            InspectorRecordSearch.run(records, query: query, now: anchor, http: nil, sockets: nil, logs: detailsHistory, cancelled: cancelled)
+        let showProgress = result == nil || result?.complete == false
+        task = InspectorRecordSearchTask.submitProgressive(search: { cancelled, progress in
+            InspectorRecordSearch.run(records, query: query, now: anchor, http: nil, sockets: nil, logs: detailsHistory, cancelled: cancelled, progress: progress)
         }, completion: { [weak self] result in
             guard let self, self.generation == current else { return }
-            self.task = nil; self.result = result
-            self.events = records.compactMap { record in guard result.keys.contains(record.key), case .log(let event) = record else { return nil }; return event }
-            self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1; self.display()
+            guard result.complete || showProgress else { return }
+            if result.complete { self.task = nil; self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1 }
+            self.result = result
+            self.events = result.positions.compactMap { position in guard case .log(let event) = records[position] else { return nil }; return event }
+            self.display()
         })
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }
     private func display() {
         let span = InspectorPerformance.begin(.logApply); defer { span?.end() }
-        table.refreshFeed(rowCount: events.count)
+        table.refreshFeed(rowCount: events.count, preservingPosition: paused && result != nil)
         let count = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
         if header.count.text != count { header.count.text = count }
         let key = dirty && query.searchesPayload ? "ui_searching" : latest == nil ? attemptedRead ? "busy" : "ui_reading"
@@ -121,7 +125,13 @@ public final class LogInspectorViewController: UITableViewController {
             self.result = nil; self.events = []; self.nextSearchAt = 0; self.render()
         }
     }
-    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { paused = true; cancelSearch(); dirty = false; updateStatus() }
+    public override func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        paused = true
+        // A first search only appends older matches from its frozen window. Finish it
+        // while reading; subsequent live-window refreshes must not move the anchor.
+        if !query.searchesPayload || result?.complete == true { cancelSearch(); dirty = false }
+        updateStatus()
+    }
     public override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { resumeAtTop() } }
     public override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { resumeAtTop() }
     private func resumeAtTop() { if table.contentOffset.y + table.adjustedContentInset.top <= 1 { paused = false; refresh() } }

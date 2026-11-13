@@ -93,18 +93,20 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             rows = records.filter { $0.matchesFacets(query, now: anchor) }; result = nil; dirty = false; display(); return
         }
         let requestHistory = http?.history, socketHistory = sockets?.history, current = generation
-        task = InspectorRecordSearchTask.submit(search: { cancelled in
-            InspectorRecordSearch.run(records, query: query, now: anchor, http: requestHistory, sockets: socketHistory, cancelled: cancelled)
+        let showProgress = result == nil || result?.complete == false
+        task = InspectorRecordSearchTask.submitProgressive(search: { cancelled, progress in
+            InspectorRecordSearch.run(records, query: query, now: anchor, http: requestHistory, sockets: socketHistory, cancelled: cancelled, progress: progress)
         }, completion: { [weak self] result in
             guard let self, self.generation == current else { return }
-            self.task = nil; self.result = result; self.rows = records.filter { result.keys.contains($0.key) }
-            self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1; self.display()
+            guard result.complete || showProgress else { return }
+            if result.complete { self.task = nil; self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1 }
+            self.result = result; self.rows = result.positions.map { records[$0] }; self.display()
         })
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }
     private func updateStatus() {
         var notes: [String] = []
-        if task != nil || dirty && query.searchesPayload { notes.append(InspectorLocalization.text("ui_searching")) }
+        if let activity = InspectorSearchFeedback.activity(result, running: task != nil || dirty && query.searchesPayload, paused: paused) { notes.append(activity) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
         if staleHTTP || staleSockets { notes.append(InspectorLocalization.text("ui_previous_window")) }
         if (latestHTTP?.evictedEvents ?? 0) > 0 || (latestHTTP?.evictedBodies ?? 0) > 0
@@ -116,7 +118,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     }
     private func display() {
         let span = InspectorPerformance.begin(.networkApply); defer { span?.end() }
-        table.refreshFeed(rowCount: rows.count)
+        table.refreshFeed(rowCount: rows.count, preservingPosition: paused && result != nil)
         let count = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
         if header.count.text != count { header.count.text = count }
         let active = http?.recorder.captureController.status()?.debugEnabled == true || sockets?.recorder.captureController.status()?.debugEnabled == true
@@ -189,7 +191,11 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             self.result = nil; self.rows = []; self.nextSearchAt = 0; self.search()
         }
     }
-    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { paused = true; cancelSearch(); dirty = false; updateStatus() }
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        paused = true
+        if !query.searchesPayload || result?.complete == true { cancelSearch(); dirty = false }
+        updateStatus()
+    }
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) { if !decelerate { resumeAtTop() } }
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { resumeAtTop() }
     private func resumeAtTop() { if table.contentOffset.y + table.adjustedContentInset.top <= 1 { paused = false; refresh() }; requestPreviews() }

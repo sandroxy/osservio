@@ -89,9 +89,17 @@ final class InspectorRecordPresentation {
         }
         return context.getString(key);
     }
-    static void prepareSearch(Context context, java.util.List<InspectorRecordSearch.Record> records) {
-        for (InspectorRecordSearch.Record record : records) {
+    /** Capture only resources, never an Activity or View, for cancellable worker preparation. */
+    static InspectorRecordSearch.Preparation searchPreparation(Context context, InspectorQuery query) {
+        Context resources = context.getApplicationContext().createConfigurationContext(
+            new android.content.res.Configuration(context.getResources().getConfiguration()));
+        return record -> prepareSearch(resources, record, query);
+    }
+    static void prepareSearch(Context context, InspectorRecordSearch.Record record, InspectorQuery query) {
+        if (query.searches("address")) {
             record.displayAddress = record.http != null ? address(context, record.http.url) : record.socket != null ? address(context, record.socket.url) : "";
+        }
+        if (query.searches("metadata")) {
             if (record.log != null) record.displayText = joined(record.log.level == LogLevel.WARNING ? "WARN" : record.log.level.name(),
                 record.log.isPrivate ? context.getString(R.string.osservio_ui_private_content) : "");
             else if (record.http != null) record.displayText = joined(HTTPPresentation.state(context, record.http.state),

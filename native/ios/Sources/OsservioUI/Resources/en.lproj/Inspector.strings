@@ -144,7 +144,9 @@
 
 "ui_searching" = "Searching retained content…";
 
-"ui_search_partial" = "Results cover searched content only: some content is unavailable, truncated, or beyond the search budget.";
+"ui_search_partial" = "Some retained content is unavailable, truncated, or too large to inspect.";
+"ui_search_progress" = "Searching records: %d / %d";
+"ui_search_paused" = "Search paused · Records checked: %d / %d";
 
 
 "ui_retention_loss" = "Some history was discarded by retention or rate limits";

@@ -27,10 +27,18 @@ final class InspectorTableView: UITableView {
     /// Retained windows often replace records without changing their count. Preserve
     /// UIKit's reusable cells and offscreen height estimates in that case; cells
     /// entering the viewport still bind against the current data source.
-    func refreshFeed(rowCount: Int) {
-        guard numberOfSections == 1, numberOfRows(inSection: 0) == rowCount,
-              rowCount > 0, window != nil else { reloadData(); return }
-        refreshRows(indexPathsForVisibleRows ?? [])
+    func refreshFeed(rowCount: Int, preservingPosition: Bool = false) {
+        let first = preservingPosition ? indexPathsForVisibleRows?.sorted().first : nil
+        let distance = first.map { contentOffset.y - rectForRow(at: $0).minY }
+        if numberOfSections == 1, numberOfRows(inSection: 0) == rowCount, rowCount > 0, window != nil {
+            refreshRows(indexPathsForVisibleRows ?? [])
+        } else { reloadData() }
+        if let first, let distance, first.row < rowCount {
+            UIView.performWithoutAnimation {
+                layoutIfNeeded()
+                setContentOffset(CGPoint(x: contentOffset.x, y: rectForRow(at: first).minY + distance), animated: false)
+            }
+        }
     }
 
     func refreshRows(_ positions: [IndexPath]) {

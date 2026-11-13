@@ -42,11 +42,11 @@ public final class InspectorReadabilityTest {
             assertFalse(InspectorRecordPresentation.socket(context, event, "message content", true).subtitle.contains("example.test"));
             assertNotEquals(InspectorRecordPresentation.identity(ID), InspectorRecordPresentation.identity("12345678-1234-1234-1234-123456789abd"));
             InspectorRecordSearch.Record record = new InspectorRecordSearch.Record(event);
-            InspectorRecordPresentation.prepareSearch(context, Collections.singletonList(record));
+            InspectorRecordPresentation.prepareSearch(context, record, new InspectorQuery());
             assertTrue(record.contains(context.getString(R.string.osservio_ws_incoming)));
             InspectorRecordSearch.Record hidden = new InspectorRecordSearch.Record(LogEvent.restore(ID, 2, 100,
                 LogLevel.INFO, "fixture", "[private]", true, false));
-            InspectorRecordPresentation.prepareSearch(context, Collections.singletonList(hidden));
+            InspectorRecordPresentation.prepareSearch(context, hidden, new InspectorQuery());
             assertTrue(hidden.contains(context.getString(R.string.osservio_ui_private_content)));
             assertFalse(hidden.contains("discarded secret"));
         });

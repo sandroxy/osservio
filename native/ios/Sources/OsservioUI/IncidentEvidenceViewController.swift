@@ -12,6 +12,7 @@ final class IncidentEvidenceViewController: UITableViewController {
     private let header = InspectorFeedHeader(compact: true)
     private var query = InspectorQuery()
     private var indices: [Int] = []
+    private var availableCount = 0
     private var result: InspectorRecordSearch.Result?
     private var searchBusy = false
     private var task: InspectorRecordSearchTask?
@@ -52,20 +53,29 @@ final class IncidentEvidenceViewController: UITableViewController {
     private func render() {
         generation += 1; task?.cancel(); task = nil; pending?.cancel(); result = nil; searchBusy = false
         let records = records, query = query, now = observedAt
-        indices = records.indices.reversed().filter { inScope($0) && records[$0].matchesFacets(query, now: now) }
+        let scopedIndices = records.indices.reversed().filter(inScope)
+        availableCount = scopedIndices.count
+        indices = query.searchesPayload ? [] : scopedIndices.filter { records[$0].matchesFacets(query, now: now) }
         if query.searchesPayload {
             indices = []; let current = generation, payloads = payloads
-            let scopedRecords = records.indices.reversed().filter(inScope).map { records[$0] }
+            let scopedRecords = scopedIndices.map { records[$0] }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, current == self.generation else { return }
-                self.task = InspectorRecordSearchTask.submit(search: { cancelled in
-                    InspectorRecordSearch.run(scopedRecords, query: query, now: now, http: nil, sockets: nil, savedPayloads: payloads, cancelled: cancelled)
+                self.task = InspectorRecordSearchTask.submitProgressive(search: { cancelled, progress in
+                    InspectorRecordSearch.run(scopedRecords, query: query, now: now, http: nil, sockets: nil, savedPayloads: payloads, cancelled: cancelled, progress: progress)
                 }, completion: { [weak self] result in
                     guard let self, current == self.generation else { return }
-                    self.task = nil; self.result = result
-                    self.indices = records.indices.reversed().filter { result.keys.contains(records[$0].key) }; self.display()
+                    if result.complete { self.task = nil }
+                    self.result = result
+                    self.indices = result.positions.map { scopedIndices[$0] }; self.display()
                 })
-                if self.task == nil { self.searchBusy = true; self.display() }
+                if self.task == nil {
+                    self.searchBusy = true; self.display()
+                    let retry = DispatchWorkItem { [weak self] in
+                        guard let self, current == self.generation, self.viewIfLoaded?.window != nil else { return }; self.render()
+                    }
+                    self.pending = retry; DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: retry)
+                }
             }
             pending = work; DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
         }
@@ -78,7 +88,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         case .webSockets: title = connectionID == nil ? "WebSocket" : InspectorLocalization.text("ui_connection_records")
         }
         var notes = [InspectorLocalization.text("ui_evidence_saved") + " · " + InspectorValuePresentation.eventTime(observedAt, full: true)]
-        if query.searchesPayload && result == nil { notes.append(InspectorLocalization.text(searchBusy ? "busy" : "ui_searching")) }
+        if let activity = InspectorSearchFeedback.activity(result, running: query.searchesPayload && result?.complete != true) { notes.append(searchBusy ? InspectorLocalization.text("busy") : activity) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }
         switch evidence {
         case .logs(let value): if value.omittedEventCount > 0 || value.sourceEvictedCount > 0 || value.sourceEvictedDetails > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
@@ -88,8 +98,8 @@ final class IncidentEvidenceViewController: UITableViewController {
         header.status.text = notes.joined(separator: "\n")
         header.search.placeholder = InspectorLocalization.text("ui_search_saved")
         header.relabel(paused: false, query: query)
-        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), indices.count, records.indices.filter(inScope).count)
-        table.reloadData()
+        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), indices.count, availableCount)
+        table.refreshFeed(rowCount: indices.count, preservingPosition: result != nil)
         table.setEmptyState(indices.isEmpty ? InspectorTheme.empty(query.searchesPayload && result == nil ? searchBusy ? "busy" : "ui_searching" : records.isEmpty ? "incident_evidence_empty" : "ui_filtered_empty") : nil)
     }
     @objc private func showFilters() {

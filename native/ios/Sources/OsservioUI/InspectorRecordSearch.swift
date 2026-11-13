@@ -16,9 +16,9 @@ enum InspectorSearchRecord: Sendable {
     func contains(_ text: String) -> Bool { text.isEmpty || match(text, scope: "all") != nil }
     func match(_ text: String, scope: String) -> Match? {
         guard !text.isEmpty else { return nil }
-        func find(_ field: String, _ source: String, _ values: [String]) -> Match? {
+        func find(_ field: String, _ source: String, _ values: @autoclosure () -> [String]) -> Match? {
             guard scope == "all" || scope == field else { return nil }
-            return values.first { InspectorQuery.contains(text, in: $0) }.map { Match(source: source, text: $0) }
+            return values().first { InspectorQuery.contains(text, in: $0) }.map { Match(source: source, text: $0) }
         }
         func headers(_ values: [HTTPHeader], _ source: String) -> Match? {
             guard scope == "all" || scope == "headers" else { return nil }
@@ -56,9 +56,12 @@ enum InspectorSearchRecord: Sendable {
 
 /// On-demand search of sanitized retained evidence, never a host stream. No body index is kept.
 enum InspectorRecordSearch {
-    static let maximumRecords = 4_000, maximumUnits = 2_097_152
+    static let maximumUnits = InspectorJSONDocument.maximumUnits
     struct Result {
         var keys: Set<String> = []
+        var positions: [Int] = []
+        var scanned = 0, total = 0
+        var complete = true
         var previews: [String: String] = [:]
         var previewSources: [String: String] = [:]
         var unavailable = 0, truncated = 0
@@ -70,49 +73,69 @@ enum InspectorRecordSearch {
     }
     static func run(_ records: [InspectorSearchRecord], query: InspectorQuery, now: Int64,
                     http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?,
-                    savedPayloads: [String: IncidentPayload]? = nil, logs: (any LogDetailsHistory)? = nil, unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool) -> Result? {
-        var result = Result(), spent = 0
-        let started = DispatchTime.now().uptimeNanoseconds
+                    savedPayloads: [String: IncidentPayload]? = nil, logs: (any LogDetailsHistory)? = nil, unitLimit: Int = maximumUnits, cancelled: @escaping () -> Bool,
+                    progress: (Result) -> Void = { _ in }) -> Result? {
+        var result = Result(); result.total = records.count; result.complete = false
+        var sliceStart = DispatchTime.now().uptimeNanoseconds, publishedAt: UInt64 = 0, sliceCount = 0
         for (position, record) in records.enumerated() {
             if cancelled() { return nil }
-            if position >= maximumRecords || DispatchTime.now().uptimeNanoseconds - started > 750_000_000 { result.limited = true; break }
-            guard record.matchesFacets(query, now: now) else { continue }
-            let hit = record.match(query.text, scope: query.searchScope)
-            let metadata = query.text.isEmpty || hit != nil
-            let incompleteHeaders = query.searches("headers") && record.headersLimited
-            if incompleteHeaders { result.truncated += 1 }
-            if !query.excludedText.isEmpty && record.match(query.excludedText, scope: query.searchScope) != nil { continue }
-            if let hit { result.previews[record.key] = preview(hit.text, term: query.text); result.previewSources[record.key] = hit.source }
-            if metadata && query.fieldPath.isEmpty && query.excludedText.isEmpty { result.keys.insert(record.key); continue }
-            if spent >= unitLimit { result.limited = true; result.previews[record.key] = nil; result.previewSources[record.key] = nil; continue }
-            var matched = metadata && query.fieldPath.isEmpty, excluded = false, exclusionUnknown = incompleteHeaders
-            for payload in payloads(record, query: query, http: http, sockets: sockets, saved: savedPayloads, logs: logs) {
-                if cancelled() { return nil }
-                guard let text = payload.text else { result.unavailable += 1; exclusionUnknown = exclusionUnknown || query.searches(payload.scope); continue }
-                let count = text.utf16.count
-                guard count <= InspectorJSONDocument.maximumUnits, count <= unitLimit - spent else { result.limited = true; exclusionUnknown = exclusionUnknown || query.searches(payload.scope); continue }
-                spent += count
-                if payload.truncated { result.truncated += 1; exclusionUnknown = exclusionUnknown || query.searches(payload.scope) }
-                if query.searches(payload.scope) && !query.excludedText.isEmpty && InspectorQuery.contains(query.excludedText, in: text) { excluded = true; break }
-                var fieldMatches = true
-                if !query.fieldPath.isEmpty {
-                    if payload.truncated { fieldMatches = false }
-                    else {
-                        switch InspectorJSONField.matches(text, pointer: query.fieldPath, value: query.fieldValue, cancelled: cancelled) {
-                        case .yes: break
-                        case .no: fieldMatches = false
-                        case .unavailable: fieldMatches = false; result.unavailable += 1
-                        }
+            if match(record, query: query, now: now, http: http, sockets: sockets,
+                     savedPayloads: savedPayloads, logs: logs, unitLimit: unitLimit, cancelled: cancelled, result: &result) {
+                result.keys.insert(record.key); result.positions.append(position)
+            }
+            result.scanned = position + 1; sliceCount += 1
+            let tick = DispatchTime.now().uptimeNanoseconds
+            if sliceCount >= 256 || tick - sliceStart >= 8_000_000 {
+                if publishedAt == 0 || tick - publishedAt >= 100_000_000 {
+                    if cancelled() { return nil }; progress(result); publishedAt = tick
+                }
+                // Cooperate with host work without abandoning the rest of the retained window.
+                Thread.sleep(forTimeInterval: 0.001)
+                sliceStart = DispatchTime.now().uptimeNanoseconds; sliceCount = 0
+            }
+        }
+        result.complete = true
+        return cancelled() ? nil : result
+    }
+    private static func match(_ record: InspectorSearchRecord, query: InspectorQuery, now: Int64,
+                          http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?,
+                          savedPayloads: [String: IncidentPayload]?, logs: (any LogDetailsHistory)?,
+                          unitLimit: Int, cancelled: @escaping () -> Bool, result: inout Result) -> Bool {
+        guard record.matchesFacets(query, now: now) else { return false }
+        let hit = record.match(query.text, scope: query.searchScope)
+        let metadata = query.text.isEmpty || hit != nil
+        let incompleteHeaders = query.searches("headers") && record.headersLimited
+        if incompleteHeaders { result.truncated += 1 }
+        if !query.excludedText.isEmpty && record.match(query.excludedText, scope: query.searchScope) != nil { return false }
+        if let hit { result.previews[record.key] = preview(hit.text, term: query.text); result.previewSources[record.key] = hit.source }
+        if metadata && query.fieldPath.isEmpty && query.excludedText.isEmpty { return true }
+        var matched = metadata && query.fieldPath.isEmpty, excluded = false, exclusionUnknown = incompleteHeaders
+        for payload in payloads(record, query: query, http: http, sockets: sockets, saved: savedPayloads, logs: logs) {
+            if cancelled() { return false }
+            guard let text = payload.text else { result.unavailable += 1; exclusionUnknown = exclusionUnknown || query.searches(payload.scope); continue }
+            let count = text.utf16.count
+            guard count <= InspectorJSONDocument.maximumUnits, count <= unitLimit else { result.limited = true; exclusionUnknown = exclusionUnknown || query.searches(payload.scope); continue }
+            if payload.truncated { result.truncated += 1; exclusionUnknown = exclusionUnknown || query.searches(payload.scope) }
+            if query.searches(payload.scope) && !query.excludedText.isEmpty && InspectorQuery.contains(query.excludedText, in: text) { excluded = true; break }
+            var fieldMatches = true
+            if !query.fieldPath.isEmpty {
+                if payload.truncated { fieldMatches = false }
+                else {
+                    switch InspectorJSONField.matches(text, pointer: query.fieldPath, value: query.fieldValue, cancelled: cancelled) {
+                    case .yes: break
+                    case .no: fieldMatches = false
+                    case .unavailable: fieldMatches = false; result.unavailable += 1
                     }
                 }
-                if fieldMatches && (metadata || query.searches(payload.scope) && InspectorQuery.contains(query.text, in: text)) {
-                    matched = true
-                    if result.previews[record.key] == nil { result.previews[record.key] = preview(text, term: query.text); result.previewSources[record.key] = payload.source }
-                }
             }
-            if matched && !excluded && (query.excludedText.isEmpty || !exclusionUnknown) { result.keys.insert(record.key) } else { result.previews[record.key] = nil; result.previewSources[record.key] = nil }
+            if fieldMatches && (metadata || query.searches(payload.scope) && InspectorQuery.contains(query.text, in: text)) {
+                matched = true
+                if result.previews[record.key] == nil { result.previews[record.key] = preview(text, term: query.text); result.previewSources[record.key] = payload.source }
+            }
         }
-        return cancelled() ? nil : result
+        if matched && !excluded && (query.excludedText.isEmpty || !exclusionUnknown) { return true }
+        result.previews[record.key] = nil; result.previewSources[record.key] = nil
+        return false
     }
     private static func payloads(_ record: InspectorSearchRecord, query: InspectorQuery, http: (any HTTPHistory)?, sockets: (any WebSocketHistory)?, saved: [String: IncidentPayload]?, logs: (any LogDetailsHistory)?) -> [Payload] {
         switch record {
@@ -169,21 +192,44 @@ final class InspectorRecordSearchTask: Operation, @unchecked Sendable {
         let value = OperationQueue(); value.name = "com.sandrox.osservio.record-search"
         value.maxConcurrentOperationCount = 1; value.qualityOfService = .userInitiated; return value
     }()
-    private let search: (@escaping () -> Bool) -> InspectorRecordSearch.Result?
+    typealias Work = (@escaping () -> Bool, @escaping (InspectorRecordSearch.Result) -> Void) -> InspectorRecordSearch.Result?
+    private let search: Work
     private let completion: (InspectorRecordSearch.Result) -> Void
-    private init(search: @escaping (@escaping () -> Bool) -> InspectorRecordSearch.Result?, completion: @escaping (InspectorRecordSearch.Result) -> Void) {
+    private let deliveryLock = NSLock()
+    private var pendingResult: InspectorRecordSearch.Result?
+    private var deliveryScheduled = false
+    private init(search: @escaping Work, completion: @escaping (InspectorRecordSearch.Result) -> Void) {
         self.search = search; self.completion = completion
     }
     static func submit(search: @escaping (@escaping () -> Bool) -> InspectorRecordSearch.Result?, completion: @escaping (InspectorRecordSearch.Result) -> Void) -> InspectorRecordSearchTask? {
+        submitProgressive(search: { cancelled, _ in search(cancelled) }, completion: completion)
+    }
+    static func submitProgressive(search: @escaping Work, completion: @escaping (InspectorRecordSearch.Result) -> Void) -> InspectorRecordSearchTask? {
         admission.lock(); defer { admission.unlock() }
         guard worker.operationCount < 2 else { return nil }
         let task = InspectorRecordSearchTask(search: search, completion: completion); worker.addOperation(task); return task
     }
     override func main() {
         let span = InspectorPerformance.begin(.recordSearch); defer { span?.end() }
-        guard !isCancelled, let result = search({ [weak self] in self?.isCancelled ?? true }), !isCancelled else { return }
+        guard !isCancelled, let result = search({ [weak self] in self?.isCancelled ?? true }, { [weak self] in self?.publish($0) }), !isCancelled else { return }
+        publish(result)
+    }
+    private func publish(_ result: InspectorRecordSearch.Result) {
+        deliveryLock.lock()
+        guard !isCancelled else { deliveryLock.unlock(); return }
+        pendingResult = result
+        guard !deliveryScheduled else { deliveryLock.unlock(); return }
+        deliveryScheduled = true; deliveryLock.unlock()
         DispatchQueue.main.async { [weak self] in
-            guard let self, !self.isCancelled else { return }; self.completion(result)
+            guard let self else { return }
+            self.deliveryLock.lock()
+            let value = self.pendingResult; self.pendingResult = nil; self.deliveryScheduled = false
+            self.deliveryLock.unlock()
+            if !self.isCancelled, let value { self.completion(value) }
         }
+    }
+    override func cancel() {
+        super.cancel()
+        deliveryLock.lock(); pendingResult = nil; deliveryLock.unlock()
     }
 }

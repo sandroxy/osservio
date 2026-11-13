@@ -17,7 +17,7 @@ import java.util.Set;
 
 /** Searches sanitized retained evidence on demand. No host streams or persistent body index. */
 final class InspectorRecordSearch {
-    static final int MAX_RECORDS = 4_000, MAX_UNITS = 2_097_152;
+    static final int MAX_UNITS = InspectorJsonDocument.MAX_UNITS;
     static final class Record {
         String displayText = "", displayAddress = "";
         final LogEvent log;
@@ -72,11 +72,22 @@ final class InspectorRecordSearch {
     }
     static final class Result {
         final Set<String> keys = new HashSet<>();
+        final List<Integer> positions = new ArrayList<>();
+        int scanned, total;
+        boolean complete = true;
         final Map<String, String> previews = new HashMap<>();
         final Map<String, String> previewSources = new HashMap<>();
         int unavailable, truncated;
         boolean limited;
+        Result copy() {
+            Result copy = new Result(); copy.keys.addAll(keys); copy.positions.addAll(positions);
+            copy.previews.putAll(previews); copy.previewSources.putAll(previewSources);
+            copy.scanned = scanned; copy.total = total; copy.complete = complete;
+            copy.unavailable = unavailable; copy.truncated = truncated; copy.limited = limited; return copy;
+        }
     }
+    interface Preparation { void prepare(Record record); }
+    interface Progress { void publish(Result result); }
     private static final class Payload {
         final String text;
         final boolean truncated; final String source;
@@ -99,47 +110,73 @@ final class InspectorRecordSearch {
     }
     static Result run(List<Record> records, InspectorQuery query, long now, HTTPHistory http, WebSocketHistory sockets,
                       Map<String, IncidentPayload> saved, com.sandrox.osservio.core.LogDetailsHistory logs, int unitLimit, InspectorJsonDocument.Cancellation cancelled) {
-        Result result = new Result(); int spent = 0; long started = System.nanoTime();
+        return run(records, query, now, http, sockets, saved, logs, unitLimit, cancelled, record -> { }, result -> { });
+    }
+    static Result run(List<Record> records, InspectorQuery query, long now, HTTPHistory http, WebSocketHistory sockets,
+                      Map<String, IncidentPayload> saved, com.sandrox.osservio.core.LogDetailsHistory logs, int unitLimit,
+                      InspectorJsonDocument.Cancellation cancelled, Preparation preparation, Progress progress) {
+        Result result = new Result(); result.total = records.size(); result.complete = false;
+        long sliceStart = System.nanoTime(), publishedAt = 0; int sliceCount = 0;
         for (int position = 0; position < records.size(); position++) {
             if (cancelled.isCancelled()) return null;
-            if (position >= MAX_RECORDS || System.nanoTime() - started > 750_000_000L) { result.limited = true; break; }
             Record record = records.get(position);
-            if (!record.matchesFacets(query, now)) continue;
-            Match hit = record.match(query.text, query.searchScope());
-            boolean metadata = query.text.isEmpty() || hit != null;
-            boolean incompleteHeaders = query.searches("headers") && record.headersLimited();
-            if (incompleteHeaders) result.truncated++;
-            if (!query.excludedText.isEmpty() && record.match(query.excludedText, query.searchScope()) != null) continue;
-            if (hit != null) { result.previews.put(record.key(), preview(hit.text, query.text)); result.previewSources.put(record.key(), hit.source); }
-            if (metadata && query.fieldPath.isEmpty() && query.excludedText.isEmpty()) { result.keys.add(record.key()); continue; }
-            if (spent >= unitLimit) { result.limited = true; result.previews.remove(record.key()); result.previewSources.remove(record.key()); continue; }
-            boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = incompleteHeaders;
-            for (Payload payload : payloads(record, query, http, sockets, saved, logs)) {
-                if (cancelled.isCancelled()) return null;
-                String text = payload.text;
-                if (text == null) { result.unavailable++; exclusionUnknown |= query.searches(payload.scope()); continue; }
-                int count = text.length();
-                if (count > InspectorJsonDocument.MAX_UNITS || count > unitLimit - spent) { result.limited = true; exclusionUnknown |= query.searches(payload.scope()); continue; }
-                spent += count;
-                if (payload.truncated) { result.truncated++; exclusionUnknown |= query.searches(payload.scope()); }
-                if (query.searches(payload.scope()) && !query.excludedText.isEmpty() && InspectorQuery.hasText(text, query.excludedText)) { excluded = true; break; }
-                boolean fieldMatches = true;
-                if (!query.fieldPath.isEmpty()) {
-                    if (payload.truncated) fieldMatches = false;
-                    else {
-                        InspectorJsonField.Match field = InspectorJsonField.matches(text, query.fieldPath, query.fieldValue, cancelled);
-                        fieldMatches = field == InspectorJsonField.Match.YES;
-                        if (field == InspectorJsonField.Match.UNAVAILABLE) result.unavailable++;
-                    }
-                }
-                if (fieldMatches && (metadata || query.searches(payload.scope()) && InspectorQuery.hasText(text, query.text))) {
-                    matched = true;
-                    if (!result.previews.containsKey(record.key())) { result.previews.put(record.key(), preview(text, query.text)); result.previewSources.put(record.key(), payload.source); }
+            if (record.matchesFacets(query, now)) {
+                preparation.prepare(record);
+                if (match(record, query, http, sockets, saved, logs, unitLimit, cancelled, result)) {
+                    result.keys.add(record.key()); result.positions.add(position);
                 }
             }
-            if (matched && !excluded && (query.excludedText.isEmpty() || !exclusionUnknown)) result.keys.add(record.key()); else { result.previews.remove(record.key()); result.previewSources.remove(record.key()); }
+            result.scanned = position + 1; sliceCount++;
+            long tick = System.nanoTime();
+            if (sliceCount >= 256 || tick - sliceStart >= 8_000_000L) {
+                if (publishedAt == 0 || tick - publishedAt >= 100_000_000L) {
+                    if (cancelled.isCancelled()) return null;
+                    progress.publish(result.copy()); publishedAt = tick;
+                }
+                // Yield a bounded slice to host work, then continue the same retained window.
+                try { Thread.sleep(1); } catch (InterruptedException stopped) { Thread.currentThread().interrupt(); return null; }
+                sliceStart = System.nanoTime(); sliceCount = 0;
+            }
         }
+        result.complete = true;
         return cancelled.isCancelled() ? null : result;
+    }
+    private static boolean match(Record record, InspectorQuery query, HTTPHistory http, WebSocketHistory sockets,
+                             Map<String, IncidentPayload> saved, com.sandrox.osservio.core.LogDetailsHistory logs,
+                             int unitLimit, InspectorJsonDocument.Cancellation cancelled, Result result) {
+        Match hit = record.match(query.text, query.searchScope());
+        boolean metadata = query.text.isEmpty() || hit != null;
+        boolean incompleteHeaders = query.searches("headers") && record.headersLimited();
+        if (incompleteHeaders) result.truncated++;
+        if (!query.excludedText.isEmpty() && record.match(query.excludedText, query.searchScope()) != null) return false;
+        if (hit != null) { result.previews.put(record.key(), preview(hit.text, query.text)); result.previewSources.put(record.key(), hit.source); }
+        if (metadata && query.fieldPath.isEmpty() && query.excludedText.isEmpty()) { return true; }
+        boolean matched = metadata && query.fieldPath.isEmpty(), excluded = false, exclusionUnknown = incompleteHeaders;
+        for (Payload payload : payloads(record, query, http, sockets, saved, logs)) {
+            if (cancelled.isCancelled()) return false;
+            String text = payload.text;
+            if (text == null) { result.unavailable++; exclusionUnknown |= query.searches(payload.scope()); continue; }
+            int count = text.length();
+            if (count > InspectorJsonDocument.MAX_UNITS || count > unitLimit) { result.limited = true; exclusionUnknown |= query.searches(payload.scope()); continue; }
+            if (payload.truncated) { result.truncated++; exclusionUnknown |= query.searches(payload.scope()); }
+            if (query.searches(payload.scope()) && !query.excludedText.isEmpty() && InspectorQuery.hasText(text, query.excludedText)) { excluded = true; break; }
+            boolean fieldMatches = true;
+            if (!query.fieldPath.isEmpty()) {
+                if (payload.truncated) fieldMatches = false;
+                else {
+                    InspectorJsonField.Match field = InspectorJsonField.matches(text, query.fieldPath, query.fieldValue, cancelled);
+                    fieldMatches = field == InspectorJsonField.Match.YES;
+                    if (field == InspectorJsonField.Match.UNAVAILABLE) result.unavailable++;
+                }
+            }
+            if (fieldMatches && (metadata || query.searches(payload.scope()) && InspectorQuery.hasText(text, query.text))) {
+                matched = true;
+                if (!result.previews.containsKey(record.key())) { result.previews.put(record.key(), preview(text, query.text)); result.previewSources.put(record.key(), payload.source); }
+            }
+        }
+        if (matched && !excluded && (query.excludedText.isEmpty() || !exclusionUnknown)) return true;
+        result.previews.remove(record.key()); result.previewSources.remove(record.key());
+        return false;
     }
     private static List<Payload> payloads(Record record, InspectorQuery query, HTTPHistory http, WebSocketHistory sockets, Map<String, IncidentPayload> saved, com.sandrox.osservio.core.LogDetailsHistory logs) {
         if (record.log != null) {

@@ -6,6 +6,26 @@ import XCTest
 
 final class InspectorRefreshTests: XCTestCase {
     @MainActor
+    func testSearchDeliveryCoalescesProgressAndDropsCancelledCallbacks() async throws {
+        for cancel in [false, true] {
+            var deliveries = 0
+            let produced = DispatchSemaphore(value: 0)
+            let task = try XCTUnwrap(InspectorRecordSearchTask.submitProgressive(search: { _, progress in
+                for count in 1...100 {
+                    var value = InspectorRecordSearch.Result(); value.total = 100
+                    value.scanned = count; value.complete = count == 100; progress(value)
+                }
+                produced.signal(); return nil
+            }, completion: { result in
+                XCTAssertTrue(result.complete); XCTAssertEqual(result.scanned, 100); deliveries += 1
+            }))
+            XCTAssertEqual(produced.wait(timeout: .now() + 3), .success)
+            if cancel { task.cancel(); try await assertStable { deliveries == 0 } }
+            else { try await waitUntil { deliveries == 1 } }
+            task.cancel()
+        }
+    }
+    @MainActor
     func testFeedReplacementResizesVisibleCellsAndRebindsOffscreenRows() async throws {
         let controller = UITableViewController(style: .insetGrouped)
         let table = InspectorTableView(frame: .zero, style: .insetGrouped), source = FeedSource()
@@ -27,6 +47,10 @@ final class InspectorRefreshTests: XCTestCase {
         let distant = IndexPath(row: 80, section: 0)
         table.scrollToRow(at: distant, at: .top, animated: false); table.layoutIfNeeded()
         XCTAssertTrue(table.cellForRow(at: distant)?.accessibilityLabel?.contains("updated-80") == true)
+        let beforeGrowth = try XCTUnwrap(table.cellForRow(at: distant)).convert(CGPoint.zero, to: window).y
+        source.count = 200
+        table.refreshFeed(rowCount: source.count, preservingPosition: true); table.layoutIfNeeded()
+        XCTAssertEqual(try XCTUnwrap(table.cellForRow(at: distant)).convert(CGPoint.zero, to: window).y, beforeGrowth, accuracy: 1)
         source.count = 3
         table.refreshFeed(rowCount: source.count); table.showLatest(); table.layoutIfNeeded()
         XCTAssertEqual(table.numberOfRows(inSection: 0), 3)

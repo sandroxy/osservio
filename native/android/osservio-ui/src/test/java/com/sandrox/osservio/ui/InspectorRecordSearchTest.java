@@ -15,6 +15,33 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class InspectorRecordSearchTest {
+    @Test public void entireWindowIncludesOldRecordsBeyondAggregateBudgets() {
+        String text = new String(new char[600]).replace('\0', 'x');
+        List<InspectorRecordSearch.Record> records = new java.util.ArrayList<>();
+        for (int i = 0; i < 10_000; i++) records.add(new InspectorRecordSearch.Record(LogEvent.restore(id(100), i + 1, 100,
+            LogLevel.INFO, "large-window", text + (i == 9_999 ? " needle" : ""), false, false)));
+        InspectorQuery query = new InspectorQuery(); query.text = "needle";
+        InspectorRecordSearch.Result[] first = new InspectorRecordSearch.Result[1];
+        InspectorRecordSearch.Result result = InspectorRecordSearch.run(records, query, 100, null, null, null, null,
+            InspectorRecordSearch.MAX_UNITS, () -> false, record -> { }, progress -> { if (first[0] == null) first[0] = progress; });
+        assertEquals(Collections.singletonList(9_999), result.positions); assertEquals(Collections.singleton(records.get(9_999).key()), result.keys);
+        assertEquals(10_000, result.scanned); assertEquals(10_000, result.total); assertTrue(result.complete); assertFalse(result.limited);
+        assertNotNull(first[0]); assertFalse(first[0].complete); assertTrue(first[0].scanned < result.scanned);
+        assertTrue("A progress snapshot must not mutate after delivery", first[0].keys.isEmpty());
+    }
+    @Test public void socketSearchReachesOldConnectionsAndCancellationStopsReads() {
+        History history = new History(); String text = new String(new char[600]).replace('\0', 'x') + "needle";
+        List<InspectorRecordSearch.Record> records = new java.util.ArrayList<>();
+        for (int i = 1; i <= 5_001; i++) records.add(new InspectorRecordSearch.Record(message(i, i % 7 + 10, text, history, 100)));
+        InspectorQuery query = new InspectorQuery(); query.text = "needle";
+        InspectorRecordSearch.Result result = search(records, query, history, InspectorRecordSearch.MAX_UNITS);
+        assertEquals(5_001, result.keys.size()); assertEquals(Integer.valueOf(5_000), result.positions.get(result.positions.size() - 1));
+        assertEquals(5_001, history.reads); assertFalse(result.limited);
+        history.reads = 0; boolean[] stop = {false}; int[] delivered = {0};
+        assertNull(InspectorRecordSearch.run(records, query, 100, null, history, null, null, InspectorRecordSearch.MAX_UNITS,
+            () -> stop[0], record -> { }, progress -> { delivered[0] = progress.scanned; stop[0] = true; }));
+        assertTrue(delivered[0] > 0); assertTrue(delivered[0] < records.size()); assertEquals(delivered[0], history.reads);
+    }
     @Test public void shortSearchPreviewKeepsTheWholeMessage() {
         String text = "{\"type\":\"beta\",\"data\":{\"lookup\":\"lookup-42\",\"sequence\":2}}";
         assertEquals(text, InspectorRecordSearch.preview(text, "lookup-42"));

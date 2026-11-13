@@ -144,7 +144,9 @@
 
 "ui_searching" = "正在检索已留存内容…";
 
-"ui_search_partial" = "仅显示已检索范围：部分内容不可用、被截断或超出检索预算。";
+"ui_search_partial" = "部分留存内容不可用、已截断或超过单项检索范围。";
+"ui_search_progress" = "正在检索：已检查 %d / %d 条";
+"ui_search_paused" = "检索已暂停：已检查 %d / %d 条";
 
 
 "ui_retention_loss" = "部分历史已因容量或限流被丢弃";
