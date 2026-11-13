@@ -75,6 +75,20 @@ public final class InspectorReadabilityTest {
             } finally { navigation.dispose(); capture.close(); }
         });
     }
+    @Test public void collapsedActionsIdentifyTheirOwnSection() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            InspectorDetailPage page = new InspectorDetailPage(context);
+            page.expandable(R.string.osservio_http_metrics, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details, () -> page.field("Protocol", "http/1.1"));
+            TextView toggle = text(page, context.getString(R.string.osservio_ui_show_details));
+            assertNotNull(toggle);
+            String title = context.getString(R.string.osservio_http_metrics);
+            assertEquals(title + ", " + context.getString(R.string.osservio_ui_show_details), toggle.getContentDescription());
+            assertTrue(toggle.performClick());
+            assertEquals(title + ", " + context.getString(R.string.osservio_ui_hide_details), toggle.getContentDescription());
+            assertNotNull(text(page, "http/1.1"));
+        });
+    }
     private static TextView text(View view, String value) {
         if (view.getVisibility() != View.VISIBLE) return null;
         if (view instanceof TextView && ((TextView) view).getText().toString().equals(value)) return (TextView) view;

@@ -93,9 +93,14 @@ final class InspectorDetailPage extends InspectorScroll.Page {
         target.addView(toggle, new LinearLayout.LayoutParams(-1, -2));
         appendFields.run();
         for (int index = 1; index < target.getChildCount(); index++) target.getChildAt(index).setVisibility(GONE);
-        InspectorAppearance.text(toggle, () -> getContext().getString(expanded[0] ? hide : show));
+        Runnable render = () -> {
+            String action = getContext().getString(expanded[0] ? hide : show);
+            toggle.setText(action);
+            toggle.setContentDescription(getContext().getString(title) + ", " + action);
+        };
+        InspectorAppearance.content(toggle, render); render.run();
         toggle.setOnClickListener(ignored -> {
-            expanded[0] = !expanded[0]; toggle.setText(expanded[0] ? hide : show);
+            expanded[0] = !expanded[0]; render.run();
             toggle.getCompoundDrawablesRelative()[2].setLevel(expanded[0] ? 10000 : 0);
             for (int index = 1; index < target.getChildCount(); index++) target.getChildAt(index).setVisibility(expanded[0] ? VISIBLE : GONE);
         });
