@@ -4,6 +4,9 @@ import UIKit
 /// SDK-owned colors and presentation. Never changes a window, host defaults or UIAppearance.
 @MainActor
 enum InspectorTheme {
+    static var allowsTransparentMaterial: Bool {
+        !UIAccessibility.isReduceTransparencyEnabled && !UIAccessibility.isDarkerSystemColorsEnabled
+    }
     static let canvas = pair(0xF5F6FA, 0x131720)
     static let surface = pair(0xFFFFFF, 0x1D2330)
     static var accent: UIColor {
@@ -56,6 +59,8 @@ final class InspectorStyleObserver: NSObject {
     init(update: @escaping () -> Void) {
         self.update = update; super.init()
         NotificationCenter.default.addObserver(self, selector: #selector(changed), name: InspectorPreferences.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(changed), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(changed), name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification, object: nil)
     }
     deinit { NotificationCenter.default.removeObserver(self) }
     @objc func changed() { update() }

@@ -1,11 +1,15 @@
 dependencies {
     api project(":osservio-core")
+    compileOnly "androidx.annotation:annotation:1.9.1"
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation project(":osservio-store")
     androidTestImplementation "androidx.test:runner:1.7.0"
     androidTestImplementation "androidx.test.ext:junit:1.3.0"
 }
 android.defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+// The library test APK must use current window behavior, without an old-target warning dialog.
+android.testOptions.targetSdk = 36
+android.defaultConfig.consumerProguardFiles "consumer-rules.pro"
 android.testOptions.unitTests.all { systemProperty "osservio.fixtures", rootProject.file("../../testing").absolutePath }
 
 // Keep the inspector's two languages available even in language-split host bundles.

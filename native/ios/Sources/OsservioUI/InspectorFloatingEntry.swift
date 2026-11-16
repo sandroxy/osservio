@@ -106,6 +106,7 @@ final class InspectorFloatingEntry: UIControl {
         image.contentMode = .center; image.isUserInteractionEnabled = false
         addSubview(image); refreshAppearance()
         NotificationCenter.default.addObserver(self, selector: #selector(refreshAppearance), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(refreshAppearance), name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification, object: nil)
     }
     @available(*, unavailable) required init?(coder: NSCoder) { return nil }
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -119,7 +120,7 @@ final class InspectorFloatingEntry: UIControl {
     @objc func refreshAppearance() {
         material?.removeFromSuperview(); material = nil
         backgroundColor = InspectorTheme.surface; image.tintColor = InspectorTheme.accent
-        if !UIAccessibility.isReduceTransparencyEnabled {
+        if InspectorTheme.allowsTransparentMaterial {
             let effect: UIVisualEffect
             #if compiler(>=6.2)
             if #available(iOS 26, *) {

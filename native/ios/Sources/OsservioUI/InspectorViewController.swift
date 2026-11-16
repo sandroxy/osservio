@@ -5,6 +5,10 @@ import UIKit
 /// Four native destinations share host-owned histories. Opening or closing never changes capture.
 @MainActor
 public final class InspectorViewController: UITabBarController, UITabBarControllerDelegate {
+    /// Controls the optional navigation material. Platform-owned controls retain their native behavior.
+    public var enhancedMaterialsEnabled = true {
+        didSet { if isViewLoaded { relabel() } }
+    }
     private let debugControl: InspectorDebugControl
     private lazy var debugLoop = InspectorRefreshLoop { [weak self] in self?.debugControl.refresh() }
     private var sections: [(UIViewController, String, String)] = []
@@ -82,7 +86,13 @@ public final class InspectorViewController: UITabBarController, UITabBarControll
     }
     private func relabel() {
         InspectorTheme.apply(self)
-        let appearance = UITabBarAppearance(); appearance.configureWithOpaqueBackground(); appearance.backgroundColor = InspectorTheme.surface
+        let appearance = UITabBarAppearance()
+        if #available(iOS 26, *), enhancedMaterialsEnabled, InspectorTheme.allowsTransparentMaterial {
+            // Let UIKit adapt navigation glass to the visible content; do not stack a custom blur.
+            appearance.configureWithDefaultBackground()
+        } else {
+            appearance.configureWithOpaqueBackground(); appearance.backgroundColor = InspectorTheme.surface
+        }
         tabBar.standardAppearance = appearance
         if #available(iOS 15, *) { tabBar.scrollEdgeAppearance = appearance }
         tabBar.tintColor = InspectorTheme.accent

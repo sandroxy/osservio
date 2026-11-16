@@ -35,6 +35,8 @@ native behavior and interaction validation. No artifacts have been published.
   behavior, OS prerequisites and explicit gaps across both platforms.
 - [Native inspector](doc/inspector.md) describes navigation, filters, content
   reading, preferences and host presentation.
+- [Inspector materials](doc/inspector-materials.md) describes navigation surfaces,
+  device admission, resource lifetime and native fallback.
 - [Architecture](doc/architecture.md) defines the intended runtime boundaries.
 - [Logging](doc/logging.md) describes the implemented native subset and limits.
 - [HTTP observation](doc/http.md) describes admission, privacy, body ownership,

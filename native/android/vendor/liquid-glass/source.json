@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/QWEA0/Liquid-Glass-Android",
+  "tag": "v2.0.11",
+  "commit": "fc6bd34fa3290638c3594cc39386f549d1316ab5",
+  "files": {
+    "GlassMaterial.kt": "98daa6161b9c9d5e55b30176af7d8663438468d3c60b8016b44fef4cc0236928",
+    "GlassLensRenderer.kt": "8d5663883f397a849a1ab6e7da4a58dcc530379f805643f60cf4fd2cc30d2d28",
+    "LiquidGlassView.kt": "7e29a8c275ce323379f4b978377b80acc61cde124528d9aa0cff81834408c66c",
+    "BackdropCapture.kt": "2b648c3a0a7f02bca7f1765560ebf9c6053f352beaa387352668a289d1258529"
+  }
+}

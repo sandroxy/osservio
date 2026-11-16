@@ -64,6 +64,7 @@ public final class InspectorView extends FrameLayout {
     private android.widget.ImageButton close;
     private final FrameLayout workspace;
     private LinearLayout tabBar;
+    private final InspectorGlassSession materials;
     private View bottomShade;
     private final LinearLayout rootPage;
     private InspectorDebugControl debugControl;
@@ -123,6 +124,7 @@ public final class InspectorView extends FrameLayout {
         this.socketRecorder = socketRecorder; this.socketHistory = socketHistory; this.environment = environment;
         this.breadcrumbRecorder = breadcrumbRecorder; this.breadcrumbHistory = breadcrumbHistory; this.breadcrumbArchive = breadcrumbArchive;
         this.incidentArchive = incidentArchive; this.exporter = exporter;
+        materials = new InspectorGlassSession(context);
         workspace = new FrameLayout(getContext());
         rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
         navigation = new InspectorNavigation(getContext(), rootPage, this, workspace);
@@ -139,9 +141,17 @@ public final class InspectorView extends FrameLayout {
         close.setVisibility(onClose == null ? INVISIBLE : VISIBLE);
     }
     void discardTransientPanels() { navigation.discardPanels(); }
-    private void updateDebugPolling() { removeCallbacks(debugTick); if (debugControl != null) debugTick.run(); }
+    private void updateDebugPolling() {
+        removeCallbacks(debugTick); if (debugControl != null) debugTick.run();
+        if (tabBar instanceof InspectorGlassBar) ((InspectorGlassBar) tabBar).setMaterialVisible(!navigation.coversNavigation());
+    }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); updateDebugPolling(); }
-    void disposePresentation() { navigation.dispose(); appearanceListener = null; onClose = null; }
+    void disposePresentation() { materials.dispose(); navigation.dispose(); appearanceListener = null; onClose = null; }
+    /** Controls optional navigation refraction. Native surfaces remain available. Main thread only. */
+    public void setEnhancedMaterialsEnabled(boolean enabled) {
+        materials.setEnabled(enabled);
+        if (tabBar instanceof InspectorGlassBar) { ((InspectorGlassBar) tabBar).updateRegistration(); tabBar.invalidate(); }
+    }
     /** Immediately reports the current inspector appearance, then subsequent appearance changes. */
     public void setAppearanceListener(AppearanceListener listener) {
         appearanceListener = listener; if (listener != null) listener.changed(dark);
@@ -157,6 +167,7 @@ public final class InspectorView extends FrameLayout {
         for (int i = 0; i < pages.length; i++) pages[i] = null;
         dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext()); palette = InspectorPreferences.palette(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
+        navigation.setBackgroundColor(InspectorTheme.canvas(themed));
         InspectorToolbar bar = new InspectorToolbar(themed); rootBar = bar;
         int inset = InspectorTheme.dp(themed, 16);
         debugControl = new InspectorDebugControl(themed, logRecorder.captureController, httpRecorder.captureController,
@@ -166,7 +177,7 @@ public final class InspectorView extends FrameLayout {
         updateClose(); bar.pageActions.exit(close);
         rootPage.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(themed); rootPage.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
-        LinearLayout navigation = new LinearLayout(themed);
+        LinearLayout navigation = new InspectorGlassBar(themed, this.navigation, materials);
         tabBar = navigation;
         navigation.setBackground(InspectorTheme.shape(themed, InspectorTheme.surface(themed), 32, false));
         int spacing = InspectorTheme.dp(themed, 4); navigation.setPadding(spacing, spacing, spacing, spacing);

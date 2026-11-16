@@ -19,6 +19,12 @@ final class InspectorNavigation extends FrameLayout {
     private int selection;
     private boolean disposing;
     private int bottomInset;
+    private Runnable materialInvalidation;
+    void setMaterialInvalidation(Runnable callback) { materialInvalidation = callback; }
+    @Override public void onDescendantInvalidated(View child, View target) {
+        if (android.os.Build.VERSION.SDK_INT >= 26) super.onDescendantInvalidated(child, target);
+        if (materialInvalidation != null) materialInvalidation.run();
+    }
     private final android.graphics.Rect contentBounds = new android.graphics.Rect();
 
     void setBottomInset(int value) {
@@ -65,6 +71,10 @@ final class InspectorNavigation extends FrameLayout {
     void setChanged(Runnable action) { changed = action; }
     void select(int tab) { selection = tab; reconcile(); }
     boolean isAtRoot() { return stacks.get(selection).isEmpty(); }
+    boolean coversNavigation() {
+        List<InspectorScreen> active = stacks.get(selection);
+        return !active.isEmpty() && active.get(active.size() - 1).coversTabs();
+    }
     void setMinimize(Runnable action) {
         minimize = action;
         for (List<InspectorScreen> stack : stacks) for (InspectorScreen screen : stack) screen.updateMinimize();

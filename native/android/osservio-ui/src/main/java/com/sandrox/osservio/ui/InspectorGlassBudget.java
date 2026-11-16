@@ -1,0 +1,23 @@
+package com.sandrox.osservio.ui;
+
+import java.util.IdentityHashMap;
+import java.util.Map;
+
+/** Admission accounts for recording margins, before allocating GPU resources. Not a byte cap. */
+final class InspectorGlassBudget {
+    static final int MARGIN = 32;
+    static final long MAX_SURFACE_PIXELS = 786_432;
+    static final long MAX_SESSION_PIXELS = 1_048_576;
+    private final Map<Object, Long> reservations = new IdentityHashMap<>();
+    private long used;
+    long pixels() { return used; }
+    boolean reserve(Object surface, int width, int height) {
+        long w = (long) width + 2 * MARGIN, h = (long) height + 2 * MARGIN;
+        if (width <= 0 || height <= 0 || w > 4096 || h > 4096) return false;
+        long required = w * h, previous = reservations.containsKey(surface) ? reservations.get(surface) : 0;
+        if (required > MAX_SURFACE_PIXELS || required > MAX_SESSION_PIXELS - pixels() + previous) return false;
+        if (required != previous) { reservations.put(surface, required); used += required - previous; }
+        return true;
+    }
+    void release(Object surface) { Long previous = reservations.remove(surface); if (previous != null) used -= previous; }
+}
