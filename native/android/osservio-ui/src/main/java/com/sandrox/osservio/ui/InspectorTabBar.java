@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.Rect;
 import android.os.Build;
 import android.view.Choreographer;
 import android.view.MotionEvent;
@@ -29,6 +30,7 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
     private final Paint focus = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final PathInterpolator easeOut = new PathInterpolator(0, 0, .58f, 1);
     private final int[] location = new int[2], origin = new int[2];
+    private final Rect visibleWindow = new Rect();
     private int x, y, sourceX, sourceY, sourceWidth, sourceHeight;
     private long sourceVersion, inkVersion, frameTime;
     private boolean materialVisible = true, registered, capturing, ready, posted, initialized, opticalElevation;
@@ -99,6 +101,7 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
     }
     private boolean geometryChanged() {
         getLocationOnScreen(location); source.getLocationOnScreen(origin);
+        getWindowVisibleDisplayFrame(visibleWindow);
         if (x != location[0] || y != location[1] || sourceX != origin[0] || sourceY != origin[1]
             || sourceWidth != source.getWidth() || sourceHeight != source.getHeight()) {
             x = location[0]; y = location[1]; sourceX = origin[0]; sourceY = origin[1];
@@ -184,7 +187,12 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
         float fraction = Math.max(-1, Math.min(1, (float) motion.panel.value / getWidth()));
         return dp(4) * Math.signum(fraction) * easeOut.getInterpolation(Math.abs(fraction));
     }
-    float lensX() { return dp(4) + visualPosition() * tabWidth() + panelOffset(); }
+    float lensX() {
+        float desired = dp(4) + visualPosition() * tabWidth() + panelOffset();
+        if (visibleWindow.isEmpty()) return desired;
+        return InspectorTabGeometry.constrainLens(desired, tabWidth(), lensScaleX(),
+            visibleWindow.left - x + dp(1), visibleWindow.right - x - dp(1));
+    }
     float lensScaleX() { return (float) motion.scaleX.value / (1 - Math.max(-.2f, Math.min(.2f, (float) motion.speed.value / 10 * .75f))); }
     float lensScaleY() { return (float) motion.scaleY.value * (1 - Math.max(-.2f, Math.min(.2f, (float) motion.speed.value / 10 * .25f))); }
     long sourceVersion() { return sourceVersion; }

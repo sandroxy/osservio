@@ -126,6 +126,40 @@ public final class InspectorTabMaterialTest {
             }
         } finally { finish(host); }
     }
+    @Test public void partialInitializationReleasesNodesAndLocksShaderOrAllocationFailure() throws Exception {
+        assumeTrue(android.os.Build.VERSION.SDK_INT >= 33);
+        for (boolean allocationFailure : new boolean[] {false, true}) {
+            InspectorNavigationMaterialActivity host = start();
+            try {
+                await(() -> host.bar().materialReady());
+                int[] compiled = {0}; InspectorTabRenderer[] renderer = new InspectorTabRenderer[1];
+                main(() -> {
+                    host.bar().release();
+                    renderer[0] = new InspectorTabRenderer(program -> {
+                        if (++compiled[0] == 2) {
+                            if (allocationFailure) throw new OutOfMemoryError("test-owned material allocation failure");
+                            return new android.graphics.RuntimeShader("invalid optical program");
+                        }
+                        return new android.graphics.RuntimeShader(program);
+                    });
+                    host.bar().renderer = renderer[0]; host.bar().invalidate();
+                });
+                await(() -> host.bar().renderer == null);
+                java.lang.reflect.Field resources = InspectorTabRenderer.class.getDeclaredField("nodes");
+                resources.setAccessible(true);
+                main(() -> {
+                    try { assertTrue(((java.util.List<?>) resources.get(renderer[0])).isEmpty()); }
+                    catch (IllegalAccessException error) { throw new AssertionError(error); }
+                    assertEquals(2, compiled[0]); assertFalse(host.bar().materialReady());
+                    host.bar().getChildAt(2).performClick(); assertEquals(2, host.bar().motion.selected());
+                    host.presentation.collapse();
+                });
+                await(() -> !host.bar().isAttachedToWindow()); main(host.presentation::expand);
+                await(() -> host.bar().hasWindowFocus());
+                main(() -> { assertNull(host.bar().renderer); assertEquals(2, compiled[0]); assertEquals(2, host.bar().motion.selected()); });
+            } finally { finish(host); }
+        }
+    }
     @Test public void pointerHandoffDoesNotJumpOrCommitUntilRelease() throws Exception {
         InspectorNavigationMaterialActivity host = start();
         try {

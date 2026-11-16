@@ -36,6 +36,11 @@ The interactive shader receives opaque white; Paint alpha premultiplies the
 additive light. A translucent white uniform would incorrectly overexpose dark
 content. Blur effects are reused until their radius changes. Source and colored
 label recordings are reused while their relevant inputs remain unchanged.
+The page source is rasterized into its existing bounded RenderNode at stable scale
+before the optical transforms, avoiding scale-dependent background glyph caches.
+Dynamic content invalidates this source normally; no frame is frozen. The lens's
+final scaled outline is constrained to the visible window, including in RTL,
+without changing spring or optical constants.
 
 `InspectorTabMotion` uses mass-one analytic springs: position and press
 damping/stiffness 1/1000; horizontal scale .6/250; vertical scale .7/250;

@@ -37,7 +37,13 @@ DecorView, a WebView or a SurfaceView. Source invalidation, scroll and geometry
 changes update the recording. Geometry checks run on existing pre-draw events;
 they do not schedule a continuous animation. Shader compilation occurs once per
 active renderer, and optical configuration changes only when its inputs change.
-No forced hardware View layers or software image capture are used.
+The source RenderNode has a compositing layer, so background glyphs rasterize at
+stable scale before optical transforms. Content changes still re-record this
+source; it is not a frozen screenshot. The fixed vibrancy/blur chain is reused
+while only refraction inputs change. No host View layer or software image capture
+is forced. Detachment clears effects, compositing layers and display lists.
+Platform glyph/texture caches can outlive these resources and remain part of
+process memory; the SDK does not force global cache eviction or garbage collection.
 
 The [navigation recipe](../native/android/vendor/backdrop/README.md) composes a
 base, colored native labels and a moving lens. A tap selects its destination

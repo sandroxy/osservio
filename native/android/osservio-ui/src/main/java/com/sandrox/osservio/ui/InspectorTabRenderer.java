@@ -24,6 +24,8 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         1.3935f, -.3575f, -.036f, 0, 0, -.1065f, 1.1425f, -.036f, 0, 0,
         -.1065f, -.3575f, 1.464f, 0, 0, 0, 0, 0, 1, 0
     });
+    interface ShaderCompiler { RuntimeShader compile(String program); }
+    private final ShaderCompiler shaders;
     private final List<RenderNode> nodes = new ArrayList<>();
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint erase = new Paint(Paint.ANTI_ALIAS_FLAG), plus = new Paint();
@@ -34,8 +36,8 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
     private float inkPress = -1, inkOffset, inkPosition, inkGlow;
     private int sourceWidth, sourceHeight;
 
-    @DoNotInline static InspectorTabBar.Renderer create() { return new InspectorTabRenderer(); }
-    private InspectorTabRenderer() { erase.setBlendMode(BlendMode.CLEAR); plus.setBlendMode(BlendMode.PLUS); }
+    @DoNotInline static InspectorTabBar.Renderer create() { return new InspectorTabRenderer(RuntimeShader::new); }
+    InspectorTabRenderer(ShaderCompiler shaders) { this.shaders = shaders; erase.setBlendMode(BlendMode.CLEAR); plus.setBlendMode(BlendMode.PLUS); }
     private RenderNode node(String name) {
         RenderNode result = new RenderNode(name); result.setClipToBounds(false); nodes.add(result); return result;
     }
@@ -44,6 +46,9 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         float inkHeight = height - bar.dp(8), progress = bar.motion.progress();
         if (source == null) {
             source = node("Navigation source"); ink = node("Navigation selected labels");
+            // Rasterize background text at a stable scale before optical transforms.
+            // Its display list is still re-recorded whenever the page content or geometry changes.
+            source.setUseCompositingLayer(true, null);
             base = new Surface("Navigation base", false);
             selectedInk = new Surface("Navigation labels", false);
             lens = new Surface("Navigation lens", true);
@@ -89,6 +94,7 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         final RenderNode image, outer, inner, highlight;
         final RuntimeShader refraction, highlightShader, glowShader;
         final Paint highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private RenderEffect blurredContent;
         float oldWidth = -1, oldHeight = -1, oldBlur = -1, oldBand = -1, oldAmount = -1;
         float outerBlur = -1, innerBlur = -1, highlightBlur = -1;
         int oldPadding = -1;
@@ -96,18 +102,18 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         Surface(String name, boolean dispersion) {
             image = node(name + " backdrop"); outer = node(name + " shadow");
             inner = node(name + " inner shadow"); highlight = node(name + " highlight");
-            refraction = new RuntimeShader(dispersion ? InspectorTabShaders.DISPERSION : InspectorTabShaders.REFRACTION);
-            highlightShader = new RuntimeShader(InspectorTabShaders.HIGHLIGHT);
-            glowShader = new RuntimeShader(InspectorTabShaders.INTERACTIVE);
+            refraction = shaders.compile(dispersion ? InspectorTabShaders.DISPERSION : InspectorTabShaders.REFRACTION);
+            highlightShader = shaders.compile(InspectorTabShaders.HIGHLIGHT);
+            glowShader = shaders.compile(InspectorTabShaders.INTERACTIVE);
             if (dispersion) refraction.setFloatUniform("chromaticAberration", 1);
         }
         void configure(float width, float height, float blur, float band, float amount, int padding) {
             if (width == oldWidth && height == oldHeight && blur == oldBlur && band == oldBand && amount == oldAmount && padding == oldPadding) return;
-            RenderEffect effect = null;
-            if (blur > 0) {
-                effect = RenderEffect.createColorFilterEffect(VIBRANCY);
-                effect = RenderEffect.createBlurEffect(blur, blur, effect, Shader.TileMode.CLAMP);
+            if (blur != oldBlur) {
+                blurredContent = blur > 0 ? RenderEffect.createBlurEffect(blur, blur,
+                    RenderEffect.createColorFilterEffect(VIBRANCY), Shader.TileMode.CLAMP) : null;
             }
+            RenderEffect effect = blurredContent;
             if (band > 0 && amount > 0) {
                 refraction.setFloatUniform("size", width, height); refraction.setFloatUniform("offset", -padding, -padding);
                 refraction.setFloatUniform("cornerRadii", height / 2, height / 2, height / 2, height / 2);
@@ -209,7 +215,7 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         }
     }
     @Override public void release() {
-        for (RenderNode node : nodes) { node.setRenderEffect(null); node.discardDisplayList(); }
+        for (RenderNode node : nodes) { node.setRenderEffect(null); node.setUseCompositingLayer(false, null); node.discardDisplayList(); }
         nodes.clear(); source = null; ink = null; base = null; selectedInk = null; lens = null;
     }
 }

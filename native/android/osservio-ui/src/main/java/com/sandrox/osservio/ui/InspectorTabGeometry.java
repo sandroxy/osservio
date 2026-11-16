@@ -6,6 +6,13 @@ final class InspectorTabGeometry {
     static final int SOURCE_MARGIN = 32;
     static final int MAX_EDGE = 4096;
 
+    /** Constrain the scaled outline, rather than its unscaled layout slot, to the visible window. */
+    static float constrainLens(float position, float width, float scale, float left, float right) {
+        float overflow = width * (scale - 1) / 2;
+        float minimum = left + overflow, maximum = right - width - overflow;
+        return minimum > maximum ? (left + right - width) / 2 : Math.max(minimum, Math.min(maximum, position));
+    }
+
     static boolean reserve(InspectorGlassBudget budget, Object owner, int width, int height, float density, int count) {
         if (width <= 0 || height <= 0 || Float.isNaN(density) || Float.isInfinite(density) || density <= 0 || count <= 0
             || width > MAX_EDGE || height > MAX_EDGE || height <= 8 * density || width <= 8 * density) return false;

@@ -4,6 +4,18 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class InspectorTabMotionTest {
+    @Test public void enlargedLensStaysInsideWindowAtBothEdgesAndDuringOvershoot() {
+        float left = -16, right = 374, width = 87.5f;
+        for (float scale : new float[] {1, 1.3f, 1.65f}) {
+            for (float position : new float[] {-30, 4, 100, 266.5f, 300}) {
+                float constrained = InspectorTabGeometry.constrainLens(position, width, scale, left, right);
+                float overflow = width * (scale - 1) / 2;
+                assertTrue(constrained - overflow >= left - .001f);
+                assertTrue(constrained + width + overflow <= right + .001f);
+            }
+            assertEquals(100, InspectorTabGeometry.constrainLens(100, width, scale, left, right), 0);
+        }
+    }
     @Test public void dragIsPreviewAndCancellationReturnsToCommittedPage() {
         InspectorTabMotion motion = new InspectorTabMotion(4); motion.sync(1, false, 62);
         motion.hold(62); motion.drag(2, 420); advance(motion, 30);
