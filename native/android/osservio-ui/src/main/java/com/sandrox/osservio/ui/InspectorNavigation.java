@@ -107,13 +107,17 @@ final class InspectorNavigation extends FrameLayout {
         if (stack.isEmpty()) return false;
         stack.get(stack.size() - 1).cancel(); return true;
     }
-    void refreshAppearance(Context themed) {
+    void refreshAppearance(Context themed) { refreshAppearance(themed, null); }
+    void refreshAppearance(Context themed, InspectorLayoutConfiguration layout) {
         java.util.Set<OwnerContext> contexts = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (List<InspectorScreen> stack : stacks) for (InspectorScreen screen : stack) {
             OwnerContext owner = owner(screen.view.getContext());
             if (owner != null && owner.tab >= 0 && contexts.add(owner)) owner.setBaseContext(themed);
         }
-        for (List<InspectorScreen> stack : stacks) for (InspectorScreen screen : stack) InspectorAppearance.refresh(screen.view);
+        for (List<InspectorScreen> stack : stacks) for (InspectorScreen screen : stack) {
+            if (layout != null) layout.apply(screen.view);
+            InspectorAppearance.refresh(screen.view);
+        }
     }
     void discardPanels() {
         for (List<InspectorScreen> stack : stacks) {

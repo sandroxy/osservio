@@ -21,6 +21,39 @@ import static org.junit.Assert.*;
 /** Geometry and view-state checks; real gestures and attached windows are consumer tests. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorNavigationTest {
+    @Test public void liveSizingChangeRebuildsNavigationAndRetainsDraftAndSearch() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            Configuration original = new Configuration(base.getResources().getConfiguration());
+            original.densityDpi = 320; original.fontScale = 1;
+            android.content.MutableContextWrapper host = new android.content.MutableContextWrapper(base.createConfigurationContext(original));
+            CaptureController capture = new CaptureController(); MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore http = new MemoryHTTPStore();
+            InspectorView inspector = new InspectorView(host, new LogRecorder(logs, capture), logs, new HTTPRecorder(http, capture, new HTTPPrivacyPolicy()), http);
+            try {
+                layout(inspector, 390, 844);
+                first(inspector, EditText.class).setText("keep root query");
+                Context context = first(inspector, LogInspectorView.class).getContext();
+                EditText draft = InspectorWidgets.search(context, R.string.osservio_search, "unsaved input", value -> { });
+                draft.setSelection(3, 7);
+                InspectorScreen sheet = InspectorDialogs.panel(context, R.string.osservio_ui_filters, draft); sheet.show();
+                InspectorTabBar before = first(inspector, InspectorTabBar.class);
+                float oldTextSize = draft.getTextSize();
+                Configuration changed = new Configuration(original); changed.densityDpi = 480; changed.fontScale = 1.6f;
+                host.setBaseContext(base.createConfigurationContext(changed));
+                inspector.dispatchConfigurationChanged(changed); layout(inspector, 390, 844);
+                InspectorTabBar after = first(inspector, InspectorTabBar.class);
+                assertNotSame(before, after); assertNull(before.renderer); assertEquals(3, after.density, .001);
+                assertTrue(sheet.isShowing()); assertSame(draft, first(sheet.view, EditText.class));
+                assertEquals("unsaved input", draft.getText().toString()); assertEquals(3, draft.getSelectionStart()); assertEquals(7, draft.getSelectionEnd());
+                assertTrue(draft.getTextSize() > oldTextSize * 1.5f);
+                assertEquals(InspectorTheme.dp(draft.getContext(), 48), draft.getMinHeight());
+                host.setBaseContext(base.createConfigurationContext(original));
+                inspector.dispatchConfigurationChanged(original); layout(inspector, 390, 844);
+                assertEquals(oldTextSize, draft.getTextSize(), .05);
+                sheet.dismiss(); assertEquals("keep root query", first(inspector, EditText.class).getText().toString());
+            } finally { inspector.disposePresentation(); capture.close(); }
+        });
+    }
     @Test public void detachedPageActionsAdoptPaletteWhenTheyReturnToToolbar() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());

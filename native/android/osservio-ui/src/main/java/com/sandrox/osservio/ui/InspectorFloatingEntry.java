@@ -27,6 +27,8 @@ final class InspectorFloatingEntry extends ImageButton {
     private final int slop;
     private final boolean dark;
     private final boolean english;
+    private final InspectorPalette palette;
+    private final int densityDpi;
     private final ViewTreeObserver.OnGlobalLayoutListener layout = this::position;
     private boolean trailing;
     private float fraction;
@@ -36,6 +38,7 @@ final class InspectorFloatingEntry extends ImageButton {
     InspectorFloatingEntry(Context context, Runnable open, Runnable hide) {
         super(InspectorTheme.context(context)); this.open = open; this.hide = hide;
         dark = InspectorPreferences.dark(context); english = InspectorPreferences.english(context);
+        palette = InspectorPreferences.palette(context); densityDpi = context.getResources().getConfiguration().densityDpi;
         size = InspectorTheme.dp(context, 48); slop = ViewConfiguration.get(context).getScaledTouchSlop();
         setImageResource(R.drawable.osservio_entry); setImageTintList(ColorStateList.valueOf(InspectorTheme.accent(getContext())));
         int inset = InspectorTheme.dp(context, 12); setPadding(inset, inset, inset, inset);
@@ -47,7 +50,8 @@ final class InspectorFloatingEntry extends ImageButton {
         fraction = Math.max(0, Math.min(1, fraction));
     }
     boolean matchesPreferences() {
-        return dark == InspectorPreferences.dark(getContext()) && english == InspectorPreferences.english(getContext());
+        return dark == InspectorPreferences.dark(getContext()) && english == InspectorPreferences.english(getContext())
+            && palette == InspectorPreferences.palette(getContext()) && densityDpi == getResources().getConfiguration().densityDpi;
     }
     void attach(ViewGroup parent) {
         if (getParent() == parent) { position(); return; }

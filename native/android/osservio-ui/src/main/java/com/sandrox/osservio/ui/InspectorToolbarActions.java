@@ -31,6 +31,10 @@ final class InspectorToolbarActions {
         for (View item : items) InspectorAppearance.refresh(item);
         InspectorAppearance.refresh(more); render();
     }
+    void reconfigure(InspectorLayoutConfiguration layout) {
+        for (View item : items) layout.apply(item);
+        layout.apply(more); if (exit != null) layout.apply(exit);
+    }
     void render() {
         List<View> visible = new ArrayList<>();
         for (View item : items) if (item.getVisibility() == View.VISIBLE) visible.add(item);

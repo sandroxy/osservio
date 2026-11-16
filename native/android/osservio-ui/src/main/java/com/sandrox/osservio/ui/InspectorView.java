@@ -81,6 +81,8 @@ public final class InspectorView extends FrameLayout {
     private boolean dark;
     private boolean english;
     private InspectorPalette palette;
+    private android.content.res.Configuration sizing;
+    private final android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
     private final Runnable refreshPreferences = this::preferencesChanged;
     private final SharedPreferences.OnSharedPreferenceChangeListener preferences = (storage, key) -> {
         if (InspectorPreferences.LANGUAGE.equals(key) || InspectorPreferences.APPEARANCE.equals(key) || InspectorPreferences.PALETTE.equals(key)) {
@@ -168,6 +170,8 @@ public final class InspectorView extends FrameLayout {
         for (int i = 0; i < pages.length; i++) pages[i] = null;
         dark = InspectorPreferences.dark(getContext()); english = InspectorPreferences.english(getContext()); palette = InspectorPreferences.palette(getContext());
         themed = InspectorTheme.context(getContext()); setBackgroundColor(InspectorTheme.canvas(themed));
+        sizing = new android.content.res.Configuration(getContext().getResources().getConfiguration());
+        metrics.setTo(themed.getResources().getDisplayMetrics());
         navigation.setBackgroundColor(InspectorTheme.canvas(themed));
         InspectorToolbar bar = new InspectorToolbar(themed); rootBar = bar;
         int inset = InspectorTheme.dp(themed, 16);
@@ -251,15 +255,25 @@ public final class InspectorView extends FrameLayout {
         else if (page instanceof IncidentInspectorView) ((IncidentInspectorView) page).saveReadingPosition();
     }
     private void preferencesChanged() {
+        android.content.res.Configuration current = getContext().getResources().getConfiguration();
+        boolean resized = sizing.densityDpi != current.densityDpi || sizing.fontScale != current.fontScale;
         boolean configurationChanged = dark != InspectorPreferences.dark(getContext()) || english != InspectorPreferences.english(getContext());
         InspectorPalette selectedPalette = InspectorPreferences.palette(getContext());
-        if (!configurationChanged && palette == selectedPalette) return;
-        if (configurationChanged) { rebuild(); }
+        if (!configurationChanged && !resized && palette == selectedPalette) return;
+        InspectorLayoutConfiguration layout = null;
+        if (configurationChanged || resized) {
+            android.util.DisplayMetrics previous = new android.util.DisplayMetrics(); previous.setTo(metrics);
+            rebuild();
+            if (resized) layout = new InspectorLayoutConfiguration(previous, metrics);
+        }
         else {
             palette = selectedPalette; themed = InspectorTheme.context(themed);
             InspectorAppearance.refresh(workspace); select(selection);
         }
-        navigation.refreshAppearance(themed); if (appearanceListener != null) appearanceListener.changed(dark);
+        navigation.refreshAppearance(themed, layout); if (appearanceListener != null) appearanceListener.changed(dark);
+    }
+    @Override protected void onConfigurationChanged(android.content.res.Configuration configuration) {
+        super.onConfigurationChanged(configuration); preferencesChanged();
     }
     @Override protected void onMeasure(int width, int height) {
         if (MeasureSpec.getMode(height) != MeasureSpec.UNSPECIFIED)

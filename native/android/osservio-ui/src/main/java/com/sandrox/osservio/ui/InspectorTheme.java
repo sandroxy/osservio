@@ -62,8 +62,12 @@ final class InspectorTheme {
             if (selected == palette) return;
             palette = selected; getTheme().applyStyle(selected.style, true);
         }
+        @SuppressWarnings("deprecation") // Only this view-scoped resource copy is synchronized; host resources are never modified.
         @Override public Resources getResources() {
-            if (localized == null) localized = new InspectorResources(super.getResources(), english);
+            Resources source = super.getResources();
+            if (localized == null) localized = new InspectorResources(source, english);
+            else if (!localized.getConfiguration().equals(source.getConfiguration()))
+                localized.updateConfiguration(source.getConfiguration(), source.getDisplayMetrics());
             return localized;
         }
     }
