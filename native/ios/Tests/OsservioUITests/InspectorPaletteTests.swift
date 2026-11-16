@@ -1,9 +1,26 @@
 #if canImport(UIKit)
 import UIKit
 import XCTest
+import OsservioCore
 @testable import OsservioUI
 
 final class InspectorPaletteTests: XCTestCase {
+    @MainActor func testDebugButtonsRefreshForPaletteOnlyChange() throws {
+        let preferences = InspectorPreferences.shared, previous = preferences.palette
+        let capture = CaptureController(debugEnabled: true)
+        defer { preferences.palette = previous; _ = capture.stopAll() }
+        preferences.palette = .purple
+        let control = InspectorDebugControl(controllers: [capture])
+        let buttons = try (0..<4).map { _ in try XCTUnwrap(control.item().customView as? UIButton) }
+        let traits = UITraitCollection(userInterfaceStyle: .light)
+        let oldColor = try XCTUnwrap(buttons.first?.tintColor.resolvedColor(with: traits))
+        preferences.palette = .teal; control.refresh()
+        for button in buttons {
+            XCTAssertEqual(button.tintColor.resolvedColor(with: traits), InspectorTheme.accent.resolvedColor(with: traits))
+            XCTAssertNotEqual(button.tintColor.resolvedColor(with: traits), oldColor)
+        }
+        XCTAssertEqual(capture.status()?.debugEnabled, true)
+    }
     @MainActor
     func testEveryPaletteKeepsTextContrastAndSemanticColorsIndependent() {
         let preferences = InspectorPreferences.shared, previous = preferences.palette

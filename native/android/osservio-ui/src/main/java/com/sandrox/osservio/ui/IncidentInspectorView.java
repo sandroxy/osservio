@@ -119,8 +119,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         empty = header.empty; actions = header.actions;
         list = new InspectorScroll.List(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
-        TextView hint = caption(); hint.setText(R.string.osservio_incident_archive_hint); hint.setPadding(dp(16), dp(16), dp(16), dp(16));
-        list.addFooterView(hint, null, false); list.setAdapter(rows);
+        list.setAdapter(rows);
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (!reading && index >= 0 && index < visible.size()) open(visible.get(index).id);
         });
@@ -292,7 +291,6 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         InputMethodManager keyboard = getContext().getSystemService(InputMethodManager.class);
         if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
     }
-    private TextView caption() { return InspectorWidgets.caption(getContext()); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private final class Rows extends BaseAdapter {
         @Override public int getCount() { return visible.size(); }

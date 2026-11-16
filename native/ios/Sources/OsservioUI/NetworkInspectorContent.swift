@@ -117,6 +117,10 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }
     private func updateStatus() {
+        if connectionID == nil {
+            owner?.inspectorPrimaryAction?.isEnabled = !staleHTTP && !staleSockets
+                && (latestHTTP?.events.isEmpty == false || latestSockets?.events.isEmpty == false)
+        }
         var notes: [String] = []
         if let activity = InspectorSearchFeedback.activity(result, running: task != nil || dirty && query.searchesPayload, paused: paused) { notes.append(activity) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }

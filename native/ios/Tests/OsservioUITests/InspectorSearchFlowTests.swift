@@ -6,6 +6,32 @@ import UIKit
 import XCTest
 
 final class InspectorSearchFlowTests: XCTestCase {
+    @MainActor func testClearActionsDependOnRetainedDataRatherThanSearchMatches() async throws {
+        let capture = CaptureController(debugEnabled: true), logs = try MemoryLogStore(), requests = try MemoryHTTPStore()
+        let logger = try LogRecorder(sink: logs, captureController: capture)
+        let http = try HTTPRecorder(sink: requests, captureController: capture, privacy: HTTPPrivacyPolicy())
+        let log = LogInspectorViewController(recorder: logger, history: logs)
+        let content = NetworkInspectorContent(http: (http, requests)), network = NetworkInspectorViewController(content: content)
+        let navigation = InspectorNavigationController(rootViewController: log)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = navigation; window.makeKeyAndVisible(); log.loadViewIfNeeded()
+        defer { content.hide(); window.isHidden = true; window.rootViewController = nil; _ = capture.stopAll() }
+        XCTAssertEqual(log.inspectorPrimaryAction?.isEnabled, false)
+        _ = logger.record(.info, category: "fixture", message: .publicText("retained"))
+        try await wait { log.inspectorPrimaryAction?.isEnabled == true }
+        let logHeader = try XCTUnwrap(log.tableView.tableHeaderView as? InspectorFeedHeader)
+        logHeader.onSearch?("no-match")
+        try await wait { log.tableView.numberOfRows(inSection: 0) == 0 }
+        XCTAssertEqual(log.inspectorPrimaryAction?.isEnabled, true)
+        navigation.setViewControllers([network], animated: false); network.loadViewIfNeeded(); content.show()
+        XCTAssertEqual(network.inspectorPrimaryAction?.isEnabled, false)
+        _ = http.begin(method: "GET", url: "https://example.test/retained")
+        try await wait { network.inspectorPrimaryAction?.isEnabled == true }
+        let networkHeader = try XCTUnwrap(network.tableView.tableHeaderView as? InspectorFeedHeader)
+        networkHeader.onSearch?("no-match")
+        try await wait { network.tableView.numberOfRows(inSection: 0) == 0 }
+        XCTAssertEqual(network.inspectorPrimaryAction?.isEnabled, true)
+    }
     @MainActor func testCrossConnectionContentAndFieldSearchKeepCaptureAndContext() async throws {
         let capture = CaptureController(debugEnabled: true), sockets = try MemoryWebSocketStore()
         let recorder = try WebSocketRecorder(sink: sockets, captureController: capture, privacy: WebSocketPrivacyPolicy(publicURLPath: true, publicMessageText: true))

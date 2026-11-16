@@ -116,6 +116,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         } finally { InspectorPerformance.end(tracing); }
     }
     private void status() {
+        header.actions.setEnabled(!stale && !retained().isEmpty());
         List<String> notes = new ArrayList<>(); Context context = getContext();
         String activity = InspectorSearchFeedback.activity(context, result, task != null || dirty && state.query.searchesPayload(), state.paused);
         if (activity != null) notes.add(activity);

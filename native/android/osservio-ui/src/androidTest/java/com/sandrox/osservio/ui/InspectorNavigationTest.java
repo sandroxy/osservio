@@ -21,6 +21,45 @@ import static org.junit.Assert.*;
 /** Geometry and view-state checks; real gestures and attached windows are consumer tests. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorNavigationTest {
+    @Test public void detachedPageActionsAdoptPaletteWhenTheyReturnToToolbar() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            InspectorPalette previous = InspectorPreferences.palette(context);
+            try {
+                InspectorPreferences.setPalette(context, InspectorPalette.PURPLE);
+                android.widget.LinearLayout container = new android.widget.LinearLayout(context);
+                InspectorToolbarActions toolbar = new InspectorToolbarActions(container);
+                android.widget.ImageButton action = InspectorWidgets.icon(context, R.drawable.osservio_trash, R.string.osservio_clear, () -> { });
+                toolbar.replace(java.util.Collections.singletonList(action));
+                toolbar.replace(java.util.Collections.emptyList());
+                InspectorPreferences.setPalette(context, InspectorPalette.TEAL);
+                toolbar.refreshAppearance();
+                toolbar.replace(java.util.Collections.singletonList(action));
+                assertEquals(InspectorTheme.accent(context), action.getImageTintList().getColorForState(new int[] {android.R.attr.state_enabled}, 0));
+            } finally { InspectorPreferences.setPalette(context, previous); }
+        });
+    }
+    @Test public void clearActionsUseRetainedRecordsInsteadOfFilteredRows() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            CaptureController capture = new CaptureController(); capture.startDetailed();
+            try {
+                MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore requests = new MemoryHTTPStore();
+                LogRecorder logger = new LogRecorder(logs, capture);
+                HTTPRecorder http = new HTTPRecorder(requests, capture, new HTTPPrivacyPolicy());
+                LogInspectorView.State logState = new LogInspectorView.State(); logState.snapshot = logs.snapshot();
+                NetworkInspectorView.State networkState = new NetworkInspectorView.State(); networkState.http = requests.snapshot();
+                assertFalse(new LogInspectorView(context, logger, logs, logState).navigationAction().isEnabled());
+                assertFalse(new NetworkInspectorView(context, http, requests, null, null, networkState).navigationAction().isEnabled());
+                logger.record(LogLevel.INFO, "test", LogMessage.publicText("retained"));
+                http.begin("GET", "https://example.test/retained", java.util.Collections.emptyList());
+                logState.snapshot = logs.snapshot(); logState.query.select(InspectorQuery.Field.LEVEL, "ERROR");
+                networkState.http = requests.snapshot(); networkState.query.select(InspectorQuery.Field.METHOD, "POST");
+                assertTrue(new LogInspectorView(context, logger, logs, logState).navigationAction().isEnabled());
+                assertTrue(new NetworkInspectorView(context, http, requests, null, null, networkState).navigationAction().isEnabled());
+            } finally { capture.close(); }
+        });
+    }
     @Test public void directFilterChoicesPreserveMultiselectDraftAndScopeRules() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();

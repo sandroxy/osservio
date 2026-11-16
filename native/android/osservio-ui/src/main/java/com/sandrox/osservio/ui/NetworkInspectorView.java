@@ -152,6 +152,8 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         if (task == null) nextSearchAt = android.os.SystemClock.uptimeMillis() + 500;
     }
     private void status() {
+        header.actions.setEnabled(!stale && (state.http != null && !state.http.events.isEmpty()
+            || state.sockets != null && !state.sockets.events.isEmpty()));
         List<String> notes = new ArrayList<>(); Context context = getContext();
         String activity = InspectorSearchFeedback.activity(context, result, task != null || dirty && state.query.searchesPayload(), state.paused);
         if (activity != null) notes.add(activity);

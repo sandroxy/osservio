@@ -37,7 +37,7 @@ final class InspectorDebugControl: NSObject {
             value += " · " + String(format: InspectorLocalization.text("ui_debug_remaining"), (remaining + 999) / 1_000)
         }
         let label = InspectorLocalization.text(enabled ? "ui_debug_disable" : "ui_debug_enable")
-        let signature = value + label + InspectorPreferences.shared.appearance.rawValue
+        let signature = value + label + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue
         guard signature != lastPresentation else { return }; lastPresentation = signature
         for button in buttons {
             button.setImage(UIImage(systemName: "ladybug"), for: .normal)

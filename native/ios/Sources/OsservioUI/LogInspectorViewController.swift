@@ -76,6 +76,7 @@ public final class LogInspectorViewController: UITableViewController {
         nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.2; display(); refresh()
     }
     private func updateStatus() {
+        inspectorPrimaryAction?.isEnabled = !stale && latest?.events.isEmpty == false
         var notes: [String] = []
         if let activity = InspectorSearchFeedback.activity(result, running: task != nil || dirty && query.searchesPayload, paused: paused) { notes.append(activity) }
         if let note = InspectorSearchFeedback.text(result) { notes.append(note) }

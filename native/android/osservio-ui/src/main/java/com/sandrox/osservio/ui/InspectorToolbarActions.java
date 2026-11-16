@@ -22,7 +22,11 @@ final class InspectorToolbarActions {
     }
     void exit(View view) { exit = view; render(); }
     void add(View view) { if (!items.contains(view)) items.add(view); render(); }
-    void replace(List<View> views) { items.clear(); items.addAll(views); render(); }
+    void replace(List<View> views) {
+        items.clear(); items.addAll(views);
+        // Inactive pages retain detached actions, which are outside the appearance traversal.
+        refreshAppearance();
+    }
     void refreshAppearance() {
         for (View item : items) InspectorAppearance.refresh(item);
         InspectorAppearance.refresh(more); render();
