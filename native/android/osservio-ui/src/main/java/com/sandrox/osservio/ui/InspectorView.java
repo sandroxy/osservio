@@ -147,7 +147,7 @@ public final class InspectorView extends FrameLayout {
     }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); updateDebugPolling(); }
     void disposePresentation() { materials.dispose(); navigation.dispose(); appearanceListener = null; onClose = null; }
-    /** Controls optional navigation refraction. Native surfaces remain available. Main thread only. */
+    /** Controls optional navigation refraction, disabled by default for each viewer. Main thread only. */
     public void setEnhancedMaterialsEnabled(boolean enabled) {
         materials.setEnabled(enabled);
         if (tabBar instanceof InspectorGlassBar) { ((InspectorGlassBar) tabBar).updateRegistration(); tabBar.invalidate(); }

@@ -24,7 +24,7 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
     final InspectorGlassBudget budget = new InspectorGlassBudget();
     private final Context context;
     private final Set<InspectorGlassBar> surfaces = new LinkedHashSet<>();
-    private boolean failed, restricted, thermalLimited, enabled = true, disposed;
+    private boolean failed, restricted, thermalLimited, enabled, disposed;
     private boolean observerRegistered, receiverRegistered, callbacksRegistered;
     private Thermal thermal;
     private final ContentObserver observer = new ContentObserver(new Handler(Looper.getMainLooper())) {

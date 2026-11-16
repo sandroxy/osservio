@@ -19,6 +19,17 @@ public final class InspectorGlassWindowTest {
         InspectorMaterialTestActivity host = (InspectorMaterialTestActivity) instrumentation.startActivitySync(
             new Intent(instrumentation.getTargetContext(), InspectorMaterialTestActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
+            await(() -> host.bar.isLaidOut() && host.bar.hasWindowFocus());
+            main(() -> {
+                assertFalse(host.session.enabled()); assertNull(host.bar.renderer);
+                assertEquals(0, host.session.budget.pixels());
+                host.content.setText("Native backdrop update");
+            });
+            instrumentation.waitForIdleSync();
+            main(() -> {
+                assertNull(host.bar.renderer); assertEquals(0, host.session.budget.pixels());
+                host.session.setEnabled(true); host.bar.updateRegistration();
+            });
             await(() -> host.bar.renderer != null);
             CountingRenderer[] renderer = new CountingRenderer[1];
             main(() -> { renderer[0] = new CountingRenderer(host.bar.renderer); host.bar.renderer = renderer[0]; host.content.setText("Changed source"); });

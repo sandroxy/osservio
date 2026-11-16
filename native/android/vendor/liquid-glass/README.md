@@ -27,11 +27,9 @@ and backdrop recording. Osservio distributes derived source, not the upstream AA
   original children. Its original Drawable remains underneath, including during
   startup and failure. Its antialiased edge therefore composites over the native
   surface. No reflection, class-name matching or view-tree discovery is used.
-- A local reading mask uses the theme surface color at alpha `0xF0` through the
-  middle 64% of the bar, fading to transparent at top and bottom with a 1 dp
-  shape inset. It protects the existing icons
-  and small labels from dense background text without changing shader equations.
-  Covering sheets and confirmations suspend the hidden navigation renderer.
+- Navigation enhancement is disabled by default and requires explicit host
+  enablement. Covering sheets and confirmations suspend the hidden navigation
+  renderer. No additional foreground reading mask is drawn over the lens.
 - API-specific implementations are isolated from API-23 signatures and protected
   from R8 optimization across the boundary. AndroidX annotations are compile-only;
   this subset adds no Kotlin or third-party runtime dependency.

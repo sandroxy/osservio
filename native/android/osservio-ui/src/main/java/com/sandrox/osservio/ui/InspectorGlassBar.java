@@ -18,7 +18,6 @@ final class InspectorGlassBar extends LinearLayout {
     private final InspectorNavigation source;
     private boolean registered, capturing;
     private boolean materialVisible = true;
-    private final android.graphics.Paint readingSurface = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
     private final int[] position = new int[2], origin = new int[2];
     private int x, y, sourceX, sourceY, sourceWidth, sourceHeight;
     Renderer renderer;
@@ -36,7 +35,6 @@ final class InspectorGlassBar extends LinearLayout {
     }
     InspectorGlassBar(Context context, InspectorNavigation source, InspectorGlassSession session) {
         super(context); this.source = source; this.session = session; setWillNotDraw(false);
-        // Keep the optical edge clear while protecting the native icons and small labels.
     }
     void setMaterialVisible(boolean visible) {
         if (materialVisible == visible) return;
@@ -70,16 +68,6 @@ final class InspectorGlassBar extends LinearLayout {
     }
     @Override protected void onVisibilityChanged(View view, int visibility) { super.onVisibilityChanged(view, visibility); updateRegistration(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); updateRegistration(); }
-    @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
-        super.onSizeChanged(width, height, oldWidth, oldHeight);
-        if (height > 0) {
-            int color = InspectorTheme.surface(getContext()) & 0xFFFFFF;
-            readingSurface.setShader(new android.graphics.LinearGradient(0, 0, 0, height,
-                new int[] {color, color | 0xF0000000, color | 0xF0000000, color},
-                new float[] {0, .18f, .82f, 1}, android.graphics.Shader.TileMode.CLAMP));
-        }
-        invalidate();
-    }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (!eligible(canvas)) { release(); return; }
@@ -89,9 +77,6 @@ final class InspectorGlassBar extends LinearLayout {
             capturing = true;
             int tint = InspectorPreferences.dark(getContext()) ? (InspectorTheme.canvas(getContext()) & 0xFFFFFF) | 0x14000000 : 0;
             renderer.draw(canvas, source, this, InspectorTheme.dp(getContext(), 32), tint);
-            float inset = InspectorTheme.dp(getContext(), 1);
-            float radius = Math.max(0, Math.min(InspectorTheme.dp(getContext(), 32), getHeight() / 2f) - inset);
-            canvas.drawRoundRect(inset, inset, getWidth() - inset, getHeight() - inset, radius, radius, readingSurface);
         } catch (RuntimeException | LinkageError | OutOfMemoryError unavailable) {
             session.fail();
             // The exact native Drawable is never removed: retain padding, outline, elevation and theme.

@@ -10,7 +10,7 @@ to be transparent.
 
 | Scene | Android | iOS |
 | --- | --- | --- |
-| Bottom navigation | Bounded GPU lens on eligible hardware | System tab material on iOS 26 |
+| Bottom navigation | Native by default; optional bounded GPU lens | System tab material on iOS 26 |
 | Top actions | Existing native controls on the page header | System bar controls; existing header treatment |
 | View latest | Existing readable floating pill | Existing readable floating pill |
 | Short menus and confirmations | Existing native surfaces | System surfaces; no added optical layer |
@@ -19,11 +19,14 @@ to be transparent.
 | Switches and segments | Existing native controls | System controls |
 | Floating entry | Existing native surface; no host capture | System glass where supported, native fallback otherwise |
 
-The host may disable the optional navigation material through Android
-`InspectorView.setEnhancedMaterialsEnabled(false)` or iOS
+Android enhancement is disabled by default: no scene samples a backdrop unless
+the host explicitly enables `InspectorView.setEnhancedMaterialsEnabled(true)`.
+Setting it to `false` restores the native navigation background and releases
+material resources and listeners. The choice belongs to each viewer instance.
+iOS independently uses its system navigation material by default where supported;
+the host may disable it through
 `InspectorViewController.enhancedMaterialsEnabled = false`. These main-thread
-settings do not disable platform-owned control effects or alter capture. They
-also provide a consistent baseline for consumer comparisons.
+settings do not disable platform-owned control effects or alter capture.
 
 ## Android rendering and admission
 
@@ -64,10 +67,8 @@ protections, rather than reliance on a low-memory callback.
 
 The original Drawable, padding, outline and elevation remain in place. Foreground
 native controls retain their hit regions and accessibility nodes. Accessibility
-and thermal listeners exist only for eligible, attached visible surfaces.
-The navigation interior has a theme-colored reading mask (alpha `0xF0` through
-the middle 64%, fading to transparent at the top/bottom, 1 dp shape inset);
-its optical edge remains visible. Covering sheets and confirmations
+and thermal listeners exist only for enabled, eligible, attached visible surfaces.
+Covering sheets and confirmations
 release the navigation renderer until that navigation becomes usable again.
 
 ## iOS rendering

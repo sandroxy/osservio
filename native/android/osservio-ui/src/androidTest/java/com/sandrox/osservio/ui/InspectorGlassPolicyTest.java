@@ -19,6 +19,7 @@ public final class InspectorGlassPolicyTest {
         main(() -> {
             Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
             InspectorGlassSession session = new InspectorGlassSession(context);
+            session.setEnabled(true);
             InspectorNavigation source = new InspectorNavigation(context, new View(context), new FrameLayout(context), new View(context));
             InspectorGlassBar bar = new InspectorGlassBar(context, source, session);
             ColorDrawable original = new ColorDrawable(Color.MAGENTA); bar.setBackground(original);
@@ -42,12 +43,14 @@ public final class InspectorGlassPolicyTest {
         main(() -> {
             Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
             InspectorGlassSession session = new InspectorGlassSession(context);
+            session.setEnabled(true);
             session.thermalChanged(3); assertFalse(session.allowed());
             session.thermalChanged(2); assertFalse(session.allowed());
             session.thermalChanged(1); // Other real system policies may still restrict rendering.
             session.fail(); session.thermalChanged(0); session.setEnabled(false); session.setEnabled(true);
             assertFalse(session.allowed()); assertFalse(session.enabled());
-            InspectorGlassSession fresh = new InspectorGlassSession(context); assertTrue(fresh.enabled());
+            InspectorGlassSession fresh = new InspectorGlassSession(context);
+            assertFalse(fresh.enabled()); fresh.setEnabled(true); assertTrue(fresh.enabled());
             fresh.onTrimMemory(android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW);
             assertFalse(fresh.enabled()); fresh.dispose(); session.dispose();
         });
@@ -56,6 +59,7 @@ public final class InspectorGlassPolicyTest {
         main(() -> {
             Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
             InspectorGlassSession session = new InspectorGlassSession(context);
+            session.setEnabled(true);
             InspectorNavigation source = new InspectorNavigation(context, new View(context), new FrameLayout(context), new View(context));
             InspectorGlassBar bar = new InspectorGlassBar(context, source, session);
             bar.renderer = new InspectorGlassBar.Renderer() {
