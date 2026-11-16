@@ -15,11 +15,12 @@ import java.util.List;
 
 /** Native reveal clipping and alpha only: no screenshots, bitmap blur or per-frame Java work. */
 final class InspectorEntryTransition {
-    private AnimatorSet animator;
+    private Animator animator;
     private ViewGroup surface;
     private View entry;
     private View blocker;
     private ViewTreeObserver.OnPreDrawListener pending;
+    private Runnable pendingStart;
     private View.OnLayoutChangeListener geometry;
     private Runnable completed;
     private int generation;
@@ -33,12 +34,22 @@ final class InspectorEntryTransition {
         blocker = new View(target.getContext()); blocker.setClickable(true); blocker.setFocusable(true);
         blocker.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
         target.addView(blocker, new ViewGroup.LayoutParams(-1, -1)); blocker.requestFocus();
-        target.setAlpha(opening ? 0 : 1);
+        target.setAlpha(opening ? .001f : 1);
         pending = () -> {
             if (target.getViewTreeObserver().isAlive()) target.getViewTreeObserver().removeOnPreDrawListener(pending);
             pending = null;
             if (ticket != generation || !target.isAttachedToWindow()) return true;
-            start(originOnScreen, opening, ticket); return true;
+            // Record the newly attached native RenderNode before starting its reveal clip.
+            // Starting inside the first pre-draw can lose that clip during initial recording.
+            if (opening) {
+                Rect origin = new Rect(originOnScreen);
+                pendingStart = () -> {
+                    pendingStart = null;
+                    if (ticket == generation && target.isAttachedToWindow()) start(origin, true, ticket);
+                };
+                target.postOnAnimation(pendingStart);
+            } else start(originOnScreen, false, ticket);
+            return true;
         };
         target.getViewTreeObserver().addOnPreDrawListener(pending); target.invalidate();
     }
@@ -53,8 +64,11 @@ final class InspectorEntryTransition {
         List<Animator> tracks = new ArrayList<>();
         Animator reveal = ViewAnimationUtils.createCircularReveal(target, x, y, opening ? small : large, opening ? large : small);
         reveal.setDuration(duration); tracks.add(reveal);
-        ObjectAnimator fade = ObjectAnimator.ofFloat(target, View.ALPHA, opening ? 0.12f : 1, opening ? 1 : 0);
-        fade.setDuration(duration); tracks.add(fade);
+        target.setAlpha(1);
+        if (!opening) {
+            ObjectAnimator fade = ObjectAnimator.ofFloat(target, View.ALPHA, 1, 0);
+            fade.setDuration(duration); tracks.add(fade);
+        }
         if (!opening && entry != null) {
             entry.setAlpha(0);
             ObjectAnimator restore = ObjectAnimator.ofFloat(entry, View.ALPHA, 0, 1);
@@ -64,7 +78,8 @@ final class InspectorEntryTransition {
             if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) finish();
         };
         target.addOnLayoutChangeListener(geometry);
-        animator = new AnimatorSet(); animator.playTogether(tracks);
+        if (opening) animator = reveal;
+        else { AnimatorSet group = new AnimatorSet(); group.playTogether(tracks); animator = group; }
         animator.setInterpolator(new PathInterpolator(0.2f, 0, 0.2f, 1));
         animator.addListener(new AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(Animator animation) { if (ticket == generation) finish(); }
@@ -81,8 +96,9 @@ final class InspectorEntryTransition {
         if (surface != null) {
             if (pending != null && surface.getViewTreeObserver().isAlive()) surface.getViewTreeObserver().removeOnPreDrawListener(pending);
             if (geometry != null) surface.removeOnLayoutChangeListener(geometry);
+            if (pendingStart != null) surface.removeCallbacks(pendingStart);
         }
-        pending = null; geometry = null;
+        pending = null; pendingStart = null; geometry = null;
         if (animator != null) { animator.removeAllListeners(); animator.cancel(); animator = null; }
         if (surface != null) { surface.setAlpha(1); if (blocker != null) surface.removeView(blocker); }
         if (entry != null) entry.setAlpha(1);

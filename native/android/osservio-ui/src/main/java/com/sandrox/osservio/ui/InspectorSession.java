@@ -138,19 +138,17 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
                 nativeWindow.setLayout(-1, -1); InspectorDialogs.configureWindow(nativeWindow, InspectorPreferences.dark(inspector.getContext()));
                 systemBars.apply(activity.getWindow(), InspectorPreferences.dark(inspector.getContext()));
                 inspector.requestApplyInsets();
-                if (opening && nativeWindow.getDecorView() instanceof ViewGroup) {
-                    transition.run((ViewGroup) nativeWindow.getDecorView(), entryBounds, true, null, () -> { });
-                }
+                if (opening) transition.run(inspector, entryBounds, true, null, () -> { });
             }
         } else if (presentation == Presentation.ENTRY) {
             ensureEntry(activity);
-            if (window != null && window.getWindow() != null && window.getWindow().getDecorView() instanceof ViewGroup) {
+            if (window != null && window.getWindow() != null) {
                 if (transition.isClosing()) return;
                 InspectorWidgets.hideKeyboard(inspector);
                 int[] point = new int[2]; entry.getLocationOnScreen(point);
                 int size = InspectorTheme.dp(context, 48);
                 entryBounds.set(point[0], point[1], point[0] + size, point[1] + size);
-                transition.run((ViewGroup) window.getWindow().getDecorView(), entryBounds, false, entry, this::detachContentWindow);
+                transition.run(inspector, entryBounds, false, entry, this::detachContentWindow);
             } else detachContentWindow();
         } else {
             detachContentWindow(); if (entry != null) entry.detach();
@@ -158,7 +156,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     }
     private void ensureEntry(Activity activity) {
         if (entry != null && !entry.matchesPreferences()) { entry.detach(); entry = null; }
-        if (entry == null) entry = new InspectorFloatingEntry(context, this::expand, this::hideEntry);
+        if (entry == null) entry = new InspectorFloatingEntry(context, this::expand, this::hideEntry, this::reconcile);
         entry.attach((ViewGroup) activity.getWindow().getDecorView());
     }
     private void createWindow(Activity activity) {

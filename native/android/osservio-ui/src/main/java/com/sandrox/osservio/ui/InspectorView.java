@@ -132,7 +132,7 @@ public final class InspectorView extends FrameLayout {
         rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
         navigation = new InspectorNavigation(getContext(), rootPage, this, workspace);
         ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
-        addView(workspace, new FrameLayout.LayoutParams(-1, -1)); rebuild();
+        addView(workspace, new FrameLayout.LayoutParams(-1, -1)); rebuild(null);
         navigation.setChanged(this::updateDebugPolling);
     }
     /** Optional close affordance. The callback belongs to the presenting host. Main thread only. */
@@ -163,8 +163,14 @@ public final class InspectorView extends FrameLayout {
     public boolean navigateBack() {
         return navigation.back() || (pages[selection] instanceof IncidentInspectorView && ((IncidentInspectorView) pages[selection]).navigateBack());
     }
-    private void rebuild() {
+    private void rebuild(InspectorLayoutConfiguration layout) {
         for (View page : pages) savePosition(page);
+        if (layout != null) {
+            logState.scrollOffset = layout.pixels(logState.scrollOffset);
+            networkState.offset = layout.pixels(networkState.offset);
+            incidentState.offset = layout.pixels(incidentState.offset);
+            appState.scrollY = layout.pixels(appState.scrollY);
+        }
         rootPage.removeAllViews(); workspace.removeAllViews();
         workspace.addView(navigation, new FrameLayout.LayoutParams(-1, -1));
         for (int i = 0; i < pages.length; i++) pages[i] = null;
@@ -263,8 +269,8 @@ public final class InspectorView extends FrameLayout {
         InspectorLayoutConfiguration layout = null;
         if (configurationChanged || resized) {
             android.util.DisplayMetrics previous = new android.util.DisplayMetrics(); previous.setTo(metrics);
-            rebuild();
-            if (resized) layout = new InspectorLayoutConfiguration(previous, metrics);
+            if (resized) layout = new InspectorLayoutConfiguration(previous, getContext().getResources().getDisplayMetrics());
+            rebuild(layout);
         }
         else {
             palette = selectedPalette; themed = InspectorTheme.context(themed);

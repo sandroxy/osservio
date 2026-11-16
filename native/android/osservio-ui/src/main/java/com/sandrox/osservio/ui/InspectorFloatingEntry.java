@@ -20,6 +20,8 @@ import android.widget.ImageButton;
 final class InspectorFloatingEntry extends ImageButton {
     private final Runnable open;
     private final Runnable hide;
+    private final Runnable configurationChanged;
+    private final Context preferencesContext;
     private final Rect available = new Rect();
     private final Rect visibleFrame = new Rect();
     private final int[] location = new int[2];
@@ -35,8 +37,9 @@ final class InspectorFloatingEntry extends ImageButton {
     private float downX, downY, initialX, initialY;
     private boolean dragging;
 
-    InspectorFloatingEntry(Context context, Runnable open, Runnable hide) {
+    InspectorFloatingEntry(Context context, Runnable open, Runnable hide, Runnable configurationChanged) {
         super(InspectorTheme.context(context)); this.open = open; this.hide = hide;
+        this.preferencesContext = context; this.configurationChanged = configurationChanged;
         dark = InspectorPreferences.dark(context); english = InspectorPreferences.english(context);
         palette = InspectorPreferences.palette(context); densityDpi = context.getResources().getConfiguration().densityDpi;
         size = InspectorTheme.dp(context, 48); slop = ViewConfiguration.get(context).getScaledTouchSlop();
@@ -50,8 +53,12 @@ final class InspectorFloatingEntry extends ImageButton {
         fraction = Math.max(0, Math.min(1, fraction));
     }
     boolean matchesPreferences() {
-        return dark == InspectorPreferences.dark(getContext()) && english == InspectorPreferences.english(getContext())
-            && palette == InspectorPreferences.palette(getContext()) && densityDpi == getResources().getConfiguration().densityDpi;
+        return dark == InspectorPreferences.dark(preferencesContext) && english == InspectorPreferences.english(preferencesContext)
+            && palette == InspectorPreferences.palette(preferencesContext) && densityDpi == preferencesContext.getResources().getConfiguration().densityDpi;
+    }
+    @Override protected void onConfigurationChanged(android.content.res.Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        if (!matchesPreferences()) { removeCallbacks(configurationChanged); post(configurationChanged); }
     }
     void attach(ViewGroup parent) {
         if (getParent() == parent) { position(); return; }
@@ -59,7 +66,7 @@ final class InspectorFloatingEntry extends ImageButton {
         parent.getViewTreeObserver().addOnGlobalLayoutListener(layout); position();
     }
     void detach() {
-        animate().cancel(); dragging = false;
+        removeCallbacks(configurationChanged); animate().cancel(); dragging = false;
         if (getParent() instanceof ViewGroup) {
             ViewGroup parent = (ViewGroup) getParent(); parent.getViewTreeObserver().removeOnGlobalLayoutListener(layout); parent.removeView(this);
         }
