@@ -24,7 +24,7 @@ public final class InspectorNavigationMaterialActivity extends Activity {
         super.onCreate(state); setContentView(new FrameLayout(this));
         MemoryLogStore logs = new MemoryLogStore(); MemoryHTTPStore http = new MemoryHTTPStore();
         SharedPreferences preferences = getSharedPreferences("navigation-material-test", MODE_PRIVATE);
-        preferences.edit().putString("appearance", "light").putString("language", "en").apply();
+        preferences.edit().putString("appearance", "light").putString("language", "en").putString("palette", "purple").apply();
         presentation = new InspectorSession(getApplication(), base -> {
             Context scoped = new ContextWrapper(base) {
                 @Override public SharedPreferences getSharedPreferences(String name, int mode) { return preferences; }

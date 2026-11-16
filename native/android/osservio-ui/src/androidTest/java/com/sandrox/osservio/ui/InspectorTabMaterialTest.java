@@ -1,6 +1,5 @@
 package com.sandrox.osservio.ui;
 
-import android.app.Instrumentation;
 import android.graphics.Canvas;
 import android.os.SystemClock;
 import android.view.MotionEvent;
@@ -92,13 +91,71 @@ public final class InspectorTabMaterialTest {
                 bar[0] = host.bar();
                 InspectorPreferences.setPalette(host.inspector.getContext(), InspectorPalette.TEAL);
             });
-            await(() -> host.bar().materialReady());
+            await(() -> host.bar().materialReady() && ((android.widget.ImageView) ((android.view.ViewGroup) host.bar().getChildAt(3)).getChildAt(0))
+                .getImageTintList().getDefaultColor() == InspectorPalette.TEAL.light);
             main(() -> { assertSame(bar[0], host.bar()); assertEquals(3, host.bar().motion.selected()); });
             main(() -> { bar[0] = host.bar(); host.presentation.collapse(); });
             await(() -> !bar[0].isAttachedToWindow());
             main(() -> { assertNull(bar[0].renderer); assertFalse(bar[0].motion.running()); host.presentation.expand(); });
             await(() -> host.bar().materialReady()); main(() -> assertEquals(3, host.bar().motion.selected()));
         } finally { finish(host); }
+    }
+    @Test public void repeatedCollapseRestoresSelectionAndReleasesEachRendererOnce() throws Exception {
+        InspectorNavigationMaterialActivity host = start();
+        try {
+            await(() -> host.bar().materialReady()); main(() -> host.bar().getChildAt(2).performClick());
+            await(() -> !host.bar().motion.running());
+            for (int i = 0; i < 32; i++) {
+                int[] released = {0};
+                main(() -> {
+                    InspectorTabBar bar = host.bar(); InspectorTabBar.Renderer delegate = bar.renderer;
+                    bar.renderer = new InspectorTabBar.Renderer() {
+                        @Override public void draw(Canvas canvas, InspectorTabBar view) { delegate.draw(canvas, view); }
+                        @Override public void release() { released[0]++; delegate.release(); }
+                    };
+                    touch(bar, MotionEvent.ACTION_DOWN, 2); touch(bar, MotionEvent.ACTION_MOVE, 0);
+                    host.presentation.collapse();
+                });
+                await(() -> !host.bar().isAttachedToWindow());
+                main(() -> {
+                    assertEquals(1, released[0]); assertNull(host.bar().renderer); assertFalse(host.bar().motion.running());
+                    assertEquals(2, host.bar().motion.selected()); host.presentation.expand();
+                });
+                await(() -> host.bar().materialReady());
+                main(() -> { assertEquals(2, host.bar().motion.position.value, .001); assertEquals(1, released[0]); });
+            }
+        } finally { finish(host); }
+    }
+    @Test public void pointerHandoffDoesNotJumpOrCommitUntilRelease() throws Exception {
+        InspectorNavigationMaterialActivity host = start();
+        try {
+            await(() -> host.bar().materialReady());
+            main(() -> {
+                InspectorTabBar bar = host.bar(); touch(bar, MotionEvent.ACTION_DOWN, 0);
+                multiTouch(bar, MotionEvent.ACTION_POINTER_DOWN | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), new int[] {0, 9}, new int[] {0, 1});
+                multiTouch(bar, MotionEvent.ACTION_POINTER_UP, new int[] {0, 9}, new int[] {0, 1});
+                assertEquals(0, bar.motion.destination());
+                multiTouch(bar, MotionEvent.ACTION_MOVE, new int[] {9}, new int[] {3});
+                assertEquals(0, bar.motion.selected()); assertEquals(2, bar.motion.destination());
+                multiTouch(bar, MotionEvent.ACTION_UP, new int[] {9}, new int[] {3});
+                assertEquals(2, bar.motion.selected());
+            });
+            await(() -> !host.bar().motion.running());
+        } finally { finish(host); }
+    }
+    private static void multiTouch(InspectorTabBar bar, int action, int[] ids, int[] tabs) {
+        MotionEvent.PointerProperties[] properties = new MotionEvent.PointerProperties[ids.length];
+        MotionEvent.PointerCoords[] coordinates = new MotionEvent.PointerCoords[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            properties[i] = new MotionEvent.PointerProperties(); properties[i].id = ids[i]; properties[i].toolType = MotionEvent.TOOL_TYPE_FINGER;
+            coordinates[i] = new MotionEvent.PointerCoords(); View child = bar.getChildAt(tabs[i]);
+            coordinates[i].x = child.getLeft() + child.getWidth() / 2f; coordinates[i].y = bar.getHeight() / 2f;
+            coordinates[i].pressure = 1; coordinates[i].size = 1;
+        }
+        long now = SystemClock.uptimeMillis();
+        MotionEvent event = MotionEvent.obtain(now, now, action, ids.length, properties, coordinates,
+            0, 0, 1, 1, 0, 0, android.view.InputDevice.SOURCE_TOUCHSCREEN, 0);
+        try { assertTrue(bar.dispatchTouchEvent(event)); } finally { event.recycle(); }
     }
     @Test public void interruptionAndRtlPreviewKeepTheNativeSelection() throws Exception {
         InspectorNavigationMaterialActivity host = start();
