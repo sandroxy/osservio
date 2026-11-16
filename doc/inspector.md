@@ -364,6 +364,9 @@ across the inspector. Icon buttons retain 48 dp touch targets independently of
 their visible circular surfaces. Navigation titles reserve space for actions;
 long titles and content can wrap with larger text. Rendering uses native views
 and drawables, without continuously sampling or blurring the host behind them.
+The optional [navigation material](inspector-materials.md) samples only SDK-owned
+content on eligible Android hardware and uses the system tab material on iOS 26.
+Reading surfaces stay opaque; hosts can disable the optional navigation effect.
 
 ## Host presentation
 
@@ -413,7 +416,7 @@ Minimize remains available in SDK navigation pages and readers.
 Temporary filters, action panels and the problem sheet have no inspector-wide Minimize action.
 The session restores host keyboard focus when collapsing and suspends polling
 before its short exit animation. Reduce Motion, Low Power Mode and elevated
-thermal state reduce motion; Reduce Transparency uses an opaque entry.
+thermal state reduce motion; Reduce Transparency or Increase Contrast uses an opaque entry.
 The workspace expands from and contracts toward the docked entry using a bounded
 layer mask and opacity animation. The mask covers the full-screen navigation
 workspace. Interruption removes clipping and touch blockers.
