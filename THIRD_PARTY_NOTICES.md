@@ -1,14 +1,27 @@
 # Third-party notices
 
+## AndroidLiquidGlass backdrop
+
+Android UI derives its bottom-navigation optical programs, layer recipe and motion
+parameters from Kyant0/AndroidLiquidGlass, commit
+`eb4a0ea2e17542ea28c2e71088f7dd9acf77aad5`, copyright 2025 Kyant, under Apache 2.0.
+The [vendor record](native/android/vendor/backdrop/README.md) describes fixed source
+identities and native rendering changes. The
+[license](native/android/osservio-ui/src/main/resources/META-INF/osservio/backdrop-LICENSE.txt)
+and [notice](native/android/osservio-ui/src/main/resources/META-INF/osservio/backdrop-NOTICE.txt)
+are packaged in UI's Java resources. This Java source subset adds no Compose,
+Kotlin, coroutine, graphics-library or JNI runtime dependency.
+
 ## Liquid-Glass-Android
 
-Android UI derives its inward navigation optical kernel from Liquid-Glass-Android
+Android UI retains an unbound inward optical kernel from Liquid-Glass-Android
 v2.0.11, commit `fc6bd34fa3290638c3594cc39386f549d1316ab5`, copyright
 (c) 2025–2026 pandadog, under MIT. The [vendor record](native/android/vendor/liquid-glass/README.md)
 describes source identities, effective parameters and the maintained subset.
 The [license](native/android/osservio-ui/src/main/resources/META-INF/osservio/liquid-glass-LICENSE.txt)
 is packaged with UI. The full upstream AAR, JNI libraries and Kotlin runtime
 are not included by this source integration.
+It is not used by the active bottom-navigation material.
 
 ## Material Symbols
 

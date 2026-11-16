@@ -1,7 +1,7 @@
 # Inspector materials
 
 Materials distinguish navigation from diagnostic content. They do not change
-record retention, layout, selection, gestures or reading order. Both platforms
+record retention, layout, committed selection or reading order. Both platforms
 keep content cards, long readers, forms, filter sheets and destructive
 confirmations focused on readable text. Neither platform requires all surfaces
 to be transparent.
@@ -10,7 +10,7 @@ to be transparent.
 
 | Scene | Android | iOS |
 | --- | --- | --- |
-| Bottom navigation | Native by default; optional bounded GPU lens | System tab material on iOS 26 |
+| Bottom navigation | Bounded GPU backdrop and movable lens when admitted; native fallback | System tab material on iOS 26 |
 | Top actions | Existing native controls on the page header | System bar controls; existing header treatment |
 | View latest | Existing readable floating pill | Existing readable floating pill |
 | Short menus and confirmations | Existing native surfaces | System surfaces; no added optical layer |
@@ -19,10 +19,11 @@ to be transparent.
 | Switches and segments | Existing native controls | System controls |
 | Floating entry | Existing native surface; no host capture | System glass where supported, native fallback otherwise |
 
-Android enhancement is disabled by default: no scene samples a backdrop unless
-the host explicitly enables `InspectorView.setEnhancedMaterialsEnabled(true)`.
+Android enables only bottom-navigation enhancement by default, subject to device
+admission. The host can opt out with `InspectorView.setEnhancedMaterialsEnabled(false)`.
 Setting it to `false` restores the native navigation background and releases
 material resources and listeners. The choice belongs to each viewer instance.
+Setting it back to `true` reassesses admission without clearing a failure lock.
 iOS independently uses its system navigation material by default where supported;
 the host may disable it through
 `InspectorViewController.enhancedMaterialsEnabled = false`. These main-thread
@@ -35,25 +36,37 @@ are siblings in the same window; the material never samples itself, the host
 DecorView, a WebView or a SurfaceView. Source invalidation, scroll and geometry
 changes update the recording. Geometry checks run on existing pre-draw events;
 they do not schedule a continuous animation. Shader compilation occurs once per
-active renderer, and effect configuration changes only with size, density,
-radius or tint. No forced hardware layers or software image capture are used.
+active renderer, and optical configuration changes only when its inputs change.
+No forced hardware View layers or software image capture are used.
+
+The [navigation recipe](../native/android/vendor/backdrop/README.md) composes a
+base, colored native labels and a moving lens. A tap selects its destination
+directly. Holding the selected lens previews other tabs while the current page
+remains visible; releasing commits once. Cancel, loss of focus, hiding or fallback
+does not commit a preview. The native buttons remain the sole click, focus and
+accessibility owners. A settling animation does not switch intermediate pages.
 
 Android minSdk remains 23. API 33+, a hardware canvas, a valid laid-out source,
 normal memory admission and device policy are required for the GPU path.
 RuntimeShader and RenderNode types stay in an API-isolated implementation;
 consumer rules prevent R8 from moving it into old-system entry points.
 
-Recording includes a 32 px margin on each side. Limits are 786,432 recorded pixels
-per surface, 1,048,576 per viewer, and 4,096 px per recording edge. Admission
-precedes GPU allocation. These small-surface limits are not GPU-memory byte
-limits, frame-rate promises or authorization to render large panels. Intermediate
-effects and platform caches consume additional memory. An oversized surface
+Recording includes a 32 px source margin and the enlarged control's overflow.
+Limits are 786,432 logical pixels per recording node, 3,145,728 summed per viewer,
+and 4,096 px per recording edge. The navigation reservation includes source,
+colored-label recording, and the three layers' images, outer/inner shadows and
+highlights before renderer creation. These limits are not GPU-memory byte limits,
+frame-rate promises or authorization to render large panels. Intermediate
+effects, native-label tint layers, highlight blending and platform caches consume
+additional memory. Higher density, large fonts or a wider window may exceed the
+budget and retain native navigation; the cap is not automatically raised.
+An oversized surface
 retains its native background without disabling other admitted surfaces.
 
 | Condition | Behavior |
 | --- | --- |
 | Old API, software canvas, invalid source/window, sampling cycle, budget excess | Native Drawable; temporary readiness can recover |
-| Power saving or high text contrast | Native Drawable; recover when policy permits |
+| Power saving, high text contrast or animator scale zero | Native Drawable; recover when policy permits |
 | Severe or higher thermal state | Native Drawable; recover at light/normal; moderate preserves restriction |
 | Low-memory admission or memory pressure | Release and lock this viewer to native material |
 | Shader, allocation, recording, drawing or linkage failure | Release and lock this viewer to native material |
@@ -65,8 +78,10 @@ or unrecoverable process OOM. Android 34 no longer delivers several RUNNING memo
 callbacks, so entry admission, bounded allocation and timely release are primary
 protections, rather than reliance on a low-memory callback.
 
-The original Drawable, padding, outline and elevation remain in place. Foreground
-native controls retain their hit regions and accessibility nodes. Accessibility
+The original Drawable, padding and native controls remain available for fallback.
+The optical shadow replaces native elevation only after successful rendering;
+fallback restores the native elevation.
+Native controls retain their hit regions and accessibility nodes. Accessibility
 and thermal listeners exist only for enabled, eligible, attached visible surfaces.
 Covering sheets and confirmations
 release the navigation renderer until that navigation becomes usable again.

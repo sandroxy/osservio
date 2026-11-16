@@ -364,7 +364,7 @@ across the inspector. Icon buttons retain 48 dp touch targets independently of
 their visible circular surfaces. Navigation titles reserve space for actions;
 long titles and content can wrap with larger text. Rendering uses native views
 and drawables, without continuously sampling or blurring the host behind them.
-The optional [navigation material](inspector-materials.md), disabled by default
+The optional [navigation material](inspector-materials.md), admitted by device capability
 on Android, samples only SDK-owned content on eligible hardware and uses the
 system tab material on iOS 26.
 Reading surfaces stay opaque; hosts can disable the optional navigation effect.

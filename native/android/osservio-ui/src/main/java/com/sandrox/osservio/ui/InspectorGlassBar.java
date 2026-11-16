@@ -9,7 +9,7 @@ import android.widget.LinearLayout;
 
 /** An optical background for the existing tab controls; geometry, input and semantics stay native. */
 @android.annotation.SuppressLint("ViewConstructor")
-final class InspectorGlassBar extends LinearLayout {
+final class InspectorGlassBar extends LinearLayout implements InspectorGlassSession.Surface {
     interface Renderer {
         void draw(Canvas canvas, View source, View target, float radius, int tint);
         void release();
@@ -40,7 +40,7 @@ final class InspectorGlassBar extends LinearLayout {
         if (materialVisible == visible) return;
         materialVisible = visible; updateRegistration(); invalidate();
     }
-    void updateRegistration() {
+    @Override public void updateRegistration() {
         if (session == null) return; // Visibility callbacks may arrive during the View constructor.
         boolean wanted = materialVisible && Build.VERSION.SDK_INT >= 33 && session.enabled() && isAttachedToWindow()
             && isShown() && getWindowVisibility() == VISIBLE && isHardwareAccelerated();
@@ -89,7 +89,7 @@ final class InspectorGlassBar extends LinearLayout {
         for (android.view.ViewParent ancestor = getParent(); ancestor != null; ancestor = ancestor.getParent()) if (ancestor == source) return false;
         return session.budget.reserve(this, getWidth(), getHeight());
     }
-    void release() {
+    @Override public void release() {
         Renderer previous = renderer; renderer = null; session.budget.release(this);
         try { if (previous != null) previous.release(); }
         catch (RuntimeException | LinkageError | OutOfMemoryError unavailable) { session.fail(); }

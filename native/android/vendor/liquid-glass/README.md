@@ -1,6 +1,6 @@
 # Liquid Glass optical kernel
 
-The optional Android UI module derives its inward navigation lens from
+The optional Android UI module retains an unbound inward optical kernel from
 [Liquid-Glass-Android v2.0.11](https://github.com/QWEA0/Liquid-Glass-Android/tree/fc6bd34fa3290638c3594cc39386f549d1316ab5),
 commit `fc6bd34fa3290638c3594cc39386f549d1316ab5`, copyright (c) 2025–2026
 pandadog, under MIT. [Original file hashes](source.json) identify the four Kotlin
@@ -27,9 +27,9 @@ and backdrop recording. Osservio distributes derived source, not the upstream AA
   original children. Its original Drawable remains underneath, including during
   startup and failure. Its antialiased edge therefore composites over the native
   surface. No reflection, class-name matching or view-tree discovery is used.
-- Navigation enhancement is disabled by default and requires explicit host
-  enablement. Covering sheets and confirmations suspend the hidden navigation
-  renderer. No additional foreground reading mask is drawn over the lens.
+- No production scene binds this kernel. The active bottom navigation uses the
+  separate [navigation backdrop recipe](../backdrop/README.md). No additional
+  foreground reading mask is drawn by this retained surface implementation.
 - API-specific implementations are isolated from API-23 signatures and protected
   from R8 optimization across the boundary. AndroidX annotations are compile-only;
   this subset adds no Kotlin or third-party runtime dependency.

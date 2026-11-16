@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application>
+    <application android:supportsRtl="true">
         <activity android:name="com.sandrox.osservio.ui.InspectorMaterialTestActivity"
+            android:exported="true" android:hardwareAccelerated="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+        <activity android:name="com.sandrox.osservio.ui.InspectorNavigationMaterialActivity"
             android:exported="true" android:hardwareAccelerated="true"
             android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>

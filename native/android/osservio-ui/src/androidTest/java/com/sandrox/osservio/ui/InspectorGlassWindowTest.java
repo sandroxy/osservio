@@ -1,7 +1,6 @@
 package com.sandrox.osservio.ui;
 
 import android.app.Instrumentation;
-import android.content.Intent;
 import android.graphics.Canvas;
 import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -16,8 +15,7 @@ public final class InspectorGlassWindowTest {
     @Test public void hardwareSamplingUpdatesWithoutIdleLoopAndReleasesOnHide() throws Exception {
         assumeTrue(android.os.Build.VERSION.SDK_INT >= 33);
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        InspectorMaterialTestActivity host = (InspectorMaterialTestActivity) instrumentation.startActivitySync(
-            new Intent(instrumentation.getTargetContext(), InspectorMaterialTestActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        InspectorMaterialTestActivity host = InspectorWindowTestSupport.start(InspectorMaterialTestActivity.class);
         try {
             await(() -> host.bar.isLaidOut() && host.bar.hasWindowFocus());
             main(() -> {

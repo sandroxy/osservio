@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/Kyant0/AndroidLiquidGlass",
+  "commit": "eb4a0ea2e17542ea28c2e71088f7dd9acf77aad5",
+  "files": {
+    "LICENSE": "4b9f7e7c2821a5a1822a6cf1e4a34e877bba48a99b9bba1f03e5e2eccf6dec56",
+    "app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidBottomTab.kt": "40178a5ab429022e4e5523a39b9feb40c8c04370671361b24ad4ee992eaaeeb0",
+    "app/src/commonMain/kotlin/com/kyant/backdrop/catalog/components/LiquidBottomTabs.kt": "4dfbafaf008b058bf71ceebbc568c900f7a74acaf94f2fe774c6155367ff0155",
+    "app/src/commonMain/kotlin/com/kyant/backdrop/catalog/utils/DampedDragAnimation.kt": "8310075ee00a9b5021935f6da1f016cb38eac61a527d27f5318c34250402c44e",
+    "app/src/commonMain/kotlin/com/kyant/backdrop/catalog/utils/InteractiveHighlight.kt": "d0af46b531eba19bd0fed886892f02193f05d5a61db0925da016ff6059984f83",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/effects/Blur.kt": "fd6757657f6424d625c8e0f49f29a390de54a6ee80675ce8b51290965843ede0",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/effects/Lens.kt": "28e2a61c6f994d6ef793e4bea5e97b95d712a6d8536e35bd98634ad9999027dd",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/highlight/HighlightModifier.kt": "5ff2a37efc63e90040676f5aece9d9c428c6c95ee115dacbf45d0a17bdb00453",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/internal/InverseLayerScope.kt": "016dbe2c1f19aed5ae6034da180f3e304d8f532652ad355a3e1095074e22edf5",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/internal/Shaders.kt": "ee088c37136870dbdf0c7cbf651bece803f30437c917f32bc31f8da78ac86c25",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/shadow/InnerShadowModifier.kt": "1475b7b942ce0d173ef438fc2338c20b700308764fefb3acc2b63ff622a550ca",
+    "backdrop/src/commonMain/kotlin/com/kyant/backdrop/shadow/ShadowModifier.kt": "3b6193c2992ada11c02456be4aabb1878f68c08d7a81ef9cf8b8547a05338d3d"
+  },
+  "shader_nonwhitespace_sha256": {
+    "REFRACTION": "7a59a28535b3c0a3a860f496a4152e1a418098aa137a8180c70cc4abe6c9951a",
+    "DISPERSION": "22eff10caf6fa23e7121d9a75b6f78d83b741d11484a9fef5fad64a3a539cba4",
+    "HIGHLIGHT": "1e49fbcd70af5e9a202e38e8d103f53483ee158d1843f42379d216f29d4c3e3f",
+    "INTERACTIVE": "732f5916989eb3be1c4db4dbff418c3b8594fa799a99a844ebe6263661a55604"
+  }
+}

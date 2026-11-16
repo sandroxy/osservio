@@ -1,0 +1,13 @@
+AndroidLiquidGlass
+Copyright 2025 Kyant
+Licensed under the Apache License, Version 2.0.
+https://github.com/Kyant0/AndroidLiquidGlass
+Upstream commit: eb4a0ea2e17542ea28c2e71088f7dd9acf77aad5
+
+Osservio derives the optical programs, three-layer bottom-navigation recipe,
+and motion parameters from this source. The four AGSL programs retain the
+original expressions. Local changes implement rendering with Android Views,
+RenderNodes and scalar springs, use existing native button content and semantics,
+and add bounded source recording, shared resource admission, local failure
+isolation, lifecycle ownership and cancellation-safe selection. Compose and
+upstream control wrappers are not distributed.

@@ -7,7 +7,6 @@ import android.content.res.ColorStateList;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -63,7 +62,7 @@ public final class InspectorView extends FrameLayout {
     private InspectorToolbar rootBar;
     private android.widget.ImageButton close;
     private final FrameLayout workspace;
-    private LinearLayout tabBar;
+    private InspectorTabBar tabBar;
     private final InspectorGlassSession materials;
     private View bottomShade;
     private final LinearLayout rootPage;
@@ -125,7 +124,9 @@ public final class InspectorView extends FrameLayout {
         this.breadcrumbRecorder = breadcrumbRecorder; this.breadcrumbHistory = breadcrumbHistory; this.breadcrumbArchive = breadcrumbArchive;
         this.incidentArchive = incidentArchive; this.exporter = exporter;
         materials = new InspectorGlassSession(context);
+        materials.setEnabled(true);
         workspace = new FrameLayout(getContext());
+        workspace.setClipChildren(false);
         rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
         navigation = new InspectorNavigation(getContext(), rootPage, this, workspace);
         ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
@@ -143,14 +144,14 @@ public final class InspectorView extends FrameLayout {
     void discardTransientPanels() { navigation.discardPanels(); }
     private void updateDebugPolling() {
         removeCallbacks(debugTick); if (debugControl != null) debugTick.run();
-        if (tabBar instanceof InspectorGlassBar) ((InspectorGlassBar) tabBar).setMaterialVisible(!navigation.coversNavigation());
+        if (tabBar != null) tabBar.setMaterialVisible(!navigation.coversNavigation());
     }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); updateDebugPolling(); }
     void disposePresentation() { materials.dispose(); navigation.dispose(); appearanceListener = null; onClose = null; }
-    /** Controls optional navigation refraction, disabled by default for each viewer. Main thread only. */
+    /** Controls bottom-navigation refraction, enabled when the device admits it. Main thread only. */
     public void setEnhancedMaterialsEnabled(boolean enabled) {
         materials.setEnabled(enabled);
-        if (tabBar instanceof InspectorGlassBar) { ((InspectorGlassBar) tabBar).updateRegistration(); tabBar.invalidate(); }
+        if (tabBar != null) { tabBar.updateRegistration(); tabBar.invalidate(); }
     }
     /** Immediately reports the current inspector appearance, then subsequent appearance changes. */
     public void setAppearanceListener(AppearanceListener listener) {
@@ -177,22 +178,17 @@ public final class InspectorView extends FrameLayout {
         updateClose(); bar.pageActions.exit(close);
         rootPage.addView(bar, new LinearLayout.LayoutParams(-1, -2));
         body = new FrameLayout(themed); rootPage.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
-        LinearLayout navigation = new InspectorGlassBar(themed, this.navigation, materials);
+        InspectorTabBar navigation = new InspectorTabBar(themed, this.navigation, materials, tabs.length, this::select);
         tabBar = navigation;
         navigation.setBackground(InspectorTheme.shape(themed, InspectorTheme.surface(themed), 32, false));
         int spacing = InspectorTheme.dp(themed, 4); navigation.setPadding(spacing, spacing, spacing, spacing);
         navigation.setElevation(InspectorTheme.dp(themed, 1));
         for (int i = 0; i < tabs.length; i++) {
             final int index = i;
-            LinearLayout tab = new LinearLayout(themed); tab.setOrientation(LinearLayout.VERTICAL); tab.setGravity(Gravity.CENTER);
+            LinearLayout tab = new InspectorTabButton(themed, i); tab.setOrientation(LinearLayout.VERTICAL); tab.setGravity(Gravity.CENTER);
             tab.setPadding(0, InspectorTheme.dp(themed, 7), 0, InspectorTheme.dp(themed, 7));
             tab.setMinimumHeight(InspectorTheme.dp(themed, 54)); tab.setFocusable(true); tab.setContentDescription(themed.getString(labels[i]));
-            tab.setOnClickListener(ignored -> select(index));
-            tab.setAccessibilityDelegate(new View.AccessibilityDelegate() {
-                @Override public void onInitializeAccessibilityNodeInfo(View host, android.view.accessibility.AccessibilityNodeInfo info) {
-                    super.onInitializeAccessibilityNodeInfo(host, info); info.setClassName(Button.class.getName());
-                }
-            });
+            tab.setOnClickListener(ignored -> navigation.activate(index));
             ImageView icon = new ImageView(themed); icon.setImageResource(icons[i]); icon.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             tab.addView(icon, new LinearLayout.LayoutParams(InspectorTheme.dp(themed, 22), InspectorTheme.dp(themed, 22)));
             TextView label = InspectorTheme.text(themed, 11, false); label.setText(labels[i]); label.setGravity(Gravity.CENTER);
@@ -239,7 +235,8 @@ public final class InspectorView extends FrameLayout {
         }
         rootBar.pageActions.replace(pages[index] instanceof InspectorToolbarActions.Provider
             ? java.util.Collections.singletonList(((InspectorToolbarActions.Provider) pages[index]).navigationAction()) : java.util.Collections.emptyList());
-        title.setText(labels[index]); navigation.select(index); updateDebugPolling();
+        title.setText(labels[index]); navigation.select(index);
+        tabBar.refreshAppearance(); tabBar.syncSelection(index); updateDebugPolling();
     }
     private View unavailable() {
         InspectorDetailPage message = new InspectorDetailPage(themed);

@@ -19,14 +19,20 @@ import java.util.Set;
 
 /** Owns visible UI resources only. A renderer failure remains local to this inspector. */
 final class InspectorGlassSession implements ComponentCallbacks2 {
+    interface Surface {
+        void updateRegistration();
+        void release();
+        void invalidate();
+    }
     interface Thermal { void close(); }
     interface ThermalChanged { void accept(int status); }
     final InspectorGlassBudget budget = new InspectorGlassBudget();
     private final Context context;
-    private final Set<InspectorGlassBar> surfaces = new LinkedHashSet<>();
+    private final Set<Surface> surfaces = new LinkedHashSet<>();
     private boolean failed, restricted, thermalLimited, enabled, disposed;
     private boolean observerRegistered, receiverRegistered, callbacksRegistered;
     private Thermal thermal;
+    private float animationScale = 1;
     private final ContentObserver observer = new ContentObserver(new Handler(Looper.getMainLooper())) {
         @Override public void onChange(boolean selfChange) { refreshPolicy(); }
     };
@@ -36,12 +42,13 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
     InspectorGlassSession(Context context) { this.context = context.getApplicationContext(); }
     boolean allowed() { return enabled && !disposed && !failed && !restricted; }
     boolean enabled() { return enabled && !disposed && !failed; }
+    float animationScale() { return animationScale; }
     void setEnabled(boolean value) {
         if (enabled == value) return;
         enabled = value;
-        for (InspectorGlassBar surface : new ArrayList<>(surfaces)) surface.updateRegistration();
+        for (Surface surface : new ArrayList<>(surfaces)) surface.updateRegistration();
     }
-    void attach(InspectorGlassBar surface) {
+    void attach(Surface surface) {
         if (disposed || !enabled || !surfaces.add(surface)) return;
         if (surfaces.size() == 1 && !failed) {
             try {
@@ -51,6 +58,7 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
                 if (info.lowMemory) { fail(); return; }
                 context.getContentResolver().registerContentObserver(Settings.Secure.getUriFor("high_text_contrast_enabled"), false, observer);
                 observerRegistered = true;
+                context.getContentResolver().registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer);
                 // The caller admits only API 33+ hardware views; keep older-class loading safe.
                 if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED), Context.RECEIVER_NOT_EXPORTED);
                 receiverRegistered = true;
@@ -60,7 +68,7 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
         }
         refreshPolicy();
     }
-    void detach(InspectorGlassBar surface) {
+    void detach(Surface surface) {
         surfaces.remove(surface); budget.release(surface);
         if (surfaces.isEmpty()) unregister();
     }
@@ -68,12 +76,14 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
         boolean next;
         try {
             PowerManager power = context.getSystemService(PowerManager.class);
+            animationScale = Settings.Global.getFloat(context.getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1);
             next = power == null || power.isPowerSaveMode() || thermalLimited
+                || Float.isNaN(animationScale) || Float.isInfinite(animationScale) || animationScale <= 0
                 || Settings.Secure.getInt(context.getContentResolver(), "high_text_contrast_enabled", 0) == 1;
         } catch (RuntimeException unavailable) { next = true; }
         if (restricted == next) return;
         restricted = next;
-        for (InspectorGlassBar surface : new ArrayList<>(surfaces)) { surface.release(); surface.invalidate(); }
+        for (Surface surface : new ArrayList<>(surfaces)) { surface.release(); surface.invalidate(); }
     }
     void thermalChanged(int status) {
         if (status >= 3) thermalLimited = true;
@@ -84,8 +94,8 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
         if (failed) return;
         failed = true;
         while (!surfaces.isEmpty()) {
-            java.util.Iterator<InspectorGlassBar> iterator = surfaces.iterator();
-            InspectorGlassBar surface = iterator.next(); iterator.remove();
+            java.util.Iterator<Surface> iterator = surfaces.iterator();
+            Surface surface = iterator.next(); iterator.remove();
             surface.updateRegistration(); surface.invalidate();
         }
         unregister();
@@ -105,7 +115,7 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
     void dispose() {
         if (disposed) return;
         disposed = true;
-        for (InspectorGlassBar surface : new ArrayList<>(surfaces)) surface.updateRegistration();
+        for (Surface surface : new ArrayList<>(surfaces)) surface.updateRegistration();
         unregister();
     }
     @Override public void onConfigurationChanged(Configuration configuration) { refreshPolicy(); }
@@ -113,7 +123,7 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
     @Override public void onLowMemory() { fail(); }
     @SuppressWarnings("deprecation")
     @Override public void onTrimMemory(int level) {
-        if (level == TRIM_MEMORY_UI_HIDDEN) { for (InspectorGlassBar surface : new ArrayList<>(surfaces)) surface.release(); }
+        if (level == TRIM_MEMORY_UI_HIDDEN) { for (Surface surface : new ArrayList<>(surfaces)) surface.release(); }
         else if (level >= TRIM_MEMORY_RUNNING_LOW) fail();
     }
 }
