@@ -99,8 +99,9 @@ The initial observation and subsequent changed descriptions use kind
 `networkPath`, a static platform label, and restart-relevant retention. Consecutive
 identical successfully recorded facts are deduplicated within a capture session;
 failed admission may retry on the next OS callback. There is no retry timer or
-unbounded pending queue. Existing breadcrumb rate, text, storage, and host text
-processing policies still apply. Capture off does not unregister the observer,
+unbounded pending queue. Existing breadcrumb rate, text and storage budgets still
+apply. Generated descriptions use only fixed OS state vocabulary; the host
+chooses whether this optional source runs. Capture off does not unregister the observer,
 and re-enabling capture does not query or reconstruct a path retroactively.
 
 Android records default-network availability, finite transport names, OS
