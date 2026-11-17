@@ -277,10 +277,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=9):
-    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7, 8, 9), "Unsupported incident revision")
+def validators(reader=False, revision=10):
+    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT / "revisions" / "7", ROOT / "revisions" / "8", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT / "revisions" / "7", ROOT / "revisions" / "8", ROOT / "revisions" / "9", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)

@@ -15,6 +15,13 @@ final class IncidentDocumentFixture {
     private static final String HTTP_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private IncidentDocumentFixture() { }
     static IncidentSnapshot make(String name) {
+        if (name.equals("network-path")) {
+            BreadcrumbEvent crumb = BreadcrumbEvent.restore("cccccccc-cccc-cccc-cccc-cccccccccccc", SESSION,
+                1, 123, 0L, BreadcrumbEvent.Kind.NETWORK_PATH, "android.network.path",
+                "status=available; interfaces=wifi; validated=true; metered=false", false, false, null, BreadcrumbEvent.Retention.RESTART_RELEVANT);
+            return IncidentSnapshot.restore(ID, 124, null, null,
+                IncidentSnapshot.Breadcrumbs.restore(Collections.singletonList(crumb), 1, 0), null, null, null);
+        }
         if (name.equals("network-details")) {
             NetworkError error = NetworkError.restore("fixture.network", "-1009", "SyntheticFailure", "连接失败😀", false, false);
             HTTPEvent.BodyReference body = HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.OMITTED, null, 0);

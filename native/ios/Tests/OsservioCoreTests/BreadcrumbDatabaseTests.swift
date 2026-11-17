@@ -55,6 +55,21 @@ final class BreadcrumbDatabaseTests: XCTestCase {
             XCTAssertEqual(try reader.read(id: id)?.run.evictedEvents, 4)
         }
     }
+    func testNetworkPathSurvivesPersistenceWithItsOriginalKind() throws {
+        try fixture { url in
+            let id = UUID().uuidString
+            let event = try BreadcrumbEvent.restore(id: UUID().uuidString, sessionID: UUID().uuidString,
+                sequence: 1, timestampMillis: 1_000, sessionElapsedMillis: 0, kind: .networkPath,
+                label: "ios.network.path", message: "status=unavailable; interfaces=none; expensive=false; constrained=false",
+                isPrivate: false, isTruncated: false, value: nil, retention: .restartRelevant)
+            let writer = try database(url, id: id)
+            try writer.write([event], now: 1_001); writer.close()
+            let reader = try database(url); defer { reader.close() }
+            let restored = try XCTUnwrap(reader.read(id: id)?.events.first)
+            XCTAssertEqual(restored.kind, .networkPath)
+            XCTAssertEqual(restored.id, event.id); XCTAssertEqual(restored.message, event.message)
+        }
+    }
     func testRunCountAndAgeLimitsDoNotInventAnExitCause() throws {
         try fixture { url in
             let options = try BreadcrumbPersistenceOptions(retainedRuns: 2, maximumAgeMillis: 60_000)

@@ -17,6 +17,20 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public final class BreadcrumbDatabaseTest {
+    @Test public void networkPathSurvivesPersistenceWithItsOriginalKind() throws Exception {
+        try (PersistenceFixture fixture = new PersistenceFixture()) {
+            String id = UUID.randomUUID().toString();
+            BreadcrumbEvent event = BreadcrumbEvent.restore(UUID.randomUUID().toString(), UUID.randomUUID().toString(), 1,
+                1000, 0L, BreadcrumbEvent.Kind.NETWORK_PATH, "android.network.path", "status=unavailable",
+                false, false, null, BreadcrumbEvent.Retention.RESTART_RELEVANT);
+            try (BreadcrumbDatabase writer = fixture.database(id)) { writer.write(java.util.Collections.singletonList(event), 1001); }
+            try (BreadcrumbDatabase reader = fixture.database(UUID.randomUUID().toString())) {
+                BreadcrumbEvent restored = reader.read(id).events.get(0);
+                assertEquals(BreadcrumbEvent.Kind.NETWORK_PATH, restored.kind);
+                assertEquals(event.id, restored.id); assertEquals(event.message, restored.message);
+            }
+        }
+    }
     @Test public void reopenPreservesIdentityUnicodeNulAndNoEmptyRun() throws Exception {
         try (PersistenceFixture fixture = new PersistenceFixture()) {
             String id = UUID.randomUUID().toString(); List<BreadcrumbEvent> original = events(2, "public\u0000例");

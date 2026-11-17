@@ -449,3 +449,4 @@
 "network_text_unavailable" = "文字不可用";
 "network_details_limited" = "部分诊断文字已截断或未能读取。";
 "network_details_processed" = "部分诊断文字已由宿主修改或省略。";
+"crumb_kind_networkPath" = "网络路径变化";

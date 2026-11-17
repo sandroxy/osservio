@@ -23,8 +23,8 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 9, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 9, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 10, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 10, "incidentID": snapshot.id,
             "logs": content(snapshot.logs?.payloads ?? [:]), "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {

@@ -7,6 +7,30 @@ import OsservioRuntime
 
 final class RuntimePlatformTests: XCTestCase {
     @MainActor
+    func testNetworkMonitorDeliversBoundedEvidenceAndRestarts() async throws {
+        let history = try MemoryBreadcrumbStore()
+        let recorder = try BreadcrumbRecorder(sink: history, captureController: CaptureController(baselineEnabled: true))
+        let signals = NetworkPathSignals(recorder: recorder)
+        defer { signals.stop() }
+        for expectedCount in 1...2 {
+            signals.start(); signals.start()
+            for _ in 0..<50 {
+                if (history.snapshot()?.events.count ?? 0) >= expectedCount { break }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+            let events = try XCTUnwrap(history.snapshot()?.events)
+            XCTAssertGreaterThanOrEqual(events.count, expectedCount)
+            for event in events {
+                XCTAssertEqual(event.kind, .networkPath)
+                XCTAssertEqual(event.retention, .restartRelevant)
+                XCTAssertLessThanOrEqual(event.message?.utf8.count ?? 0, 256)
+                XCTAssertTrue(event.message?.hasPrefix("status=") == true)
+            }
+            signals.stop(); signals.stop()
+        }
+    }
+
+    @MainActor
     func testNotificationOwnershipAndTeardownDoNotReadNotificationContents() throws {
         let history = try MemoryBreadcrumbStore()
         let capture = CaptureController(baselineEnabled: true)

@@ -137,6 +137,9 @@ Explicit readers tolerate unknown optional columns within revision 1, but reject
 unknown kinds, malformed UTF-8, wrong types, invalid IDs or privacy flags, and
 inconsistent byte counts. Restoration preserves the original IDs and times;
 it never silently truncates or repairs persisted evidence.
+The `networkPath` kind uses the existing text-kind column and unchanged database
+layout. Older SDK readers that lack that kind reject the affected records; they
+must not rewrite them as generic host markers or erase the database.
 
 Database initialization, validation, or write failure disables persistence for
 that store instance while live recording continues. The file is preserved,

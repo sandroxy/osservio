@@ -27,10 +27,23 @@ class ConformanceTests(unittest.TestCase):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete", "trusted-content", "structured-log", "http-metrics", "network-details", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
+        for name in ("absent", "empty", "complete", "trusted-content", "structured-log", "http-metrics", "network-details", "network-path", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)
+
+    def test_network_path_kind_and_preserved_revision_nine(self):
+        for path in sorted((FIXTURES / "revisions" / "9").glob("*.json")):
+            for reader in (False, True):
+                self.check(fixture("revisions/9/" + path.stem), True, reader)
+        for reader in (False, True):
+            value = fixture("network-path")
+            self.check(value, True, reader)
+            value["metadata"]["incident"]["breadcrumbs"]["events"][0]["kind"] = "unknownPath"
+            self.check(value, False, reader)
+            value = fixture("network-path")
+            value["metadata"]["revision"] = value["payloads"]["revision"] = 9
+            self.check(value, False, reader)
 
     def test_preserved_revision_one_and_explicit_revision_selection(self):
         for name in ("absent", "empty", "complete"):
@@ -41,7 +54,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 10, "9", None, True):
+        for revision in (0, 11, "10", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision

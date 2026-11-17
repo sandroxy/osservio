@@ -1,11 +1,16 @@
 dependencies {
     api project(":osservio-core")
+    // Compile-only API-boundary annotations; keep the same pinned input as the UI module.
+    //noinspection GradleDependency
+    compileOnly "androidx.annotation:annotation:1.9.1"
     testImplementation project(":osservio-store")
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation "androidx.test:runner:1.7.0"
     androidTestImplementation "androidx.test.ext:junit:1.3.0"
+    androidTestImplementation project(":osservio-store")
 }
 android.defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+android.defaultConfig.consumerProguardFiles "consumer-rules.pro"
 android.testOptions.unitTests.all {
     systemProperty "osservio.fixtures", rootProject.file("../../testing").absolutePath
 }

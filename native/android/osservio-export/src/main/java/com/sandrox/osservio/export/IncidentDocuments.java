@@ -52,8 +52,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 9, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 9, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 10, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 10, "incidentID", snapshot.id,
             "logs", content(snapshot.logs == null ? null : snapshot.logs.payloads),
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();

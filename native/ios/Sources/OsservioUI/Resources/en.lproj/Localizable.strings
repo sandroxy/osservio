@@ -449,3 +449,4 @@
 "network_text_unavailable" = "Text unavailable";
 "network_details_limited" = "Some diagnostic text was truncated or could not be read.";
 "network_details_processed" = "Some diagnostic text was changed or omitted by the host policy.";
+"crumb_kind_networkPath" = "Network path changed";

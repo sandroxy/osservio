@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:incident:9",
+  "$id": "urn:osservio:incident:10",
   "title": "Osservio incident metadata revision 9",
   "type": "object",
   "properties": {
@@ -8,7 +8,7 @@
       "const": "osservio.incident"
     },
     "revision": {
-      "const": 9
+      "const": 10
     },
     "payloadFile": {
       "const": "payloads.json"
@@ -679,7 +679,8 @@
             "memoryWarning",
             "memoryTrim",
             "thermalState",
-            "responsiveness"
+            "responsiveness",
+            "networkPath"
           ]
         },
         "label": {

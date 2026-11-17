@@ -9,4 +9,5 @@
     <string name="osservio_network_text_unavailable">Text unavailable</string>
     <string name="osservio_network_details_limited">Some diagnostic text was truncated or could not be read.</string>
     <string name="osservio_network_details_processed">Some diagnostic text was changed or omitted by the host policy.</string>
+    <string name="osservio_crumb_kind_network_path">Network path changed</string>
 </resources>

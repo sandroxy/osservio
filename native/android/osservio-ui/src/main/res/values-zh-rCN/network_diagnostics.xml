@@ -9,4 +9,5 @@
     <string name="osservio_network_text_unavailable">文字不可用</string>
     <string name="osservio_network_details_limited">部分诊断文字已截断或未能读取。</string>
     <string name="osservio_network_details_processed">部分诊断文字已由宿主修改或省略。</string>
+    <string name="osservio_crumb_kind_network_path">网络路径变化</string>
 </resources>

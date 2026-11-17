@@ -18,7 +18,7 @@ their capture session, not device boot time. An invalid clock ordering leaves
 the elapsed value unavailable.
 
 Kinds identify host markers, observed application/activity lifecycle callbacks,
-memory signals, thermal changes, and host-supplied responsiveness observations.
+memory signals, thermal changes, network-path changes, and host-supplied responsiveness observations.
 Labels are static ASCII identifiers, at most 64 bytes, using letters, digits,
 periods, underscores, and hyphens. They are not URL, account, or user-data fields.
 Optional text uses `LogMessage` classification: private input is replaced by
@@ -75,6 +75,47 @@ operation markers without exposing user values.
 Observers remain installed until explicitly stopped (or deallocated on iOS).
 Capture off rejects their observations; it does not unregister the observers.
 Android hosts must stop a `RuntimeSignals` instance when releasing its ownership.
+
+### Optional network-path observations
+
+`NetworkPathSignals` is separately owned and explicitly started by the host. It
+uses OS callbacks rather than polling or active reachability probes. Construct
+it with the breadcrumb recorder (and application context on Android), then call
+`start` / `stop` on the main thread or actor. Android requires the host to declare
+`android.permission.ACCESS_NETWORK_STATE`; the SDK manifest adds no permission.
+Its default-network observer requires API 24. API 23 reports `UNSUPPORTED`;
+missing permission reports `PERMISSION_DENIED`, and registration failure reports
+`UNAVAILABLE`. Repeated active starts report `ALREADY_STARTED`. A failed
+unregistration returns false and retains an inactive registration for another
+`stop` attempt; do not discard that owner until it succeeds.
+
+iOS uses `NWPathMonitor` on a serial utility queue and cancels it on stop or
+deallocation. Each restart on both platforms has a fresh callback lease. A
+callback already admitted before stop may finish; subsequent old callbacks are
+discarded. Android owners must explicitly stop before releasing the object.
+Controls do not modify capture mode, system connectivity, or inspector visibility.
+
+The initial observation and subsequent changed descriptions use kind
+`networkPath`, a static platform label, and restart-relevant retention. Consecutive
+identical successfully recorded facts are deduplicated within a capture session;
+failed admission may retry on the next OS callback. There is no retry timer or
+unbounded pending queue. Existing breadcrumb rate, text, storage, and host text
+processing policies still apply. Capture off does not unregister the observer,
+and re-enabling capture does not query or reconstruct a path retroactively.
+
+Android records default-network availability, finite transport names, OS
+validation and metered flags. iOS records path status, finite interface types,
+expensive and constrained flags. A VPN may coexist with another transport;
+`expensive` and `metered` have platform-specific meanings. No addresses, SSIDs,
+network IDs, routes, interface objects, or request content are retained. Bounded
+`key=value` descriptions preserve exact platform facts in details and exports;
+the viewer localizes the event kind. These observations are context, not proof
+that a particular endpoint is reachable or the cause of a request failure.
+
+The Android startup snapshot is read once before registration. Callback-provided
+capabilities supersede it; callbacks do not synchronously query network state.
+See [Android network-state observation](https://developer.android.com/develop/connectivity/network-ops/reading-network-state)
+and [Apple NWPathMonitor](https://developer.apple.com/documentation/network/nwpathmonitor).
 
 ## Environment queries
 

@@ -126,6 +126,7 @@ final class RuntimePresentation {
             case MEMORY_TRIM: label = R.string.osservio_crumb_kind_memory_trim; break;
             case THERMAL_STATE: label = R.string.osservio_crumb_kind_thermal_state; break;
             case RESPONSIVENESS: label = R.string.osservio_crumb_kind_responsiveness; break;
+            case NETWORK_PATH: label = R.string.osservio_crumb_kind_network_path; break;
             default: throw new IllegalStateException("Unknown breadcrumb kind");
         }
         return context.getString(label);

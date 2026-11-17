@@ -4,7 +4,7 @@ import Foundation
 public enum BreadcrumbKind: String, Sendable {
     case hostMarker, appActive, appInactive, appForeground, appBackground
     case activityStarted, activityResumed, activityPaused, activityStopped, activityDestroyed
-    case memoryWarning, memoryTrim, thermalState, responsiveness
+    case memoryWarning, memoryTrim, thermalState, responsiveness, networkPath
 }
 public enum BreadcrumbRetention: String, Sendable { case memoryOnly, restartRelevant }
 

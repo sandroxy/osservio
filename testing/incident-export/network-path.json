@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 10,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "124",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": {
+        "events": [
+          {
+            "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "1",
+            "timestampMillis": "123",
+            "sessionElapsedMillis": "0",
+            "kind": "networkPath",
+            "label": "android.network.path",
+            "message": "status=available; interfaces=wifi; validated=true; metered=false",
+            "isPrivate": false,
+            "isTruncated": false,
+            "value": null,
+            "retention": "restartRelevant"
+          }
+        ],
+        "sourceEventCount": 1,
+        "omittedEventCount": 0,
+        "sourceEvictedCount": "0",
+        "retainedTextBytes": 84
+      },
+      "logs": null,
+      "http": null,
+      "webSockets": null,
+      "origin": "manual",
+      "systemDiagnostic": null
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 10,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {},
+    "logs": {}
+  }
+}

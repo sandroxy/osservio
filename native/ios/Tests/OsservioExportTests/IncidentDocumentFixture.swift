@@ -6,6 +6,14 @@ enum IncidentDocumentFixture {
     static let session = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     static let httpID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     static func make(_ name: String) throws -> IncidentSnapshot {
+        if name == "network-path" {
+            let crumb = try BreadcrumbEvent.restore(id: "cccccccc-cccc-cccc-cccc-cccccccccccc", sessionID: session,
+                sequence: 1, timestampMillis: 123, sessionElapsedMillis: 0, kind: .networkPath, label: "android.network.path",
+                message: "status=available; interfaces=wifi; validated=true; metered=false", isPrivate: false,
+                isTruncated: false, value: nil, retention: .restartRelevant)
+            return try .restore(id: id, timestampMillis: 124, note: nil, environment: nil,
+                breadcrumbs: .restore(events: [crumb], sourceEventCount: 1, sourceEvictedCount: 0))
+        }
         if name == "network-details" {
             let error = try NetworkError.restore(domain: "fixture.network", code: "-1009", type: "SyntheticFailure", message: "连接失败😀", isLimited: false, isProcessed: false)
             let body = try HTTPBodyReference.restore(state: .omitted, blobID: nil, observedBytes: 0)
