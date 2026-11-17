@@ -61,4 +61,7 @@
     <string name="osservio_crumb_kind_memory_trim">Memory trim callback</string>
     <string name="osservio_crumb_kind_thermal_state">Thermal state changed</string>
     <string name="osservio_crumb_kind_responsiveness">Responsiveness observation</string>
+    <string name="osservio_env_android_target_sdk">Target Android API</string>
+    <string name="osservio_env_android_min_sdk">Minimum Android API</string>
+    <string name="osservio_env_android_debuggable">Debuggable build</string>
 </resources>

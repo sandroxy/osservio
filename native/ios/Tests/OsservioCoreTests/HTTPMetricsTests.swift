@@ -66,7 +66,7 @@ final class HTTPMetricsTests: XCTestCase {
                     store.close()
                 }
                 let check = try SQLiteConnection(url: url); defer { check.close() }
-                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 8 : 9) }
+                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 8 : 10) }
             }
         }
     }

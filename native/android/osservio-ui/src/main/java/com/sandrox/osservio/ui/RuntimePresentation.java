@@ -90,6 +90,9 @@ final class RuntimePresentation {
             case APP_IDENTIFIER: return R.string.osservio_env_app_identifier;
             case APP_VERSION: return R.string.osservio_env_app_version;
             case APP_BUILD: return R.string.osservio_env_app_build;
+            case ANDROID_TARGET_SDK: return R.string.osservio_env_android_target_sdk;
+            case ANDROID_MIN_SDK: return R.string.osservio_env_android_min_sdk;
+            case ANDROID_DEBUGGABLE: return R.string.osservio_env_android_debuggable;
             case MANUFACTURER: return R.string.osservio_env_manufacturer;
             case DEVICE_MODEL: return R.string.osservio_env_device_model;
             case ARCHITECTURE: return R.string.osservio_env_architecture;

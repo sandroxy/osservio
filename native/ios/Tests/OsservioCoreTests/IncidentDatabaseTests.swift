@@ -16,6 +16,9 @@ final class IncidentDatabaseTests: XCTestCase {
         facts[.physicalMemoryBytes] = .number(Int64.max)
         facts[.lowPowerMode] = .flag(false)
         facts[.processProportionalBytes] = .unsupported
+        facts[.androidTargetSDK] = .number(36)
+        facts[.androidMinSDK] = .number(23)
+        facts[.androidDebuggable] = .flag(false)
         let environment = try EnvironmentSnapshot.capture(platform: .ios, publicFacts: facts, timestampMillis: -123)
         let session = UUID().uuidString
         var events: [BreadcrumbEvent] = []
@@ -47,6 +50,9 @@ final class IncidentDatabaseTests: XCTestCase {
             XCTAssertEqual(restored.note?.text, "[private]")
             XCTAssertEqual(restored.environment?.timestampMillis, -123)
             XCTAssertEqual(restored.environment?.values[.osVersion]?.isTruncated, true)
+            guard case .number(36) = restored.environment?.values[.androidTargetSDK]?.fact,
+                  case .number(23) = restored.environment?.values[.androidMinSDK]?.fact,
+                  case .flag(false) = restored.environment?.values[.androidDebuggable]?.fact else { return XCTFail("Build facts changed") }
             guard case .number(Int64.max) = restored.environment?.values[.physicalMemoryBytes]?.fact else { return XCTFail("Integer precision lost") }
             XCTAssertEqual(restored.breadcrumbs?.events.map(\.id), snapshot.breadcrumbs?.events.map(\.id))
             XCTAssertEqual(restored.breadcrumbs?.events.map(\.message), ["public\u{0}例", "public\u{0}例"])
@@ -104,6 +110,8 @@ final class IncidentDatabaseTests: XCTestCase {
             "UPDATE environment_facts SET truncated=1 WHERE key='physicalMemoryBytes'",
             "UPDATE environment_facts SET text_value=CAST(x'ff' AS TEXT) WHERE key='osVersion'",
             "DELETE FROM environment_facts WHERE key='lowPowerMode'",
+            "DELETE FROM environment_facts WHERE key='androidTargetSDK'",
+            "UPDATE environment_facts SET number_value=0 WHERE key='androidMinSDK'",
             "UPDATE incident_breadcrumbs SET elapsed='01'",
             "UPDATE incident_breadcrumbs SET private=1"
         ] {
@@ -125,7 +133,7 @@ final class IncidentDatabaseTests: XCTestCase {
                 if revision == 6 { let store = try IncidentDatabase(url: url, options: options, now: 0); store.close() }
                 let raw = try SQLiteConnection(url: url)
                 if revision == 0 { try raw.execute("CREATE TABLE other_data(value TEXT)") }
-                else { try raw.execute("PRAGMA user_version=10") }
+                else { try raw.execute("PRAGMA user_version=11") }
                 raw.close()
                 let before = try Data(contentsOf: url)
                 XCTAssertThrowsError(try IncidentDatabase(url: url, options: options, now: 1)) { XCTAssertEqual($0 as? PersistenceError, .unsupportedSchema) }
@@ -136,6 +144,38 @@ final class IncidentDatabaseTests: XCTestCase {
             let bytes = Data("synthetic corrupt incident file".utf8); try bytes.write(to: url)
             XCTAssertThrowsError(try IncidentDatabase(url: url, options: IncidentPersistenceOptions(), now: 0)) { XCTAssertEqual($0 as? PersistenceError, .corrupt) }
             XCTAssertEqual(try Data(contentsOf: url), bytes)
+        }
+    }
+    func testBuildFactsMigrationPreservesHistoryAndRollsBackOnConflict() throws {
+        for conflict in [false, true] {
+            try fixture { url in
+                let raw = try SQLiteConnection(url: url)
+                for revision in 1...9 {
+                    for sql in try IncidentDetailFixture.shared("incident-v\(revision).sql").split(separator: ";") where !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { try raw.execute(String(sql)) }
+                }
+                try raw.execute("ALTER TABLE environment_facts ADD COLUMN optional_future TEXT")
+                if conflict { try raw.execute("INSERT INTO environment_facts(incident_id,key,type,truncated) SELECT id,'androidDebuggable','unavailable',0 FROM incidents WHERE environment_platform IS NOT NULL") }
+                raw.close()
+                if conflict { XCTAssertThrowsError(try IncidentDatabase(url: url, options: IncidentPersistenceOptions(), now: 2000)) }
+                else {
+                    let store = try IncidentDatabase(url: url, options: IncidentPersistenceOptions(), now: 2000)
+                    defer { store.close() }
+                    XCTAssertEqual(try store.summaries().count, 4)
+                    let snapshot = try XCTUnwrap(store.read(id: "12345678-1234-1234-1234-123456789abc"))
+                    XCTAssertEqual(snapshot.timestampMillis, -17); XCTAssertEqual(snapshot.note?.text, "legacy")
+                    XCTAssertEqual(snapshot.environment?.timestampMillis, -23)
+                    for key in [EnvironmentKey.androidTargetSDK, .androidMinSDK, .androidDebuggable] {
+                        guard case .unavailable = snapshot.environment?.values[key]?.fact else { return XCTFail("Historical build facts must remain unknown") }
+                    }
+                }
+                let check = try SQLiteConnection(url: url); defer { check.close() }
+                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 9 : 10) }
+                if conflict {
+                    try check.statement("SELECT count(*) FROM environment_facts WHERE key IN ('androidTargetSDK','androidMinSDK')") {
+                        XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 0)
+                    }
+                }
+            }
         }
     }
     func testFullDatabaseRollsBackRetentionCleanupAndAllowsExplicitDeletion() throws {

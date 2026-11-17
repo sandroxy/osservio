@@ -58,4 +58,7 @@
     <string name="osservio_crumb_kind_memory_trim">内存回收通知</string>
     <string name="osservio_crumb_kind_thermal_state">温度状态变化</string>
     <string name="osservio_crumb_kind_responsiveness">响应状况观察</string>
+    <string name="osservio_env_android_target_sdk">目标 Android API</string>
+    <string name="osservio_env_android_min_sdk">最低 Android API</string>
+    <string name="osservio_env_android_debuggable">允许调试的构建</string>
 </resources>

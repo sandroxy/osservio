@@ -36,6 +36,9 @@ public final class IncidentDatabaseTest {
         facts.put(EnvironmentSnapshot.Key.PHYSICAL_MEMORY_BYTES, EnvironmentSnapshot.Fact.number(Long.MAX_VALUE));
         facts.put(EnvironmentSnapshot.Key.LOW_POWER_MODE, EnvironmentSnapshot.Fact.flag(false));
         facts.put(EnvironmentSnapshot.Key.PROCESS_PROPORTIONAL_BYTES, EnvironmentSnapshot.Fact.UNSUPPORTED);
+        facts.put(EnvironmentSnapshot.Key.ANDROID_TARGET_SDK, EnvironmentSnapshot.Fact.number(36));
+        facts.put(EnvironmentSnapshot.Key.ANDROID_MIN_SDK, EnvironmentSnapshot.Fact.number(23));
+        facts.put(EnvironmentSnapshot.Key.ANDROID_DEBUGGABLE, EnvironmentSnapshot.Fact.flag(false));
         EnvironmentSnapshot environment = EnvironmentSnapshot.capture(EnvironmentSnapshot.Platform.ANDROID, facts, -123);
         List<BreadcrumbEvent> events = new ArrayList<>(); int bytes = 0;
         String session = UUID.randomUUID().toString();
@@ -61,6 +64,9 @@ public final class IncidentDatabaseTest {
                 assertNotNull(restored); assertEquals(snapshot.id, restored.id); assertEquals(snapshot.timestampMillis, restored.timestampMillis);
                 assertEquals("[private]", restored.note.text); assertEquals(-123, restored.environment.timestampMillis);
                 assertTrue(restored.environment.values.get(EnvironmentSnapshot.Key.OS_VERSION).isTruncated);
+                assertEquals(Long.valueOf(36), restored.environment.values.get(EnvironmentSnapshot.Key.ANDROID_TARGET_SDK).fact.number);
+                assertEquals(Long.valueOf(23), restored.environment.values.get(EnvironmentSnapshot.Key.ANDROID_MIN_SDK).fact.number);
+                assertEquals(Boolean.FALSE, restored.environment.values.get(EnvironmentSnapshot.Key.ANDROID_DEBUGGABLE).fact.flag);
                 assertEquals(Long.valueOf(Long.MAX_VALUE), restored.environment.values.get(EnvironmentSnapshot.Key.PHYSICAL_MEMORY_BYTES).fact.number);
                 assertEquals(ids(snapshot.breadcrumbs.events), ids(restored.breadcrumbs.events));
                 assertEquals("public\u0000例", restored.breadcrumbs.events.get(0).message);
@@ -111,7 +117,9 @@ public final class IncidentDatabaseTest {
             "UPDATE incidents SET note='raw', private=1", "UPDATE incidents SET breadcrumb_count=3", "UPDATE incidents SET text_bytes=text_bytes+1",
             "UPDATE environment_facts SET truncated=1 WHERE key='physicalMemoryBytes'",
             "UPDATE environment_facts SET text_value=CAST(x'ff' AS TEXT) WHERE key='osVersion'",
-            "DELETE FROM environment_facts WHERE key='lowPowerMode'", "UPDATE incident_breadcrumbs SET elapsed='01'", "UPDATE incident_breadcrumbs SET private=1")) {
+            "DELETE FROM environment_facts WHERE key='lowPowerMode'", "DELETE FROM environment_facts WHERE key='androidTargetSDK'",
+            "UPDATE environment_facts SET number_value=0 WHERE key='androidMinSDK'",
+            "UPDATE incident_breadcrumbs SET elapsed='01'", "UPDATE incident_breadcrumbs SET private=1")) {
             try (PersistenceFixture fixture = new PersistenceFixture()) {
                 IncidentSnapshot snapshot = context(); IncidentPersistenceOptions options = new IncidentPersistenceOptions();
                 try (IncidentDatabase store = new IncidentDatabase(file(fixture), options, 0)) { store.save(snapshot, 0); }
@@ -126,7 +134,7 @@ public final class IncidentDatabaseTest {
                 IncidentPersistenceOptions options = new IncidentPersistenceOptions();
                 if (revision == 6) { try (IncidentDatabase ignored = new IncidentDatabase(file(fixture), options, 0)) { assertTrue(ignored.summaries().isEmpty()); } }
                 try (SQLiteDatabase raw = SQLiteDatabase.openOrCreateDatabase(file(fixture), null)) {
-                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=10");
+                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=11");
                 }
                 byte[] before = read(file(fixture));
                 expect(PersistenceStatus.Error.UNSUPPORTED_SCHEMA, () -> new IncidentDatabase(file(fixture), options, 1));
@@ -149,6 +157,29 @@ public final class IncidentDatabaseTest {
                 assertEquals(2, store.summaries().size()); assertEquals(second.id, store.summaries().get(0).id);
                 assertEquals(first.textByteCount, store.read(first.id).textByteCount);
                 store.delete(second.id); store.save(context(), 3); assertEquals(2, store.summaries().size());
+            }
+        }
+    }
+    @Test public void buildFactsMigrationPreservesHistoryAndRollsBackOnConflict() throws Exception {
+        for (boolean conflict : new boolean[] {false, true}) try (PersistenceFixture fixture = new PersistenceFixture()) {
+            try (SQLiteDatabase raw = SQLiteDatabase.openOrCreateDatabase(file(fixture), null)) {
+                for (int revision = 1; revision <= 9; revision++)
+                    for (String sql : IncidentDetailFixture.shared("incident-v" + revision + ".sql").split(";")) if (!sql.trim().isEmpty()) raw.execSQL(sql);
+                raw.execSQL("ALTER TABLE environment_facts ADD COLUMN optional_future TEXT");
+                if (conflict) raw.execSQL("INSERT INTO environment_facts(incident_id,key,type,truncated) SELECT id,'androidDebuggable','unavailable',0 FROM incidents WHERE environment_platform IS NOT NULL");
+            }
+            if (conflict) expect(PersistenceStatus.Error.INVALID_RECORD, () -> new IncidentDatabase(file(fixture), new IncidentPersistenceOptions(), 2000));
+            else try (IncidentDatabase store = new IncidentDatabase(file(fixture), new IncidentPersistenceOptions(), 2000)) {
+                assertEquals(4, store.summaries().size());
+                IncidentSnapshot snapshot = store.read("12345678-1234-1234-1234-123456789abc");
+                assertEquals(-17, snapshot.timestampMillis); assertEquals("legacy", snapshot.note.text);
+                assertEquals(-23, snapshot.environment.timestampMillis);
+                for (EnvironmentSnapshot.Key key : Arrays.asList(EnvironmentSnapshot.Key.ANDROID_TARGET_SDK, EnvironmentSnapshot.Key.ANDROID_MIN_SDK, EnvironmentSnapshot.Key.ANDROID_DEBUGGABLE))
+                    assertEquals(EnvironmentSnapshot.Fact.Type.UNAVAILABLE, snapshot.environment.values.get(key).fact.type);
+            }
+            try (SQLiteDatabase check = SQLiteDatabase.openDatabase(file(fixture).getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
+                assertEquals(conflict ? 9 : 10, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
+                if (conflict) assertEquals(0, EvidenceSQLite.scalar(check, "SELECT count(*) FROM environment_facts WHERE key IN ('androidTargetSDK','androidMinSDK')"));
             }
         }
     }

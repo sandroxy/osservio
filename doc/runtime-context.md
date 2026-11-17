@@ -93,6 +93,13 @@ advertising/vendor identifiers, account data, network addresses, or storage
 contents. No battery monitoring or permissions are enabled for the query. iOS
 battery data is unavailable unless the host already enabled monitoring.
 
+Android also reports the installed application’s target API, minimum API (on
+Android 7.0/API 24 and later), and debuggable build flag. These describe the
+installed package; the debuggable flag never enables or disables collection.
+Minimum API is unsupported on Android 6.0, and all three Android-specific fields
+are unsupported on iOS. Historical snapshots that predate these fields retain
+unavailable values instead of adopting facts from the current installation.
+
 Memory measurements retain their native meaning. Android exposes proportional
 set size (PSS) and managed runtime heap usage/limit; iOS exposes resident size and
 physical footprint. They are separate fields, not interchangeable values. These
@@ -100,9 +107,9 @@ are point-in-time readings, not an atomic process-wide measurement or an estimat
 of how much more memory the app can safely allocate. Simulator hardware facts
 describe what that runtime reports, which may differ from a physical device.
 
-Each of the 17 keys has an explicit typed value, unavailable state, or unsupported
+Each of the 20 keys has an explicit typed value, unavailable state, or unsupported
 state. Environment capture validates types and nonnegative numeric ranges;
-battery percentage is 0–100. Text is capped at 256 UTF-8 bytes with a truncation
+battery percentage is 0–100; Android API levels are positive 32-bit integers. Text is capped at 256 UTF-8 bytes with a truncation
 flag. Missing data never silently becomes zero or an empty success. The public
 snapshot factory accepts only facts the host classifies as public system/app
 metadata, not arbitrary diagnostic context. Integers retain 64-bit precision.

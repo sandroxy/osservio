@@ -40,7 +40,8 @@ final class RuntimePlatformTests: XCTestCase {
         XCTAssertEqual(snapshot.values.count, EnvironmentKey.allCases.count)
         guard case .number(let processID) = snapshot.values[.processID]?.fact else { return XCTFail("Process ID missing") }
         XCTAssertEqual(processID, Int64(ProcessInfo.processInfo.processIdentifier))
-        for key in [EnvironmentKey.processProportionalBytes, .runtimeHeapBytes, .runtimeHeapLimitBytes] {
+        for key in [EnvironmentKey.processProportionalBytes, .runtimeHeapBytes, .runtimeHeapLimitBytes,
+                    .androidTargetSDK, .androidMinSDK, .androidDebuggable] {
             guard case .unsupported = snapshot.values[key]?.fact else { return XCTFail("Platform metric must stay unsupported") }
         }
         if !batteryMonitoring {

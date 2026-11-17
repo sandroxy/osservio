@@ -80,7 +80,8 @@ final class EnvironmentInspectorView extends LinearLayout implements InspectorSc
         page.value(() -> RuntimePresentation.date(context, snapshot.timestampMillis) + (saved ? " · " + snapshot.platform.name().toLowerCase(java.util.Locale.ROOT) : ""));
         page.note(saved ? R.string.osservio_incident_snapshot_hint : snapshot.platform == EnvironmentSnapshot.Platform.IOS ? R.string.osservio_runtime_environment_hint : R.string.osservio_ui_environment_android_hint);
         EnvironmentSnapshot.Key[][] groups = {
-            {EnvironmentSnapshot.Key.APP_IDENTIFIER, EnvironmentSnapshot.Key.APP_VERSION, EnvironmentSnapshot.Key.APP_BUILD},
+            {EnvironmentSnapshot.Key.APP_IDENTIFIER, EnvironmentSnapshot.Key.APP_VERSION, EnvironmentSnapshot.Key.APP_BUILD,
+                EnvironmentSnapshot.Key.ANDROID_TARGET_SDK, EnvironmentSnapshot.Key.ANDROID_MIN_SDK, EnvironmentSnapshot.Key.ANDROID_DEBUGGABLE},
             {EnvironmentSnapshot.Key.OS_VERSION, EnvironmentSnapshot.Key.MANUFACTURER, EnvironmentSnapshot.Key.DEVICE_MODEL,
                 EnvironmentSnapshot.Key.ARCHITECTURE, EnvironmentSnapshot.Key.PHYSICAL_MEMORY_BYTES},
             {EnvironmentSnapshot.Key.PROCESS_ID, EnvironmentSnapshot.Key.PROCESS_RESIDENT_BYTES, EnvironmentSnapshot.Key.PROCESS_PROPORTIONAL_BYTES,

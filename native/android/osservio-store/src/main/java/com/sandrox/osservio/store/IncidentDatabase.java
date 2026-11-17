@@ -47,7 +47,8 @@ final class IncidentDatabase implements AutoCloseable {
         migrations.put(6L, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA);
         migrations.put(7L, IncidentDetailDatabase.LOG_DETAILS_SCHEMA);
         migrations.put(8L, HTTPMetricsDatabase.SCHEMA);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 9, schema.toArray(new String[0]), migrations);
+        migrations.put(9L, ENVIRONMENT_BUILD_FIELDS);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 10, schema.toArray(new String[0]), migrations);
         details = new IncidentDetailDatabase(database);
         diagnostics = new IncidentDiagnosticDatabase(database);
         recovery = new DiagnosticRecoveryDatabase(database, options);
@@ -61,6 +62,12 @@ final class IncidentDatabase implements AutoCloseable {
         } catch (RuntimeException failure) { database.close(); throw failure; }
     }
     @Override public void close() { database.close(); }
+    // Historical snapshots cannot be filled from the currently installed application.
+    private static final String[] ENVIRONMENT_BUILD_FIELDS = {
+        "INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) SELECT id, 'androidTargetSDK', 'unavailable', NULL, NULL, 0 FROM incidents WHERE environment_platform IS NOT NULL",
+        "INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) SELECT id, 'androidMinSDK', 'unavailable', NULL, NULL, 0 FROM incidents WHERE environment_platform IS NOT NULL",
+        "INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) SELECT id, 'androidDebuggable', 'unavailable', NULL, NULL, 0 FROM incidents WHERE environment_platform IS NOT NULL"
+    };
     private static final String[] SCHEMA = {
         "CREATE TABLE incidents (ordinal INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE COLLATE NOCASE, "
             + "timestamp INTEGER NOT NULL, saved_at INTEGER NOT NULL, note TEXT, private INTEGER NOT NULL, truncated INTEGER NOT NULL, "
@@ -207,7 +214,7 @@ final class IncidentDatabase implements AutoCloseable {
         Map<EnvironmentSnapshot.Key, EnvironmentSnapshot.Fact> facts = new EnumMap<>(EnvironmentSnapshot.Key.class);
         Set<EnvironmentSnapshot.Key> truncated = EnumSet.noneOf(EnvironmentSnapshot.Key.class);
         String projection = textColumn("key", 32) + "," + textColumn("type", 16) + "," + textColumn("text_value", 256) + ",number_value,truncated";
-        try (Cursor row = query("SELECT " + projection + " FROM environment_facts WHERE incident_id=? LIMIT 18", info.summary.id)) {
+        try (Cursor row = query("SELECT " + projection + " FROM environment_facts WHERE incident_id=? LIMIT 21", info.summary.id)) {
             while (row.moveToNext()) {
                 if (info.platform == null || facts.size() >= EnvironmentSnapshot.Key.values().length) throw EvidenceStorageException.invalid();
                 EnvironmentSnapshot.Key key = parse(EnvironmentSnapshot.Key.values(), text(row, 0, 32));

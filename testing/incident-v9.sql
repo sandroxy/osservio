@@ -1,0 +1,4 @@
+ALTER TABLE incident_http ADD COLUMN metrics_present INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE incident_http_metrics (incident_id TEXT NOT NULL, event_position INTEGER NOT NULL, protocol TEXT, cache TEXT NOT NULL, reused INTEGER, limited INTEGER NOT NULL, phase_count INTEGER NOT NULL, PRIMARY KEY(incident_id,event_position), FOREIGN KEY(incident_id,event_position) REFERENCES incident_http(incident_id,position) ON DELETE CASCADE);
+CREATE TABLE incident_http_phases (incident_id TEXT NOT NULL, event_position INTEGER NOT NULL, position INTEGER NOT NULL, phase TEXT NOT NULL, started INTEGER NOT NULL, ended INTEGER, PRIMARY KEY(incident_id,event_position,position), FOREIGN KEY(incident_id,event_position) REFERENCES incident_http_metrics(incident_id,event_position) ON DELETE CASCADE);
+PRAGMA user_version=9;

@@ -436,3 +436,6 @@
 "form_empty_value" = "（空值）";
 "form_missing_equals" = "（未包含等号）";
 "form_copy_source" = "复制字段编码原文";
+"env_androidTargetSDK" = "目标 Android API";
+"env_androidMinSDK" = "最低 Android API";
+"env_androidDebuggable" = "允许调试的构建";

@@ -51,8 +51,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 7, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 7, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 8, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 8, "incidentID", snapshot.id,
             "logs", content(snapshot.logs == null ? null : snapshot.logs.payloads),
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
@@ -71,6 +71,8 @@ public final class IncidentDocuments {
     private static String code(Enum<?> value) {
         if (value == null) return null;
         if (value == EnvironmentSnapshot.Key.PROCESS_ID) return "processID";
+        if (value == EnvironmentSnapshot.Key.ANDROID_TARGET_SDK) return "androidTargetSDK";
+        if (value == EnvironmentSnapshot.Key.ANDROID_MIN_SDK) return "androidMinSDK";
         if (value == HTTPEvent.Source.OKHTTP || value == WebSocketEvent.Source.OKHTTP) return "okHttp";
         String[] words = value.name().toLowerCase(Locale.ROOT).split("_"); StringBuilder result = new StringBuilder(words[0]);
         for (int index = 1; index < words.length; index++) result.append(Character.toUpperCase(words[index].charAt(0))).append(words[index].substring(1));

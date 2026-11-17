@@ -3,6 +3,7 @@ import Foundation
 public enum EnvironmentPlatform: String, Sendable { case android, ios }
 public enum EnvironmentKey: String, CaseIterable, Sendable {
     case osVersion, appIdentifier, appVersion, appBuild, manufacturer, deviceModel, architecture
+    case androidTargetSDK, androidMinSDK, androidDebuggable
     case physicalMemoryBytes, processResidentBytes, processProportionalBytes, processFootprintBytes
     case runtimeHeapBytes, runtimeHeapLimitBytes, processID, batteryPercent, lowPowerMode, thermalState
 }
@@ -33,13 +34,14 @@ public struct EnvironmentSnapshot: Sendable {
             switch fact {
             case .unavailable, .unsupported: break
             case .text(let text):
-                guard !key.numeric, key != .lowPowerMode, !text.isEmpty,
+                guard !key.numeric, key != .lowPowerMode, key != .androidDebuggable, !text.isEmpty,
                       let bounded = BoundedText.prefix(text, bytes: 256) else { throw EnvironmentError.invalidValue }
                 safe = .text(bounded.text); truncated = bounded.truncated
             case .number(let number):
-                guard key.numeric, number >= 0, key != .batteryPercent || number <= 100 else { throw EnvironmentError.invalidValue }
+                guard key.numeric, number >= 0, key != .batteryPercent || number <= 100,
+                      ![.androidTargetSDK, .androidMinSDK].contains(key) || (number >= 1 && number <= Int64(Int32.max)) else { throw EnvironmentError.invalidValue }
             case .flag:
-                guard key == .lowPowerMode else { throw EnvironmentError.invalidValue }
+                guard key == .lowPowerMode || key == .androidDebuggable else { throw EnvironmentError.invalidValue }
             }
             values[key] = EnvironmentValue(fact: safe, isTruncated: truncated)
         }
@@ -62,7 +64,7 @@ private extension EnvironmentKey {
     var numeric: Bool {
         switch self {
         case .physicalMemoryBytes, .processResidentBytes, .processProportionalBytes, .processFootprintBytes,
-             .runtimeHeapBytes, .runtimeHeapLimitBytes, .processID, .batteryPercent: return true
+             .runtimeHeapBytes, .runtimeHeapLimitBytes, .processID, .batteryPercent, .androidTargetSDK, .androidMinSDK: return true
         default: return false
         }
     }

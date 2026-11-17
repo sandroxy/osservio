@@ -436,3 +436,6 @@
 "form_empty_value" = "(Empty value)";
 "form_missing_equals" = "(No equals sign)";
 "form_copy_source" = "Copy encoded field";
+"env_androidTargetSDK" = "Target Android API";
+"env_androidMinSDK" = "Minimum Android API";
+"env_androidDebuggable" = "Debuggable build";

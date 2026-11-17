@@ -10,3 +10,11 @@ empty-text	appBuild	text	~	invalid	LQ==	false
 low-power	lowPowerMode	flag	dHJ1ZQ==	valid	dHJ1ZQ==	false
 missing-battery	batteryPercent	unavailable	LQ==	valid	dW5hdmFpbGFibGU=	false
 unsupported-metric	processProportionalBytes	unsupported	LQ==	valid	dW5zdXBwb3J0ZWQ=	false
+target-api	androidTargetSDK	number	MzY=	valid	MzY=	false
+minimum-api	androidMinSDK	number	MjM=	valid	MjM=	false
+zero-api	androidMinSDK	number	MA==	invalid	LQ==	false
+oversize-api	androidTargetSDK	number	MjE0NzQ4MzY0OA==	invalid	LQ==	false
+target-is-not-text	androidTargetSDK	text	MzY=	invalid	LQ==	false
+debuggable-true	androidDebuggable	flag	dHJ1ZQ==	valid	dHJ1ZQ==	false
+debuggable-false	androidDebuggable	flag	ZmFsc2U=	valid	ZmFsc2U=	false
+debuggable-not-number	androidDebuggable	number	MA==	invalid	LQ==	false

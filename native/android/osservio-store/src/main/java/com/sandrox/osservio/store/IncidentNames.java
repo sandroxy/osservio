@@ -11,6 +11,8 @@ final class IncidentNames {
     static String name(Enum<?> value) {
         if (value == null) return null;
         if (value == EnvironmentSnapshot.Key.PROCESS_ID) return "processID";
+        if (value == EnvironmentSnapshot.Key.ANDROID_TARGET_SDK) return "androidTargetSDK";
+        if (value == EnvironmentSnapshot.Key.ANDROID_MIN_SDK) return "androidMinSDK";
         if (value == HTTPEvent.Source.OKHTTP || value == WebSocketEvent.Source.OKHTTP) return "okHttp";
         String[] words = value.name().toLowerCase(Locale.ROOT).split("_");
         StringBuilder result = new StringBuilder(words[0]);

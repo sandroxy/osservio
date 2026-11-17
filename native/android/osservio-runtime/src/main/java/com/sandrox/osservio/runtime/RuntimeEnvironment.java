@@ -54,6 +54,11 @@ public final class RuntimeEnvironment implements EnvironmentProvider, AutoClosea
         for (Key key : Key.values()) facts.put(key, Fact.UNSUPPORTED);
         facts.put(Key.OS_VERSION, text(Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"));
         facts.put(Key.APP_IDENTIFIER, text(context.getPackageName()));
+        android.content.pm.ApplicationInfo application = context.getApplicationInfo();
+        facts.put(Key.ANDROID_TARGET_SDK, application.targetSdkVersion > 0 ? Fact.number(application.targetSdkVersion) : Fact.UNAVAILABLE);
+        facts.put(Key.ANDROID_DEBUGGABLE, Fact.flag((application.flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0));
+        if (Build.VERSION.SDK_INT >= 24) facts.put(Key.ANDROID_MIN_SDK,
+            application.minSdkVersion > 0 ? Fact.number(application.minSdkVersion) : Fact.UNAVAILABLE);
         facts.put(Key.MANUFACTURER, text(Build.MANUFACTURER)); facts.put(Key.DEVICE_MODEL, text(Build.MODEL));
         facts.put(Key.ARCHITECTURE, text(System.getProperty("os.arch")));
         facts.put(Key.PROCESS_ID, Fact.number(android.os.Process.myPid()));

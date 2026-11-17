@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 7,
+    "revision": 8,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -98,6 +98,21 @@
           "lowPowerMode": {
             "type": "flag",
             "value": false,
+            "isTruncated": false
+          },
+          "androidTargetSDK": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "androidMinSDK": {
+            "type": "unavailable",
+            "value": null,
+            "isTruncated": false
+          },
+          "androidDebuggable": {
+            "type": "unavailable",
+            "value": null,
             "isTruncated": false
           }
         }
@@ -434,7 +449,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 7,
+    "revision": 8,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {
       "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",

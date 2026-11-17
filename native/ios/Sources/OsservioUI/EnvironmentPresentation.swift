@@ -6,7 +6,7 @@ import UIKit
 enum EnvironmentPresentation {
     static func sections(_ snapshot: EnvironmentSnapshot) -> [InspectorDetailViewController.Section] {
         let groups: [(String, [EnvironmentKey])] = [
-            ("ui_app", [.appIdentifier, .appVersion, .appBuild]),
+            ("ui_app", [.appIdentifier, .appVersion, .appBuild, .androidTargetSDK, .androidMinSDK, .androidDebuggable]),
             ("ui_device", [.osVersion, .manufacturer, .deviceModel, .architecture, .physicalMemoryBytes]),
             ("ui_process", [.processID, .processResidentBytes, .processProportionalBytes, .processFootprintBytes, .runtimeHeapBytes, .runtimeHeapLimitBytes]),
             ("ui_power", [.batteryPercent, .lowPowerMode, .thermalState])

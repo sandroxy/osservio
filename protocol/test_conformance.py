@@ -41,7 +41,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 8, "7", None, True):
+        for revision in (0, 9, "8", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision
@@ -83,6 +83,26 @@ class ConformanceTests(unittest.TestCase):
             for reader in (False, True):
                 with self.subTest(case=case["name"], reader=reader):
                     self.check(document, case["readerAccepts" if reader else "writerAccepts"], reader)
+
+    def test_build_facts_are_typed_and_previous_revision_is_unchanged(self):
+        for path in sorted((FIXTURES / "revisions" / "7").glob("*.json")):
+            for reader in (False, True):
+                self.check(fixture("revisions/7/" + path.stem), True, reader)
+        for reader in (False, True):
+            document = fixture("complete")
+            values = document["metadata"]["incident"]["environment"]["values"]
+            for key, value in (("androidTargetSDK", "36"), ("androidMinSDK", "23")):
+                values[key] = {"type": "number", "value": value, "isTruncated": False}
+            values["androidDebuggable"] = {"type": "flag", "value": False, "isTruncated": False}
+            self.check(document, True, reader)
+            for key, value in (("androidTargetSDK", "0"), ("androidMinSDK", "2147483648"), ("androidDebuggable", "false")):
+                invalid = copy.deepcopy(document)
+                invalid["metadata"]["incident"]["environment"]["values"][key]["value"] = value
+                self.check(invalid, False, reader)
+            for key in ("androidTargetSDK", "androidMinSDK", "androidDebuggable"):
+                invalid = copy.deepcopy(document)
+                del invalid["metadata"]["incident"]["environment"]["values"][key]
+                self.check(invalid, False, reader)
 
     def test_preserved_revision_two_and_mixed_documents(self):
         for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"):

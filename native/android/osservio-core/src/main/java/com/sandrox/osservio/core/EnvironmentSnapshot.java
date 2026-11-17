@@ -10,13 +10,15 @@ import java.util.Set;
 public final class EnvironmentSnapshot {
     public enum Platform { ANDROID, IOS }
     public enum Key {
-        OS_VERSION, APP_IDENTIFIER, APP_VERSION, APP_BUILD, MANUFACTURER, DEVICE_MODEL, ARCHITECTURE,
+        OS_VERSION, APP_IDENTIFIER, APP_VERSION, APP_BUILD, ANDROID_TARGET_SDK, ANDROID_MIN_SDK, ANDROID_DEBUGGABLE,
+        MANUFACTURER, DEVICE_MODEL, ARCHITECTURE,
         PHYSICAL_MEMORY_BYTES, PROCESS_RESIDENT_BYTES, PROCESS_PROPORTIONAL_BYTES, PROCESS_FOOTPRINT_BYTES,
         RUNTIME_HEAP_BYTES, RUNTIME_HEAP_LIMIT_BYTES, PROCESS_ID, BATTERY_PERCENT, LOW_POWER_MODE, THERMAL_STATE;
         private boolean numeric() {
             switch (this) {
                 case PHYSICAL_MEMORY_BYTES: case PROCESS_RESIDENT_BYTES: case PROCESS_PROPORTIONAL_BYTES: case PROCESS_FOOTPRINT_BYTES:
-                case RUNTIME_HEAP_BYTES: case RUNTIME_HEAP_LIMIT_BYTES: case PROCESS_ID: case BATTERY_PERCENT: return true;
+                case RUNTIME_HEAP_BYTES: case RUNTIME_HEAP_LIMIT_BYTES: case PROCESS_ID: case BATTERY_PERCENT:
+                case ANDROID_TARGET_SDK: case ANDROID_MIN_SDK: return true;
                 default: return false;
             }
         }
@@ -58,15 +60,16 @@ public final class EnvironmentSnapshot {
             boolean truncated = false;
             switch (fact.type) {
                 case TEXT:
-                    if (key.numeric() || key == Key.LOW_POWER_MODE || fact.text.isEmpty()) throw invalid();
+                    if (key.numeric() || key == Key.LOW_POWER_MODE || key == Key.ANDROID_DEBUGGABLE || fact.text.isEmpty()) throw invalid();
                     BoundedText bounded = BoundedText.prefix(fact.text, 256);
                     if (bounded == null) throw invalid();
                     fact = Fact.text(bounded.text); truncated = bounded.truncated;
                     break;
                 case NUMBER:
-                    if (!key.numeric() || fact.number < 0 || (key == Key.BATTERY_PERCENT && fact.number > 100)) throw invalid();
+                    if (!key.numeric() || fact.number < 0 || (key == Key.BATTERY_PERCENT && fact.number > 100)
+                        || ((key == Key.ANDROID_TARGET_SDK || key == Key.ANDROID_MIN_SDK) && (fact.number < 1 || fact.number > Integer.MAX_VALUE))) throw invalid();
                     break;
-                case FLAG: if (key != Key.LOW_POWER_MODE) throw invalid(); break;
+                case FLAG: if (key != Key.LOW_POWER_MODE && key != Key.ANDROID_DEBUGGABLE) throw invalid(); break;
                 case UNAVAILABLE: case UNSUPPORTED: break;
                 default: throw invalid();
             }

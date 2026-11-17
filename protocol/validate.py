@@ -152,12 +152,14 @@ def semantics(metadata, payloads):
         if diagnostic is not None:
             total += diagnostic_semantics(diagnostic, metadata["revision"])
     if incident["environment"] is not None:
-        for key in ENVIRONMENT_KEYS:
+        for key in ENVIRONMENT_KEYS + (("androidTargetSDK", "androidMinSDK", "androidDebuggable") if metadata["revision"] >= 8 else ()):
             value = incident["environment"]["values"][key]
             if value["type"] == "text":
                 total += utf8(value["value"])
             if key == "batteryPercent" and value["type"] == "number":
                 require(int(value["value"]) <= 100, "Battery percentage out of range")
+            if key in ("androidTargetSDK", "androidMinSDK") and value["type"] == "number":
+                require(1 <= int(value["value"]) <= 2**31 - 1, "Android API level out of range")
     for family in ("breadcrumbs", "logs", "http", "webSockets"):
         group = incident[family]
         has_payloads = family in ("http", "webSockets") or family == "logs" and metadata["revision"] >= 6
@@ -260,10 +262,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=7):
-    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7), "Unsupported incident revision")
+def validators(reader=False, revision=8):
+    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7, 8), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT / "revisions" / "7", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)

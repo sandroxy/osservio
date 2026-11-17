@@ -325,9 +325,11 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `9`. Product versions
+application ID `0x4f535649`, and private schema revision `10`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
-typed environment facts, copied breadcrumbs, and frozen event windows. Network
+typed environment facts, copied breadcrumbs, and frozen event windows. The
+revision-9 migration adds unavailable Android build facts to historical
+environment snapshots without substituting current package values. Network
 headers and log/network payload text use separate tables; list queries do not load them.
 System numeric facts and bounded historical metadata have separate normalized
 tables. Reads validate source-specific fields, classification, nullability,
