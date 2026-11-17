@@ -168,6 +168,12 @@ final class ObservedWebSocketSessionTests: XCTestCase {
         XCTAssertEqual(store.snapshot()?.events.last?.error?.domain, native.domain)
         XCTAssertEqual(store.snapshot()?.events.last?.error?.code, String(native.code))
         XCTAssertEqual(store.snapshot()?.events.last?.error?.message, native.localizedDescription)
+        let count = store.snapshot()?.events.count
+        socket.didClose(with: .normalClosure, reason: Data("late normal close".utf8))
+        socket.didComplete(with: nil)
+        XCTAssertEqual(store.snapshot()?.events.count, count)
+        XCTAssertEqual(store.snapshot()?.events.last?.kind, .failed)
+        XCTAssertEqual(store.snapshot()?.events.last?.error?.code, String(native.code))
         XCTAssertFalse(store.snapshot()?.events.contains { $0.kind == .opened } == true)
         XCTAssertEqual(recorder.status()?.activeConnections, 0)
     }

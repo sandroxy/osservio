@@ -93,6 +93,7 @@ final class ObservedURLSessionTests: XCTestCase {
         let observed = observed()
         var request = request()
         request.httpMethod = "POST"
+        request.timeoutInterval = 5 // A configured deadline is not a timeout outcome.
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer synthetic-only", forHTTPHeaderField: "Authorization")
         request.httpBody = Data("request-from-host".utf8)
@@ -110,6 +111,7 @@ final class ObservedURLSessionTests: XCTestCase {
         let event = try onlyEvent()
         XCTAssertEqual(event.source, .urlSession)
         XCTAssertEqual(event.state, .completed)
+        XCTAssertNil(event.failure)
         XCTAssertTrue(event.url.hasSuffix("/success?token=synthetic"))
         XCTAssertTrue(try XCTUnwrap(event.responseURL).hasSuffix("/success?token=synthetic"))
         XCTAssertEqual(event.requestBody.state, .truncated)

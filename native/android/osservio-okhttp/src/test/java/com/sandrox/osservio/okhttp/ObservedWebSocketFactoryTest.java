@@ -77,6 +77,10 @@ public final class ObservedWebSocketFactoryTest {
         assertEquals("private-error", history.snapshot().events.get(6).error.message);
         assertEquals(IOException.class.getName(), history.snapshot().events.get(6).error.type);
         assertNull(history.snapshot().events.get(6).error.code);
+        listener.get().onClosed(original, 1000, "late normal close");
+        assertEquals(7, history.snapshot().events.size());
+        assertEquals(WebSocketEvent.Kind.FAILED, history.snapshot().events.get(6).kind);
+        assertEquals("private-error", history.snapshot().events.get(6).error.message);
         assertEquals("[redacted]", history.snapshot().events.get(1).headers.get(0).value);
         assertEquals("abcd", history.payload(history.snapshot().events.get(2).payload.blobId).payload.text);
         assertEquals(WebSocketEvent.PayloadState.BINARY, history.snapshot().events.get(3).payload.state);

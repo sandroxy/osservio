@@ -78,6 +78,7 @@ public final class OsservioInterceptorTest {
             HTTPEvent event = onlyEvent();
             assertEquals(HTTPEvent.Source.OKHTTP, event.source);
             assertEquals(HTTPEvent.State.COMPLETED, event.state);
+            assertNull(event.failure); // The client's configured call timeout did not fire.
             assertTrue(event.url.endsWith("/post?token=synthetic"));
             assertEquals(HTTPEvent.BodyState.TRUNCATED, event.requestBody.state);
             assertEquals("request-", store.body(event.requestBody.blobId).body.text);

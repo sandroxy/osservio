@@ -200,6 +200,22 @@ to avoid misleading duplicates. Preserve source provenance and uncertainty;
 similar URLs and timestamps alone do not establish identity. Preserve session,
 process, runtime, clock, and ordering information across boundaries.
 
+An adapter may buffer startup observations only after explicit host capture
+authorization. Bound count, bytes, age and processing before serialization; off
+and owner disposal discard pending observations and invalidate late deliveries.
+Initialization and reload must not silently renew permission or replace account
+ownership. Source occurrence time and sequence remain distinct from native
+receipt time; a merged display order is not a causal ordering guarantee.
+
+Hooks must preserve the host's original return values, exceptions and callback
+ordering. Install idempotently and restore only the wrapper still owned by that
+adapter; never remove another tool's later wrapper. Configured timeout duration
+does not establish a timeout outcome. A later Socket close must not erase a
+recorded failure. Blob identifiers, size and MIME metadata do not constitute
+captured body bytes. Native tests cover these evidence rules; future adapter
+verification must additionally cover startup, reload, competing hooks, bridge
+backpressure and off/owner changes without introducing parallel archives.
+
 ## Incident evidence
 
 Use platform evidence to distinguish confirmed crashes, hangs, ANRs, watchdog

@@ -26,6 +26,12 @@ URL are sanitized separately. Request metadata reflects the observation point,
 before OkHttp's later automatic header processing. Header/body observations do
 not measure packets or encrypted transfer size.
 
+Intermediate response status/Location chains are not retained. OkHttp's prior
+responses can include authentication challenges as well as redirects; repeated
+timing phases alone do not identify either cause. URLSession transaction timings
+also remain distinct from a complete redirect/authentication history. The viewer
+does not infer missing intermediate URLs or present these facts as a redirect chain.
+
 Request bytes are copied only as the host writes its body. The wrapper forwards
 content length, content type, and one-shot/duplex flags; it never writes a body
 just to inspect it. It queries request-body metadata to select capture behavior;
