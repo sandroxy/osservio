@@ -101,6 +101,9 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         float highlightWidth = -1, highlightHeight = -1, innerWidth = -1, innerHeight = -1;
         int outerAlpha = -1, highlightAlpha = -1, innerAlpha = -1;
         int oldPadding = -1;
+        float imageX, imageY, imageScaleX, imageScaleY;
+        int imageWidth, imageHeight;
+        long imageSourceVersion = Long.MIN_VALUE;
 
         Surface(String name, boolean dispersion) {
             image = node(name + " backdrop"); outer = node(name + " shadow");
@@ -134,13 +137,23 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
             float density = bar.density, progress = bar.motion.progress();
             int padding = (int) Math.ceil(Math.max(0, blur - band));
             configure(width, height, blur, band, amount, padding);
-            image.setPosition(-padding, -padding, (int) Math.ceil(width) + padding, (int) Math.ceil(height) + padding);
-            Canvas recorded = image.beginRecording((int) Math.ceil(width) + 2 * padding, (int) Math.ceil(height) + 2 * padding);
-            try {
-                recorded.translate(padding, padding); recorded.scale(1 / scaleX, 1 / scaleY);
-                recorded.translate(-(x + (1 - scaleX) * width / 2), -(y + (1 - scaleY) * height / 2));
-                recorded.drawRenderNode(source); if (selector) recorded.drawRenderNode(ink);
-            } finally { image.endRecording(); }
+            int recordedWidth = (int) Math.ceil(width) + 2 * padding;
+            int recordedHeight = (int) Math.ceil(height) + 2 * padding;
+            // Reuse a stationary sample until content or its coordinate transform changes.
+            // The lens also samples moving labels, so it must remain independently recorded.
+            if (selector || !image.hasDisplayList() || imageSourceVersion != bar.sourceVersion()
+                || imageWidth != recordedWidth || imageHeight != recordedHeight
+                || imageX != x || imageY != y || imageScaleX != scaleX || imageScaleY != scaleY) {
+                image.setPosition(-padding, -padding, (int) Math.ceil(width) + padding, (int) Math.ceil(height) + padding);
+                Canvas recorded = image.beginRecording(recordedWidth, recordedHeight);
+                try {
+                    recorded.translate(padding, padding); recorded.scale(1 / scaleX, 1 / scaleY);
+                    recorded.translate(-(x + (1 - scaleX) * width / 2), -(y + (1 - scaleY) * height / 2));
+                    recorded.drawRenderNode(source); if (selector) recorded.drawRenderNode(ink);
+                } finally { image.endRecording(); }
+                imageSourceVersion = bar.sourceVersion(); imageWidth = recordedWidth; imageHeight = recordedHeight;
+                imageX = x; imageY = y; imageScaleX = scaleX; imageScaleY = scaleY;
+            }
             int save = target.save(); target.translate(x, y); target.scale(scaleX, scaleY, width / 2, height / 2);
             drawOuter(target, width, height, 24 * density, 4 * density, shadowAlpha);
             int body = target.save(); roundClip(target, width, height); target.drawRenderNode(image);
