@@ -18,6 +18,9 @@ public final class InspectorTabMaterialTest {
         InspectorNavigationMaterialActivity host = start();
         try {
             await(() -> host.bar().materialReady());
+            // Window-manager presentation also animates the entire window; it is
+            // independent of the renderer state being compared below.
+            Thread.sleep(500);
             for (float progress : new float[] {0, 1, .4f, 0, 1}) {
                 main(() -> {
                     InspectorTabBar bar = host.bar();
@@ -41,6 +44,30 @@ public final class InspectorTabMaterialTest {
                     }
                     finally { fresh.recycle(); }
                 } finally { reused.recycle(); }
+            }
+        } finally { finish(host); }
+    }
+    @Test public void keyboardActivationKeepsFocusForFollowingTabNavigation() throws Exception {
+        InspectorNavigationMaterialActivity host = InspectorWindowTestSupport.start(InspectorNavigationMaterialActivity.class);
+        try {
+            await(() -> host.bar().isAttachedToWindow() && host.bar().getWidth() > 0);
+            Thread.sleep(500);
+            for (boolean enhanced : new boolean[] {false, true}) {
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_TAB);
+                main(() -> {
+                    InspectorTabBar bar = host.bar(); bar.setMaterialVisible(enhanced);
+                    assertTrue(bar.getChildAt(0).requestFocus());
+                });
+                for (int i = 0; i < 4; i++) {
+                    final int index = i;
+                    if (i > 0) InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_RIGHT);
+                    main(() -> assertTrue("Arrow navigation must reach the adjacent tab", host.bar().getChildAt(index).hasFocus()));
+                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_ENTER);
+                    main(() -> {
+                        assertTrue(host.bar().getChildAt(index).isSelected());
+                        assertTrue("Page changes must preserve the triggering tab's focus", host.bar().getChildAt(index).hasFocus());
+                    });
+                }
             }
         } finally { finish(host); }
     }

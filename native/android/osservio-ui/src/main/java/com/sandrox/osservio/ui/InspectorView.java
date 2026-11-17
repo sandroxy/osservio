@@ -221,7 +221,9 @@ public final class InspectorView extends FrameLayout {
     }
     private void select(int index) {
         InspectorPerformance.mark(InspectorPerformance.Point.TAB);
-        View focused = findFocus(); if (focused != null) focused.clearFocus();
+        View focused = findFocus();
+        // Keep keyboard navigation on the tab that triggered the page change.
+        if (focused != null && (tabBar == null || !tabBar.hasFocus())) focused.clearFocus();
         InputMethodManager keyboard = getContext().getSystemService(InputMethodManager.class);
         if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
         savePosition(pages[selection]); selection = index;
