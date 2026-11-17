@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /** Optional default-network observations. No probes, addresses, identifiers, or implicit permissions. */
 public final class NetworkPathSignals {
     public enum StartResult { STARTED, ALREADY_STARTED, UNSUPPORTED, PERMISSION_DENIED, UNAVAILABLE }
-    interface Registration { void close(); }
+    interface Registration { void recordInitial(); void close(); }
     private final Context context;
     private final BreadcrumbRecorder recorder;
     private Registration registration;
@@ -34,6 +34,8 @@ public final class NetworkPathSignals {
         Lease created = new Lease(recorder);
         try {
             registration = Api24NetworkPathRegistration.open(context, created); lease = created;
+            // A host sink may stop or restart observation from the initial delivery.
+            registration.recordInitial();
             return StartResult.STARTED;
         } catch (SecurityException failure) { created.invalidate(); return StartResult.PERMISSION_DENIED; }
         catch (RuntimeException failure) { created.invalidate(); return StartResult.UNAVAILABLE; }
@@ -71,6 +73,9 @@ public final class NetworkPathSignals {
                     BreadcrumbEvent.Retention.RESTART_RELEVANT) == BreadcrumbRecorder.Result.RECORDED) {
                     session = status.sessionId; last = description;
                 }
+            } catch (RuntimeException diagnosticFailure) {
+                // A custom diagnostic clock must not escape an OS callback. Failed
+                // observations are not deduplicated; a later callback may retry.
             } finally { lock.unlock(); }
         }
     }

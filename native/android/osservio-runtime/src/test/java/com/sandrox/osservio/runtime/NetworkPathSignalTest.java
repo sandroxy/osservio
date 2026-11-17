@@ -6,6 +6,18 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class NetworkPathSignalTest {
+    @Test public void diagnosticClockFailureDoesNotEscapeOrSuppressTheNextObservation() {
+        boolean[] failing = {false}; int[] writes = {0};
+        LogClock clock = new LogClock() {
+            @Override public long monotonicMillis() { return 1; }
+            @Override public long wallTimeMillis() { if (failing[0]) throw new IllegalStateException("fixture clock"); return 1; }
+        };
+        BreadcrumbRecorder recorder = new BreadcrumbRecorder(event -> { writes[0]++; return BreadcrumbSink.WriteResult.STORED; },
+            new CaptureController(true, clock));
+        NetworkPathSignals.Lease lease = new NetworkPathSignals.Lease(recorder);
+        failing[0] = true; lease.record("status=available", false); assertEquals(0, writes[0]);
+        failing[0] = false; lease.record("status=available", false); assertEquals(1, writes[0]);
+    }
     @Test public void changesAreDeduplicatedButNotAcrossOffOrRegistrationLifetimes() {
         CaptureController capture = new CaptureController(true, LogClock.SYSTEM);
         MemoryBreadcrumbStore history = new MemoryBreadcrumbStore();

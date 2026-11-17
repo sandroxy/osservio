@@ -39,8 +39,10 @@ final class Api24NetworkPathRegistration {
             }
         };
         manager.registerDefaultNetworkCallback(callback);
-        lease.record(initial, true);
-        return () -> manager.unregisterNetworkCallback(callback);
+        return new NetworkPathSignals.Registration() {
+            @Override public void recordInitial() { lease.record(initial, true); }
+            @Override public void close() { manager.unregisterNetworkCallback(callback); }
+        };
     }
     private static String description(NetworkCapabilities capabilities) {
         List<String> transports = new ArrayList<>(5);
