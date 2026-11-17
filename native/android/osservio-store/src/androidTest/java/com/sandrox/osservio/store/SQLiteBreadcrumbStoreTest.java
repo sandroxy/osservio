@@ -91,13 +91,34 @@ public final class SQLiteBreadcrumbStoreTest {
     @Test public void closeDrainsAdmittedQueriesAndWritesBeforeReturningOwnership() throws Exception {
         try (PersistenceFixture fixture = new PersistenceFixture()) {
             SQLiteBreadcrumbStore store = store(fixture); flush(store).success();
-            assertEquals(BreadcrumbSink.WriteResult.STORED, store.append(events(1, "retained").get(0)));
-            Result<Void> flushed = new Result<>(); store.flush(error -> flushed.complete(null, error));
-            Result<List<RetainedRun>> query = new Result<>(); store.readRuns(query::complete);
-            close(store).success(); flushed.success(); assertEquals(1, query.success().size());
-            Result<List<RetainedRun>> closed = new Result<>(); store.readRuns(closed::complete); assertEquals(PersistenceStatus.Error.CLOSED, closed.await().error);
-            assertEquals(PersistenceStatus.State.CLOSED, store.persistenceStatus().state);
-            close(store).success();
+            CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1), finished = new CountDownLatch(1);
+            Result<List<RetainedRun>> held = new Result<>();
+            Result<Void> closing = new Result<>();
+            boolean closeRequested = false;
+            // A callback runs outside the admission lock. Hold the worker here so the
+            // operations below are admitted, rather than legitimately rejected as busy.
+            store.readRuns((runs, error) -> {
+                held.complete(runs, error); entered.countDown();
+                try { release.await(10, TimeUnit.SECONDS); } catch (InterruptedException failure) { Thread.currentThread().interrupt(); }
+            });
+            try {
+                assertTrue(entered.await(10, TimeUnit.SECONDS)); held.success();
+                assertEquals(BreadcrumbSink.WriteResult.STORED, store.append(events(1, "retained").get(0)));
+                Result<Void> flushed = new Result<>(); store.flush(error -> flushed.complete(null, error));
+                Result<List<RetainedRun>> query = new Result<>(); store.readRuns(query::complete);
+                store.close(error -> { closing.complete(null, error); finished.countDown(); }); closeRequested = true;
+                assertEquals(PersistenceStatus.State.CLOSING, store.persistenceStatus().state);
+                assertEquals(1, finished.getCount());
+                assertEquals(PersistenceStatus.Error.BUSY, close(store).error);
+                release.countDown();
+                closing.success(); flushed.success(); assertEquals(1, query.success().size());
+                Result<List<RetainedRun>> closed = new Result<>(); store.readRuns(closed::complete); assertEquals(PersistenceStatus.Error.CLOSED, closed.await().error);
+                assertEquals(PersistenceStatus.State.CLOSED, store.persistenceStatus().state);
+                close(store).success();
+            } finally {
+                release.countDown();
+                if (closeRequested) closing.await(); else close(store).await();
+            }
         }
     }
     @Test public void explicitDeletionDrainsPendingWritesAndKeepsLiveHistory() throws Exception {
