@@ -14,6 +14,58 @@ import static org.junit.Assume.assumeTrue;
 
 @RunWith(AndroidJUnit4.class)
 public final class InspectorTabMaterialTest {
+    @Test public void sparseFramesSettleUsingElapsedTimeInsteadOfStretchingTheAnimation() throws Exception {
+        InspectorNavigationMaterialActivity host = start();
+        try {
+            await(() -> host.bar().materialReady());
+            main(() -> {
+                InspectorTabBar bar = host.bar(); bar.getChildAt(1).performClick();
+                android.view.Choreographer clock = android.view.Choreographer.getInstance();
+                clock.removeFrameCallback(bar);
+                long now = System.nanoTime();
+                for (int frame = 0; frame < 6; frame++) {
+                    bar.doFrame(now + frame * 500_000_000L); clock.removeFrameCallback(bar);
+                }
+                assertEquals(1, bar.motion.selected());
+                assertFalse("A stalled frame must not stretch a short selection animation", bar.motion.running());
+                assertEquals(1, bar.motion.position.value, .001);
+            });
+        } finally { finish(host); }
+    }
+    @Test public void releaseOutsideVerticalBoundsCommitsNearestTabIncludingFinalPointerPosition() throws Exception {
+        InspectorNavigationMaterialActivity host = start();
+        try {
+            await(() -> host.bar().materialReady());
+            for (int direction : new int[] {View.LAYOUT_DIRECTION_LTR, View.LAYOUT_DIRECTION_RTL}) {
+                main(() -> { host.bar().setLayoutDirection(direction); host.bar().getChildAt(0).performClick(); });
+                await(() -> !host.bar().motion.running() && (host.bar().getChildAt(0).getLeft() < host.bar().getChildAt(3).getLeft()) == (direction == View.LAYOUT_DIRECTION_LTR));
+                main(() -> {
+                    InspectorTabBar bar = host.bar(); touch(bar, MotionEvent.ACTION_DOWN, 0);
+                    touch(bar, MotionEvent.ACTION_MOVE, 1);
+                    release(bar, 3, -bar.getHeight());
+                    assertEquals("Normal release commits even when the finger drifts above the bar", 3, bar.motion.selected());
+                });
+                await(() -> !host.bar().motion.running());
+                main(() -> {
+                    InspectorTabBar bar = host.bar(); touch(bar, MotionEvent.ACTION_DOWN, 3);
+                    touch(bar, MotionEvent.ACTION_MOVE, 0); touch(bar, MotionEvent.ACTION_CANCEL, 0);
+                    assertEquals("System cancellation keeps the previous selection", 3, bar.motion.selected());
+                });
+                await(() -> !host.bar().motion.running());
+                main(() -> {
+                    InspectorTabBar bar = host.bar(); touch(bar, MotionEvent.ACTION_DOWN, 3);
+                    release(bar, 1, bar.getHeight() * 2);
+                    assertEquals("The last pointer coordinate is part of the drag", 1, bar.motion.selected());
+                });
+                await(() -> !host.bar().motion.running());
+            }
+        } finally { finish(host); }
+    }
+    private static void release(InspectorTabBar bar, int tab, float y) {
+        View child = bar.getChildAt(tab); long time = SystemClock.uptimeMillis();
+        MotionEvent event = MotionEvent.obtain(time, time, MotionEvent.ACTION_UP, child.getLeft() + child.getWidth() / 2f, y, 0);
+        try { assertTrue(bar.dispatchTouchEvent(event)); } finally { event.recycle(); }
+    }
     @Test public void realButtonsKeepSelectionDuringPreviewAndCancelFromNonFirstTab() throws Exception {
         InspectorNavigationMaterialActivity host = start();
         try {

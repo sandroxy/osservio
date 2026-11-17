@@ -48,9 +48,12 @@ process memory; the SDK does not force global cache eviction or garbage collecti
 The [navigation recipe](../native/android/vendor/backdrop/README.md) composes a
 base, colored native labels and a moving lens. A tap selects its destination
 directly. Holding the selected lens previews other tabs while the current page
-remains visible; releasing commits once. Cancel, loss of focus, hiding or fallback
+remains visible; releasing commits the nearest tab once, including when the
+finger drifts above or below the bar. Cancel, loss of focus, hiding or fallback
 does not commit a preview. The native buttons remain the sole click, focus and
 accessibility owners. A settling animation does not switch intermediate pages.
+Analytic springs advance using elapsed frame time, so missed frames do not
+artificially prolong a selection transition. They stop when settled or suspended.
 
 Android minSdk remains 23. API 33+, a hardware canvas, a valid laid-out source,
 normal memory admission and device policy are required for the GPU path.

@@ -10,7 +10,6 @@ import android.os.Build;
 import android.view.Choreographer;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.ViewTreeObserver;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.PathInterpolator;
@@ -225,10 +224,7 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
             case MotionEvent.ACTION_MOVE:
                 int at = event.findPointerIndex(pointer);
                 if (at < 0) { cancelGesture(); return true; }
-                float value = event.getX(at), delta = value - lastX; lastX = value;
-                if (motion.held()) {
-                    motion.drag(delta / tabWidth() * (getLayoutDirection() == LAYOUT_DIRECTION_RTL ? -1 : 1), delta); invalidate(); kick();
-                }
+                dragTo(event.getX(at));
                 return true;
             case MotionEvent.ACTION_POINTER_UP:
                 if (event.getPointerId(event.getActionIndex()) == pointer) {
@@ -238,16 +234,25 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
                 }
                 return true;
             case MotionEvent.ACTION_UP:
-                int destination = motion.destination();
-                boolean inside = event.getY() >= -ViewConfiguration.get(getContext()).getScaledTouchSlop()
-                    && event.getY() <= getHeight() + ViewConfiguration.get(getContext()).getScaledTouchSlop();
-                if (motion.held() && inside) {
+                int released = event.findPointerIndex(pointer);
+                if (motion.held() && released >= 0) {
+                    // A tracked drag commits on release, even outside the bar. Only
+                    // cancellation restores the original tab; include the final coordinate.
+                    dragTo(event.getX(released));
+                    int destination = motion.destination();
                     motion.settle(destination, getHeight() / density); clearPointer();
                     getChildAt(destination).performClick(); kick();
                 } else cancelGesture();
                 return true;
             case MotionEvent.ACTION_CANCEL: cancelGesture(); return true;
             default: return true;
+        }
+    }
+    private void dragTo(float value) {
+        float delta = value - lastX; lastX = value;
+        if (motion.held()) {
+            motion.drag(delta / tabWidth() * (getLayoutDirection() == LAYOUT_DIRECTION_RTL ? -1 : 1), delta);
+            invalidate(); kick();
         }
     }
     private void cancelGesture() { motion.cancel(getHeight() / density); clearPointer(); kick(); }
@@ -261,7 +266,9 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
     @Override public void doFrame(long now) {
         posted = false;
         if (!registered || !session.allowed() || !isShown()) { stopMotion(); return; }
-        double seconds = frameTime == 0 ? 0 : Math.min(.064, (now - frameTime) / 1e9) / session.animationScale();
+        // The analytic springs remain stable across missed frames. Truncating elapsed
+        // time would stretch a short transition indefinitely on a busy renderer.
+        double seconds = frameTime == 0 ? 0 : Math.max(0, (now - frameTime) / 1e9) / session.animationScale();
         frameTime = now; motion.step(seconds); invalidate();
         if (motion.running()) kick(); else frameTime = 0;
     }
