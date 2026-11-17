@@ -34,7 +34,7 @@ final class InspectorNavigationActions: NSObject {
         let visible = actions.count > (exit == nil ? 2 : 1) ? [more] : actions
         // UIKit's trailing items are ordered from the outside edge inward.
         let result = (exit.map { [$0] } ?? []) + visible
-        for item in result { item.tintColor = InspectorTheme.accent }
+        for item in result { InspectorTheme.apply(item) }
         let existing = owner.navigationItem.rightBarButtonItems ?? []
         if existing.count != result.count || !zip(existing, result).allSatisfy({ $0 === $1 }) {
             owner.navigationItem.rightBarButtonItems = result.isEmpty ? nil : result

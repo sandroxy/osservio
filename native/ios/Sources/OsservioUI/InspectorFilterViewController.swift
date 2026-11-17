@@ -20,6 +20,8 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private struct Section { let title: String?; let rows: [Row] }
     private var sections: [Section] = []
     private var scope: InspectorScopeControl?
+    private lazy var resetAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(resetDraft))
+    private lazy var backAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(backToFilters))
 
     init(query: InspectorQuery, groups: [InspectorFilterGroup], timeLabel: String = "ui_time", payload: Bool = false, apply: @escaping (InspectorQuery) -> Void) {
         draft = query; self.groups = groups; self.apply = apply; self.timeLabel = timeLabel; self.payload = payload
@@ -126,15 +128,17 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         }
         guard isViewLoaded else { return }
         title = picker.map { groups[$0].title } ?? text("ui_filters")
+        let leading = picker == nil ? resetAction : backAction
+        leading.title = text(picker == nil ? "ui_reset" : "ui_back")
+        leading.accessibilityLabel = leading.title
+        InspectorTheme.apply(leading)
+        if navigationItem.leftBarButtonItem !== leading { navigationItem.leftBarButtonItem = leading }
         if picker != nil {
-            navigationItem.leftBarButtonItem = UIBarButtonItem(title: text("ui_back"), style: .plain, target: self, action: #selector(backToFilters))
-            navigationItem.leftBarButtonItem?.accessibilityLabel = text("ui_back")
             search.placeholder = text(groups[picker!].field == .status ? "ui_specific_status" : "ui_filter_options")
             let header = UIStackView(arrangedSubviews: [search]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
             header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20)
             tableView.tableHeaderView = header; tableView.tableFooterView = nil
         } else {
-            navigationItem.leftBarButtonItem = UIBarButtonItem(title: text("ui_reset"), style: .plain, target: self, action: #selector(resetDraft))
             tableView.tableHeaderView = nil; conditions?.isHidden = !refined; tableView.tableFooterView = footer
         }
         tableView.reloadData(); resizeFooter()

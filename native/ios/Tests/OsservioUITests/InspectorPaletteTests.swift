@@ -5,6 +5,54 @@ import OsservioCore
 @testable import OsservioUI
 
 final class InspectorPaletteTests: XCTestCase {
+    @MainActor func testFilterLeadingActionsKeepAccentAfterEditingAndReturningFromPicker() throws {
+        let preferences = InspectorPreferences.shared, previous = preferences.palette
+        defer { preferences.palette = previous }
+        let groups = [InspectorFilterGroup(.category, values: (0..<8).map { "category-\($0)" })]
+        let filter = InspectorFilterViewController(query: InspectorQuery(), groups: groups) { _ in }
+        let navigation = InspectorNavigationController(rootViewController: filter)
+        navigation.transientPanel = true
+        navigation.loadViewIfNeeded(); filter.loadViewIfNeeded()
+        navigation.navigationController(navigation, willShow: filter, animated: false)
+        for palette in [InspectorPalette.purple, .teal] {
+            preferences.palette = palette
+            let reset = try XCTUnwrap(filter.navigationItem.leftBarButtonItem)
+            _ = filter.perform(try XCTUnwrap(reset.action))
+            assertAccent(filter.navigationItem.leftBarButtonItem)
+            filter.tableView(filter.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+            assertAccent(filter.navigationItem.leftBarButtonItem)
+            // Collapse Time, then enter the large category picker and return.
+            filter.tableView(filter.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+            filter.tableView(filter.tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
+            let back = try XCTUnwrap(filter.navigationItem.leftBarButtonItem)
+            XCTAssertEqual(back.title, InspectorLocalization.text("ui_back")); assertAccent(back)
+            _ = filter.perform(try XCTUnwrap(back.action))
+            XCTAssertEqual(filter.navigationItem.leftBarButtonItem?.title, InspectorLocalization.text("ui_reset"))
+            assertAccent(filter.navigationItem.leftBarButtonItem)
+        }
+    }
+    @MainActor func testActionRerenderPreservesDoneButtonContrastInEveryAppearance() {
+        let preferences = InspectorPreferences.shared, previous = preferences.palette
+        defer { preferences.palette = previous }
+        let page = UIViewController()
+        let done = UIBarButtonItem(title: "Apply", style: .done, target: nil, action: nil)
+        for palette in InspectorPalette.allCases {
+            preferences.palette = palette; page.inspectorPrimaryAction = done
+            for mode in [UIUserInterfaceStyle.light, .dark] {
+                let traits = UITraitCollection(userInterfaceStyle: mode)
+                let expected: UIColor
+                if #available(iOS 26, *) { expected = InspectorTheme.filledAccent }
+                else { expected = InspectorTheme.accent }
+                XCTAssertEqual(done.tintColor?.resolvedColor(with: traits), expected.resolvedColor(with: traits))
+            }
+        }
+    }
+    @MainActor private func assertAccent(_ item: UIBarButtonItem?, file: StaticString = #filePath, line: UInt = #line) {
+        for mode in [UIUserInterfaceStyle.light, .dark] {
+            let traits = UITraitCollection(userInterfaceStyle: mode)
+            XCTAssertEqual(item?.tintColor?.resolvedColor(with: traits), InspectorTheme.accent.resolvedColor(with: traits), file: file, line: line)
+        }
+    }
     @MainActor func testDebugButtonsRefreshForPaletteOnlyChange() throws {
         let preferences = InspectorPreferences.shared, previous = preferences.palette
         let capture = CaptureController(debugEnabled: true)

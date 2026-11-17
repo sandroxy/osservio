@@ -39,6 +39,11 @@ enum InspectorTheme {
             table.backgroundColor = canvas; table.separatorColor = .separator
         }
     }
+    static func apply(_ item: UIBarButtonItem) {
+        // Modern emphasized buttons place a white title over the item's tint.
+        if #available(iOS 26, *), item.style == .done { item.tintColor = filledAccent }
+        else { item.tintColor = accent }
+    }
     static func label(_ style: UIFont.TextStyle = .body, secondary: Bool = false) -> UILabel {
         let label = UILabel()
         label.font = .preferredFont(forTextStyle: style); label.adjustsFontForContentSizeCategory = true
@@ -105,11 +110,7 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     @objc private func minimize() { session?.collapse() }
     private func tintItems(_ controller: UIViewController) {
         let items = (controller.navigationItem.leftBarButtonItems ?? []) + (controller.navigationItem.rightBarButtonItems ?? [])
-        for item in items {
-            item.tintColor = InspectorTheme.accent
-            // Modern done buttons use tint as a solid fill behind a white title.
-            if #available(iOS 26, *), item.style == .done { item.tintColor = InspectorTheme.filledAccent }
-        }
+        for item in items { InspectorTheme.apply(item) }
         controller.inspectorMinimalBackTitle()
     }
     private func updateStyle() {
