@@ -381,7 +381,11 @@ the app-local floating entry and a retained full-screen workspace. Call
 `attach(activity)` from each participating Activity's `onResume`; its factory
 uses the supplied application-backed context and must not capture an Activity.
 The session handles Back, keyboard and system-bar insets. It releases its window
-while minimized or backgrounded, retaining the page hierarchy for restoration.
+while minimized or detached from the host, retaining the page hierarchy for restoration.
+Temporary interruptions and backgrounding retain the Activity-owned window
+composition; Android controls its system visibility. Unfocused or hidden viewers
+stop polling and release navigation-material resources. Resuming does not replay
+the entry animation or expose the host as an intermediate presentation.
 While its app subwindow is visible, it also scopes the host system bars' icon
 contrast to the inspector appearance. Dismissal restores the previous contrast
 unless the host has changed those flags independently.
@@ -421,6 +425,10 @@ thermal state reduce motion; Reduce Transparency or Increase Contrast uses an op
 The workspace expands from and contracts toward the docked entry using a bounded
 layer mask and opacity animation. The mask covers the full-screen navigation
 workspace. Interruption removes clipping and touch blockers.
+System backgrounding retains the scene's expanded composition and key window;
+it does not turn an expanded workspace into a fresh opening animation. Restoration
+follows the owning scene before activation, independently of application-level
+notification ordering. UI polling remains suspended while the scene is inactive.
 Neither platform captures per-frame screenshots or runs a persistent full-screen
 blur. The diagnostic-panel entry mark is distinct from the debug toggle's bug.
 

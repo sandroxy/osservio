@@ -21,13 +21,16 @@ public final class InspectorSession: NSObject {
 
     public init(window: UIWindow, makeInspector: @escaping () -> InspectorViewController) {
         hostWindow = window; self.makeInspector = makeInspector
-        suspended = UIApplication.shared.applicationState == .background
+        suspended = window.windowScene.map { $0.activationState == .background || $0.activationState == .unattached }
+            ?? (UIApplication.shared.applicationState == .background)
         super.init()
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(background), name: UIApplication.didEnterBackgroundNotification, object: nil)
         center.addObserver(self, selector: #selector(foreground), name: UIApplication.didBecomeActiveNotification, object: nil)
+        center.addObserver(self, selector: #selector(foreground), name: UIApplication.willEnterForegroundNotification, object: nil)
         center.addObserver(self, selector: #selector(sceneHidden(_:)), name: UIScene.didEnterBackgroundNotification, object: nil)
         center.addObserver(self, selector: #selector(sceneShown(_:)), name: UIScene.didActivateNotification, object: nil)
+        center.addObserver(self, selector: #selector(sceneShown(_:)), name: UIScene.willEnterForegroundNotification, object: nil)
         center.addObserver(self, selector: #selector(sceneDisconnected(_:)), name: UIScene.didDisconnectNotification, object: nil)
         center.addObserver(self, selector: #selector(hostVisibilityChanged(_:)), name: UIWindow.didBecomeVisibleNotification, object: nil)
         center.addObserver(self, selector: #selector(hostVisibilityChanged(_:)), name: UIWindow.didBecomeHiddenNotification, object: nil)
@@ -85,10 +88,13 @@ public final class InspectorSession: NSObject {
     private var available: Bool { !isDisposed && hostWindow != nil }
     private func reconcile(animated: Bool) {
         cancelAnimation()
-        guard let hostWindow, !hostWindow.isHidden, !suspended, !isDisposed else {
+        guard let hostWindow, !hostWindow.isHidden, !isDisposed else {
             restoreHostFocus(); contentWindow?.isHidden = true; entryWindow?.isHidden = true; return
         }
         if presentation == .expanded {
+            // The scene owns system visibility. Keep its last composition and key
+            // window while suspended, but defer creating or revealing a new surface.
+            guard !suspended else { return }
             ensureEntry(host: hostWindow)
             if inspector == nil, let makeInspector {
                 guard !creatingInspector else { return }
@@ -111,13 +117,13 @@ public final class InspectorSession: NSObject {
             NotificationCenter.default.post(name: Self.willExpand, object: window)
             entryWindow?.isHidden = true
         } else {
-            if presentation == .entry { ensureEntry(host: hostWindow) }
+            if presentation == .entry, !suspended { ensureEntry(host: hostWindow) }
             entryWindow?.isHidden = presentation != .entry
             if let window = contentWindow, !window.isHidden {
                 // Suspend queries before the visual exit without destroying the navigation stack.
                 NotificationCenter.default.post(name: Self.willCollapse, object: window)
                 restoreHostFocus()
-                animate(window, opening: false, enabled: animated)
+                animate(window, opening: false, enabled: animated && !suspended)
             }
         }
     }
@@ -171,19 +177,24 @@ public final class InspectorSession: NSObject {
         else if let hostWindow, !hostWindow.isHidden { hostWindow.makeKey() }
         returnWindow = nil
     }
-    @objc private func background() { suspended = true; endEditing(); reconcile(animated: false) }
-    @objc private func foreground() {
-        // A different scene becoming active must not reveal this scene's windows.
-        suspended = hostWindow?.windowScene.map { $0.activationState != .foregroundActive } ?? false
-        reconcile(animated: false)
+    @objc private func background() {
+        guard hostWindow?.windowScene == nil else { return }
+        suspend()
     }
+    @objc private func foreground() {
+        // Scene-owned windows follow only their own scene. Application and scene
+        // notifications need not arrive in the same order during an interruption.
+        guard hostWindow?.windowScene == nil else { return }
+        suspended = false; reconcile(animated: false)
+    }
+    private func suspend() { suspended = true; endEditing(); reconcile(animated: false) }
     @objc private func sceneHidden(_ notification: Notification) {
         guard let scene = notification.object as? UIScene, scene === hostWindow?.windowScene else { return }
-        background()
+        suspend()
     }
     @objc private func sceneShown(_ notification: Notification) {
         guard let scene = notification.object as? UIScene, scene === hostWindow?.windowScene else { return }
-        foreground()
+        suspended = false; reconcile(animated: false)
     }
     @objc private func sceneDisconnected(_ notification: Notification) {
         guard let scene = notification.object as? UIScene, scene === hostWindow?.windowScene else { return }

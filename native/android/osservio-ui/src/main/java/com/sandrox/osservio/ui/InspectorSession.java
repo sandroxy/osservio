@@ -33,6 +33,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     private boolean resumed;
     private boolean reconciling;
     private boolean reconcilePending;
+    private boolean animateTransition;
     private InspectorView inspector;
     private InspectorFloatingEntry entry;
     private Dialog window;
@@ -75,7 +76,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         try {
             mainThread(); if (!available()) return false;
             if (presentation == Presentation.EXPANDED) return true;
-            presentation = Presentation.EXPANDED; reconcile(); return !disposed && presentation == Presentation.EXPANDED;
+            presentation = Presentation.EXPANDED; animateTransition = resumed; reconcile(); return !disposed && presentation == Presentation.EXPANDED;
         } finally { InspectorPerformance.end(tracing); }
     }
     public void collapse() {
@@ -83,7 +84,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         try {
             mainThread(); if (disposed || presentation != Presentation.EXPANDED) return;
             if (inspector != null) inspector.discardTransientPanels();
-            presentation = Presentation.ENTRY; reconcile();
+            presentation = Presentation.ENTRY; animateTransition = resumed; reconcile();
         } finally { InspectorPerformance.end(tracing); }
     }
     public void hideEntry() {
@@ -106,13 +107,20 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         if (reconciling) { reconcilePending = true; return; }
         reconciling = true;
         try {
-            do { reconcilePending = false; reconcilePresentation(); } while (reconcilePending && !disposed);
+            do {
+                reconcilePending = false;
+                boolean animated = animateTransition; animateTransition = false;
+                reconcilePresentation(animated);
+            } while (reconcilePending && !disposed);
         } finally { reconciling = false; }
     }
-    private void reconcilePresentation() {
+    private void reconcilePresentation(boolean animated) {
         Activity activity = owner.get();
-        if (!available() || !resumed || activity == null || !activity.getWindow().getDecorView().isAttachedToWindow()) { detachSurfaces(); return; }
+        if (!available() || activity == null || !activity.getWindow().getDecorView().isAttachedToWindow()) { detachSurfaces(); return; }
         if (presentation == Presentation.EXPANDED) {
+            // An app subwindow follows its Activity's system visibility. Retain its
+            // composition across interruptions; do not reveal a new window in background.
+            if (!resumed) return;
             if (transition.isClosing()) transition.cancel();
             ensureEntry(activity);
             int[] point = new int[2]; entry.getLocationOnScreen(point);
@@ -138,11 +146,12 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
                 nativeWindow.setLayout(-1, -1); InspectorDialogs.configureWindow(nativeWindow, InspectorPreferences.dark(inspector.getContext()));
                 systemBars.apply(activity.getWindow(), InspectorPreferences.dark(inspector.getContext()));
                 inspector.requestApplyInsets();
-                if (opening) transition.run(inspector, entryBounds, true, null, () -> { });
+                if (opening && animated) transition.run(inspector, entryBounds, true, null, () -> { });
             }
         } else if (presentation == Presentation.ENTRY) {
-            ensureEntry(activity);
+            if (resumed) ensureEntry(activity);
             if (window != null && window.getWindow() != null) {
+                if (!animated || !resumed) { detachContentWindow(); return; }
                 if (transition.isClosing()) return;
                 InspectorWidgets.hideKeyboard(inspector);
                 int[] point = new int[2]; entry.getLocationOnScreen(point);
@@ -185,6 +194,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         });
     }
     private void detachSurfaces() {
+        animateTransition = false;
         if (entry != null) entry.detach();
         detachContentWindow();
     }
@@ -212,7 +222,12 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         final InspectorSession session;
         SessionContext(Context base, InspectorSession session) { super(base); this.session = session; }
     }
-    @Override public void onActivityPaused(Activity activity) { if (activity == owner.get()) { resumed = false; detachSurfaces(); } }
+    @Override public void onActivityPaused(Activity activity) {
+        if (activity == owner.get()) {
+            resumed = false; animateTransition = false;
+            transition.cancel(); reconcile();
+        }
+    }
     @Override public void onActivityResumed(Activity activity) { if (activity == owner.get()) { resumed = true; reconcile(); } }
     @Override public void onActivityDestroyed(Activity activity) {
         if (activity == owner.get()) { detachSurfaces(); activity.getWindow().getDecorView().removeOnAttachStateChangeListener(attachment); owner.clear(); }

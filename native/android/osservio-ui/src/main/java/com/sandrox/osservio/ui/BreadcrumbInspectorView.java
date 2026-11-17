@@ -38,7 +38,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
     private InspectorScreen detail;
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
-            if (!attached || !isShown() || getWindowVisibility() != VISIBLE || detail != null) return;
+            if (!attached || !isShown() || !hasWindowFocus() || getWindowVisibility() != VISIBLE || detail != null) return;
             refreshView(); handler.postDelayed(this, 500);
         }
     };
@@ -87,12 +87,13 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
     }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); attached = true; schedule(); }
     @Override protected void onDetachedFromWindow() { attached = false; handler.removeCallbacks(refresh); if (!InspectorNavigation.owns(getContext()) && detail != null) detail.dismiss(); super.onDetachedFromWindow(); }
+    @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); schedule(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
     @Override protected void onVisibilityChanged(View view, int visibility) { super.onVisibilityChanged(view, visibility); schedule(); }
     private void schedule() {
         if (handler == null || refresh == null) return;
         handler.removeCallbacks(refresh);
-        if (attached && isShown() && getWindowVisibility() == VISIBLE && detail == null) handler.post(refresh);
+        if (attached && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE && detail == null) handler.post(refresh);
         else if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && detail != null) detail.dismiss();
     }
     private void refreshView() {

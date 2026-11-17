@@ -84,7 +84,7 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
     @Override public void updateRegistration() {
         if (session == null) return;
         boolean wanted = materialVisible && Build.VERSION.SDK_INT >= 33 && session.enabled()
-            && isAttachedToWindow() && isShown() && getWindowVisibility() == VISIBLE && isHardwareAccelerated();
+            && isAttachedToWindow() && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE && isHardwareAccelerated();
         if (wanted == registered) { if (!wanted) release(); return; }
         registered = wanted;
         if (wanted) {
@@ -285,5 +285,6 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
     @Override public void onWindowFocusChanged(boolean focused) {
         super.onWindowFocusChanged(focused);
         if (!focused && motion.held()) cancelGesture();
+        updateRegistration(); invalidate();
     }
 }

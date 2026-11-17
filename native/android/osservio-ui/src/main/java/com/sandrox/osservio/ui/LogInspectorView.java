@@ -54,7 +54,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
     private InspectorScreen dialog;
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) { refresh(); handler.postDelayed(this, 500); }
+            if (attached && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE && dialog == null) { refresh(); handler.postDelayed(this, 500); }
         }
     };
 
@@ -193,12 +193,13 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         saveReadingPosition(); attached = false; handler.removeCallbacks(tick); cancelSearch();
         if (!InspectorNavigation.owns(getContext()) && dialog != null) { dialog.dismiss(); dialog = null; } super.onDetachedFromWindow();
     }
+    @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); schedule(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
     @Override protected void onVisibilityChanged(View changedView, int visibility) { super.onVisibilityChanged(changedView, visibility); schedule(); }
     private void schedule() {
         if (handler == null || tick == null) return;
         handler.removeCallbacks(tick);
-        if (attached && isShown() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
+        if (attached && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
         else { cancelSearch(); if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) { dialog.dismiss(); dialog = null; } }
     }
     private final class Rows extends BaseAdapter {

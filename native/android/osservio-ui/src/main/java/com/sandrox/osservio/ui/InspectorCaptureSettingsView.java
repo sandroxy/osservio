@@ -24,7 +24,7 @@ final class InspectorCaptureSettingsView extends InspectorScroll.Page {
     private boolean attached, updating;
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
-            if (!attached || !isShown() || getWindowVisibility() != VISIBLE) return;
+            if (!attached || !isShown() || !hasWindowFocus() || getWindowVisibility() != VISIBLE) return;
             update(); handler.postDelayed(this, 500);
         }
     };
@@ -73,10 +73,11 @@ final class InspectorCaptureSettingsView extends InspectorScroll.Page {
     }
     private void schedule() {
         if (handler == null || refresh == null) return; handler.removeCallbacks(refresh);
-        if (attached && isShown() && getWindowVisibility() == VISIBLE) handler.post(refresh);
+        if (attached && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE) handler.post(refresh);
     }
     @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); attached = true; schedule(); }
     @Override protected void onDetachedFromWindow() { attached = false; handler.removeCallbacks(refresh); super.onDetachedFromWindow(); }
     @Override protected void onVisibilityChanged(View changedView, int visibility) { super.onVisibilityChanged(changedView, visibility); schedule(); }
+    @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); schedule(); }
     @Override protected void onWindowVisibilityChanged(int visibility) { super.onWindowVisibilityChanged(visibility); schedule(); }
 }

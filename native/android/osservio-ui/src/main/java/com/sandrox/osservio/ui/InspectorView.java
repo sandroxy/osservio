@@ -69,7 +69,7 @@ public final class InspectorView extends FrameLayout {
     private InspectorDebugControl debugControl;
     private final Runnable debugTick = new Runnable() {
         @Override public void run() {
-            if (isShown() && hasWindowFocus() && navigation.isAtRoot()) {
+            if (isShown() && getWindowVisibility() == VISIBLE && hasWindowFocus() && navigation.isAtRoot()) {
                 debugControl.refresh(); postDelayed(this, 250);
             }
         }

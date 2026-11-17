@@ -7,6 +7,54 @@ import XCTest
 
 final class InspectorSessionTests: XCTestCase {
     @MainActor
+    func testBackgroundRetainsExpandedCompositionAndReturnsWithoutEntryAnimation() async throws {
+        let sources = try Sources(), host = hostWindow()
+        var controller: InspectorViewController?
+        let session = InspectorSession(window: host) { let value = sources.makeInspector(); controller = value; return value }
+        defer { session.dispose(); host.isHidden = true; host.rootViewController = nil; _ = sources.capture.stopAll() }
+        XCTAssertTrue(session.expand())
+        let window = try XCTUnwrap(controller?.view.window)
+        postBackground(host)
+        XCTAssertFalse(window.isHidden, "The system transition must retain the expanded composition")
+        XCTAssertTrue(window.isKeyWindow)
+        XCTAssertNil(window.layer.mask); XCTAssertEqual(window.alpha, 1)
+        postForeground(host)
+        XCTAssertFalse(window.isHidden)
+        XCTAssertNil(window.layer.mask); XCTAssertEqual(window.alpha, 1)
+        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+        XCTAssertTrue(controller?.view.window === window)
+        XCTAssertEqual(session.presentation, .expanded)
+        try await Task.sleep(nanoseconds: 30_000_000)
+        XCTAssertNil(window.layer.mask); XCTAssertEqual(window.alpha, 1)
+    }
+
+    @MainActor
+    func testBackgroundDefersNewWindowAndExplicitHidingWinsOverRestoration() throws {
+        let sources = try Sources(), host = hostWindow()
+        var creations = 0
+        var controller: InspectorViewController?
+        let session = InspectorSession(window: host) {
+            creations += 1; let value = sources.makeInspector(); controller = value; return value
+        }
+        defer { session.dispose(); host.isHidden = true; host.rootViewController = nil; _ = sources.capture.stopAll() }
+        postBackground(host)
+        XCTAssertTrue(session.expand()); XCTAssertEqual(creations, 0)
+        if host.windowScene != nil {
+            NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+            XCTAssertEqual(creations, 0, "Application activity cannot override the owning scene")
+        }
+        postForeground(host)
+        XCTAssertEqual(creations, 1)
+        let window = try XCTUnwrap(controller?.view.window)
+        XCTAssertFalse(window.isHidden); XCTAssertNil(window.layer.mask); XCTAssertEqual(window.alpha, 1)
+        postBackground(host)
+        session.hideEntry(); XCTAssertTrue(window.isHidden); XCTAssertTrue(host.isKeyWindow)
+        postForeground(host)
+        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+        XCTAssertTrue(window.isHidden); XCTAssertEqual(creations, 1); XCTAssertEqual(session.presentation, .hidden)
+    }
+
+    @MainActor
     func testFactoryCanRevealEntryWithoutReenteringConstruction() throws {
         let sources = try Sources(), host = hostWindow()
         var session: InspectorSession!
@@ -122,6 +170,14 @@ final class InspectorSessionTests: XCTestCase {
         XCTAssertEqual(InspectorDockPosition.nearest(to: CGPoint(x: 900, y: 900), in: portrait).fraction, 1)
     }
 
+    @MainActor private func postBackground(_ host: UIWindow) {
+        if let scene = host.windowScene { NotificationCenter.default.post(name: UIScene.didEnterBackgroundNotification, object: scene) }
+        else { NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil) }
+    }
+    @MainActor private func postForeground(_ host: UIWindow) {
+        if let scene = host.windowScene { NotificationCenter.default.post(name: UIScene.willEnterForegroundNotification, object: scene) }
+        else { NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil) }
+    }
     @MainActor
     private func hostWindow() -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
