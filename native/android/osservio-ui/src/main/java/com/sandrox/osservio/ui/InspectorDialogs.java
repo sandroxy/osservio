@@ -69,6 +69,15 @@ final class InspectorDialogs {
     }
     @SuppressWarnings("deprecation") // Window APIs differ across supported API 23–36 hosts.
     static void configureWindow(Window window, boolean dark) {
+        // The inspector owns this window's canvas. Dialog themes can otherwise
+        // paint an opaque bar over it even when the host's bars are transparent.
+        window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        window.setNavigationBarColor(Build.VERSION.SDK_INT >= 26
+            ? android.graphics.Color.TRANSPARENT : android.graphics.Color.BLACK);
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.setStatusBarContrastEnforced(false);
+            window.setNavigationBarContrastEnforced(false);
+        }
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false);
             android.view.WindowInsetsController controller = window.getInsetsController();
