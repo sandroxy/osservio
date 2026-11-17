@@ -140,7 +140,7 @@ bound concurrent encodes and the lifetime of returned data.
 
 ## Compatibility and conformance
 
-The root schemas describe strict revision-8 writers. Preserved
+The root schemas describe strict revision-9 writers. Preserved
 [revision-1 metadata](revisions/1/incident.schema.json) and
 [payload schemas](revisions/1/payloads.schema.json), and
 [revision-2 metadata](revisions/2/incident.schema.json) and
@@ -151,7 +151,8 @@ The root schemas describe strict revision-8 writers. Preserved
 [payload schemas](revisions/4/payloads.schema.json), and [revision-5 metadata](revisions/5/incident.schema.json) and
 [payload schemas](revisions/5/payloads.schema.json), and [revision-6 metadata](revisions/6/incident.schema.json) and
 [payload schemas](revisions/6/payloads.schema.json), and [revision-7 metadata](revisions/7/incident.schema.json) and
-[payload schemas](revisions/7/payloads.schema.json), remain readable by the
+[payload schemas](revisions/7/payloads.schema.json), and [revision-8 metadata](revisions/8/incident.schema.json) and
+[payload schemas](revisions/8/payloads.schema.json), remain readable by the
 conformance checker. Revisions 2 through 4 reference unchanged revision-1 event definitions.
 Revision 5 has self-contained definitions and admits complete valid URLs,
 RFC token method/header names, header values up to 16,384 UTF-8 bytes, and
@@ -174,12 +175,20 @@ Revision 8 adds required `androidTargetSDK`, `androidMinSDK` and
 `androidDebuggable` environment fields. API levels are positive 32-bit integers;
 the build flag is Boolean. Unavailable historical observations and unsupported
 platform capabilities remain explicit, never zero or false substitutes.
+Revision 9 adds nullable `error` to HTTP and WebSocket events and nullable
+`closeReason` to WebSocket events. Error domain/type permit 256 UTF-8 bytes, code
+64 and message 4,096; close text permits 512. Required `isLimited` and
+`isProcessed` flags preserve unavailable/truncated and host-modified evidence.
+These strings count toward metadata byte totals. Error details are valid only
+on failure-bearing or cancelled observations; close codes/reasons may coexist
+with failed or cancelled terminal events. Historical records keep these fields
+null. An empty object is not a valid substitute for missing evidence.
 A reader may ignore unknown optional object fields within a supported revision,
 while still validating every known
 field, required field, enum, identifier, revision-specific content constraint, and relationship.
 New enum meanings and incompatible layouts require an explicit revision decision.
 Unsupported revisions and mixed document revisions are rejected. Native writers
-always emit revision 8, including for manual snapshots. Earlier readers must
+always emit revision 9, including for manual snapshots. Earlier readers must
 reject newer revisions rather than overlook their evidence. No automatic
 document rewriting, downgrade, or SDK runtime importer is provided.
 Private incident database migrations are tested separately in native Store
@@ -195,5 +204,5 @@ archive-import API. It does not extract ZIP files or accept remote data.
 The independent fixtures in `testing/incident-export` cover absent and empty
 groups, exact 64-bit values, host processing, historical redaction, Unicode and escaping, body states, HTTP
 lifecycles, system source/time invariants, corruption, and compatibility.
-Unmodified revision-1 through revision-7 golden documents are retained separately. Both native encoders compare their
+Unmodified revision-1 through revision-8 golden documents are retained separately. Both native encoders compare their
 output with the same golden documents. See [development checks](../DEVELOPMENT.md).

@@ -68,8 +68,12 @@ final class HTTPDetailViewController: InspectorDetailViewController {
                     guard let self else { return }; self.read(titleKey: "http_final_url", content: InspectorReadContent(text: final, context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
                 }))
             }
-            sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: overview, footer: noticeKey.map(InspectorLocalization.text)),
-                Section(title: InspectorLocalization.text("http_metrics"), rows: HTTPPresentation.metrics(event.metrics).map { Row($0.0, $0.1) } + [Row(InspectorLocalization.text("http_metrics_note"))], collapsible: true),
+            sections = [Section(title: InspectorLocalization.text("ui_overview"), rows: overview, footer: noticeKey.map(InspectorLocalization.text))]
+            sections += NetworkErrorPresentation.sections(error: event.error, reason: nil) { [weak self] key, value, note in
+                guard let self else { return }
+                self.read(titleKey: key, content: InspectorReadContent(text: value, notice: { note }, context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
+            }
+            sections += [Section(title: InspectorLocalization.text("http_metrics"), rows: HTTPPresentation.metrics(event.metrics).map { Row($0.0, $0.1) } + [Row(InspectorLocalization.text("http_metrics_note"))], collapsible: true),
                 Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
                     field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)),
                     field("http_id", event.id), field("http_session", event.sessionID + " · #\(event.sequence)")

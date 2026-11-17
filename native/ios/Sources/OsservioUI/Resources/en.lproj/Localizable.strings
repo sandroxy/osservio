@@ -439,3 +439,13 @@
 "env_androidTargetSDK" = "Target Android API";
 "env_androidMinSDK" = "Minimum Android API";
 "env_androidDebuggable" = "Debuggable build";
+
+"network_error_details" = "Error details";
+"network_error_message" = "Error message";
+"network_error_code" = "Error code";
+"network_error_type" = "Error type";
+"network_error_domain" = "Error domain";
+"network_close_reason" = "Close reason";
+"network_text_unavailable" = "Text unavailable";
+"network_details_limited" = "Some diagnostic text was truncated or could not be read.";
+"network_details_processed" = "Some diagnostic text was changed or omitted by the host policy.";

@@ -114,6 +114,9 @@ public final class OsservioInterceptorTest {
         }
         assertEquals(HTTPEvent.State.FAILED, onlyEvent().state);
         assertEquals(HTTPEvent.Failure.TRANSPORT, onlyEvent().failure);
+        assertEquals("synthetic private detail", onlyEvent().error.message);
+        assertEquals(IOException.class.getName(), onlyEvent().error.type);
+        assertNull(onlyEvent().error.domain);
     }
 
     @Test public void hostRuntimeExceptionsAreNeverRetriedIncludingWhenCaptureIsOff() {
@@ -188,6 +191,7 @@ public final class OsservioInterceptorTest {
             assertEquals(phase, 1, calls.get());
             assertEquals(phase, HTTPEvent.State.FAILED, onlyEvent().state);
             assertEquals(phase, HTTPEvent.Failure.TRANSPORT, onlyEvent().failure);
+            assertEquals(phase, expected.getMessage(), onlyEvent().error.message);
         }
     }
 

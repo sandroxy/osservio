@@ -134,7 +134,7 @@ public final class IncidentDatabaseTest {
                 IncidentPersistenceOptions options = new IncidentPersistenceOptions();
                 if (revision == 6) { try (IncidentDatabase ignored = new IncidentDatabase(file(fixture), options, 0)) { assertTrue(ignored.summaries().isEmpty()); } }
                 try (SQLiteDatabase raw = SQLiteDatabase.openOrCreateDatabase(file(fixture), null)) {
-                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=11");
+                    raw.execSQL(revision == 0 ? "CREATE TABLE other_data(value TEXT)" : "PRAGMA user_version=12");
                 }
                 byte[] before = read(file(fixture));
                 expect(PersistenceStatus.Error.UNSUPPORTED_SCHEMA, () -> new IncidentDatabase(file(fixture), options, 1));
@@ -178,7 +178,7 @@ public final class IncidentDatabaseTest {
                     assertEquals(EnvironmentSnapshot.Fact.Type.UNAVAILABLE, snapshot.environment.values.get(key).fact.type);
             }
             try (SQLiteDatabase check = SQLiteDatabase.openDatabase(file(fixture).getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(conflict ? 9 : 10, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
+                assertEquals(conflict ? 9 : 11, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
                 if (conflict) assertEquals(0, EvidenceSQLite.scalar(check, "SELECT count(*) FROM environment_facts WHERE key IN ('androidTargetSDK','androidMinSDK')"));
             }
         }

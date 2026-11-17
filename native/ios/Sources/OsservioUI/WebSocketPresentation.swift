@@ -21,6 +21,8 @@ enum WebSocketPresentation {
                 field("ws_related", event.relatedMessageID), field("http_session", event.sessionID) + " · #\(event.sequence)",
                 field("http_status", event.statusCode.map(String.init)), field("ws_close_code", event.closeCode.map(String.init)),
                 field("http_failure", event.failure.map { text("http_" + $0.rawValue) }),
+                NetworkErrorPresentation.text(event.error),
+                NetworkErrorPresentation.text(event.closeReason),
                 "\n" + text("ws_headers") + "\n" + (event.headers.isEmpty ? text("http_none") : event.headers.map { $0.name + ": " + $0.value }.joined(separator: "\n")),
                 event.headersLimited ? text("http_headers_limited") : "", "\n" + text("ws_evidence_note")]
             .filter { !$0.isEmpty }.joined(separator: "\n\n")

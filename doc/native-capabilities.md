@@ -28,6 +28,11 @@ forbidden. See [data policy and account ownership](data-policy.md),
 [logging](logging.md), [HTTP](http.md), [WebSocket](websocket.md), and
 [runtime context](runtime-context.md).
 
+Network failures keep their portable category plus bounded, host-processed
+diagnostic text. OkHttp supplies the exception type/message; URLSession supplies
+NSError domain/code, error type and description. WebSocket close text is
+separate from close code and task outcome. Missing facts are not inferred.
+
 ## Retained evidence
 
 Both platforms provide:

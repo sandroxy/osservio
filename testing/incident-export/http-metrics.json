@@ -1,7 +1,7 @@
 {
   "metadata": {
     "format": "osservio.incident",
-    "revision": 8,
+    "revision": 9,
     "payloadFile": "payloads.json",
     "incident": {
       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -257,7 +257,8 @@
                   "endMillis": null
                 }
               ]
-            }
+            },
+            "error": null
           }
         ],
         "sourceEventCount": 3,
@@ -302,7 +303,9 @@
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000001",
               "byteCount": "3",
               "isProcessed": false
-            }
+            },
+            "error": null,
+            "closeReason": null
           },
           {
             "id": "eeeeeeee-eeee-eeee-eeee-000000000002",
@@ -326,7 +329,9 @@
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000002",
               "byteCount": "3",
               "isProcessed": false
-            }
+            },
+            "error": null,
+            "closeReason": null
           },
           {
             "id": "eeeeeeee-eeee-eeee-eeee-000000000003",
@@ -350,7 +355,9 @@
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000003",
               "byteCount": "3",
               "isProcessed": false
-            }
+            },
+            "error": null,
+            "closeReason": null
           },
           {
             "id": "eeeeeeee-eeee-eeee-eeee-000000000004",
@@ -374,7 +381,9 @@
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000004",
               "byteCount": "3",
               "isProcessed": false
-            }
+            },
+            "error": null,
+            "closeReason": null
           },
           {
             "id": "eeeeeeee-eeee-eeee-eeee-000000000005",
@@ -398,7 +407,9 @@
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000005",
               "byteCount": "0",
               "isProcessed": false
-            }
+            },
+            "error": null,
+            "closeReason": null
           },
           {
             "id": "eeeeeeee-eeee-eeee-eeee-000000000006",
@@ -422,7 +433,9 @@
               "blobID": "eeeeeeee-eeee-eeee-eeee-000000000006",
               "byteCount": "4",
               "isProcessed": false
-            }
+            },
+            "error": null,
+            "closeReason": null
           },
           {
             "id": "eeeeeeee-eeee-eeee-eeee-000000000007",
@@ -441,7 +454,9 @@
             "direction": "outgoing",
             "outcome": "sent",
             "relatedMessageID": "eeeeeeee-eeee-eeee-eeee-000000000006",
-            "payload": null
+            "payload": null,
+            "error": null,
+            "closeReason": null
           }
         ],
         "sourceEventCount": 9,
@@ -483,7 +498,7 @@
   },
   "payloads": {
     "format": "osservio.incident.payloads",
-    "revision": 8,
+    "revision": 9,
     "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     "http": {
       "dddddddd-dddd-dddd-dddd-dddddddddddd.request": "",

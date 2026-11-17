@@ -220,6 +220,24 @@ final class InspectorRecordSearchTests: XCTestCase {
         func body(id: String) -> HTTPBodyLookup { reads += 1; return bodies[id].map(HTTPBodyLookup.available) ?? .unavailable }
         func clear() { XCTFail("Search must not clear history") }
     }
+    func testDiagnosticMetadataSearchPreservesProvenanceAndIncompleteExclusions() throws {
+        let history = History()
+        let record = InspectorSearchRecord.socket(try .restore(id: id(1), connectionID: id(10), sessionID: id(100), sequence: 1,
+            timestampMillis: 100, url: "wss://example.test", source: .host, kind: .failed, headers: [], headersLimited: false,
+            statusCode: nil, closeCode: 1001, failure: .transport, direction: nil, outcome: nil, relatedMessageID: nil, payload: nil,
+            error: .restore(domain: "fixture.domain", code: "-1009", type: "SyntheticFailure", message: "transport diagnostic", isLimited: true, isProcessed: false),
+            closeReason: .restore(text: "service restart", isLimited: false, isProcessed: false)))
+        var query = InspectorQuery(); query.select(.searchScope, value: "metadata")
+        for term in ["fixture.domain", "-1009", "SyntheticFailure", "transport diagnostic", "service restart"] {
+            query.text = term
+            let result = try XCTUnwrap(search([record], query, history))
+            XCTAssertEqual(result.keys, [record.key]); XCTAssertEqual(result.previewSources[record.key], "ui_search_metadata")
+        }
+        query.text = ""; query.excludedText = "unseen suffix"
+        let partial = try XCTUnwrap(search([record], query, history)); XCTAssertTrue(partial.keys.isEmpty); XCTAssertEqual(partial.truncated, 1)
+        query.excludedText = ""; query.text = "service restart"; query.select(.searchScope, value: "address")
+        XCTAssertTrue(search([record], query, history)?.keys.isEmpty == true); XCTAssertEqual(history.reads, 0)
+    }
     private func search(_ records: [InspectorSearchRecord], _ query: InspectorQuery, _ history: History, limit: Int = InspectorRecordSearch.maximumUnits) -> InspectorRecordSearch.Result? {
         InspectorRecordSearch.run(records, query: query, now: 1_000_000, http: nil, sockets: history, unitLimit: limit, cancelled: { false })
     }

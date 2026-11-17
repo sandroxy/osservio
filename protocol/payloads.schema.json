@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:payloads:8",
-  "title": "Osservio incident content revision 8",
+  "$id": "urn:osservio:payloads:9",
+  "title": "Osservio incident content revision 9",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident.payloads"
     },
     "revision": {
-      "const": 8
+      "const": 9
     },
     "incidentID": {
       "$ref": "urn:osservio:incident:1#/$defs/uuid"

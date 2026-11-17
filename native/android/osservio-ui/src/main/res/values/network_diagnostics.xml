@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_network_error_details">Error details</string>
+    <string name="osservio_network_error_message">Error message</string>
+    <string name="osservio_network_error_code">Error code</string>
+    <string name="osservio_network_error_type">Error type</string>
+    <string name="osservio_network_error_domain">Error domain</string>
+    <string name="osservio_network_close_reason">Close reason</string>
+    <string name="osservio_network_text_unavailable">Text unavailable</string>
+    <string name="osservio_network_details_limited">Some diagnostic text was truncated or could not be read.</string>
+    <string name="osservio_network_details_processed">Some diagnostic text was changed or omitted by the host policy.</string>
+</resources>

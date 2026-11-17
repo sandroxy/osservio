@@ -4,7 +4,8 @@ package com.sandrox.osservio.core;
  * Implementations shared by recorders must be thread-safe. Inputs are bounded. Null, an exception, or oversized output omits the value without a raw fallback. */
 @FunctionalInterface
 public interface DiagnosticTextPolicy {
-    enum Field { URL, HEADER, REQUEST_BODY, RESPONSE_BODY, WEB_SOCKET_MESSAGE }
+    enum Field { URL, HEADER, REQUEST_BODY, RESPONSE_BODY, WEB_SOCKET_MESSAGE,
+        NETWORK_ERROR_DOMAIN, NETWORK_ERROR_CODE, NETWORK_ERROR_TYPE, NETWORK_ERROR_MESSAGE, WEB_SOCKET_CLOSE_REASON }
     final class Input {
         public final Field field;
         /** Lowercase name for HEADER; null for other fields. */

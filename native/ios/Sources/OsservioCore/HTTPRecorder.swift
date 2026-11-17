@@ -129,16 +129,17 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
     /// Completed means the collector confirmed response-body completion, not server-side business success.
     @discardableResult
     public func finish(_ token: HTTPExchangeToken, state: HTTPState, failure: HTTPFailure? = nil,
-                       requestComplete: Bool = true, responseComplete: Bool = true, metrics: HTTPMetrics? = nil) -> HTTPRecordResult {
+                       requestComplete: Bool = true, responseComplete: Bool = true, metrics: HTTPMetrics? = nil,
+                       error: (() throws -> NetworkErrorInput?)? = nil) -> HTTPRecordResult {
         update(token) { exchange, now in
             guard [.completed, .failed, .cancelled, .closedEarly].contains(state),
                   state != .completed || exchange.event.statusCode != nil,
-                  (state == .failed) == (failure != nil) else { return .invalid }
+                  (state == .failed) == (failure != nil), error == nil || [.failed, .cancelled].contains(state) else { return .invalid }
             let request = finalize(exchange.request, id: token.id + ".request", complete: requestComplete, field: .requestBody)
             let response = finalize(exchange.response, id: token.id + ".response", complete: responseComplete && state == .completed, field: .responseBody)
             exchange.event = HTTPEvent(previous: exchange.event, state: state, failure: failure,
                                        duration: now >= exchange.started ? now - exchange.started : nil,
-                                       request: request.reference, response: response.reference, metrics: metrics)
+                                       request: request.reference, response: response.reference, metrics: metrics, error: NetworkError.capture(error, policy: privacy.textPolicy))
             let result = write(HTTPUpdate(event: exchange.event, isNew: false,
                                          bodies: [request.body, response.body].compactMap { $0 }))
             // A terminal observation is never retried with raw content, even if storage is unavailable.
@@ -226,7 +227,7 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
         guard buffer.supportsText else { return omitted(.unsupported) }
         let truncated = buffer.observed > buffer.bytes.count
         var bytes = buffer.bytes
-        if truncated { bytes = Self.completeUTF8Prefix(bytes) }
+        if truncated { bytes = BoundedText.completeUTF8Prefix(bytes) }
         guard let text = String(data: bytes, encoding: .utf8) else { return omitted(.invalidText) }
         guard let processed = privacy.textPolicy.apply(text, field: field, truncated: truncated, limit: privacy.bodyByteLimit) else {
             return omitted(.omitted)
@@ -236,19 +237,5 @@ public final class HTTPRecorder: CaptureSessionObserver, @unchecked Sendable {
                                  observedBytes: buffer.observed, isProcessed: processed != text), body)
     }
 
-    private static func completeUTF8Prefix(_ bytes: Data) -> Data {
-        guard !bytes.isEmpty else { return bytes }
-        let values = Array(bytes.suffix(4))
-        var index = values.count - 1
-        while index > 0 && (values[index] & 0xC0) == 0x80 { index -= 1 }
-        let first = values[index]
-        let expected = (0xC2...0xDF).contains(first) ? 2 : (0xE0...0xEF).contains(first) ? 3 : (0xF0...0xF4).contains(first) ? 4 : 1
-        let actual = values.count - index
-        if actual > 1 {
-            let second = values[index + 1]
-            if (first == 0xE0 && second < 0xA0) || (first == 0xED && second > 0x9F)
-                || (first == 0xF0 && second < 0x90) || (first == 0xF4 && second > 0x8F) { return bytes }
-        }
-        return expected > actual ? Data(bytes.dropLast(actual)) : bytes
-    }
+
 }

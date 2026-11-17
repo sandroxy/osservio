@@ -43,6 +43,7 @@ enum HTTPPresentation {
                 field("final_url", event.responseURL), field("status", event.statusCode.map(String.init)),
                 field("duration", event.durationMillis.map { "\($0) ms" }), field("time", date),
                 field("source", source), field("failure", event.failure.map { text("http_" + $0.rawValue) }),
+                NetworkErrorPresentation.text(event.error),
                 field("id", event.id), field("session", event.sessionID) + " · #\(event.sequence)",
                 "\n" + text("http_request_headers") + "\n" + headers(event.requestHeaders),
                 "\n" + text("http_response_headers") + "\n" + headers(event.responseHeaders),

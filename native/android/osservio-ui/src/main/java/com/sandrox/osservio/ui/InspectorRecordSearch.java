@@ -1,6 +1,7 @@
 package com.sandrox.osservio.ui;
 
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.NetworkError;
 import com.sandrox.osservio.core.IncidentPayload;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.HTTPHistory;
@@ -42,11 +43,14 @@ final class InspectorRecordSearch {
                 found = headers(term, scope, http.requestHeaders, "requestHeaders"); if (found != null) return found;
                 found = headers(term, scope, http.responseHeaders, "responseHeaders"); if (found != null) return found;
                 found = find(term, scope, "identity", "identity", http.id, http.sessionId + " #" + http.sequence); if (found != null) return found;
+                found = error(term, scope, http.error); if (found != null) return found;
                 return find(term, scope, "metadata", "metadata", http.method, http.statusCode == null ? "" : http.statusCode.toString(), displayText);
             }
             found = find(term, scope, "address", "address", socket.url, displayAddress); if (found != null) return found;
             found = headers(term, scope, socket.headers, "handshakeHeaders"); if (found != null) return found;
             found = find(term, scope, "identity", "identity", socket.id, socket.connectionId, socket.relatedMessageId, socket.sessionId + " #" + socket.sequence); if (found != null) return found;
+            found = error(term, scope, socket.error); if (found != null) return found;
+            found = find(term, scope, "metadata", "metadata", socket.closeReason == null ? null : socket.closeReason.text); if (found != null) return found;
             return find(term, scope, "metadata", "metadata", socket.kind.name(), socket.outcome == null ? "" : socket.outcome.name(),
                 socket.statusCode == null ? "" : socket.statusCode.toString(), socket.closeCode == null ? "" : socket.closeCode.toString(), displayText);
         }
@@ -60,6 +64,11 @@ final class InspectorRecordSearch {
             for (HTTPHeader header : headers) if (has(term, header.name, header.value)) return new Match(source, header.name + ": " + header.value);
             return null;
         }
+        private static Match error(String term, String scope, NetworkError error) {
+            return error == null ? null : find(term, scope, "metadata", "metadata", error.domain, error.code, error.type, error.message);
+        }
+        boolean diagnosticsLimited() { return http != null ? http.error != null && http.error.isLimited
+            : socket != null && (socket.error != null && socket.error.isLimited || socket.closeReason != null && socket.closeReason.isLimited); }
         boolean headersLimited() { return http != null ? http.headersLimited : socket != null && socket.headersLimited; }
         private static boolean has(String term, String... fields) {
             for (String field : fields) if (InspectorQuery.hasText(field, term)) return true;
@@ -146,7 +155,7 @@ final class InspectorRecordSearch {
                              int unitLimit, InspectorJsonDocument.Cancellation cancelled, Result result) {
         Match hit = record.match(query.text, query.searchScope());
         boolean metadata = query.text.isEmpty() || hit != null;
-        boolean incompleteHeaders = query.searches("headers") && record.headersLimited();
+        boolean incompleteHeaders = query.searches("headers") && record.headersLimited() || query.searches("metadata") && record.diagnosticsLimited();
         if (incompleteHeaders) result.truncated++;
         if (!query.excludedText.isEmpty() && record.match(query.excludedText, query.searchScope()) != null) return false;
         if (hit != null) { result.previews.put(record.key(), preview(hit.text, query.text)); result.previewSources.put(record.key(), hit.source); }

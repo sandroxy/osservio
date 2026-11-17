@@ -133,7 +133,7 @@ final class IncidentDatabaseTests: XCTestCase {
                 if revision == 6 { let store = try IncidentDatabase(url: url, options: options, now: 0); store.close() }
                 let raw = try SQLiteConnection(url: url)
                 if revision == 0 { try raw.execute("CREATE TABLE other_data(value TEXT)") }
-                else { try raw.execute("PRAGMA user_version=11") }
+                else { try raw.execute("PRAGMA user_version=12") }
                 raw.close()
                 let before = try Data(contentsOf: url)
                 XCTAssertThrowsError(try IncidentDatabase(url: url, options: options, now: 1)) { XCTAssertEqual($0 as? PersistenceError, .unsupportedSchema) }
@@ -169,7 +169,7 @@ final class IncidentDatabaseTests: XCTestCase {
                     }
                 }
                 let check = try SQLiteConnection(url: url); defer { check.close() }
-                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 9 : 10) }
+                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 9 : 11) }
                 if conflict {
                     try check.statement("SELECT count(*) FROM environment_facts WHERE key IN ('androidTargetSDK','androidMinSDK')") {
                         XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), 0)

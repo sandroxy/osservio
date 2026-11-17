@@ -57,6 +57,8 @@ public struct WebSocketEvent: Sendable {
     public let statusCode: Int?
     public let closeCode: Int?
     public let failure: WebSocketFailure?
+    public let error: NetworkError?
+    public let closeReason: WebSocketCloseReason?
     public let direction: WebSocketDirection?
     public let outcome: WebSocketMessageOutcome?
     public let relatedMessageID: String?
@@ -67,13 +69,14 @@ public struct WebSocketEvent: Sendable {
          source: WebSocketSource, kind: WebSocketKind, headers: [HTTPHeader] = [], headersLimited: Bool = false,
          statusCode: Int? = nil, closeCode: Int? = nil, failure: WebSocketFailure? = nil,
          direction: WebSocketDirection? = nil, outcome: WebSocketMessageOutcome? = nil,
-         payload: WebSocketPayloadReference? = nil, relatedMessageID: String? = nil) {
+         payload: WebSocketPayloadReference? = nil, relatedMessageID: String? = nil,
+         error: NetworkError? = nil, closeReason: WebSocketCloseReason? = nil) {
         self.id = id; self.connectionID = connectionID; sessionID = context.sessionID; sequence = context.sequence
         timestampMillis = timestamp; self.url = url; self.source = source; self.kind = kind
         self.headers = headers; self.headersLimited = headersLimited; self.statusCode = statusCode
-        self.closeCode = closeCode; self.failure = failure; self.direction = direction
+        self.closeCode = closeCode; self.failure = failure; self.error = error; self.closeReason = closeReason; self.direction = direction
         self.outcome = outcome; self.payload = payload; self.relatedMessageID = relatedMessageID
-        textByteCount = url.utf8.count + headers.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count }
+        textByteCount = url.utf8.count + headers.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count } + (error?.textByteCount ?? 0) + (closeReason?.textByteCount ?? 0)
     }
 
     /// Restores an observation, not a reconstructed connection. Related submissions may be absent.
@@ -81,11 +84,13 @@ public struct WebSocketEvent: Sendable {
                                timestampMillis: Int64, url: String, source: WebSocketSource, kind: WebSocketKind,
                                headers: [HTTPHeader], headersLimited: Bool, statusCode: Int?, closeCode: Int?,
                                failure: WebSocketFailure?, direction: WebSocketDirection?, outcome: WebSocketMessageOutcome?,
-                               relatedMessageID: String?, payload: WebSocketPayloadReference?) throws -> WebSocketEvent {
+                               relatedMessageID: String?, payload: WebSocketPayloadReference?,
+                               error: NetworkError? = nil, closeReason: WebSocketCloseReason? = nil) throws -> WebSocketEvent {
         guard EvidenceValidation.id(id), EvidenceValidation.id(connectionID), EvidenceValidation.id(sessionID), sequence > 0,
-              EvidenceValidation.url(url), EvidenceValidation.headers(headers),
+              EvidenceValidation.url(url), EvidenceValidation.headers(headers), error == nil || failure != nil || kind == .cancelled,
+              closeReason == nil || [.closeRequested, .closing, .closed, .cancelRequested, .failed, .cancelled].contains(kind),
               statusCode.map({ [.opened, .failed].contains(kind) && (100...599).contains($0) }) ?? true,
-              closeCode.map({ [.closeRequested, .closing, .closed, .cancelRequested].contains(kind) && (1000...4999).contains($0) }) ?? true,
+              closeCode.map({ [.closeRequested, .closing, .closed, .cancelRequested, .failed, .cancelled].contains(kind) && (1000...4999).contains($0) }) ?? true,
               (headers.isEmpty && !headersLimited) || [.connecting, .attached, .opened, .failed].contains(kind) else { throw PersistenceError.invalidRecord }
         switch kind {
         case .message:
@@ -103,17 +108,18 @@ public struct WebSocketEvent: Sendable {
         return WebSocketEvent(id: id, connectionID: connectionID, sessionID: sessionID, sequence: sequence,
             timestampMillis: timestampMillis, url: url, source: source, kind: kind, headers: headers,
             headersLimited: headersLimited, statusCode: statusCode, closeCode: closeCode, failure: failure,
-            direction: direction, outcome: outcome, relatedMessageID: relatedMessageID, payload: payload)
+            direction: direction, outcome: outcome, relatedMessageID: relatedMessageID, payload: payload, error: error, closeReason: closeReason)
     }
     private init(id: String, connectionID: String, sessionID: String, sequence: Int64, timestampMillis: Int64,
                  url: String, source: WebSocketSource, kind: WebSocketKind, headers: [HTTPHeader], headersLimited: Bool,
                  statusCode: Int?, closeCode: Int?, failure: WebSocketFailure?, direction: WebSocketDirection?,
-                 outcome: WebSocketMessageOutcome?, relatedMessageID: String?, payload: WebSocketPayloadReference?) {
+                 outcome: WebSocketMessageOutcome?, relatedMessageID: String?, payload: WebSocketPayloadReference?,
+                 error: NetworkError?, closeReason: WebSocketCloseReason?) {
         self.id = id; self.connectionID = connectionID; self.sessionID = sessionID; self.sequence = sequence
         self.timestampMillis = timestampMillis; self.url = url; self.source = source; self.kind = kind
         self.headers = headers; self.headersLimited = headersLimited; self.statusCode = statusCode; self.closeCode = closeCode
-        self.failure = failure; self.direction = direction; self.outcome = outcome; self.relatedMessageID = relatedMessageID; self.payload = payload
-        textByteCount = url.utf8.count + headers.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count }
+        self.failure = failure; self.error = error; self.closeReason = closeReason; self.direction = direction; self.outcome = outcome; self.relatedMessageID = relatedMessageID; self.payload = payload
+        textByteCount = url.utf8.count + headers.reduce(0) { $0 + $1.name.utf8.count + $1.value.utf8.count } + (error?.textByteCount ?? 0) + (closeReason?.textByteCount ?? 0)
     }
 }
 

@@ -6,6 +6,22 @@ enum IncidentDocumentFixture {
     static let session = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     static let httpID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     static func make(_ name: String) throws -> IncidentSnapshot {
+        if name == "network-details" {
+            let error = try NetworkError.restore(domain: "fixture.network", code: "-1009", type: "SyntheticFailure", message: "连接失败😀", isLimited: false, isProcessed: false)
+            let body = try HTTPBodyReference.restore(state: .omitted, blobID: nil, observedBytes: 0)
+            let request = try HTTPEvent.restore(id: httpID, sessionID: session, sequence: 1, revision: 1, timestampMillis: 123,
+                method: "GET", source: .okHttp, url: "https://example.com", responseURL: nil, requestHeaders: [], responseHeaders: [],
+                headersLimited: false, statusCode: nil, state: .failed, failure: .connection, durationMillis: 7,
+                requestBody: body, responseBody: body, error: error)
+            let event = try WebSocketEvent.restore(id: "eeeeeeee-eeee-eeee-eeee-000000000001", connectionID: session, sessionID: session,
+                sequence: 2, timestampMillis: 124, url: "wss://example.com", source: .urlSession, kind: .failed,
+                headers: [], headersLimited: false, statusCode: nil, closeCode: 1001, failure: .transport,
+                direction: nil, outcome: nil, relatedMessageID: nil, payload: nil,
+                error: error, closeReason: .restore(text: "服务重启", isLimited: false, isProcessed: false))
+            return try .restore(id: id, timestampMillis: 125, note: nil, environment: nil, breadcrumbs: nil,
+                http: .restore(events: [request], payloads: [:], observedAtMillis: 126, sourceEventCount: 1, sourceEvictedEvents: 0, sourceEvictedBodies: 0),
+                webSockets: .restore(events: [event], payloads: [:], observedAtMillis: 127, sourceEventCount: 1, sourceEvictedEvents: 0, sourceEvictedPayloads: 0))
+        }
         if name == "http-metrics" {
             let base = try make("complete"), old = base.http!.events[0], group = base.http!
             let metrics = try HTTPMetrics(phases: [

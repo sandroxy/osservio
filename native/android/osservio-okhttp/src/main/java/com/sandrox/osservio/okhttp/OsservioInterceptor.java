@@ -188,26 +188,30 @@ public final class OsservioInterceptor implements Interceptor {
             if (direction == HTTPRecorder.Direction.REQUEST) requestGap = true; else responseGap = true;
         }
         void finish(HTTPEvent.State state, HTTPEvent.Failure failure, boolean responseComplete) {
+            finish(state, failure, responseComplete, null);
+        }
+        void finish(HTTPEvent.State state, HTTPEvent.Failure failure, boolean responseComplete, Exception error) {
             if (!terminal.compareAndSet(false, true)) return;
             try {
                 HTTPMetrics observed = metrics != null ? metrics.snapshot(protocol, cache) : protocol == null ? null
                     : new HTTPMetrics(java.util.Collections.emptyList(), protocol, cache, null, false);
-                recorder.finish(token, state, failure, requestComplete && !requestGap, responseComplete && !responseGap, observed);
+                recorder.finish(token, state, failure, requestComplete && !requestGap, responseComplete && !responseGap, observed,
+                    error == null ? null : () -> NetworkErrorObservation.read(error));
             }
             catch (RuntimeException diagnosticFailure) { /* Diagnostics never replace a host result or exception. */ }
         }
         void failed(Exception failure) {
-            if (failure instanceof SocketTimeoutException) { finish(HTTPEvent.State.FAILED, HTTPEvent.Failure.TIMEOUT, false); return; }
+            if (failure instanceof SocketTimeoutException) { finish(HTTPEvent.State.FAILED, HTTPEvent.Failure.TIMEOUT, false, failure); return; }
             // isCanceled also covers OkHttp's call-wide timeout. It does not establish who cancelled the call.
             try {
-                if (call.isCanceled()) { finish(HTTPEvent.State.CANCELLED, null, false); return; }
+                if (call.isCanceled()) { finish(HTTPEvent.State.CANCELLED, null, false, failure); return; }
             } catch (RuntimeException diagnosticFailure) {
                 // An unavailable cancellation hint must not replace the original host failure.
             }
             HTTPEvent.Failure category = failure instanceof SSLException ? HTTPEvent.Failure.TLS
                 : failure instanceof ConnectException || failure instanceof UnknownHostException ? HTTPEvent.Failure.CONNECTION
                 : failure instanceof IOException ? HTTPEvent.Failure.TRANSPORT : HTTPEvent.Failure.UNKNOWN;
-            finish(HTTPEvent.State.FAILED, category, false);
+            finish(HTTPEvent.State.FAILED, category, false, failure);
         }
     }
 

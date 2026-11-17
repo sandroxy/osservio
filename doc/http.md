@@ -108,6 +108,29 @@ report unavailable after eviction or clear, or busy during contention.
 
 ## Resource budgets
 
+### Error details
+
+`finish` accepts an optional lazy `NetworkError` source for failed or cancelled
+observations. It is invoked synchronously only after capture admission and must
+be bounded, nonblocking and non-reentrant. Invalid, stale, inactive or rejected
+work does not read the source. The SDK retains no exception object, cause chain,
+stack walk or arbitrary user-info map. An absent source remains unavailable
+evidence rather than an invented description.
+
+Domain and type each allow 256 UTF-8 bytes, code 64, and message 4,096. Native
+codes remain exact strings; they are not interpreted as HTTP status codes.
+Each field passes through its `DiagnosticTextPolicy` field before storage.
+Truncation, malformed input or source failure sets `isLimited`; host changes or
+omission set `isProcessed`. Policy failure never restores raw text. These
+bounded strings participate in the existing metadata byte budget and are frozen
+with the terminal event. Failure categories and host exceptions are unchanged.
+
+Native details show diagnostic text separately from the overview and technical
+identity. Long messages open an exact-value reader. Metadata search and explicit
+copy/export use the same admitted values; lists keep their concise summaries.
+
+### Capture and retention limits
+
 | Limit | Default | Allowed configuration |
 | --- | --- | --- |
 | Concurrent observations per recorder | 32 | 1–256 |

@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "format": "osservio.incident",
+    "revision": 9,
+    "payloadFile": "payloads.json",
+    "incident": {
+      "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "timestampMillis": "125",
+      "note": null,
+      "environment": null,
+      "breadcrumbs": null,
+      "logs": null,
+      "http": {
+        "observedAtMillis": "126",
+        "events": [
+          {
+            "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "1",
+            "revision": "1",
+            "timestampMillis": "123",
+            "method": "GET",
+            "source": "okHttp",
+            "url": "https://example.com",
+            "responseURL": null,
+            "requestHeaders": [],
+            "responseHeaders": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "state": "failed",
+            "failure": "connection",
+            "durationMillis": "7",
+            "requestBody": {
+              "state": "omitted",
+              "blobID": null,
+              "observedBytes": "0",
+              "isProcessed": false
+            },
+            "responseBody": {
+              "state": "omitted",
+              "blobID": null,
+              "observedBytes": "0",
+              "isProcessed": false
+            },
+            "metrics": null,
+            "error": {
+              "domain": "fixture.network",
+              "code": "-1009",
+              "type": "SyntheticFailure",
+              "message": "连接失败😀",
+              "isLimited": false,
+              "isProcessed": false
+            }
+          }
+        ],
+        "sourceEventCount": 1,
+        "omittedEventCount": 0,
+        "sourceEvictedEvents": "0",
+        "sourceEvictedBodies": "0",
+        "retainedTextBytes": 74,
+        "retainedPayloadBytes": 0,
+        "payloads": {}
+      },
+      "webSockets": {
+        "observedAtMillis": "127",
+        "events": [
+          {
+            "id": "eeeeeeee-eeee-eeee-eeee-000000000001",
+            "connectionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sessionID": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "sequence": "2",
+            "timestampMillis": "124",
+            "url": "wss://example.com",
+            "source": "urlSession",
+            "kind": "failed",
+            "headers": [],
+            "headersLimited": false,
+            "statusCode": null,
+            "closeCode": 1001,
+            "failure": "transport",
+            "direction": null,
+            "outcome": null,
+            "relatedMessageID": null,
+            "payload": null,
+            "error": {
+              "domain": "fixture.network",
+              "code": "-1009",
+              "type": "SyntheticFailure",
+              "message": "连接失败😀",
+              "isLimited": false,
+              "isProcessed": false
+            },
+            "closeReason": {
+              "text": "服务重启",
+              "isLimited": false,
+              "isProcessed": false
+            }
+          }
+        ],
+        "sourceEventCount": 1,
+        "omittedEventCount": 0,
+        "sourceEvictedEvents": "0",
+        "sourceEvictedPayloads": "0",
+        "retainedTextBytes": 81,
+        "retainedPayloadBytes": 0,
+        "payloads": {}
+      },
+      "origin": "manual",
+      "systemDiagnostic": null
+    }
+  },
+  "payloads": {
+    "format": "osservio.incident.payloads",
+    "revision": 9,
+    "incidentID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "http": {},
+    "webSockets": {},
+    "logs": {}
+  }
+}

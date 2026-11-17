@@ -67,8 +67,16 @@ output boundaries](data-policy.md).
 
 Handshake headers belong to their specific connecting/opened event, rather than
 being copied onto every message. A rejected handshake can retain response status
-and headers. The current typed lifecycle API records close codes and failure
-categories; it does not accept arbitrary close descriptions or exception objects.
+and headers. Failure-bearing events may include the bounded, host-processed
+[network error fields](http.md#error-details). Close-related events, including
+failed/cancelled completions with a known close result, may retain an optional
+`WebSocketCloseReason`: at most 512 UTF-8 bytes, separate from the numeric code.
+Empty text, absent evidence, truncation and host omission remain distinct.
+`DiagnosticTextPolicy` processes the bounded close text before storage. Error
+and close text count toward metadata limits and remain available in saved
+details, metadata search and explicit copy/export. Sources are read only after
+admission and must not read a host stream. No exception object is accepted as
+recorded evidence.
 
 Capture scans only the permitted UTF-8 prefix and preserves scalar boundaries.
 Truncated text has an unknown full byte count. A processed payload keeps its

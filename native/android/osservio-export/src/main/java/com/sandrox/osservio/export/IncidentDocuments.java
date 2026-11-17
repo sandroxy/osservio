@@ -5,6 +5,7 @@ import com.sandrox.osservio.core.AndroidTombstone;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.NetworkError;
 import com.sandrox.osservio.core.HTTPMetrics;
 import com.sandrox.osservio.core.HTTPHeader;
 import com.sandrox.osservio.core.IncidentHTTP;
@@ -51,8 +52,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
-        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 8, "payloadFile", "payloads.json", "incident", incident)).toString();
-        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 8, "incidentID", snapshot.id,
+        String metadata = new JSONObject(object("format", "osservio.incident", "revision", 9, "payloadFile", "payloads.json", "incident", incident)).toString();
+        String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 9, "incidentID", snapshot.id,
             "logs", content(snapshot.logs == null ? null : snapshot.logs.payloads),
             "http", content(snapshot.http == null ? null : snapshot.http.payloads),
             "webSockets", content(snapshot.webSockets == null ? null : snapshot.webSockets.payloads))).toString();
@@ -167,11 +168,15 @@ public final class IncidentDocuments {
             "revision", Long.toString(event.revision), "timestampMillis", Long.toString(event.timestampMillis), "method", event.method,
             "source", code(event.source), "url", event.url, "responseURL", event.responseURL, "requestHeaders", headers(event.requestHeaders),
             "responseHeaders", headers(event.responseHeaders), "headersLimited", event.headersLimited, "statusCode", event.statusCode,
-            "state", code(event.state), "failure", code(event.failure), "durationMillis", decimal(event.durationMillis), "metrics", event.metrics == null ? null : metrics(event.metrics),
+            "state", code(event.state), "failure", code(event.failure), "error", error(event.error), "durationMillis", decimal(event.durationMillis), "metrics", event.metrics == null ? null : metrics(event.metrics),
             "requestBody", body(event.requestBody), "responseBody", body(event.responseBody)));
         return object("observedAtMillis", Long.toString(value.observedAtMillis), "sourceEventCount", value.sourceEventCount, "omittedEventCount", value.omittedEventCount,
             "sourceEvictedEvents", Long.toString(value.sourceEvictedEvents), "sourceEvictedBodies", Long.toString(value.sourceEvictedBodies),
             "retainedTextBytes", value.retainedTextBytes, "retainedPayloadBytes", value.retainedPayloadBytes, "payloads", selection(value.payloads), "events", events);
+    }
+    private static Map<String, Object> error(NetworkError value) {
+        return value == null ? null : object("domain", value.domain, "code", value.code, "type", value.type, "message", value.message,
+            "isLimited", value.isLimited, "isProcessed", value.isProcessed);
     }
     private static Map<String, Object> metrics(HTTPMetrics value) {
         List<Object> phases = new ArrayList<>();
@@ -186,7 +191,8 @@ public final class IncidentDocuments {
         for (WebSocketEvent event : value.events) events.add(object("id", event.id, "connectionID", event.connectionId, "sessionID", event.sessionId,
             "sequence", Long.toString(event.sequence), "timestampMillis", Long.toString(event.timestampMillis), "url", event.url, "source", code(event.source),
             "kind", code(event.kind), "headers", headers(event.headers), "headersLimited", event.headersLimited, "statusCode", event.statusCode,
-            "closeCode", event.closeCode, "failure", code(event.failure), "direction", code(event.direction), "outcome", code(event.outcome),
+            "closeCode", event.closeCode, "failure", code(event.failure), "error", error(event.error),
+            "closeReason", event.closeReason == null ? null : object("text", event.closeReason.text, "isLimited", event.closeReason.isLimited, "isProcessed", event.closeReason.isProcessed), "direction", code(event.direction), "outcome", code(event.outcome),
             "relatedMessageID", event.relatedMessageId, "payload", event.payload == null ? null : object("state", code(event.payload.state),
                 "blobID", event.payload.blobId, "byteCount", decimal(event.payload.byteCount), "isProcessed", event.payload.isProcessed)));
         return object("observedAtMillis", Long.toString(value.observedAtMillis), "sourceEventCount", value.sourceEventCount, "omittedEventCount", value.omittedEventCount,

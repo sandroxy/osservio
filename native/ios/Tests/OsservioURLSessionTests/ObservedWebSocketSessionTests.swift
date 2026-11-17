@@ -64,6 +64,7 @@ final class ObservedWebSocketSessionTests: XCTestCase {
         socket.cancel(with: .normalClosure, reason: Data("private close reason".utf8))
         wait(for: [closed], timeout: 5)
         XCTAssertTrue(store.snapshot()?.events.contains { $0.kind == .closeRequested } == true)
+        XCTAssertEqual(store.snapshot()?.events.first { $0.kind == .closeRequested }?.closeReason?.text, "private close reason")
         XCTAssertTrue(store.snapshot()?.events.contains { $0.kind == .closed && $0.closeCode == 1000 } == true)
     }
 
@@ -163,6 +164,10 @@ final class ObservedWebSocketSessionTests: XCTestCase {
         XCTAssertNotNil(delegate.error)
         XCTAssertEqual(store.snapshot()?.events.last?.kind, .failed)
         XCTAssertNotNil(store.snapshot()?.events.last?.failure)
+        let native = try XCTUnwrap(delegate.error) as NSError
+        XCTAssertEqual(store.snapshot()?.events.last?.error?.domain, native.domain)
+        XCTAssertEqual(store.snapshot()?.events.last?.error?.code, String(native.code))
+        XCTAssertEqual(store.snapshot()?.events.last?.error?.message, native.localizedDescription)
         XCTAssertFalse(store.snapshot()?.events.contains { $0.kind == .opened } == true)
         XCTAssertEqual(recorder.status()?.activeConnections, 0)
     }
@@ -184,7 +189,7 @@ private final class SocketDelegate: NSObject, URLSessionWebSocketDelegate, @unch
     }
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                     didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        socket?.didClose(with: closeCode)
+        socket?.didClose(with: closeCode, reason: reason)
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         socket?.didComplete(with: error)

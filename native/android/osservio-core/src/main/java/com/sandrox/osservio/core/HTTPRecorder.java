@@ -144,14 +144,20 @@ public final class HTTPRecorder {
         return finish(token, state, failure, requestComplete, responseComplete, null);
     }
     public Result finish(Token token, HTTPEvent.State state, HTTPEvent.Failure failure, boolean requestComplete, boolean responseComplete, HTTPMetrics metrics) {
+        return finish(token, state, failure, requestComplete, responseComplete, metrics, null);
+    }
+    /** Reads error fields only after admission; never retains the source callback. */
+    public Result finish(Token token, HTTPEvent.State state, HTTPEvent.Failure failure, boolean requestComplete, boolean responseComplete,
+                         HTTPMetrics metrics, NetworkError.Source error) {
         return update(token, (exchange, now) -> {
             if ((state != HTTPEvent.State.COMPLETED && state != HTTPEvent.State.FAILED && state != HTTPEvent.State.CANCELLED && state != HTTPEvent.State.CLOSED_EARLY)
                 || (state == HTTPEvent.State.COMPLETED && exchange.event.statusCode == null)
-                || ((state == HTTPEvent.State.FAILED) != (failure != null))) return Result.INVALID;
+                || ((state == HTTPEvent.State.FAILED) != (failure != null))
+                || (error != null && state != HTTPEvent.State.FAILED && state != HTTPEvent.State.CANCELLED)) return Result.INVALID;
             FinalBody request = finalizeBody(exchange.request, token.id + ".request", requestComplete, DiagnosticTextPolicy.Field.REQUEST_BODY);
             FinalBody response = finalizeBody(exchange.response, token.id + ".response", responseComplete && state == HTTPEvent.State.COMPLETED, DiagnosticTextPolicy.Field.RESPONSE_BODY);
             exchange.event = new HTTPEvent(exchange.event, null, false, null, null, state, failure,
-                now >= exchange.started ? now - exchange.started : null, request.reference, response.reference, metrics);
+                now >= exchange.started ? now - exchange.started : null, request.reference, response.reference, metrics, NetworkError.capture(error, privacy.textPolicy));
             List<HTTPBody> bodies = new ArrayList<>();
             if (request.body != null) bodies.add(request.body);
             if (response.body != null) bodies.add(response.body);

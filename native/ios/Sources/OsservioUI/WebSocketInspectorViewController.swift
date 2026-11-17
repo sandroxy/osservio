@@ -67,8 +67,12 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
                         action: content.isAvailable ? { [weak self] in self?.openPayload() } : nil)
                 ], footer: content.isAvailable ? content.notice : nil))
             }
-            sections += [Section(title: InspectorLocalization.text("ui_overview"), rows: overview, footer: noticeKey.map(InspectorLocalization.text)),
-                Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
+            sections += [Section(title: InspectorLocalization.text("ui_overview"), rows: overview, footer: noticeKey.map(InspectorLocalization.text))]
+            sections += NetworkErrorPresentation.sections(error: event.error, reason: event.closeReason) { [weak self] key, value, note in
+                guard let self else { return }
+                self.read(titleKey: key, content: InspectorReadContent(text: value, notice: { note }, context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
+            }
+            sections += [Section(title: InspectorLocalization.text("ui_technical_details"), rows: [
                     field("http_source", InspectorFilterOptions.label(.source, event.source.rawValue)), field("ws_event", event.id),
                     field("http_session", event.sessionID + " · #\(event.sequence)")
                 ], footer: InspectorLocalization.text("ws_evidence_note"), collapsible: true)]

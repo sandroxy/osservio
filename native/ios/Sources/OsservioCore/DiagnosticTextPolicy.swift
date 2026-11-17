@@ -6,6 +6,7 @@ import Foundation
 public struct DiagnosticTextPolicy: Sendable {
     public enum Field: Sendable, Equatable {
         case url, header(String), requestBody, responseBody, webSocketMessage
+        case networkErrorDomain, networkErrorCode, networkErrorType, networkErrorMessage, webSocketCloseReason
     }
     public struct Input: Sendable {
         public let field: Field

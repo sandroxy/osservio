@@ -101,7 +101,7 @@ public final class ObservedWebSocketFactory implements WebSocket.Factory {
         @Override public boolean close(int code, String reason) {
             boolean accepted = original.get().close(code, reason);
             if (accepted) observe(false, token -> recorder.lifecycle(token, WebSocketEvent.Kind.CLOSE_REQUESTED,
-                Collections.emptyList(), null, code, null));
+                Collections.emptyList(), null, code, null, null, () -> reason));
             return accepted;
         }
         @Override public void cancel() {
@@ -128,18 +128,19 @@ public final class ObservedWebSocketFactory implements WebSocket.Factory {
                 }
                 @Override public void onClosing(WebSocket socket, int code, String reason) {
                     bind(socket);
-                    observe(false, token -> recorder.lifecycle(token, WebSocketEvent.Kind.CLOSING, Collections.emptyList(), null, code, null));
+                    observe(false, token -> recorder.lifecycle(token, WebSocketEvent.Kind.CLOSING, Collections.emptyList(), null, code, null, null, () -> reason));
                     host.onClosing(Socket.this, code, reason);
                 }
                 @Override public void onClosed(WebSocket socket, int code, String reason) {
                     bind(socket);
-                    observe(true, token -> recorder.lifecycle(token, WebSocketEvent.Kind.CLOSED, Collections.emptyList(), null, code, null));
+                    observe(true, token -> recorder.lifecycle(token, WebSocketEvent.Kind.CLOSED, Collections.emptyList(), null, code, null, null, () -> reason));
                     host.onClosed(Socket.this, code, reason);
                 }
                 @Override public void onFailure(WebSocket socket, Throwable error, Response response) {
                     bind(socket);
                     observe(true, token -> recorder.lifecycle(token, WebSocketEvent.Kind.FAILED,
-                        response == null ? Collections.emptyList() : headers(response.headers()), response == null ? null : response.code(), null, failure(error)));
+                        response == null ? Collections.emptyList() : headers(response.headers()), response == null ? null : response.code(), null, failure(error),
+                        () -> NetworkErrorObservation.read(error), null));
                     host.onFailure(Socket.this, error, response);
                 }
             };

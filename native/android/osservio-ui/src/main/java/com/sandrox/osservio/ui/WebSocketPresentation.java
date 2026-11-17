@@ -71,6 +71,8 @@ final class WebSocketPresentation {
         field(text, context, R.string.osservio_http_status, event.statusCode);
         field(text, context, R.string.osservio_ws_close_code, event.closeCode);
         field(text, context, R.string.osservio_http_failure, event.failure == null ? null : failure(context, event.failure));
+        if (event.error != null) text.append("\n\n").append(NetworkErrorPresentation.text(context, event.error));
+        if (event.closeReason != null) text.append("\n\n").append(NetworkErrorPresentation.text(context, event.closeReason));
         text.append("\n\n").append(context.getString(R.string.osservio_ws_headers)).append('\n');
         if (event.headers.isEmpty()) text.append(context.getString(R.string.osservio_http_none));
         for (HTTPHeader header : event.headers) text.append(header.name).append(": ").append(header.value).append('\n');

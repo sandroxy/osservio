@@ -27,7 +27,7 @@ class ConformanceTests(unittest.TestCase):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete", "trusted-content", "structured-log", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
+        for name in ("absent", "empty", "complete", "trusted-content", "structured-log", "http-metrics", "network-details", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)
@@ -41,7 +41,7 @@ class ConformanceTests(unittest.TestCase):
                     for validator, document in zip(validators(reader, revision=1), fixture(name).values()):
                         with self.assertRaises(ValidationError):
                             validator.validate(document)
-        for revision in (0, 9, "8", None, True):
+        for revision in (0, 10, "9", None, True):
             document = fixture("absent")
             document["metadata"]["revision"] = revision
             document["payloads"]["revision"] = revision
@@ -103,6 +103,42 @@ class ConformanceTests(unittest.TestCase):
                 invalid = copy.deepcopy(document)
                 del invalid["metadata"]["incident"]["environment"]["values"][key]
                 self.check(invalid, False, reader)
+
+    def test_network_details_lifecycle_processing_accounting_and_compatibility(self):
+        for path in sorted((FIXTURES / "revisions" / "8").glob("*.json")):
+            for reader in (False, True):
+                self.check(fixture("revisions/8/" + path.stem), True, reader)
+        changes = [
+            ("http", ["events", 0, "error", "code"], "x" * 65),
+            ("http", ["events", 0, "error", "message"], "\ud800"),
+            ("http", ["events", 0, "error", "isProcessed"], 1),
+            ("http", ["events", 0, "state"], "completed"),
+            ("http", ["retainedTextBytes"], 0),
+            ("webSockets", ["events", 0, "closeReason", "text"], "x" * 513),
+            ("webSockets", ["events", 0, "closeReason", "text"], None),
+            ("webSockets", ["events", 0, "kind"], "open"),
+            ("webSockets", ["retainedTextBytes"], 0),
+        ]
+        for group, path, value in changes:
+            document = fixture("network-details")
+            target = document["metadata"]["incident"][group]
+            for part in path[:-1]:
+                target = target[part]
+            target[path[-1]] = value
+            for reader in (False, True):
+                with self.subTest(group=group, path=path, reader=reader):
+                    self.check(document, False, reader)
+        document = fixture("network-details")
+        group = document["metadata"]["incident"]["webSockets"]
+        group["events"][0]["closeReason"] = {"text": None, "isLimited": False, "isProcessed": True}
+        group["retainedTextBytes"] -= len("服务重启".encode())
+        self.check(document, True)
+        self.check(document, True, reader=True)
+        for field in ("error", "closeReason"):
+            invalid = copy.deepcopy(document)
+            del invalid["metadata"]["incident"]["webSockets"]["events"][0][field]
+            self.check(invalid, False)
+            self.check(invalid, False, reader=True)
 
     def test_preserved_revision_two_and_mixed_documents(self):
         for name in ("absent", "empty", "complete", "diagnostic-android", "diagnostic-crash", "diagnostic-hang"):

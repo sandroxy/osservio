@@ -42,10 +42,11 @@ public final class ObservedWebSocketTask: @unchecked Sendable {
         task.cancel()
         observe(terminal: true) { self.recorder.lifecycle($0, kind: .cancelRequested) }
     }
-    /// Forwards the reason untouched; diagnostic capture never reads or stores it.
+    /// Forwards the reason untouched; capture admits only a bounded, host-processed UTF-8 prefix.
     public func cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         task.cancel(with: closeCode, reason: reason)
-        observe { self.recorder.lifecycle($0, kind: .closeRequested, closeCode: Self.code(closeCode)) }
+        observe { self.recorder.lifecycle($0, kind: .closeRequested, closeCode: Self.code(closeCode),
+            closeReason: { limit in reason.map { Data($0.prefix(limit)) } }) }
     }
     public func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
         let messageID = UUID()
@@ -68,8 +69,10 @@ public final class ObservedWebSocketTask: @unchecked Sendable {
         // No original String/Data is captured here. Permits survive capture changes until the native callback.
         task.send(message) { [weak self, callbacks] error in
             if let self {
-                self.recorder.sendResult(submission, messageID: messageID, outcome: error == nil ? .sent : .failed,
-                                         failure: error.map(Self.failure))
+                if let error {
+                    self.recorder.sendResult(submission, messageID: messageID, outcome: .failed,
+                        failure: Self.failure(error), error: { NetworkErrorObservation.read(error) })
+                } else { self.recorder.sendResult(submission, messageID: messageID, outcome: .sent) }
                 if let error { self.completed(error) }
             }
             callbacks.signal()
@@ -110,23 +113,29 @@ public final class ObservedWebSocketTask: @unchecked Sendable {
         }
     }
     /// Foundation reports a close frame from the peer here. Final task completion is a separate callback.
-    public func didClose(with code: URLSessionWebSocketTask.CloseCode) {
-        observe { self.recorder.lifecycle($0, kind: .closing, closeCode: Self.code(code)) }
+    public func didClose(with code: URLSessionWebSocketTask.CloseCode, reason: Data? = nil) {
+        observe { self.recorder.lifecycle($0, kind: .closing, closeCode: Self.code(code),
+            closeReason: { limit in reason.map { Data($0.prefix(limit)) } }) }
     }
     /// Forward the host task delegate's completion, including nil for normal completion.
     public func didComplete(with error: Error?) { completed(error) }
 
     private func completed(_ error: Error?) {
         observe(terminal: true) { token in
-            if let code = Self.code(self.task.closeCode) {
-                self.recorder.lifecycle(token, kind: .closed, closeCode: code)
-            } else if let error {
+            let code = Self.code(self.task.closeCode)
+            // A known close code does not erase an observed operation or completion error.
+            if let error {
                 let native = error as NSError
                 let cancelled = error is CancellationError || (native.domain == NSURLErrorDomain && native.code == NSURLErrorCancelled)
                 let response = self.task.response as? HTTPURLResponse
                 self.recorder.lifecycle(token, kind: cancelled ? .cancelled : .failed,
                     headers: cancelled ? [] : Self.headers(response?.allHeaderFields),
-                    statusCode: cancelled ? nil : response?.statusCode, failure: cancelled ? nil : Self.failure(error))
+                    statusCode: cancelled ? nil : response?.statusCode, closeCode: code, failure: cancelled ? nil : Self.failure(error),
+                    error: { NetworkErrorObservation.read(error) },
+                    closeReason: { limit in self.task.closeReason.map { Data($0.prefix(limit)) } })
+            } else if let code {
+                self.recorder.lifecycle(token, kind: .closed, closeCode: code,
+                    closeReason: { limit in self.task.closeReason.map { Data($0.prefix(limit)) } })
             } else { self.recorder.lifecycle(token, kind: .observationEnded) }
         }
     }

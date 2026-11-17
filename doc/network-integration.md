@@ -47,7 +47,9 @@ call state and does **not** prove that a user requested cancellation. In
 particular, a call-wide timeout can cancel a call before the interceptor sees
 OkHttp's final timeout exception; it is recorded as cancellation with no claimed
 cause. A directly observed socket timeout has an explicit timeout category.
-Raw exception descriptions are never copied into HTTP records.
+When an exception is observed, its class name and bounded message supplement
+the stable failure category. A numeric code or domain is not invented for Java
+exceptions. Host text processing applies before recording.
 
 HTTP 101 upgrade bodies remain owned by OkHttp. The handshake can be recorded,
 but WebSocket frames and other upgraded protocol data are not observed by this
@@ -72,7 +74,8 @@ host receives the same complete Data, response, and error; the SDK stores only
 its permitted bounded prefix. Ordinary URLSession HTTP decoding has already
 occurred at that point. Custom URL protocols must preserve that data contract;
 the SDK does not implement or alter their decoding behavior. Errors are mapped
-from stable URL loading error codes without storing localized descriptions.
+from stable URL loading error codes; bounded NSError domain/code, Swift error
+type and localized description supplement that category under the host policy.
 An unsupported non-HTTP result ends observation without inventing a network
 failure for a successful host operation.
 
@@ -142,8 +145,8 @@ OkHttp's header/body callbacks; missing fields and overlapping phases are expect
 
 Both integrations use [the WebSocket contract](websocket.md). The host retains
 transport ownership, reconnect policy, message size limits, timeouts, and
-session/client configuration. Supported text is readable under the default policy; binary content and
-close reasons are never copied. A capture session can attach to a wrapper that
+session/client configuration. Supported text and bounded close reasons are readable
+under the default policy; binary message content is not copied. A capture session can attach to a wrapper that
 was created earlier, preserving its connection UUID without inventing the
 unobserved handshake. Ending capture does not close the socket.
 
@@ -177,11 +180,16 @@ observed. Each receive observes exactly one assembled message. There is no
 automatic receive loop or change to `maximumMessageSize`.
 
 The host's existing delegate can explicitly forward `didOpen()`,
-`didClose(with:)`, and `didComplete(with:)` to the corresponding wrapper. No
+`didClose(with:reason:)`, and `didComplete(with:)` to the corresponding wrapper. The
+reason argument is optional for existing integrations. No
 delegate is replaced, and no global registry retains tasks. Without forwarding,
 handshake/final-close evidence is limited to the errors seen by wrapped
 operations. `didClose` means Foundation observed a peer close frame; task
-completion is separate. Raw close reasons and error descriptions are not read.
+completion is separate. Forward the delegate's optional reason to retain its
+bounded UTF-8 text; malformed bytes are reported as unavailable diagnostic text.
+A known close code does not erase a simultaneously observed task error. When
+completion reports an error, failure/cancellation keeps that code, reason and
+bounded error facts without claiming a successful close.
 
 Sends record a bounded submission followed by a correlated completion, whose
 closure retains only identifiers and a weak wrapper reference, not the original

@@ -88,18 +88,25 @@ public final class WebSocketRecorder {
         });
         return new BeginResult(result, token[0]);
     }
-    /** Close reasons and raw error descriptions are deliberately not accepted. */
     public Result lifecycle(Token token, WebSocketEvent.Kind kind, List<HTTPHeader> headers, Integer statusCode,
                             Integer closeCode, WebSocketEvent.Failure failure) {
+        return lifecycle(token, kind, headers, statusCode, closeCode, failure, null, null);
+    }
+    /** Reads bounded error and reason fields only after admission; callbacks are never retained. */
+    public Result lifecycle(Token token, WebSocketEvent.Kind kind, List<HTTPHeader> headers, Integer statusCode,
+                            Integer closeCode, WebSocketEvent.Failure failure, NetworkError.Source error, WebSocketCloseReason.Source closeReason) {
         return access(context -> {
             Connection connection = connection(token, context);
             if (connection == null) return Result.STALE;
             if (kind == null || kind == WebSocketEvent.Kind.CONNECTING || kind == WebSocketEvent.Kind.ATTACHED || kind == WebSocketEvent.Kind.MESSAGE || kind == WebSocketEvent.Kind.MESSAGE_RESULT
                 || headers == null || (!headers.isEmpty() && kind != WebSocketEvent.Kind.OPENED && kind != WebSocketEvent.Kind.FAILED)
                 || (statusCode != null && ((kind != WebSocketEvent.Kind.OPENED && kind != WebSocketEvent.Kind.FAILED) || statusCode < 100 || statusCode > 599))
-                || (closeCode != null && ((kind != WebSocketEvent.Kind.CLOSE_REQUESTED && kind != WebSocketEvent.Kind.CLOSING && kind != WebSocketEvent.Kind.CLOSED && kind != WebSocketEvent.Kind.CANCEL_REQUESTED)
+                || (closeCode != null && ((kind != WebSocketEvent.Kind.CLOSE_REQUESTED && kind != WebSocketEvent.Kind.CLOSING && kind != WebSocketEvent.Kind.CLOSED && kind != WebSocketEvent.Kind.CANCEL_REQUESTED && kind != WebSocketEvent.Kind.FAILED && kind != WebSocketEvent.Kind.CANCELLED)
                     || closeCode < 1000 || closeCode > 4999))
                 || ((kind == WebSocketEvent.Kind.FAILED) != (failure != null))
+                || (error != null && kind != WebSocketEvent.Kind.FAILED && kind != WebSocketEvent.Kind.CANCELLED)
+                || (closeReason != null && kind != WebSocketEvent.Kind.CLOSE_REQUESTED && kind != WebSocketEvent.Kind.CLOSING
+                    && kind != WebSocketEvent.Kind.CLOSED && kind != WebSocketEvent.Kind.CANCEL_REQUESTED && kind != WebSocketEvent.Kind.FAILED && kind != WebSocketEvent.Kind.CANCELLED)
                 || (kind == WebSocketEvent.Kind.OPENED && connection.opened)) return Result.INVALID;
             boolean terminal = kind == WebSocketEvent.Kind.CLOSED || kind == WebSocketEvent.Kind.FAILED
                 || kind == WebSocketEvent.Kind.CANCELLED || kind == WebSocketEvent.Kind.CANCEL_REQUESTED || kind == WebSocketEvent.Kind.OBSERVATION_ENDED;
@@ -109,7 +116,8 @@ public final class WebSocketRecorder {
             HTTPPrivacyPolicy.Headers safeHeaders = privacy.metadata.headers(headers);
             return write(new WebSocketEvent(UUID.randomUUID().toString(), token.connectionId, context,
                 captureController.clock.wallTimeMillis(), connection.url, connection.source, kind, safeHeaders.values,
-                safeHeaders.limited, statusCode, closeCode, failure, null, null, null), null);
+                safeHeaders.limited, statusCode, closeCode, failure, null, null, null, null,
+                NetworkError.capture(error, privacy.metadata.textPolicy), WebSocketCloseReason.capture(closeReason, privacy.metadata.textPolicy)), null);
         });
     }
     public Result text(Token token, WebSocketEvent.Direction direction, WebSocketEvent.Outcome outcome, String value) {
@@ -139,15 +147,18 @@ public final class WebSocketRecorder {
     }
     /** Correlates a completion without retaining its original content. The submission may have been evicted. */
     public Result sendResult(Token token, UUID messageId, WebSocketEvent.Outcome outcome, WebSocketEvent.Failure failure) {
+        return sendResult(token, messageId, outcome, failure, null);
+    }
+    public Result sendResult(Token token, UUID messageId, WebSocketEvent.Outcome outcome, WebSocketEvent.Failure failure, NetworkError.Source error) {
         return access(context -> {
             Connection connection = connection(token, context);
             if (connection == null) return Result.STALE;
             if (messageId == null || (outcome != WebSocketEvent.Outcome.SENT && outcome != WebSocketEvent.Outcome.FAILED && outcome != WebSocketEvent.Outcome.UNOBSERVED)
-                || ((outcome == WebSocketEvent.Outcome.FAILED) != (failure != null))) return Result.INVALID;
+                || ((outcome == WebSocketEvent.Outcome.FAILED) != (failure != null)) || (error != null && outcome != WebSocketEvent.Outcome.FAILED)) return Result.INVALID;
             if (!admit(context)) return Result.RATE_LIMITED;
             return write(new WebSocketEvent(UUID.randomUUID().toString(), token.connectionId, context,
                 captureController.clock.wallTimeMillis(), connection.url, connection.source, WebSocketEvent.Kind.MESSAGE_RESULT,
-                Collections.emptyList(), false, null, null, failure, WebSocketEvent.Direction.OUTGOING, outcome, null, messageId.toString()), null);
+                Collections.emptyList(), false, null, null, failure, WebSocketEvent.Direction.OUTGOING, outcome, null, messageId.toString(), NetworkError.capture(error, privacy.metadata.textPolicy), null), null);
         });
     }
     public Status status() { return captureController.inspect(ignored -> new Status(connections.size(), rateLimited)); }

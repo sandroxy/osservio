@@ -51,7 +51,7 @@ public final class ObservedWebSocketFactoryTest {
         return new Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(status).message("synthetic")
             .header("Set-Cookie", "private-cookie").build();
     }
-    @Test public void forwardsCallbackIdentityArgumentsAndCloseReasonWithoutRecordingIt() {
+    @Test public void forwardsCallbackIdentityAndRecordsBoundedDiagnosticFields() {
         AtomicReference<WebSocket> hostSocket = new AtomicReference<>();
         AtomicReference<Object> argument = new AtomicReference<>();
         WebSocket socket = socket(new WebSocketListener() {
@@ -72,6 +72,11 @@ public final class ObservedWebSocketFactoryTest {
         assertSame(request, socket.request()); assertEquals(11, socket.queueSize());
         assertEquals(1, original.closes); assertEquals(0, recorder.status().activeConnections);
         assertEquals(WebSocketEvent.Kind.CLOSE_REQUESTED, history.snapshot().events.get(4).kind);
+        assertEquals(reason, history.snapshot().events.get(4).closeReason.text);
+        assertEquals(reason, history.snapshot().events.get(5).closeReason.text);
+        assertEquals("private-error", history.snapshot().events.get(6).error.message);
+        assertEquals(IOException.class.getName(), history.snapshot().events.get(6).error.type);
+        assertNull(history.snapshot().events.get(6).error.code);
         assertEquals("[redacted]", history.snapshot().events.get(1).headers.get(0).value);
         assertEquals("abcd", history.payload(history.snapshot().events.get(2).payload.blobId).payload.text);
         assertEquals(WebSocketEvent.PayloadState.BINARY, history.snapshot().events.get(3).payload.state);

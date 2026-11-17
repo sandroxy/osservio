@@ -120,7 +120,7 @@ final class ObservedURLSessionTests: XCTestCase {
         XCTAssertEqual(event.responseHeaders.first { $0.name == "set-cookie" }?.value, "synthetic-secret")
     }
 
-    func testNetworkErrorReachesHostUnchangedWithoutRecordingItsDescription() throws {
+    func testNetworkErrorReachesHostUnchangedAndRecordsDiagnosticFields() throws {
         let done = expectation(description: "failure")
         observed().dataTask(with: request("/failure")) { data, _, error in
             XCTAssertNil(data)
@@ -133,6 +133,9 @@ final class ObservedURLSessionTests: XCTestCase {
         wait(for: [done], timeout: 3)
         XCTAssertEqual(try onlyEvent().state, .failed)
         XCTAssertEqual(try onlyEvent().failure, .connection)
+        XCTAssertEqual(try onlyEvent().error?.domain, NSURLErrorDomain)
+        XCTAssertEqual(try onlyEvent().error?.code, String(NSURLErrorNotConnectedToInternet))
+        XCTAssertEqual(try onlyEvent().error?.message, "synthetic private detail")
         XCTAssertNil(try onlyEvent().responseBody.blobID)
     }
 
@@ -145,6 +148,7 @@ final class ObservedURLSessionTests: XCTestCase {
         task.resume(); task.cancel()
         wait(for: [done], timeout: 3)
         XCTAssertEqual(try onlyEvent().state, .cancelled)
+        XCTAssertEqual(try onlyEvent().error?.code, String(NSURLErrorCancelled))
     }
 
     func testInputStreamIsNeverReadForInspection() throws {

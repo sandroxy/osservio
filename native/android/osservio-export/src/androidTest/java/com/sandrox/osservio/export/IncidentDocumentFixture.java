@@ -15,6 +15,20 @@ final class IncidentDocumentFixture {
     private static final String HTTP_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private IncidentDocumentFixture() { }
     static IncidentSnapshot make(String name) {
+        if (name.equals("network-details")) {
+            NetworkError error = NetworkError.restore("fixture.network", "-1009", "SyntheticFailure", "连接失败😀", false, false);
+            HTTPEvent.BodyReference body = HTTPEvent.BodyReference.restore(HTTPEvent.BodyState.OMITTED, null, 0);
+            HTTPEvent request = HTTPEvent.restore(HTTP_ID, SESSION, 1, 1, 123, "GET", HTTPEvent.Source.OKHTTP,
+                "https://example.com", null, Collections.emptyList(), Collections.emptyList(), false, null,
+                HTTPEvent.State.FAILED, HTTPEvent.Failure.CONNECTION, 7L, body, body, null, error);
+            WebSocketEvent event = WebSocketEvent.restore("eeeeeeee-eeee-eeee-eeee-000000000001", SESSION, SESSION,
+                2, 124, "wss://example.com", WebSocketEvent.Source.URL_SESSION, WebSocketEvent.Kind.FAILED,
+                Collections.emptyList(), false, null, 1001, WebSocketEvent.Failure.TRANSPORT, null, null, null, null,
+                error, WebSocketCloseReason.restore("服务重启", false, false));
+            return IncidentSnapshot.restore(ID, 125, null, null, null, null,
+                IncidentHTTP.restore(Collections.singletonList(request), Collections.emptyMap(), 126, 1, 0, 0),
+                IncidentWebSockets.restore(Collections.singletonList(event), Collections.emptyMap(), 127, 1, 0, 0));
+        }
         if (name.equals("http-metrics")) {
             IncidentSnapshot base = make("complete"); HTTPEvent old = base.http.events.get(0); IncidentHTTP group = base.http;
             HTTPMetrics metrics = new HTTPMetrics(Arrays.asList(

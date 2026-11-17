@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_network_error_details">错误详情</string>
+    <string name="osservio_network_error_message">错误说明</string>
+    <string name="osservio_network_error_code">错误码</string>
+    <string name="osservio_network_error_type">错误类型</string>
+    <string name="osservio_network_error_domain">错误域</string>
+    <string name="osservio_network_close_reason">关闭原因</string>
+    <string name="osservio_network_text_unavailable">文字不可用</string>
+    <string name="osservio_network_details_limited">部分诊断文字已截断或未能读取。</string>
+    <string name="osservio_network_details_processed">部分诊断文字已由宿主修改或省略。</string>
+</resources>

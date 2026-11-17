@@ -38,7 +38,7 @@ final class IncidentDatabase implements AutoCloseable {
         this.options = options;
         List<String> schema = new ArrayList<>();
         for (String[] part : new String[][] {SCHEMA, IncidentDetailDatabase.SCHEMA, IncidentDiagnosticDatabase.SCHEMA,
-                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA, TombstoneDatabase.SCHEMA, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA, IncidentDetailDatabase.LOG_DETAILS_SCHEMA, HTTPMetricsDatabase.SCHEMA}) Collections.addAll(schema, part);
+                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA, TombstoneDatabase.SCHEMA, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA, IncidentDetailDatabase.LOG_DETAILS_SCHEMA, HTTPMetricsDatabase.SCHEMA, IncidentDetailDatabase.NETWORK_DETAILS_SCHEMA}) Collections.addAll(schema, part);
         Map<Long, String[]> migrations = new HashMap<>();
         migrations.put(1L, IncidentDetailDatabase.SCHEMA); migrations.put(2L, IncidentDiagnosticDatabase.SCHEMA);
         migrations.put(3L, DiagnosticRecoveryDatabase.SCHEMA);
@@ -48,7 +48,8 @@ final class IncidentDatabase implements AutoCloseable {
         migrations.put(7L, IncidentDetailDatabase.LOG_DETAILS_SCHEMA);
         migrations.put(8L, HTTPMetricsDatabase.SCHEMA);
         migrations.put(9L, ENVIRONMENT_BUILD_FIELDS);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 10, schema.toArray(new String[0]), migrations);
+        migrations.put(10L, IncidentDetailDatabase.NETWORK_DETAILS_SCHEMA);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 11, schema.toArray(new String[0]), migrations);
         details = new IncidentDetailDatabase(database);
         diagnostics = new IncidentDiagnosticDatabase(database);
         recovery = new DiagnosticRecoveryDatabase(database, options);

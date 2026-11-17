@@ -51,6 +51,7 @@ final class WebSocketDetailDialog {
             if (event.failure != null) page.field(R.string.osservio_http_failure, () -> WebSocketPresentation.failure(context, event.failure));
             if (event.relatedMessageId != null) page.field(R.string.osservio_ws_related, event.relatedMessageId);
             page.note(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail));
+            NetworkErrorPresentation.append(page, context, event.error, event.closeReason, () -> InspectorRecordPresentation.context(context, event));
             page.expandable(R.string.osservio_ui_technical_details, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details, () -> {
                 page.field(R.string.osservio_http_source, () -> InspectorFilterOptions.source(context, event.source.name()));
                 page.field(R.string.osservio_ws_event, event.id); page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence);

@@ -169,6 +169,26 @@ public final class InspectorRecordSearchTest {
         InspectorRecordSearch.Result result = InspectorRecordSearch.run(Collections.singletonList(record), query, 100, history, null, InspectorRecordSearch.MAX_UNITS, () -> false);
         assertEquals(Collections.singleton(record.key()), result.keys); assertEquals("response", result.previewSources.get(record.key())); assertEquals(2, history.reads);
     }
+    @Test public void diagnosticMetadataSearchPreservesProvenanceAndIncompleteExclusions() {
+        History history = new History();
+        InspectorRecordSearch.Record record = new InspectorRecordSearch.Record(WebSocketEvent.restore(id(1), id(10), id(100), 1, 100,
+            "wss://example.test", WebSocketEvent.Source.HOST, WebSocketEvent.Kind.FAILED, Collections.emptyList(), false,
+            null, 1001, WebSocketEvent.Failure.TRANSPORT, null, null, null, null,
+            NetworkError.restore("fixture.domain", "-1009", "SyntheticFailure", "transport diagnostic", true, false),
+            WebSocketCloseReason.restore("service restart", false, false)));
+        InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.SEARCH_SCOPE, "metadata");
+        for (String term : new String[] {"fixture.domain", "-1009", "SyntheticFailure", "transport diagnostic", "service restart"}) {
+            query.text = term;
+            InspectorRecordSearch.Result result = search(Collections.singletonList(record), query, history, InspectorRecordSearch.MAX_UNITS);
+            assertEquals(Collections.singleton(record.key()), result.keys); assertEquals("metadata", result.previewSources.get(record.key()));
+        }
+        query.text = ""; query.excludedText = "unseen suffix";
+        InspectorRecordSearch.Result partial = search(Collections.singletonList(record), query, history, InspectorRecordSearch.MAX_UNITS);
+        assertTrue(partial.keys.isEmpty()); assertEquals(1, partial.truncated);
+        query.excludedText = ""; query.text = "service restart"; query.select(InspectorQuery.Field.SEARCH_SCOPE, "address");
+        assertTrue(search(Collections.singletonList(record), query, history, InspectorRecordSearch.MAX_UNITS).keys.isEmpty());
+        assertEquals(0, history.reads);
+    }
     private static final class Requests implements HTTPHistory {
         final Map<String, HTTPBody> bodies = new HashMap<>(); int reads;
         @Override public HTTPSnapshot snapshot() { throw new AssertionError("Search must use its input snapshot"); }

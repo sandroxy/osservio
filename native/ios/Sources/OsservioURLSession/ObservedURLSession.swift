@@ -83,7 +83,8 @@ public final class ObservedURLSession: @unchecked Sendable {
             let cancelled = error is CancellationError || (native.domain == NSURLErrorDomain && native.code == NSURLErrorCancelled)
             recorder.finish(observation.token, state: cancelled ? .cancelled : .failed,
                             failure: cancelled ? nil : failureCategory(native),
-                            requestComplete: observation.requestComplete, responseComplete: false, metrics: metrics)
+                            requestComplete: observation.requestComplete, responseComplete: false, metrics: metrics,
+                            error: { NetworkErrorObservation.read(error) })
         } else {
             recorder.finish(observation.token, state: .completed, requestComplete: observation.requestComplete,
                             responseComplete: responseComplete, metrics: metrics)

@@ -4,7 +4,7 @@ public struct WebSocketPrivacyPolicy: Sendable {
     public let publicMessageText: Bool
     public let messageByteLimit: Int
     let metadata: HTTPPrivacyPolicy
-    /// Applies to every text message on this recorder. Binary content and close reasons are never copied.
+    /// Applies to message bodies. Binary content is not copied; diagnostic close text has its own bounded policy field.
     public init(publicURLPath: Bool = true, publicHeaderNames: Set<String>? = nil,
                 publicMessageText: Bool = true, messageByteLimit: Int = 4_096,
                 publicURLQuery: Bool = true, headerValueByteLimit: Int = 4_096,
@@ -83,16 +83,19 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
         return WebSocketBeginResult(result: result, token: token)
     }
 
-    /// Codes describe observed API evidence. Close reason strings and raw error descriptions are not accepted.
+    /// Sources run synchronously after admission. Close reason bytes must be copied only up to the requested prefix.
     @discardableResult
     public func lifecycle(_ token: WebSocketToken, kind: WebSocketKind, headers: [HTTPHeader] = [],
-                          statusCode: Int? = nil, closeCode: Int? = nil, failure: WebSocketFailure? = nil) -> WebSocketRecordResult {
+                          statusCode: Int? = nil, closeCode: Int? = nil, failure: WebSocketFailure? = nil,
+                          error: (() throws -> NetworkErrorInput?)? = nil,
+                          closeReason: ((Int) throws -> Data?)? = nil) -> WebSocketRecordResult {
         access { context in
             guard token.sessionID == context.sessionID, let connection = self.connections[token.connectionID] else { return .stale }
             guard [.opened, .closeRequested, .closing, .closed, .failed, .cancelled, .cancelRequested, .observationEnded, .observationLimited].contains(kind),
                   statusCode == nil || ([.opened, .failed].contains(kind) && (100...599).contains(statusCode!)),
-                  closeCode == nil || ([.closeRequested, .closing, .closed, .cancelRequested].contains(kind) && (1000...4999).contains(closeCode!)),
+                  closeCode == nil || ([.closeRequested, .closing, .closed, .cancelRequested, .failed, .cancelled].contains(kind) && (1000...4999).contains(closeCode!)),
                   (kind == .failed) == (failure != nil), kind != .opened || !connection.opened,
+                  error == nil || [.failed, .cancelled].contains(kind), closeReason == nil || [.closeRequested, .closing, .closed, .cancelRequested, .failed, .cancelled].contains(kind),
                   headers.isEmpty || [.opened, .failed].contains(kind) else { return .invalid }
             let terminal = [.closed, .failed, .cancelled, .cancelRequested, .observationEnded].contains(kind)
             // A dropped terminal event must still release the observation slot.
@@ -103,7 +106,9 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
             return self.write(WebSocketEvent(id: UUID().uuidString, connectionID: token.connectionID,
                 context: context, timestamp: self.captureController.clock.wallTimeMillis(), url: connection.url,
                 source: connection.source, kind: kind, headers: headers.values, headersLimited: headers.limited,
-                statusCode: statusCode, closeCode: closeCode, failure: failure))
+                statusCode: statusCode, closeCode: closeCode, failure: failure,
+                error: NetworkError.capture(error, policy: self.privacy.metadata.textPolicy),
+                closeReason: WebSocketCloseReason.capture(closeReason, policy: self.privacy.metadata.textPolicy)))
         }
     }
 
@@ -141,15 +146,15 @@ public final class WebSocketRecorder: CaptureSessionObserver, @unchecked Sendabl
     /// The referenced submission may already be evicted. IDs come from the same explicit host operation.
     @discardableResult
     public func sendResult(_ token: WebSocketToken, messageID: UUID, outcome: WebSocketMessageOutcome,
-                           failure: WebSocketFailure? = nil) -> WebSocketRecordResult {
+                           failure: WebSocketFailure? = nil, error: (() throws -> NetworkErrorInput?)? = nil) -> WebSocketRecordResult {
         access { context in
             guard token.sessionID == context.sessionID, let connection = self.connections[token.connectionID] else { return .stale }
-            guard [.sent, .failed, .unobserved].contains(outcome), (outcome == .failed) == (failure != nil) else { return .invalid }
+            guard [.sent, .failed, .unobserved].contains(outcome), (outcome == .failed) == (failure != nil), error == nil || outcome == .failed else { return .invalid }
             guard self.admit(context) else { return .rateLimited }
             return self.write(WebSocketEvent(id: UUID().uuidString, connectionID: token.connectionID, context: context,
                 timestamp: self.captureController.clock.wallTimeMillis(), url: connection.url, source: connection.source,
                 kind: .messageResult, failure: failure, direction: .outgoing, outcome: outcome,
-                relatedMessageID: messageID.uuidString))
+                relatedMessageID: messageID.uuidString, error: NetworkError.capture(error, policy: self.privacy.metadata.textPolicy)))
         }
     }
 

@@ -54,6 +54,7 @@ public struct HTTPEvent: Sendable {
     public let failure: HTTPFailure?
     public let durationMillis: UInt64?
     public let metrics: HTTPMetrics?
+    public let error: NetworkError?
     public let requestBody: HTTPBodyReference
     public let responseBody: HTTPBodyReference
     public let textByteCount: Int
@@ -63,7 +64,7 @@ public struct HTTPEvent: Sendable {
         self.id = id; sessionID = context.sessionID; sequence = context.sequence; revision = 0
         timestampMillis = timestamp; self.method = method; self.url = url; self.source = source; responseURL = nil
         requestHeaders = headers; responseHeaders = []; headersLimited = limited
-        statusCode = nil; state = .pending; failure = nil; durationMillis = nil; metrics = nil
+        statusCode = nil; state = .pending; failure = nil; durationMillis = nil; metrics = nil; error = nil
         requestBody = HTTPBodyReference(state: .pending, blobID: nil, observedBytes: 0)
         responseBody = HTTPBodyReference(state: .pending, blobID: nil, observedBytes: 0)
         textByteCount = Self.size(method: method, url: url, headers: headers)
@@ -71,15 +72,15 @@ public struct HTTPEvent: Sendable {
 
     init(previous: HTTPEvent, headers: [HTTPHeader]? = nil, limited: Bool = false,
          code: Int? = nil, responseURL: String? = nil, state: HTTPState, failure: HTTPFailure? = nil, duration: UInt64? = nil,
-         request: HTTPBodyReference? = nil, response: HTTPBodyReference? = nil, metrics: HTTPMetrics? = nil) {
+         request: HTTPBodyReference? = nil, response: HTTPBodyReference? = nil, metrics: HTTPMetrics? = nil, error: NetworkError? = nil) {
         id = previous.id; sessionID = previous.sessionID; sequence = previous.sequence
         revision = previous.revision + 1; timestampMillis = previous.timestampMillis
         method = previous.method; url = previous.url; source = previous.source
         self.responseURL = responseURL ?? previous.responseURL; requestHeaders = previous.requestHeaders
         responseHeaders = headers ?? previous.responseHeaders; headersLimited = limited || previous.headersLimited
         statusCode = code ?? previous.statusCode; self.state = state; self.failure = failure
-        durationMillis = duration; self.metrics = metrics; requestBody = request ?? previous.requestBody; responseBody = response ?? previous.responseBody
-        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (self.responseURL?.utf8.count ?? 0) + (metrics?.textByteCount ?? 0)
+        durationMillis = duration; self.metrics = metrics; self.error = error; requestBody = request ?? previous.requestBody; responseBody = response ?? previous.responseBody
+        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (self.responseURL?.utf8.count ?? 0) + (metrics?.textByteCount ?? 0) + (error?.textByteCount ?? 0)
     }
 
     private static func size(method: String, url: String, headers: [HTTPHeader]) -> Int {
@@ -91,13 +92,13 @@ public struct HTTPEvent: Sendable {
                                method: String, source: HTTPSource, url: String, responseURL: String?,
                                requestHeaders: [HTTPHeader], responseHeaders: [HTTPHeader], headersLimited: Bool,
                                statusCode: Int?, state: HTTPState, failure: HTTPFailure?, durationMillis: UInt64?,
-                               requestBody: HTTPBodyReference, responseBody: HTTPBodyReference, metrics: HTTPMetrics? = nil) throws -> HTTPEvent {
+                               requestBody: HTTPBodyReference, responseBody: HTTPBodyReference, metrics: HTTPMetrics? = nil, error: NetworkError? = nil) throws -> HTTPEvent {
         guard EvidenceValidation.id(id), EvidenceValidation.id(sessionID), sequence > 0, revision >= 0,
               EvidenceValidation.method(method),
               EvidenceValidation.url(url), responseURL.map(EvidenceValidation.url) ?? true,
               EvidenceValidation.headers(requestHeaders), EvidenceValidation.headers(responseHeaders),
               statusCode.map({ (100...599).contains($0) }) ?? true,
-              (state == .failed) == (failure != nil),
+              (state == .failed) == (failure != nil), error == nil || [.failed, .cancelled].contains(state),
               requestBody.blobID.map({ $0.lowercased() == id.lowercased() + ".request" }) ?? true,
               responseBody.blobID.map({ $0.lowercased() == id.lowercased() + ".response" }) ?? true,
               statusCode != nil || (responseURL == nil && responseHeaders.isEmpty) else { throw PersistenceError.invalidRecord }
@@ -116,18 +117,18 @@ public struct HTTPEvent: Sendable {
         return HTTPEvent(id: id, sessionID: sessionID, sequence: sequence, revision: revision, timestampMillis: timestampMillis,
             method: method, source: source, url: url, responseURL: responseURL, requestHeaders: requestHeaders,
             responseHeaders: responseHeaders, headersLimited: headersLimited, statusCode: statusCode, state: state,
-            failure: failure, durationMillis: durationMillis, requestBody: requestBody, responseBody: responseBody, metrics: metrics)
+            failure: failure, durationMillis: durationMillis, requestBody: requestBody, responseBody: responseBody, metrics: metrics, error: error)
     }
     private init(id: String, sessionID: String, sequence: Int64, revision: Int64, timestampMillis: Int64,
                  method: String, source: HTTPSource, url: String, responseURL: String?, requestHeaders: [HTTPHeader],
                  responseHeaders: [HTTPHeader], headersLimited: Bool, statusCode: Int?, state: HTTPState,
-                 failure: HTTPFailure?, durationMillis: UInt64?, requestBody: HTTPBodyReference, responseBody: HTTPBodyReference, metrics: HTTPMetrics?) {
+                 failure: HTTPFailure?, durationMillis: UInt64?, requestBody: HTTPBodyReference, responseBody: HTTPBodyReference, metrics: HTTPMetrics?, error: NetworkError?) {
         self.id = id; self.sessionID = sessionID; self.sequence = sequence; self.revision = revision; self.timestampMillis = timestampMillis
         self.method = method; self.source = source; self.url = url; self.responseURL = responseURL
         self.requestHeaders = requestHeaders; self.responseHeaders = responseHeaders; self.headersLimited = headersLimited
-        self.statusCode = statusCode; self.state = state; self.failure = failure; self.durationMillis = durationMillis; self.metrics = metrics
+        self.statusCode = statusCode; self.state = state; self.failure = failure; self.durationMillis = durationMillis; self.metrics = metrics; self.error = error
         self.requestBody = requestBody; self.responseBody = responseBody
-        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (responseURL?.utf8.count ?? 0) + (metrics?.textByteCount ?? 0)
+        textByteCount = Self.size(method: method, url: url, headers: requestHeaders + responseHeaders) + (responseURL?.utf8.count ?? 0) + (metrics?.textByteCount ?? 0) + (error?.textByteCount ?? 0)
     }
 }
 

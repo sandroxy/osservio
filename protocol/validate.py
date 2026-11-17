@@ -23,7 +23,7 @@ for name, lower, upper in [
     def integer(value, lower=lower, upper=upper):
         return isinstance(value, str) and re.fullmatch(r"0|-?[1-9][0-9]*", value) is not None and lower <= int(value) <= upper
     FORMATS.checks(name)(integer)
-for limit in [256, 512, 4096, 4128, 16384, 65536]:
+for limit in [64, 256, 512, 4096, 4128, 16384, 65536]:
     def bounded(value, limit=limit):
         try:
             return isinstance(value, str) and len(value.encode("utf-8")) <= limit
@@ -59,6 +59,8 @@ def valid_url(value, revision):
 
 def http_event(event, revision):
     status, state = event["statusCode"], event["state"]
+    if revision >= 9 and event["error"] is not None:
+        require(state in ("failed", "cancelled"), "Error details require an observed failure or cancellation")
     metrics = event.get("metrics") if revision >= 7 else None
     if metrics is not None:
         require(state not in ("pending", "receiving", "captureEnded"), "Metrics require a terminal observation")
@@ -96,7 +98,11 @@ def socket_event(event, revision):
     kind, payload = event["kind"], event["payload"]
     valid_url(event["url"], revision)
     require(event["statusCode"] is None or kind in ("opened", "failed"), "Unexpected handshake status")
-    require(event["closeCode"] is None or kind in ("closeRequested", "closing", "closed", "cancelRequested"), "Unexpected close code")
+    close_kinds = ("closeRequested", "closing", "closed", "cancelRequested") + (("failed", "cancelled") if revision >= 9 else ())
+    require(event["closeCode"] is None or kind in close_kinds, "Unexpected close code")
+    if revision >= 9:
+        require(event["closeReason"] is None or kind in close_kinds, "Unexpected close reason")
+        require(event["error"] is None or event["failure"] is not None or kind == "cancelled", "Unexpected error details")
     require((not event["headers"] and not event["headersLimited"]) or kind in ("connecting", "attached", "opened", "failed"), "Unexpected handshake headers")
     if kind == "message":
         require(event["direction"] is not None and event["outcome"] in ("received", "submitted", "queued", "sent", "rejected", "failed")
@@ -183,6 +189,15 @@ def semantics(metadata, payloads):
             else:
                 socket_event(event, metadata["revision"])
                 size += utf8(event["url"]) + header_bytes(event["headers"])
+            if metadata["revision"] >= 9 and family in ("http", "webSockets"):
+                error = event["error"]
+                if error is not None:
+                    require(error["isLimited"] or error["isProcessed"] or any(error[k] is not None for k in ("domain", "code", "type", "message")), "Empty error without an observation state")
+                    size += sum(utf8(error[k]) for k in ("domain", "code", "type", "message"))
+                if family == "webSockets" and event["closeReason"] is not None:
+                    reason = event["closeReason"]
+                    require(reason["text"] is not None or reason["isLimited"] or reason["isProcessed"], "Empty close reason without an observation state")
+                    size += utf8(reason["text"])
             bodies = [event["requestBody"], event["responseBody"]] if family == "http" else [event.get("details") if family == "logs" and has_payloads else event.get("payload") if family == "webSockets" else None]
             for body in bodies:
                 if body is not None and body["blobID"] is not None:
@@ -262,10 +277,10 @@ def tolerant(schema):
     return schema
 
 
-def validators(reader=False, revision=8):
-    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7, 8), "Unsupported incident revision")
+def validators(reader=False, revision=9):
+    require(type(revision) is int and revision in (1, 2, 3, 4, 5, 6, 7, 8, 9), "Unsupported incident revision")
     schemas = [json.loads((directory / f"{name}.schema.json").read_text())
-               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT / "revisions" / "7", ROOT) for name in ("incident", "payloads")]
+               for directory in (ROOT / "revisions" / "1", ROOT / "revisions" / "2", ROOT / "revisions" / "3", ROOT / "revisions" / "4", ROOT / "revisions" / "5", ROOT / "revisions" / "6", ROOT / "revisions" / "7", ROOT / "revisions" / "8", ROOT) for name in ("incident", "payloads")]
     if reader:
         schemas = [tolerant(schema) for schema in schemas]
     registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)

@@ -7,7 +7,7 @@ public final class WebSocketPrivacyPolicy {
     public final int messageByteLimit;
     final HTTPPrivacyPolicy metadata;
     public WebSocketPrivacyPolicy() { this(true, null, true, 4096); }
-    /** Applies to every text message. Binary content and close reasons are never copied. */
+    /** Applies to every message body. Binary content is not copied; diagnostic close text has its own bounded policy field. */
     public WebSocketPrivacyPolicy(boolean publicURLPath, Set<String> publicHeaderNames, boolean publicMessageText, int messageByteLimit) {
         this(publicURLPath, publicHeaderNames, publicMessageText, messageByteLimit, true, 4096, DiagnosticTextPolicy.UNCHANGED);
     }

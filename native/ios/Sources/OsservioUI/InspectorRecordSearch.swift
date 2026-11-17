@@ -27,6 +27,10 @@ enum InspectorSearchRecord: Sendable {
             }
             return nil
         }
+        func diagnostic(_ error: NetworkError?, _ reason: WebSocketCloseReason? = nil) -> Match? {
+            guard error != nil || reason != nil else { return nil }
+            return find("metadata", "ui_search_metadata", [error?.domain, error?.code, error?.type, error?.message, reason?.text].compactMap { $0 })
+        }
         switch self {
         case .log(let event):
             return find("identity", "ui_search_identity", [event.sessionID + " #\(event.sequence)"])
@@ -35,14 +39,21 @@ enum InspectorSearchRecord: Sendable {
             return find("address", "ui_search_address", [event.url, InspectorRecordPresentation.address(event.url), event.responseURL ?? ""])
                 ?? headers(event.requestHeaders, "ui_search_request_headers") ?? headers(event.responseHeaders, "ui_search_response_headers")
                 ?? find("identity", "ui_search_identity", [event.id, event.sessionID + " #\(event.sequence)"])
+                ?? diagnostic(event.error)
                 ?? find("metadata", "ui_search_metadata", [event.method, HTTPPresentation.state(event.state), event.statusCode.map(String.init) ?? "", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) } ?? ""])
         case .socket(let event):
             return find("address", "ui_search_address", [event.url, InspectorRecordPresentation.address(event.url)])
                 ?? headers(event.headers, "ui_search_handshake_headers")
                 ?? find("identity", "ui_search_identity", [event.id, event.connectionID, event.relatedMessageID ?? "", event.sessionID + " #\(event.sequence)"])
+                ?? diagnostic(event.error, event.closeReason)
                 ?? find("metadata", "ui_search_metadata", [event.kind.rawValue, event.outcome?.rawValue ?? "", WebSocketPresentation.kind(event), event.direction.map { InspectorLocalization.text("ws_" + $0.rawValue) } ?? "", event.outcome.map { InspectorLocalization.text("ws_outcome_" + $0.rawValue) } ?? "", event.kind == .message ? InspectorRecordPresentation.payloadLabel(event.payload) : "", event.statusCode.map(String.init) ?? "", event.closeCode.map(String.init) ?? "", event.failure.map { InspectorLocalization.text("http_" + $0.rawValue) } ?? ""])
         }
     }
+    var diagnosticsLimited: Bool { switch self {
+        case .http(let event): return event.error?.isLimited == true
+        case .socket(let event): return event.error?.isLimited == true || event.closeReason?.isLimited == true
+        case .log: return false
+    } }
     var headersLimited: Bool { switch self { case .http(let event): return event.headersLimited; case .socket(let event): return event.headersLimited; case .log: return false } }
     static func newestFirst(_ left: Self, _ right: Self) -> Bool {
         if case .socket(let lhs) = left, case .socket(let rhs) = right { return InspectorQuery.timelineNewestFirst(lhs, rhs) }
@@ -122,7 +133,7 @@ enum InspectorRecordSearch {
         guard record.matchesFacets(query, now: now) else { return false }
         let hit = record.match(query.text, scope: query.searchScope)
         let metadata = query.text.isEmpty || hit != nil
-        let incompleteHeaders = query.searches("headers") && record.headersLimited
+        let incompleteHeaders = query.searches("headers") && record.headersLimited || query.searches("metadata") && record.diagnosticsLimited
         if incompleteHeaders { result.truncated += 1 }
         if !query.excludedText.isEmpty && record.match(query.excludedText, scope: query.searchScope) != nil { return false }
         if let hit { result.previews[record.key] = preview(hit.text, term: query.text); result.previewSources[record.key] = hit.source }

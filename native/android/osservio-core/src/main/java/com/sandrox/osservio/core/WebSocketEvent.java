@@ -55,6 +55,8 @@ public final class WebSocketEvent {
     public final Integer statusCode;
     public final Integer closeCode;
     public final Failure failure;
+    public final NetworkError error;
+    public final WebSocketCloseReason closeReason;
     public final Direction direction;
     public final Outcome outcome;
     public final String relatedMessageId;
@@ -69,14 +71,21 @@ public final class WebSocketEvent {
     WebSocketEvent(String id, String connectionId, CaptureController.Context context, long timestampMillis, String url,
                    Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited, Integer statusCode,
                    Integer closeCode, Failure failure, Direction direction, Outcome outcome, PayloadReference payload, String relatedMessageId) {
+        this(id, connectionId, context, timestampMillis, url, source, kind, headers, headersLimited, statusCode,
+            closeCode, failure, direction, outcome, payload, relatedMessageId, null, null);
+    }
+    WebSocketEvent(String id, String connectionId, CaptureController.Context context, long timestampMillis, String url,
+                   Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited, Integer statusCode,
+                   Integer closeCode, Failure failure, Direction direction, Outcome outcome, PayloadReference payload, String relatedMessageId,
+                   NetworkError error, WebSocketCloseReason closeReason) {
         this.id = id; this.connectionId = connectionId; sessionId = context.sessionId; sequence = context.sequence;
         this.timestampMillis = timestampMillis; this.url = url; this.source = source; this.kind = kind;
         this.headers = Collections.unmodifiableList(new ArrayList<>(headers)); this.headersLimited = headersLimited;
-        this.statusCode = statusCode; this.closeCode = closeCode; this.failure = failure;
+        this.statusCode = statusCode; this.closeCode = closeCode; this.failure = failure; this.error = error; this.closeReason = closeReason;
         this.direction = direction; this.outcome = outcome; this.payload = payload; this.relatedMessageId = relatedMessageId;
         int bytes = url.getBytes(StandardCharsets.UTF_8).length;
         for (HTTPHeader header : headers) bytes += header.name.getBytes(StandardCharsets.UTF_8).length + header.value.getBytes(StandardCharsets.UTF_8).length;
-        textByteCount = bytes;
+        textByteCount = bytes + (error == null ? 0 : error.textByteCount) + (closeReason == null ? 0 : closeReason.textByteCount);
     }
 
     /** Restores an observation, not a reconstructed connection. Related submissions may be absent. */
@@ -84,10 +93,19 @@ public final class WebSocketEvent {
                                          String url, Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited,
                                          Integer statusCode, Integer closeCode, Failure failure, Direction direction, Outcome outcome,
                                          String relatedMessageId, PayloadReference payload) {
+        return restore(id, connectionId, sessionId, sequence, timestampMillis, url, source, kind, headers, headersLimited,
+            statusCode, closeCode, failure, direction, outcome, relatedMessageId, payload, null, null);
+    }
+    public static WebSocketEvent restore(String id, String connectionId, String sessionId, long sequence, long timestampMillis,
+                                         String url, Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited,
+                                         Integer statusCode, Integer closeCode, Failure failure, Direction direction, Outcome outcome,
+                                         String relatedMessageId, PayloadReference payload, NetworkError error, WebSocketCloseReason closeReason) {
         if (!EvidenceValidation.id(id) || !EvidenceValidation.id(connectionId) || !EvidenceValidation.id(sessionId)
+            || (error != null && failure == null && kind != Kind.CANCELLED)
+            || (closeReason != null && !Arrays.asList(Kind.CLOSE_REQUESTED, Kind.CLOSING, Kind.CLOSED, Kind.CANCEL_REQUESTED, Kind.FAILED, Kind.CANCELLED).contains(kind))
             || sequence <= 0 || source == null || kind == null || !EvidenceValidation.url(url) || !EvidenceValidation.headers(headers)
             || (statusCode != null && (!Arrays.asList(Kind.OPENED, Kind.FAILED).contains(kind) || statusCode < 100 || statusCode > 599))
-            || (closeCode != null && (!Arrays.asList(Kind.CLOSE_REQUESTED, Kind.CLOSING, Kind.CLOSED, Kind.CANCEL_REQUESTED).contains(kind) || closeCode < 1000 || closeCode > 4999))
+            || (closeCode != null && (!Arrays.asList(Kind.CLOSE_REQUESTED, Kind.CLOSING, Kind.CLOSED, Kind.CANCEL_REQUESTED, Kind.FAILED, Kind.CANCELLED).contains(kind) || closeCode < 1000 || closeCode > 4999))
             || ((!headers.isEmpty() || headersLimited) && !Arrays.asList(Kind.CONNECTING, Kind.ATTACHED, Kind.OPENED, Kind.FAILED).contains(kind))) throw EvidenceValidation.invalid();
         switch (kind) {
             case MESSAGE:
@@ -103,17 +121,17 @@ public final class WebSocketEvent {
                 if (direction != null || outcome != null || payload != null || relatedMessageId != null || (kind == Kind.FAILED) != (failure != null)) throw EvidenceValidation.invalid();
         }
         return new WebSocketEvent(id, connectionId, sessionId, sequence, timestampMillis, url, source, kind, headers,
-            headersLimited, statusCode, closeCode, failure, direction, outcome, relatedMessageId, payload);
+            headersLimited, statusCode, closeCode, failure, direction, outcome, relatedMessageId, payload, error, closeReason);
     }
     private WebSocketEvent(String id, String connectionId, String sessionId, long sequence, long timestampMillis,
                            String url, Source source, Kind kind, List<HTTPHeader> headers, boolean headersLimited, Integer statusCode,
-                           Integer closeCode, Failure failure, Direction direction, Outcome outcome, String relatedMessageId, PayloadReference payload) {
+                           Integer closeCode, Failure failure, Direction direction, Outcome outcome, String relatedMessageId, PayloadReference payload, NetworkError error, WebSocketCloseReason closeReason) {
         this.id = id; this.connectionId = connectionId; this.sessionId = sessionId; this.sequence = sequence; this.timestampMillis = timestampMillis;
         this.url = url; this.source = source; this.kind = kind; this.headers = Collections.unmodifiableList(new ArrayList<>(headers));
-        this.headersLimited = headersLimited; this.statusCode = statusCode; this.closeCode = closeCode; this.failure = failure;
+        this.headersLimited = headersLimited; this.statusCode = statusCode; this.closeCode = closeCode; this.failure = failure; this.error = error; this.closeReason = closeReason;
         this.direction = direction; this.outcome = outcome; this.relatedMessageId = relatedMessageId; this.payload = payload;
         int bytes = url.getBytes(StandardCharsets.UTF_8).length;
         for (HTTPHeader header : headers) bytes += header.name.getBytes(StandardCharsets.UTF_8).length + header.value.getBytes(StandardCharsets.UTF_8).length;
-        textByteCount = bytes;
+        textByteCount = bytes + (error == null ? 0 : error.textByteCount) + (closeReason == null ? 0 : closeReason.textByteCount);
     }
 }

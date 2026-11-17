@@ -23,8 +23,8 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
-        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 8, "payloadFile": "payloads.json", "incident": incident]
-        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 8, "incidentID": snapshot.id,
+        let metadata: [String: Any] = ["format": "osservio.incident", "revision": 9, "payloadFile": "payloads.json", "incident": incident]
+        let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 9, "incidentID": snapshot.id,
             "logs": content(snapshot.logs?.payloads ?? [:]), "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]
         let metadataJSON: Data, payloadsJSON: Data
         do {
@@ -123,9 +123,13 @@ public struct IncidentDocuments: Sendable {
              "timestampMillis": String(event.timestampMillis), "method": event.method, "source": event.source.rawValue, "url": event.url,
              "responseURL": optional(event.responseURL), "requestHeaders": headers(event.requestHeaders), "responseHeaders": headers(event.responseHeaders),
              "headersLimited": event.headersLimited, "statusCode": optional(event.statusCode), "state": event.state.rawValue,
-             "failure": optional(event.failure?.rawValue), "durationMillis": decimal(event.durationMillis), "metrics": event.metrics.map(metrics) ?? NSNull(),
+             "failure": optional(event.failure?.rawValue), "error": event.error.map(error) ?? NSNull(), "durationMillis": decimal(event.durationMillis), "metrics": event.metrics.map(metrics) ?? NSNull(),
              "requestBody": body(event.requestBody), "responseBody": body(event.responseBody)]
          }]
+    }
+    private static func error(_ value: NetworkError) -> [String: Any] {
+        ["domain": optional(value.domain), "code": optional(value.code), "type": optional(value.type), "message": optional(value.message),
+         "isLimited": value.isLimited, "isProcessed": value.isProcessed]
     }
     private static func metrics(_ value: HTTPMetrics) -> [String: Any] {
         ["protocol": optional(value.protocolName), "cache": value.cache.rawValue,
@@ -142,7 +146,8 @@ public struct IncidentDocuments: Sendable {
          "events": value.events.map { event -> [String: Any] in
             ["id": event.id, "connectionID": event.connectionID, "sessionID": event.sessionID, "sequence": String(event.sequence),
              "timestampMillis": String(event.timestampMillis), "url": event.url, "source": event.source.rawValue, "kind": event.kind.rawValue,
-             "headers": headers(event.headers), "headersLimited": event.headersLimited, "statusCode": optional(event.statusCode), "closeCode": optional(event.closeCode),
+             "headers": headers(event.headers), "headersLimited": event.headersLimited, "statusCode": optional(event.statusCode), "closeCode": optional(event.closeCode), "error": event.error.map(error) ?? NSNull(),
+             "closeReason": event.closeReason.map { ["text": optional($0.text), "isLimited": $0.isLimited, "isProcessed": $0.isProcessed] as [String: Any] } ?? NSNull(),
              "failure": optional(event.failure?.rawValue), "direction": optional(event.direction?.rawValue), "outcome": optional(event.outcome?.rawValue),
              "relatedMessageID": optional(event.relatedMessageID), "payload": optional(event.payload.map { reference -> [String: Any] in
                 ["state": reference.state.rawValue, "blobID": optional(reference.blobID), "byteCount": decimal(reference.byteCount), "isProcessed": reference.isProcessed]

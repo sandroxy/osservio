@@ -9,6 +9,12 @@ them or inspect other applications.
 
 ## Capture and presentation
 
+Observed network error descriptions and WebSocket close reasons follow this same
+trust model. They are bounded, processed through the host text policy and included
+in metadata accounting before persistence or export. This does not enable capture
+of arbitrary exception graphs, user-info objects or binary messages.
+
+
 Debugging remains off at SDK initialization unless the host enables it. Merely
 showing the floating entry or inspector does not enable capture. While debugging
 is on, the default HTTP and WebSocket policies preserve valid observed URLs,

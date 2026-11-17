@@ -54,6 +54,7 @@ final class HTTPPresentation {
         }
         field(text, context, R.string.osservio_http_source, source);
         field(text, context, R.string.osservio_http_failure, event.failure == null ? null : failure(context, event.failure));
+        if (event.error != null) text.append("\n\n").append(NetworkErrorPresentation.text(context, event.error));
         field(text, context, R.string.osservio_http_id, event.id);
         field(text, context, R.string.osservio_http_session, event.sessionId + " · #" + event.sequence);
         headers(text, context, R.string.osservio_http_request_headers, event.requestHeaders);

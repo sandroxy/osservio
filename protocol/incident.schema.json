@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:osservio:incident:8",
-  "title": "Osservio incident metadata revision 8",
+  "$id": "urn:osservio:incident:9",
+  "title": "Osservio incident metadata revision 9",
   "type": "object",
   "properties": {
     "format": {
       "const": "osservio.incident"
     },
     "revision": {
-      "const": 8
+      "const": 9
     },
     "payloadFile": {
       "const": "payloads.json"
@@ -1083,6 +1083,16 @@
               "type": "null"
             }
           ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/networkError"
+            }
+          ]
         }
       },
       "required": [
@@ -1104,7 +1114,8 @@
         "durationMillis",
         "requestBody",
         "responseBody",
-        "metrics"
+        "metrics",
+        "error"
       ],
       "additionalProperties": false
     },
@@ -1241,6 +1252,26 @@
               "type": "null"
             }
           ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/networkError"
+            }
+          ]
+        },
+        "closeReason": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/webSocketCloseReason"
+            }
+          ]
         }
       },
       "required": [
@@ -1260,7 +1291,9 @@
         "direction",
         "outcome",
         "relatedMessageID",
-        "payload"
+        "payload",
+        "error",
+        "closeReason"
       ],
       "additionalProperties": false
     },
@@ -2347,6 +2380,103 @@
         "limited",
         "phases"
       ]
+    },
+    "networkError": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 256,
+              "format": "utf8-256"
+            }
+          ]
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 64,
+              "format": "utf8-64"
+            }
+          ]
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 256,
+              "format": "utf8-256"
+            }
+          ]
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 4096,
+              "format": "utf8-4096"
+            }
+          ]
+        },
+        "isLimited": {
+          "type": "boolean"
+        },
+        "isProcessed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "domain",
+        "code",
+        "type",
+        "message",
+        "isLimited",
+        "isProcessed"
+      ],
+      "additionalProperties": false
+    },
+    "webSocketCloseReason": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 512,
+              "format": "utf8-512"
+            }
+          ]
+        },
+        "isLimited": {
+          "type": "boolean"
+        },
+        "isProcessed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "text",
+        "isLimited",
+        "isProcessed"
+      ],
+      "additionalProperties": false
     }
   }
 }

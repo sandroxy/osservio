@@ -55,7 +55,7 @@ public final class HTTPMetricsDatabaseTest {
                 }
             }
             try (SQLiteDatabase check = SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(conflict ? 8 : 10, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
+                assertEquals(conflict ? 8 : 11, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
             }
         }
     }
