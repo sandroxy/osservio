@@ -97,6 +97,9 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         private RenderEffect blurredContent;
         float oldWidth = -1, oldHeight = -1, oldBlur = -1, oldBand = -1, oldAmount = -1;
         float outerBlur = -1, innerBlur = -1, highlightBlur = -1;
+        float outerWidth = -1, outerHeight = -1, outerOffset = -1;
+        float highlightWidth = -1, highlightHeight = -1, innerWidth = -1, innerHeight = -1;
+        int outerAlpha = -1, highlightAlpha = -1, innerAlpha = -1;
         int oldPadding = -1;
 
         Surface(String name, boolean dispersion) {
@@ -158,15 +161,22 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         }
         void drawOuter(Canvas canvas, float width, float height, float radius, float offset, float alpha) {
             if (alpha <= 0) return;
-            int margin = (int) Math.ceil(radius * 2), w = (int) Math.ceil(width) + margin * 2, h = (int) Math.ceil(height + offset) + margin * 2;
-            outer.setPosition(-margin, -margin, w - margin, h - margin);
-            if (outerBlur != radius) { outer.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.DECAL)); outerBlur = radius; }
-            Canvas shadow = outer.beginRecording(w, h);
-            try {
-                shadow.translate(margin, margin); paint.setStyle(Paint.Style.FILL); paint.setShader(null);
-                paint.setBlendMode(BlendMode.SRC_OVER); paint.setColor(Color.BLACK); paint.setAlpha(Math.round(25.5f * alpha));
-                shadow.drawRoundRect(0, offset, width, height + offset, height / 2, height / 2, paint);
-            } finally { outer.endRecording(); }
+            int opacity = Math.round(25.5f * alpha);
+            // Recording an unchanged silhouette invalidates its filtered GPU layer.
+            // Movement and scale belong to the destination canvas, not this content.
+            if (!outer.hasDisplayList() || outerWidth != width || outerHeight != height
+                || outerBlur != radius || outerOffset != offset || outerAlpha != opacity) {
+                int margin = (int) Math.ceil(radius * 2), w = (int) Math.ceil(width) + margin * 2, h = (int) Math.ceil(height + offset) + margin * 2;
+                outer.setPosition(-margin, -margin, w - margin, h - margin);
+                if (outerBlur != radius) { outer.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.DECAL)); outerBlur = radius; }
+                Canvas shadow = outer.beginRecording(w, h);
+                try {
+                    shadow.translate(margin, margin); paint.setStyle(Paint.Style.FILL); paint.setShader(null);
+                    paint.setBlendMode(BlendMode.SRC_OVER); paint.setColor(Color.BLACK); paint.setAlpha(opacity);
+                    shadow.drawRoundRect(0, offset, width, height + offset, height / 2, height / 2, paint);
+                } finally { outer.endRecording(); }
+                outerWidth = width; outerHeight = height; outerOffset = offset; outerAlpha = opacity;
+            }
             // Blur the silhouette, then remove the unshifted interior.
             int outside = canvas.save(); clip.reset();
             clip.addRoundRect(0, 0, width, height, height / 2, height / 2, Path.Direction.CW);
@@ -174,31 +184,41 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         }
         void drawHighlight(Canvas canvas, float width, float height, float density, float alpha) {
             if (alpha <= 0) return;
-            highlightShader.setFloatUniform("size", width, height);
-            highlightShader.setFloatUniform("cornerRadii", height / 2, height / 2, height / 2, height / 2);
-            highlightShader.setColorUniform("color", Color.WHITE); highlightShader.setFloatUniform("angle", (float) Math.PI / 4);
-            highlightShader.setFloatUniform("falloff", 1);
-            highlightPaint.setShader(highlightShader); highlightPaint.setColor(Color.WHITE); highlightPaint.setAlpha(Math.round(127.5f * alpha));
-            highlightPaint.setStyle(Paint.Style.STROKE); highlightPaint.setStrokeWidth((float) Math.ceil(.5f * density) * 2);
-            highlight.setPosition(-1, -1, (int) Math.ceil(width) + 1, (int) Math.ceil(height) + 1);
-            if (highlightBlur != density) {
-                highlight.setRenderEffect(RenderEffect.createBlurEffect(.25f * density, .25f * density, Shader.TileMode.DECAL)); highlightBlur = density;
+            int opacity = Math.round(127.5f * alpha);
+            if (!highlight.hasDisplayList() || highlightWidth != width || highlightHeight != height
+                || highlightBlur != density || highlightAlpha != opacity) {
+                highlightShader.setFloatUniform("size", width, height);
+                highlightShader.setFloatUniform("cornerRadii", height / 2, height / 2, height / 2, height / 2);
+                highlightShader.setColorUniform("color", Color.WHITE); highlightShader.setFloatUniform("angle", (float) Math.PI / 4);
+                highlightShader.setFloatUniform("falloff", 1);
+                highlightPaint.setShader(highlightShader); highlightPaint.setColor(Color.WHITE); highlightPaint.setAlpha(opacity);
+                highlightPaint.setStyle(Paint.Style.STROKE); highlightPaint.setStrokeWidth((float) Math.ceil(.5f * density) * 2);
+                highlight.setPosition(-1, -1, (int) Math.ceil(width) + 1, (int) Math.ceil(height) + 1);
+                if (highlightBlur != density) {
+                    highlight.setRenderEffect(RenderEffect.createBlurEffect(.25f * density, .25f * density, Shader.TileMode.DECAL)); highlightBlur = density;
+                }
+                Canvas outline = highlight.beginRecording((int) Math.ceil(width) + 2, (int) Math.ceil(height) + 2);
+                try { outline.translate(1, 1); roundClip(outline, width, height); outline.drawRoundRect(0, 0, width, height, height / 2, height / 2, highlightPaint); }
+                finally { highlight.endRecording(); }
+                highlightWidth = width; highlightHeight = height; highlightAlpha = opacity;
             }
-            Canvas outline = highlight.beginRecording((int) Math.ceil(width) + 2, (int) Math.ceil(height) + 2);
-            try { outline.translate(1, 1); roundClip(outline, width, height); outline.drawRoundRect(0, 0, width, height, height / 2, height / 2, highlightPaint); }
-            finally { highlight.endRecording(); }
             int layer = canvas.saveLayer(0, 0, width, height, plus); canvas.drawRenderNode(highlight); canvas.restoreToCount(layer);
         }
         void drawInner(Canvas canvas, float width, float height, float radius, float alpha) {
-            inner.setPosition(0, 0, (int) Math.ceil(width), (int) Math.ceil(height));
-            if (innerBlur != radius) { inner.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.DECAL)); innerBlur = radius; }
-            Canvas shadow = inner.beginRecording((int) Math.ceil(width), (int) Math.ceil(height));
-            try {
-                roundClip(shadow, width, height); paint.setShader(null); paint.setStyle(Paint.Style.FILL); paint.setBlendMode(BlendMode.SRC_OVER);
-                paint.setColor(Color.BLACK); paint.setAlpha(Math.round(255 * .15f * alpha));
-                shadow.drawRoundRect(0, 0, width, height, height / 2, height / 2, paint);
-                shadow.drawRoundRect(0, radius, width, height + radius, height / 2, height / 2, erase);
-            } finally { inner.endRecording(); }
+            int opacity = Math.round(255 * .15f * alpha);
+            if (!inner.hasDisplayList() || innerWidth != width || innerHeight != height
+                || innerBlur != radius || innerAlpha != opacity) {
+                inner.setPosition(0, 0, (int) Math.ceil(width), (int) Math.ceil(height));
+                if (innerBlur != radius) { inner.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.DECAL)); innerBlur = radius; }
+                Canvas shadow = inner.beginRecording((int) Math.ceil(width), (int) Math.ceil(height));
+                try {
+                    roundClip(shadow, width, height); paint.setShader(null); paint.setStyle(Paint.Style.FILL); paint.setBlendMode(BlendMode.SRC_OVER);
+                    paint.setColor(Color.BLACK); paint.setAlpha(opacity);
+                    shadow.drawRoundRect(0, 0, width, height, height / 2, height / 2, paint);
+                    shadow.drawRoundRect(0, radius, width, height + radius, height / 2, height / 2, erase);
+                } finally { inner.endRecording(); }
+                innerWidth = width; innerHeight = height; innerAlpha = opacity;
+            }
             int save = canvas.save(); roundClip(canvas, width, height); canvas.drawRenderNode(inner); canvas.restoreToCount(save);
         }
         void drawGlow(Canvas canvas, InspectorTabBar bar, float width, float height) {

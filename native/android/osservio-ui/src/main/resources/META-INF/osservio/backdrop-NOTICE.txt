@@ -10,6 +10,7 @@ original expressions. Local changes implement rendering with Android Views,
 RenderNodes and scalar springs, use existing native button content and semantics,
 and add bounded source recording, shared resource admission, local failure
 isolation, lifecycle ownership and cancellation-safe selection. The source uses
-a bounded stable-scale compositing layer, blur chains are reused, and the final
+a bounded stable-scale compositing layer, unchanged filtered decorations and
+blur chains are reused, and the final
 lens outline is constrained to the visible window. Compose and
 upstream control wrappers are not distributed.

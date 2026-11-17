@@ -14,6 +14,58 @@ import static org.junit.Assume.assumeTrue;
 
 @RunWith(AndroidJUnit4.class)
 public final class InspectorTabMaterialTest {
+    @Test public void reusedDecorationsMatchFreshRenderingAcrossPressStates() throws Exception {
+        InspectorNavigationMaterialActivity host = start();
+        try {
+            await(() -> host.bar().materialReady());
+            for (float progress : new float[] {0, 1, .4f, 0, 1}) {
+                main(() -> {
+                    InspectorTabBar bar = host.bar();
+                    android.view.Choreographer.getInstance().removeFrameCallback(bar);
+                    bar.motion.stop(); bar.motion.press.snap(progress);
+                    bar.motion.position.snap(progress * 2.5); bar.motion.glow.snap(progress);
+                    bar.motion.scaleX.snap(1 + progress * .2); bar.motion.scaleY.snap(1 + progress * .2);
+                });
+                android.graphics.Bitmap reused = navigationImage(host.bar());
+                try {
+                    main(() -> {
+                        InspectorTabBar.Renderer previous = host.bar().renderer;
+                        host.bar().renderer = null; previous.release();
+                    });
+                    android.graphics.Bitmap fresh = navigationImage(host.bar());
+                    try {
+                        if (!reused.sameAs(fresh)) {
+                            saveComparison(reused, "navigation-reused.png"); saveComparison(fresh, "navigation-fresh.png");
+                            fail("Cached decoration changed pixels at press " + progress);
+                        }
+                    }
+                    finally { fresh.recycle(); }
+                } finally { reused.recycle(); }
+            }
+        } finally { finish(host); }
+    }
+    private static void saveComparison(android.graphics.Bitmap image, String name) throws Exception {
+        java.io.File file = new java.io.File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalFilesDir(null), name);
+        try (java.io.OutputStream stream = new java.io.FileOutputStream(file)) { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream); }
+    }
+    private static android.graphics.Bitmap navigationImage(InspectorTabBar bar) throws Exception {
+        java.util.concurrent.CountDownLatch submitted = new java.util.concurrent.CountDownLatch(1);
+        main(() -> { bar.getViewTreeObserver().registerFrameCommitCallback(submitted::countDown); bar.invalidate(); });
+        assertTrue("Navigation frame was not submitted", submitted.await(5, java.util.concurrent.TimeUnit.SECONDS));
+        Thread.sleep(120);
+        android.graphics.Bitmap screen = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        assertNotNull(screen);
+        int[] position = new int[2], navigationInset = new int[1];
+        main(() -> {
+            bar.getLocationOnScreen(position);
+            navigationInset[0] = bar.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.navigationBars()).bottom;
+        });
+        int top = Math.max(0, position[1] - Math.round(bar.dp(60)));
+        // System gesture-handle dimming is unrelated to the cached navigation pixels.
+        int bottom = Math.min(screen.getHeight() - navigationInset[0], position[1] + bar.getHeight() + Math.round(bar.dp(60)));
+        try { return android.graphics.Bitmap.createBitmap(screen, 0, top, screen.getWidth(), bottom - top); }
+        finally { screen.recycle(); }
+    }
     @Test public void sparseFramesSettleUsingElapsedTimeInsteadOfStretchingTheAnimation() throws Exception {
         InspectorNavigationMaterialActivity host = start();
         try {
