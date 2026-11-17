@@ -1,5 +1,7 @@
 dependencies {
     api project(":osservio-core")
+    // API-boundary annotations are a pinned compile-only input, not a host runtime upgrade.
+    //noinspection GradleDependency
     compileOnly "androidx.annotation:annotation:1.9.1"
     testImplementation "junit:junit:4.13.2"
     androidTestImplementation project(":osservio-store")
