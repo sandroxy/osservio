@@ -105,7 +105,11 @@ chooses whether this optional source runs. Capture off does not unregister the o
 and re-enabling capture does not query or reconstruct a path retroactively.
 
 Android records default-network availability, finite transport names, OS
-validation and metered flags. iOS records path status, finite interface types,
+validation and metered flags. On API 24/25, an availability callback first records
+`status=available; capabilities=unknown`, because a following capability callback
+is not guaranteed. Later capability callbacks supply the actual flags; no
+synchronous capability query is made inside callbacks. API 26+ waits for its
+guaranteed following capability callback. iOS records path status, finite interface types,
 expensive and constrained flags. A VPN may coexist with another transport;
 `expensive` and `metered` have platform-specific meanings. No addresses, SSIDs,
 network IDs, routes, interface objects, or request content are retained. Bounded

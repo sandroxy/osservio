@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.os.Build;
 import androidx.annotation.DoNotInline;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.RequiresPermission;
@@ -28,21 +29,32 @@ final class Api24NetworkPathRegistration {
         Network initialNetwork = manager.getActiveNetwork();
         NetworkCapabilities initialCapabilities = initialNetwork == null ? null : manager.getNetworkCapabilities(initialNetwork);
         String initial = initialNetwork == null ? "status=unavailable" : initialCapabilities == null ? "status=unknown" : description(initialCapabilities);
-        ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
-            private Network current;
-            @Override public void onAvailable(Network network) { current = network; }
-            @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
-                if (network.equals(current)) lease.record(description(capabilities), false);
-            }
-            @Override public void onLost(Network network) {
-                if (network.equals(current)) { current = null; lease.record("status=unavailable", false); }
-            }
-        };
+        ConnectivityManager.NetworkCallback callback = new Callback(lease, Build.VERSION.SDK_INT >= 26);
         manager.registerDefaultNetworkCallback(callback);
         return new NetworkPathSignals.Registration() {
             @Override public void recordInitial() { lease.record(initial, true); }
             @Override public void close() { manager.unregisterNetworkCallback(callback); }
         };
+    }
+    static final class Callback extends ConnectivityManager.NetworkCallback {
+        private final NetworkPathSignals.Lease lease;
+        private final boolean capabilitiesFollowAvailable;
+        private Network current;
+        Callback(NetworkPathSignals.Lease lease, boolean capabilitiesFollowAvailable) {
+            this.lease = lease; this.capabilitiesFollowAvailable = capabilitiesFollowAvailable;
+        }
+        @Override public void onAvailable(Network network) {
+            current = network;
+            // Only API 26+ guarantees an immediate capability callback. Earlier
+            // versions may report recovery without ever sending capabilities.
+            if (!capabilitiesFollowAvailable) lease.record("status=available; capabilities=unknown", false);
+        }
+        @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+            if (network.equals(current)) lease.record(description(capabilities), false);
+        }
+        @Override public void onLost(Network network) {
+            if (network.equals(current)) { current = null; lease.record("status=unavailable", false); }
+        }
     }
     private static String description(NetworkCapabilities capabilities) {
         List<String> transports = new ArrayList<>(5);
