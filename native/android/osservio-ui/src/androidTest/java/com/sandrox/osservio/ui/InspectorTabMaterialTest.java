@@ -18,9 +18,6 @@ public final class InspectorTabMaterialTest {
         InspectorNavigationMaterialActivity host = start();
         try {
             await(() -> host.bar().materialReady());
-            // Window-manager presentation also animates the entire window; it is
-            // independent of the renderer state being compared below.
-            Thread.sleep(500);
             for (float progress : new float[] {0, 1, .4f, 0, 1}) {
                 main(() -> {
                     InspectorTabBar bar = host.bar();
@@ -52,6 +49,22 @@ public final class InspectorTabMaterialTest {
         try (java.io.OutputStream stream = new java.io.FileOutputStream(file)) { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream); }
     }
     private static android.graphics.Bitmap navigationImage(InspectorTabBar bar) throws Exception {
+        // This checks cached versus recreated *settled* optical output. A frame
+        // commit does not imply the screenshot compositor has finished window
+        // presentation. Require identical consecutive captures, without relaxing
+        // pixel equality or treating this as first-frame/latency acceptance.
+        android.graphics.Bitmap previous = navigationFrame(bar);
+        try {
+            for (int attempt = 0; attempt < 12; attempt++) {
+                android.graphics.Bitmap current = navigationFrame(bar);
+                if (previous.sameAs(current)) return current;
+                previous.recycle(); previous = current;
+            }
+            saveComparison(previous, "navigation-unsettled.png");
+            throw new AssertionError("Navigation output did not settle before the renderer comparison");
+        } finally { previous.recycle(); }
+    }
+    private static android.graphics.Bitmap navigationFrame(InspectorTabBar bar) throws Exception {
         java.util.concurrent.CountDownLatch submitted = new java.util.concurrent.CountDownLatch(1);
         main(() -> { bar.getViewTreeObserver().registerFrameCommitCallback(submitted::countDown); bar.invalidate(); });
         assertTrue("Navigation frame was not submitted", submitted.await(5, java.util.concurrent.TimeUnit.SECONDS));
