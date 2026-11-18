@@ -56,6 +56,8 @@ Android 12 起，还可从系统原生崩溃记录中提取受限的地址堆栈
 
 ## 设计与维护
 
+Osservio 原创代码采用 [Apache-2.0](LICENSE) 许可证，第三方组件保留各自的[许可证与声明](THIRD_PARTY_NOTICES.md)。
+
 - [架构与运行语义](doc/architecture.md)
 - [工程与文档规范](doc/engineering-standards.md)
 - [开发说明](DEVELOPMENT.md)

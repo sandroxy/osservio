@@ -185,6 +185,9 @@ effects.
 
 ## Design and maintenance
 
+Original Osservio code is licensed under [Apache-2.0](LICENSE). Third-party
+components retain their own [licenses and notices](THIRD_PARTY_NOTICES.md).
+
 - [Architecture and runtime semantics](doc/architecture.md)
 - [Engineering and documentation standards](doc/engineering-standards.md)
 - [Development guide](DEVELOPMENT.md)

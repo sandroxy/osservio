@@ -6,13 +6,14 @@ def manifest = new JsonSlurper().parse(file("../../plugin.json"))
 subprojects {
     apply plugin: "com.android.library"
     apply plugin: "maven-publish"
+    apply plugin: "signing"
     group = manifest.native.android.group
     version = manifest.version
     android {
         namespace = "com.sandrox." + project.name.replace('-', '.')
         compileSdk = manifest.native.android.compileSdk
         defaultConfig { minSdk = manifest.native.android.minimumSdk }
-        publishing { singleVariant("release") { withSourcesJar() } }
+        publishing { singleVariant("release") { withSourcesJar(); withJavadocJar() } }
         compileOptions { sourceCompatibility = JavaVersion.VERSION_11; targetCompatibility = JavaVersion.VERSION_11 }
         lint {
             warningsAsErrors = true
@@ -23,12 +24,34 @@ subprojects {
     tasks.withType(JavaCompile).configureEach {
         options.compilerArgs.addAll(["-Xlint:all", "-Werror"])
     }
+    def legalDirectory = layout.buildDirectory.dir("generated/legalResources")
+    def legalResources = tasks.register("prepareLegalResources", Sync) {
+        into legalDirectory
+        from(rootProject.file("../../LICENSE")) {
+            into "META-INF/osservio"
+            rename { "${project.name}-LICENSE.txt" }
+        }
+        from(rootProject.file("../../NOTICE")) {
+            into "META-INF/osservio"
+            rename { "${project.name}-NOTICE.txt" }
+        }
+    }
+    android.sourceSets.main.resources.srcDir(legalDirectory)
+    tasks.named("preBuild").configure { dependsOn(legalResources) }
 }
 
 // A local Maven repository exercises the actual AAR and transitive metadata.
 // It is a build output, not a remote publication or release-eligibility decision.
 subprojects {
     afterEvaluate {
+        // Configure documentation archives after AGP has wired their generated inputs.
+        ["sourceReleaseJar", "javaDocReleaseJar"].each { taskName ->
+            tasks.named(taskName, Jar) {
+                from([rootProject.file("../../LICENSE"), rootProject.file("../../NOTICE"),
+                      rootProject.file("../../THIRD_PARTY_NOTICES.md")]) { into "META-INF" }
+                from("src/main/resources") { include "META-INF/**" }
+            }
+        }
         publishing {
             publications {
                 release(MavenPublication) {
@@ -41,11 +64,31 @@ subprojects {
                             url = "https://github.com/sandroxy/osservio"
                             connection = "scm:git:https://github.com/sandroxy/osservio.git"
                         }
+                        licenses {
+                            license {
+                                name = "Apache License, Version 2.0"
+                                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                                distribution = "repo"
+                            }
+                        }
+                        developers {
+                            developer {
+                                id = "sandroxy"
+                                name = "SandroX"
+                                url = "https://github.com/sandroxy"
+                            }
+                        }
                     }
                 }
             }
             repositories {
                 maven { name = "localArtifacts"; url = rootProject.layout.buildDirectory.dir("repository") }
+            }
+        }
+        if (providers.gradleProperty("signArtifacts").getOrElse("false") == "true") {
+            signing {
+                useGpgCmd()
+                sign publishing.publications.release
             }
         }
     }
@@ -70,14 +113,20 @@ tasks.register("writeArtifactManifest") {
         }
         def artifacts = subprojects.sort { it.name }.collectMany { module ->
             def directory = new File(repository, module.group.toString().replace('.', '/') + "/${module.name}/${module.version}")
-            ["aar", "pom", "module", "sources.jar"].collect { suffix ->
-                def file = new File(directory, "${module.name}-${module.version}" + (suffix == "sources.jar" ? "-" : ".") + suffix)
+            def suffixes = ["aar", "pom", "module", "sources.jar", "javadoc.jar"]
+            def signed = providers.gradleProperty("signArtifacts").getOrElse("false") == "true"
+            suffixes.collectMany { suffix ->
+                def file = new File(directory, "${module.name}-${module.version}" + (suffix.endsWith(".jar") ? "-" : ".") + suffix)
                 if (!file.isFile()) throw new GradleException("Missing local artifact: " + file.name)
-                [path: repository.toPath().relativize(file.toPath()).toString(), bytes: file.length(), sha256: digest(file)]
+                (signed ? [file, new File(file.path + ".asc")] : [file]).collect { input ->
+                    if (!input.isFile()) throw new GradleException("Missing signed artifact: " + input.name)
+                    [path: repository.toPath().relativize(input.toPath()).toString(), bytes: input.length(), sha256: digest(input)]
+                }
             }
         }
-        def record = [schemaVersion: 1, kind: "local-android-artifacts", group: manifest.native.android.group,
+        def record = [schemaVersion: 2, kind: "local-android-artifacts", group: manifest.native.android.group,
             version: manifest.version, sourceRevision: git(["rev-parse", "HEAD"]),
+            signed: providers.gradleProperty("signArtifacts").getOrElse("false") == "true",
             sourceDirty: !git(["status", "--porcelain"]).isEmpty(), artifacts: artifacts]
         new File(repository, "osservio-artifacts.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(record)) + "\n"
     }

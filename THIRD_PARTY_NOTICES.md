@@ -1,5 +1,8 @@
 # Third-party notices
 
+Original Osservio code is licensed under [Apache-2.0](LICENSE), with copyright
+attribution in [NOTICE](NOTICE). The components below retain their own terms.
+
 ## AndroidLiquidGlass backdrop
 
 Android UI derives its bottom-navigation optical programs, layer recipe and motion
@@ -78,8 +81,8 @@ script headers are preserved. See [the license text](licenses/Gradle-Apache-2.0.
 and [upstream source](https://github.com/gradle/gradle/tree/v8.14.5).
 
 The Gradle distribution is downloaded separately with a pinned SHA-256 checksum.
-It is build tooling and is not included in the SDK libraries. This notice does
-not select a license for Osservio's original source.
+It is build tooling and is not included in the SDK libraries. This component's
+terms are independent of the original Osservio code license.
 
 ## OkHttp and MockWebServer
 

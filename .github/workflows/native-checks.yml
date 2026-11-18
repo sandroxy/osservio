@@ -30,6 +30,7 @@ jobs:
         run: |
           python -m pip install -r protocol/requirements.txt
           python -m unittest discover -s protocol -v
+          python scripts/test-native-release.py
 
   android:
     runs-on: ubuntu-24.04
@@ -68,7 +69,16 @@ jobs:
           # Reveal and material admission tests exercise the system animation path.
           disable-animations: false
           working-directory: native/android
-          script: ./gradlew --no-daemon connectedDebugAndroidTest
+          script: |
+            set +e
+            ./gradlew --no-daemon connectedDebugAndroidTest
+            test_result=$?
+            mkdir -p osservio-ui/build/reports/navigation-pixels
+            for image in navigation-reused.png navigation-fresh.png navigation-unsettled.png; do
+              adb pull "/sdcard/Android/data/com.sandrox.osservio.ui.test/files/$image" \
+                osservio-ui/build/reports/navigation-pixels/ 2>/dev/null || true
+            done
+            exit "$test_result"
       - name: Verify locked inputs stayed unchanged
         run: git diff --exit-code -- native/android
       - name: Keep test reports

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "plugin-release-policy",
+  "plugin": "osservio",
+  "sourceRepository": "https://github.com/sandroxy/osservio.git",
+  "verifierRepository": "https://github.com/sandroxy/integrated-plugins.git",
+  "candidateSchemaVersion": 2,
+  "acceptanceReceiptSchemaVersion": 2,
+  "qualifications": ["androidMavenSigned", "artifactProvenanceVerified"],
+  "artifactRoles": {
+    "required": [
+      "native-android-maven-repository",
+      "native-build-checksums",
+      "native-build-manifest",
+      "native-ios-swift-package"
+    ],
+    "conditional": {"androidMavenSigned": ["native-android-maven-central-bundle"]}
+  },
+  "acceptance": {
+    "automatedTargets": ["android", "ios"],
+    "manualTargets": ["native-android-device", "native-ios-device"]
+  }
+}

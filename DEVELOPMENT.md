@@ -331,9 +331,9 @@ list/query architecture.
 
 Publication instructions belong in a maintained release guide when the release
 workflow exists. Publication must use the same immutable artifacts that were
-accepted; source-level checks alone cannot establish release readiness. A
-license for original Osservio code has not been selected; third-party notices
-describe only their named components.
+accepted; source-level checks alone cannot establish release readiness.
+Original Osservio code is licensed under Apache-2.0. Third-party components
+retain their own licenses and notices.
 
 ## Local Android binary checks
 
@@ -345,12 +345,13 @@ native/android/gradlew -p native/android writeArtifactManifest
 
 The output is `native/android/build/repository`. Its `osservio-artifacts.json`
 records the source revision, working-tree state, and the size and SHA-256 of each
-AAR, POM, Gradle module descriptor and source archive. Rebuild it after changes;
+AAR, POM, Gradle module descriptor, source archive and Javadoc archive. Rebuild it after changes;
 retain the manifest and exact files used by a consumer check. The integration
 repository can consume this local repository without source substitution.
 The UI AAR includes its consumer rules and third-party notices. Core does not
 acquire UI or rendering dependencies.
 
 This task writes only local build outputs. It does not publish a release,
-choose a license for original project code, or establish candidate eligibility.
-Public release still requires an explicit release contract and licensing decision.
+establish candidate eligibility, or authorize a remote upload.
+See the [native release procedure](doc/releasing.md) for immutable packaging,
+signatures, independent consumer acceptance and publication boundaries.
