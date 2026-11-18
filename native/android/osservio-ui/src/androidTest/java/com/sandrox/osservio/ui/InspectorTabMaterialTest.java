@@ -16,6 +16,7 @@ import static org.junit.Assume.assumeTrue;
 public final class InspectorTabMaterialTest {
     @Test public void recreatedRendererPreservesPixelsAcrossPressStates() throws Exception {
         InspectorNavigationMaterialActivity host = start();
+        android.graphics.Bitmap previousState = null;
         try {
             await(() -> host.bar().materialReady());
             for (float progress : new float[] {0, 1, .4f, 0, 1}) {
@@ -28,7 +29,9 @@ public final class InspectorTabMaterialTest {
                 });
                 android.graphics.Bitmap reused = navigationImage(host.bar());
                 try {
+                    if (previousState != null) assertFalse("Distinct press states must produce distinct pixels", previousState.sameAs(reused));
                     main(() -> {
+                        assertTrue(host.bar().materialReady());
                         InspectorTabBar.Renderer previous = host.bar().renderer;
                         host.bar().renderer = null; previous.release();
                     });
@@ -38,11 +41,17 @@ public final class InspectorTabMaterialTest {
                             saveComparison(reused, "navigation-reused.png"); saveComparison(fresh, "navigation-fresh.png");
                             fail("Recreated renderer changed pixels at press " + progress);
                         }
+                        main(() -> assertTrue("Renderer recreation fell back to flat navigation", host.bar().materialReady()));
                     }
                     finally { fresh.recycle(); }
-                } finally { reused.recycle(); }
+                    if (previousState != null) previousState.recycle();
+                    previousState = reused;
+                } finally { if (previousState != reused) reused.recycle(); }
             }
-        } finally { finish(host); }
+        } finally {
+            if (previousState != null) previousState.recycle();
+            finish(host);
+        }
     }
     private static void saveComparison(android.graphics.Bitmap image, String name) throws Exception {
         java.io.File file = new java.io.File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalFilesDir(null), name);
@@ -68,6 +77,7 @@ public final class InspectorTabMaterialTest {
         java.util.concurrent.CountDownLatch submitted = new java.util.concurrent.CountDownLatch(1);
         main(() -> { bar.getViewTreeObserver().registerFrameCommitCallback(submitted::countDown); bar.invalidate(); });
         assertTrue("Navigation frame was not submitted", submitted.await(5, java.util.concurrent.TimeUnit.SECONDS));
+        if (android.os.Build.VERSION.SDK_INT >= 34) return NavigationWindowCapture.copy(bar);
         Thread.sleep(120);
         android.graphics.Bitmap screen = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
         assertNotNull(screen);
@@ -81,6 +91,29 @@ public final class InspectorTabMaterialTest {
         int bottom = Math.min(screen.getHeight() - navigationInset[0], position[1] + bar.getHeight() + Math.round(bar.dp(60)));
         try { return android.graphics.Bitmap.createBitmap(screen, 0, top, screen.getWidth(), bottom - top); }
         finally { screen.recycle(); }
+    }
+
+    @androidx.annotation.RequiresApi(34)
+    private static final class NavigationWindowCapture {
+        // The actual inspector buffer contains the labels, lens, shadow and backdrop.
+        // Notifications, clipboard previews and system navigation belong to other windows.
+        static android.graphics.Bitmap copy(InspectorTabBar bar) throws Exception {
+            java.util.concurrent.CompletableFuture<android.view.PixelCopy.Result> capture =
+                new java.util.concurrent.CompletableFuture<>();
+            main(() -> {
+                int[] position = new int[2]; bar.getLocationInWindow(position);
+                View root = bar.getRootView();
+                int inset = root.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.navigationBars()).bottom;
+                int margin = Math.round(bar.dp(60));
+                android.graphics.Rect area = new android.graphics.Rect(0, Math.max(0, position[1] - margin),
+                    root.getWidth(), Math.min(root.getHeight() - inset, position[1] + bar.getHeight() + margin));
+                android.view.PixelCopy.request(android.view.PixelCopy.Request.Builder.ofWindow(bar).setSourceRect(area).build(),
+                    Runnable::run, capture::complete);
+            });
+            android.view.PixelCopy.Result result = capture.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertEquals("Could not copy the inspector window", android.view.PixelCopy.SUCCESS, result.getStatus());
+            return result.getBitmap();
+        }
     }
     @Test public void sparseFramesSettleUsingElapsedTimeInsteadOfStretchingTheAnimation() throws Exception {
         InspectorNavigationMaterialActivity host = start();

@@ -69,16 +69,7 @@ jobs:
           # Reveal and material admission tests exercise the system animation path.
           disable-animations: false
           working-directory: native/android
-          script: |
-            set +e
-            ./gradlew --no-daemon connectedDebugAndroidTest
-            test_result=$?
-            mkdir -p osservio-ui/build/reports/navigation-pixels
-            for image in navigation-reused.png navigation-fresh.png navigation-unsettled.png; do
-              adb pull "/sdcard/Android/data/com.sandrox.osservio.ui.test/files/$image" \
-                osservio-ui/build/reports/navigation-pixels/ 2>/dev/null || true
-            done
-            exit "$test_result"
+          script: bash ../../scripts/android-instrumentation.sh
       - name: Verify locked inputs stayed unchanged
         run: git diff --exit-code -- native/android
       - name: Keep test reports
