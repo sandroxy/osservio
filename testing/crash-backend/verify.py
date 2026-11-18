@@ -134,19 +134,26 @@ def main():
     # Incremental directories may retain objects for renamed/removed sources.
     # Link only the current build plan, without deleting unrelated build state.
     description = json.loads((binary_path / "description.json").read_text())
-    swift_objects = []
+    link_objects = set(objects)
+    module_maps = set()
     for name in ["OsservioCore", "OsservioCrash", "OsservioStore"]:
         commands = [item for item in description["swiftCommands"].values() if item["moduleName"] == name]
         if len(commands) != 1 or not commands[0]["objects"]:
             raise RuntimeError(f"Missing or ambiguous Swift build command for {name}")
-        swift_objects += [Path(value) for value in commands[0]["objects"]]
-    if not all(path.is_file() for path in swift_objects):
-        raise RuntimeError("The current Swift build is missing declared object files")
+        command = commands[0]
+        link_objects.update(Path(value) for value in command["objects"])
+        link_objects.update(Path(item["name"]) for item in command["inputs"]
+                            if item["kind"] == "file" and item["name"].endswith(".o"))
+        module_maps.update(arg for arg in command["otherArguments"] if arg.startswith("-fmodule-map-file="))
+    if not all(path.is_file() for path in link_objects):
+        raise RuntimeError("The current build is missing declared probe link inputs")
+    swiftc = ["xcrun", "swiftc", "-warnings-as-errors", "-I", str(binary_path / "Modules"),
+              "-I", str(vendor / "include"), "-I", str(support / "include")]
+    for module_map in sorted(module_maps):
+        swiftc.extend(["-Xcc", module_map])
+    link_inputs = [str(path) for path in sorted(link_objects)]
     decoder = fixture / "osservio-crash-decoder"
-    run(["xcrun", "swiftc", "-warnings-as-errors", "-I", str(binary_path / "Modules"),
-         "-I", str(vendor / "include"), "-I", str(support / "include"),
-         "-Xcc", "-fmodule-map-file=" + str(binary_path / "OsservioCrashSupport.build/module.modulemap"),
-         str(Path(__file__).with_name("DecoderProbe.swift")), *map(str, swift_objects), *map(str, objects),
+    run([*swiftc, str(Path(__file__).with_name("DecoderProbe.swift")), *link_inputs,
          "-lc++", "-lsqlite3", "-o", str(decoder)], timeout=60)
     decoded = json.loads(run([str(decoder), str(paths["on"])], timeout=20).stdout)
     prior = json.loads(invoke("read", paths["on"]))
@@ -159,10 +166,7 @@ def main():
     run(["xcrun", "clang", "-Wall", "-Wextra", "-Werror", "-dynamiclib",
          str(Path(__file__).with_name("RecorderFailure.c")), "-o", str(failure)], timeout=60)
     recorder = fixture / "osservio-crash-recorder"
-    run(["xcrun", "swiftc", "-parse-as-library", "-warnings-as-errors", "-I", str(binary_path / "Modules"),
-         "-I", str(vendor / "include"), "-I", str(support / "include"),
-         "-Xcc", "-fmodule-map-file=" + str(binary_path / "OsservioCrashSupport.build/module.modulemap"),
-         str(Path(__file__).with_name("RecorderProbe.swift")), *map(str, swift_objects), *map(str, objects),
+    run([*swiftc, "-parse-as-library", str(Path(__file__).with_name("RecorderProbe.swift")), *link_inputs,
          str(failure), "-lc++", "-lsqlite3", "-o", str(recorder)], timeout=60)
     receipt["recorderSHA256"] = digest(recorder)
 
