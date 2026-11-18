@@ -143,13 +143,16 @@ builder.addInterceptor(new OsservioInterceptor(http));
 ```
 
 Use `addInterceptor`, not `addNetworkInterceptor`. Retain the recorder and store
-with the client. The default policy omits bodies and sensitive URL/header
-content. Use `HTTPInspectorView(activity, http, requests)` for network-only
+with the client. Detailed capture defaults to off. When the host enables it,
+the default HTTP policy retains observed URL parameters, valid request and response
+headers (including credentials), and bounded text bodies of supported types.
+The host can omit or process these fields before storage.
+Use `HTTPInspectorView(activity, http, requests)` for network-only
 inspection, or `InspectorView(activity, recorder, history, http, requests)` for
 the combined Logs, Network, Problems and App destinations. Import these types from
 `com.sandrox.osservio.ui`. Attach the view with a bounded height and the same
 host-owned presentation/inset handling described above. Read [network coverage](../../doc/network-integration.md) and
-[HTTP privacy and limits](../../doc/http.md) before enabling body content.
+[HTTP privacy and limits](../../doc/http.md) when choosing the host's capture policy.
 
 ## OkHttp WebSockets
 
@@ -173,7 +176,9 @@ okhttp3.WebSocket socket = observedSockets.newWebSocket(request, listener);
 
 Retain and operate on the returned socket normally. Host listeners receive this
 same wrapper; original callback data and native return values are preserved.
-The default policy omits message text. See [WebSocket
+During detailed capture, the default WebSocket policy retains a bounded prefix
+of observed text messages. The host can omit or process text before storage.
+Binary messages retain their observed size only. See [WebSocket
 coverage](../../doc/network-integration.md#okhttp-sockets) for lifecycle, privacy,
 late enablement, and the distinction between queue acceptance and peer receipt.
 
@@ -247,9 +252,11 @@ Alternatively, pass `incidents` after the optional breadcrumb archive in the ful
 `InspectorView` constructor to enable the Problems archive. Marking freezes the current context;
 saving is explicit, and failure retains the draft. Description text requires an
 explicit opt-in and must be safe to store. The view uses Core contracts and does
-not own or close the supplied archive. The browser also exposes saved log/network
-attachments, metadata search, and saved body states without live refresh. The
-composer also freezes log/network metadata and offers separate opt-in content
+not own or close the supplied archive. The browser shows saved attachments and body states, and can search metadata and
+included content without reading live history. HTTP metadata can include URL
+parameters and credential-bearing headers even with bodies deselected. Explicit
+sharing through the default exporter includes this saved metadata. The composer
+also freezes log/network metadata and offers separate opt-in content
 selection. Its first content lookup is reused through editing and save retry.
 The combined inspector supplies its live histories; standalone callers can pass
 optional `logs`, `http`, and `webSockets` histories after `breadcrumbs`.

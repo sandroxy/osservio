@@ -50,6 +50,7 @@
     <string name="osservio_log_evidence_detail">%1$s\n%2$s: %3$s\n%4$s</string>
     <string name="osservio_incident_include_logs">Attach recent logs</string>
     <string name="osservio_incident_include_http">Attach recent HTTP requests</string>
+    <string name="osservio_incident_http_metadata_hint">Even with bodies off, saved and shared requests may include URL parameters and credentials in request or response headers.</string>
     <string name="osservio_incident_include_http_bodies">Include captured HTTP bodies</string>
     <string name="osservio_incident_include_websockets">Attach recent WebSocket activity</string>
     <string name="osservio_incident_include_ws_payloads">Include captured WebSocket text</string>

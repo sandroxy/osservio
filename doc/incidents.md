@@ -116,7 +116,10 @@ problem enables capture or flushes pending breadcrumb persistence.
 
 The user chooses which groups to attach. Available history groups are initially
 selected; unavailable groups are disclosed and disabled. Log context and network bodies are
-excluded by default. The first explicit content selection looks up only the
+excluded by default. Selected HTTP metadata can still carry URL parameters and
+credential-bearing request or response headers. Explicit sharing through the
+default exporter includes the metadata already saved in the snapshot.
+The first explicit content selection looks up only the
 frozen metadata references and keeps that copy, including unavailable/busy/budget
 states. Deselecting a group excludes it from the saved report; reselecting or
 retrying a failed save does not query metadata or bodies again. Content may have
@@ -156,8 +159,9 @@ continuously poll the database. Details
 are immutable: environment inspection, event search, and network details never
 query live sources again. Log, HTTP, and WebSocket groups show their observation
 times, retained and omitted counts, and source eviction counters. Missing groups
-and attached empty windows remain distinct. Search covers log text and network
-metadata, not body content. Body sections distinguish empty text from unselected,
+and attached empty windows remain distinct. Search covers log text, network metadata, and searchable content included in
+the snapshot, including HTTP bodies and WebSocket text. It never reads live
+bodies to fill a gap. Body sections distinguish empty text from unselected,
 unavailable, busy, or over-budget content, and have no live refresh control.
 Copy actions use the displayed sanitized evidence. Individual
 and all-snapshot deletion require a native confirmation; cancelling leaves the

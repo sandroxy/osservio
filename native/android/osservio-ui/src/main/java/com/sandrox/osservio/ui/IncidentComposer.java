@@ -100,8 +100,11 @@ final class IncidentComposer {
         TextView httpTitle = InspectorWidgets.sectionLabel(context); httpTitle.setText(R.string.osservio_ui_http); content.addView(httpTitle);
         LinearLayout httpOptions = InspectorWidgets.group(context); content.addView(httpOptions, params());
         includeHTTP = option(R.string.osservio_incident_include_http, mark.http != null);
-        addOption(httpOptions, includeHTTP, label(mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
-            : IncidentPresentation.selectionWindow(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount, mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies)));
+        String httpDescription = mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
+            : IncidentPresentation.selectionWindow(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount,
+                mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies);
+        if (mark.http != null && !mark.http.events.isEmpty()) httpDescription += "\n" + context.getString(R.string.osservio_incident_http_metadata_hint);
+        addOption(httpOptions, includeHTTP, label(httpDescription));
         includeHTTPBodies = option(R.string.osservio_incident_include_http_bodies, false);
         httpBodiesStatus = label(context.getString(mark.http != null && !mark.http.payloads.isEmpty() && httpHistory != null
             ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(httpOptions, includeHTTPBodies, httpBodiesStatus);

@@ -15,8 +15,9 @@ React Native, Uni and Flutter adapters are not implemented.
 The inspector trusts the local operator authorized by the host. While debugging
 is enabled, observed parameters, headers (including authentication tokens),
 supported text bodies and Socket messages are readable by default. Hosts can
-selectively omit or process data. Compact previews do not alter records; saving
-and sharing remain separate actions. See [data policy](doc/data-policy.md) for
+selectively omit or process data. Body inclusion is a separate choice when saving
+a snapshot. Sharing that snapshot can include the selected requests’ parameters
+and headers even with bodies deselected. See [data policy](doc/data-policy.md) for
 account isolation, resource limits and system-diagnostic boundaries.
 
 ## Available now

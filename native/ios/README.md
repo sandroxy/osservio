@@ -102,9 +102,11 @@ forwarded. On iOS 15 or later, `try await observed.data(for: request)` also
 preserves native task cancellation. The wrapper does not invalidate the session,
 replace its delegate, install a URL protocol, or modify requests.
 
-Only requests submitted through these methods are observed. The default policy
-preserves valid URLs, headers and supported bounded text bodies for local debugging.
-Hosts can select omissions or apply their own processing. Task-local metrics on
+Only requests submitted through these methods are observed. Detailed capture
+defaults to off. When the host enables it, the default HTTP policy retains
+observed URL parameters, valid request and response headers (including credentials),
+and bounded text bodies of supported types. The host can omit or process these
+fields before storage. Task-local metrics on
 iOS 15+ preserve host delegate callbacks; use `collectsMetrics: false` to disable
 that hook. See [network coverage](../../doc/network-integration.md#phase-timings-and-native-hooks). On the main actor, retain one
 `InspectorSession` for each host window to provide the floating entry and
@@ -135,7 +137,7 @@ preferences in App. See [the native inspector guide](../../doc/inspector.md). Fo
 `HTTPInspectorViewController(recorder: http, history: requests)` in a navigation
 controller and supply dismissal appropriate to your presentation. Read
 [network coverage](../../doc/network-integration.md) and
-[HTTP privacy and limits](../../doc/http.md) before enabling body content.
+[HTTP privacy and limits](../../doc/http.md) when choosing the host's capture policy.
 
 ## WebSocket tasks
 
@@ -157,7 +159,9 @@ handshake and final completion, supply your existing delegated session instead
 of `.shared` and forward its callbacks to the matching wrapper with `didOpen()`,
 `didClose(with:)`, and `didComplete(with:)`. Keep this mapping in host code;
 Osservio does not replace the delegate or retain all tasks in a registry.
-The default policy omits text content. See [WebSocket coverage and callback
+During detailed capture, the default WebSocket policy retains a bounded prefix
+of observed text messages. The host can omit or process text before storage.
+Binary messages retain their observed size only. See [WebSocket coverage and callback
 limits](../../doc/network-integration.md#urlsession-websocket-tasks).
 
 Embed `WebSocketInspectorViewController(recorder: sockets, history: messages)`
@@ -225,8 +229,11 @@ initializer. Problems provides an explicit composer and immutable archive browse
 Marking freezes the current context; saving is explicit, and failure retains the
 draft. Description text requires an explicit opt-in and must be safe to store.
 The UI uses Core contracts and does not own or close the supplied archive. The
-browser also exposes saved log/network attachments, metadata search, and saved
-body states without live refresh. The composer also freezes log/network metadata
+browser shows saved attachments and body states, and can search metadata and
+included content without reading live history. HTTP metadata can include URL
+parameters and credential-bearing headers even with bodies deselected. Explicit
+sharing through the default exporter includes this saved metadata. The composer
+also freezes log/network metadata
 and offers separate opt-in content selection. Its first content lookup is reused through editing and save
 retry. The combined inspector supplies its live histories; standalone callers
 can pass optional `logs`, `http`, and `webSockets` histories after `breadcrumbs`.

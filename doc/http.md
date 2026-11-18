@@ -32,7 +32,9 @@ final response URLs use the same privacy policy. It can move from pending to rec
 completed, failed, cancelled, or closed early. Completion means the collector confirmed the response body finished, such as
 through EOF or a networking completion callback. It does not mean that the
 server accepted a business operation.
-Failure categories are predefined; raw exception messages are not recorded.
+Failure categories are predefined. A collector can also supply a bounded error
+description, which the recorder processes with the host’s text policy before
+storage. See [error details](#error-details).
 Duration measures monotonic time from admission to the terminal observation.
 It may include host processing time and is not a measurement of server latency.
 

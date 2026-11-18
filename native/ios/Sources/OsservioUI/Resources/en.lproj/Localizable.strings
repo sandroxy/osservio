@@ -264,6 +264,7 @@
 "incident_payload_budget" = "This content exceeded the snapshot content budget and was not copied.";
 "incident_include_logs" = "Attach recent logs";
 "incident_include_http" = "Attach recent HTTP requests";
+"incident_http_metadata_hint" = "Even with bodies off, saved and shared requests may include URL parameters and credentials in request or response headers.";
 "incident_include_http_bodies" = "Include captured HTTP bodies";
 "incident_include_websockets" = "Attach recent WebSocket activity";
 "incident_include_ws_payloads" = "Include captured WebSocket text";

@@ -84,7 +84,11 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         configure(logDetailsCell, control: includeLogDetails, key: "incident_include_log_details", selected: false,
             detail: RuntimePresentation.text(logHistory != nil ? "incident_body_choice_hint" : "incident_body_none"))
         configure(httpCell, control: includeHTTP, key: "incident_include_http", selected: mark.http != nil,
-            detail: mark.http.map { IncidentPresentation.selectionWindow(time: $0.observedAtMillis, count: $0.events.count, omitted: $0.omittedEventCount, evicted: $0.sourceEvictedEvents, payloadEvicted: $0.sourceEvictedBodies) })
+            detail: mark.http.map { window in
+                let summary = IncidentPresentation.selectionWindow(time: window.observedAtMillis, count: window.events.count,
+                    omitted: window.omittedEventCount, evicted: window.sourceEvictedEvents, payloadEvicted: window.sourceEvictedBodies)
+                return window.events.isEmpty ? summary : summary + "\n" + RuntimePresentation.text("incident_http_metadata_hint")
+            })
         configure(webSocketsCell, control: includeWebSockets, key: "incident_include_websockets", selected: mark.webSockets != nil,
             detail: mark.webSockets.map { IncidentPresentation.selectionWindow(time: $0.observedAtMillis, count: $0.events.count, omitted: $0.omittedEventCount, evicted: $0.sourceEvictedEvents, payloadEvicted: $0.sourceEvictedPayloads) })
         configure(httpBodiesCell, control: includeHTTPBodies, key: "incident_include_http_bodies", selected: false,

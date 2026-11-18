@@ -264,6 +264,7 @@
 "incident_payload_budget" = "这段正文超出了快照的正文容量限制，未被复制。";
 "incident_include_logs" = "附带近期日志";
 "incident_include_http" = "附带近期 HTTP 请求";
+"incident_http_metadata_hint" = "即使不附正文，保存和分享的请求仍可能包含 URL 参数，以及请求头或响应头中的凭据。";
 "incident_include_http_bodies" = "附带已采集的 HTTP 正文";
 "incident_include_websockets" = "附带近期 WebSocket 活动";
 "incident_include_ws_payloads" = "附带已采集的 WebSocket 文本";

@@ -50,6 +50,7 @@
     <string name="osservio_log_evidence_detail">%1$s\n%2$s：%3$s\n%4$s</string>
     <string name="osservio_incident_include_logs">附带近期日志</string>
     <string name="osservio_incident_include_http">附带近期 HTTP 请求</string>
+    <string name="osservio_incident_http_metadata_hint">即使不附正文，保存和分享的请求仍可能包含 URL 参数，以及请求头或响应头中的凭据。</string>
     <string name="osservio_incident_include_http_bodies">附带已采集的 HTTP 正文</string>
     <string name="osservio_incident_include_websockets">附带近期 WebSocket 活动</string>
     <string name="osservio_incident_include_ws_payloads">附带已采集的 WebSocket 文本</string>
