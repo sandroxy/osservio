@@ -255,7 +255,7 @@
 "incident_evidence_time" = "Window observed at: %@";
 "incident_evidence_counts" = "Included: %1$d · Not included: %2$d · Evicted earlier: %3$lld";
 "incident_evidence_payload_evicted" = "Body evictions reported by the source: %lld";
-"incident_evidence_empty" = "No events in this attached window.";
+"incident_evidence_empty" = "No records were saved in this group.";
 "incident_frozen_detail" = "Saved evidence. It does not refresh from live activity.";
 "incident_payload_missing" = "Content is missing from this snapshot.";
 "incident_payload_not_selected" = "This content was not selected for the snapshot.";
@@ -374,7 +374,10 @@
 "incident_discard" = "Discard record";
 
 "incident_private_note" = "Description omitted at capture";
-"incident_no_attachments" = "No evidence attached";
+"incident_no_attachments" = "No logs or other evidence attached";
+"incident_summary_omitted" = "%1$@: retained %2$ld, left out %3$ld";
+"incident_summary_empty" = "Empty at capture: %@";
+"incident_summary_zero_retained" = "0 retained: %@";
 
 "incident_include_log_details" = "Include log context";
 

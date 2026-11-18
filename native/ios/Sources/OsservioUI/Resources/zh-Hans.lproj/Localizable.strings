@@ -255,7 +255,7 @@
 "incident_evidence_time" = "窗口观测时间：%@";
 "incident_evidence_counts" = "已附带：%1$d · 未附带：%2$d · 此前已淘汰：%3$lld";
 "incident_evidence_payload_evicted" = "来源记录的正文淘汰次数：%lld";
-"incident_evidence_empty" = "附带的窗口中没有记录。";
+"incident_evidence_empty" = "此组未保存任何记录。";
 "incident_frozen_detail" = "这是已保存的证据，不会随实时活动刷新。";
 "incident_payload_missing" = "这份快照中缺少正文。";
 "incident_payload_not_selected" = "保存快照时未选择附带这段正文。";
@@ -374,7 +374,10 @@
 "incident_discard" = "放弃记录";
 
 "incident_private_note" = "采集时已省略说明";
-"incident_no_attachments" = "未附带现场记录";
+"incident_no_attachments" = "未附日志等现场记录";
+"incident_summary_omitted" = "%1$@：保留 %2$ld 条，%3$ld 条未纳入";
+"incident_summary_empty" = "窗口内 0 条：%@";
+"incident_summary_zero_retained" = "已保留 0 条：%@";
 
 "incident_include_log_details" = "包含日志上下文";
 

@@ -1,6 +1,9 @@
 package com.sandrox.osservio.ui;
 
 import android.content.Context;
+import android.text.TextUtils;
+import java.util.ArrayList;
+import java.util.List;
 import com.sandrox.osservio.core.IncidentSnapshot;
 import com.sandrox.osservio.core.IncidentSummary;
 import com.sandrox.osservio.core.SystemDiagnostic;
@@ -15,13 +18,25 @@ final class IncidentPresentation {
             ? summary.note.text : title(context, summary.diagnosticKind);
     }
     static String listSubtitle(Context context, IncidentSummary summary) {
-        java.util.List<String> evidence = new java.util.ArrayList<>();
+        List<String> evidence = new ArrayList<>(), incomplete = new ArrayList<>(), empty = new ArrayList<>(), zeroRetained = new ArrayList<>();
         if (summary.hasEnvironment) evidence.add(context.getString(R.string.osservio_runtime_environment));
         int[] labels = {R.string.osservio_runtime_breadcrumbs, R.string.osservio_logs, R.string.osservio_ui_http, R.string.osservio_ws_title};
         Integer[] counts = {summary.breadcrumbCount, summary.logCount, summary.httpCount, summary.webSocketCount};
-        for (int i = 0; i < labels.length; i++) if (counts[i] != null && counts[i] > 0) evidence.add(context.getString(labels[i]) + ": " + counts[i]);
+        Integer[] omissions = {summary.omitted.breadcrumbs, summary.omitted.logs, summary.omitted.http, summary.omitted.webSockets};
+        for (int i = 0; i < labels.length; i++) {
+            Integer retained = counts[i], omitted = omissions[i];
+            if (retained == null) continue;
+            String name = context.getString(labels[i]);
+            if (omitted != null && omitted > 0) incomplete.add(context.getString(R.string.osservio_incident_summary_omitted, name, retained, omitted));
+            else if (retained > 0) evidence.add(name + ": " + retained);
+            else if (omitted != null) empty.add(name);
+            else zeroRetained.add(name);
+        }
+        if (!empty.isEmpty()) evidence.add(context.getString(R.string.osservio_incident_summary_empty, TextUtils.join(" / ", empty)));
+        if (!zeroRetained.isEmpty()) evidence.add(context.getString(R.string.osservio_incident_summary_zero_retained, TextUtils.join(" / ", zeroRetained)));
+        evidence.addAll(0, incomplete);
         return (summary.note != null && summary.note.isPrivate ? context.getString(R.string.osservio_incident_private_note) + "\n" : "")
-            + (evidence.isEmpty() ? context.getString(R.string.osservio_incident_no_attachments) : android.text.TextUtils.join(" · ", evidence));
+            + (evidence.isEmpty() ? context.getString(R.string.osservio_incident_no_attachments) : TextUtils.join(" · ", evidence));
     }
     static String listTime(Context context, IncidentSummary summary) {
         return (summary.diagnosticKind == null ? "" : timeLabel(context, summary.diagnosticKind) + "\n")

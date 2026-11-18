@@ -159,7 +159,11 @@ continuously poll the database. Details
 are immutable: environment inspection, event search, and network details never
 query live sources again. Log, HTTP, and WebSocket groups show their observation
 times, retained and omitted counts, and source eviction counters. Missing groups
-and attached empty windows remain distinct. Search covers log text, network metadata, and searchable content included in
+and attached empty windows remain distinct. The list groups empty windows and
+shows how many events from each source window were left out at the mark.
+Earlier source evictions are reported separately in details. A custom archive
+that supplies only retained counts can report zero retained without asserting
+that its source window was empty. Search covers log text, network metadata, and searchable content included in
 the snapshot, including HTTP bodies and WebSocket text. It never reads live
 bodies to fill a gap. Body sections distinguish empty text from unselected,
 unavailable, busy, or over-budget content, and have no live refresh control.

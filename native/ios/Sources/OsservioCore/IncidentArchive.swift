@@ -2,6 +2,18 @@ import Foundation
 
 /// Lightweight metadata for a committed snapshot. Attachments are loaded only on request.
 public struct IncidentSummary: Sendable {
+    /// Records present in each source window but left out when the snapshot was made.
+    /// A nil count means the archive did not supply it. Earlier source evictions are separate.
+    public struct OmittedCounts: Sendable {
+        public let breadcrumbs: Int?
+        public let logs: Int?
+        public let http: Int?
+        public let webSockets: Int?
+        public init(breadcrumbs: Int? = nil, logs: Int? = nil, http: Int? = nil, webSockets: Int? = nil) {
+            self.breadcrumbs = breadcrumbs; self.logs = logs; self.http = http; self.webSockets = webSockets
+        }
+    }
+    public let omitted: OmittedCounts
     public let id: String
     public let timestampMillis: Int64
     public let note: IncidentNote?
@@ -13,6 +25,13 @@ public struct IncidentSummary: Sendable {
     public let diagnosticKind: SystemDiagnosticKind?
     public init(id: String, timestampMillis: Int64, note: IncidentNote?, hasEnvironment: Bool, breadcrumbCount: Int?,
                 logCount: Int? = nil, httpCount: Int? = nil, webSocketCount: Int? = nil, diagnosticKind: SystemDiagnosticKind? = nil) {
+        self.init(id: id, timestampMillis: timestampMillis, note: note, hasEnvironment: hasEnvironment, breadcrumbCount: breadcrumbCount,
+                  logCount: logCount, httpCount: httpCount, webSocketCount: webSocketCount, diagnosticKind: diagnosticKind, omitted: OmittedCounts())
+    }
+    public init(id: String, timestampMillis: Int64, note: IncidentNote?, hasEnvironment: Bool, breadcrumbCount: Int?,
+                logCount: Int? = nil, httpCount: Int? = nil, webSocketCount: Int? = nil, diagnosticKind: SystemDiagnosticKind? = nil,
+                omitted: OmittedCounts) {
+        self.omitted = omitted
         self.id = id; self.timestampMillis = timestampMillis; self.note = note
         self.hasEnvironment = hasEnvironment; self.breadcrumbCount = breadcrumbCount
         self.logCount = logCount; self.httpCount = httpCount; self.webSocketCount = webSocketCount

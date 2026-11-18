@@ -61,6 +61,8 @@ final class IncidentDetailDatabaseTests: XCTestCase {
             XCTAssertEqual(emptyValue.logs?.events.count, 0); XCTAssertEqual(emptyValue.http?.events.count, 0); XCTAssertEqual(emptyValue.webSockets?.events.count, 0)
             XCTAssertEqual(emptyValue.http?.sourceEvictedBodies, 7)
             let summaries = try reader.summaries(); XCTAssertEqual(summaries[0].httpCount, 0); XCTAssertNil(summaries[1].httpCount)
+            XCTAssertEqual(summaries[0].omitted.logs, 3); XCTAssertEqual(summaries[0].omitted.http, 5)
+            XCTAssertEqual(summaries[0].omitted.webSockets, 8); XCTAssertNil(summaries[1].omitted.logs)
             XCTAssertEqual(try reader.read(id: snapshot.id)?.textByteCount, snapshot.textByteCount)
             try reader.save(IncidentDetailFixture.snapshot(), now: 1)
         }

@@ -203,7 +203,10 @@ final class IncidentDatabase {
         guard windows.values.reduce(0, { $0 + $1.bytes + $1.payloadBytes }) <= bytes else { throw PersistenceError.invalidRecord }
         return try Header(summary: IncidentSummary(id: id, timestampMillis: row.integer(1), note: note,
             hasEnvironment: platform != nil, breadcrumbCount: count.map(Int.init), logCount: windows[.logs]?.count,
-            httpCount: windows[.http]?.count, webSocketCount: windows[.websocket]?.count, diagnosticKind: diagnosticKind), platform: platform,
+            httpCount: windows[.http]?.count, webSocketCount: windows[.websocket]?.count, diagnosticKind: diagnosticKind,
+            omitted: .init(breadcrumbs: count.flatMap { retained in source.map { Int($0 - retained) } },
+                           logs: windows[.logs]?.omittedCount, http: windows[.http]?.omittedCount, webSockets: windows[.websocket]?.omittedCount)),
+            platform: platform,
             environmentTime: platform == nil ? nil : row.integer(6), sourceCount: source.map(Int.init), sourceEvicted: evicted, bytes: Int(bytes), windows: windows)
     }
     private func readEnvironment(id: String, info: Header) throws -> EnvironmentSnapshot? {

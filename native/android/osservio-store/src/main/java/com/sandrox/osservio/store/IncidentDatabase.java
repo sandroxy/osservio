@@ -205,8 +205,13 @@ final class IncidentDatabase implements AutoCloseable {
         if (attachmentBytes > bytes) throw EvidenceStorageException.invalid();
         return new Header(new IncidentSummary(id, integer(row, 1), note, platform != null, count == null ? null : count.intValue(),
             count(windows, IncidentDetailDatabase.Kind.LOGS), count(windows, IncidentDetailDatabase.Kind.HTTP), count(windows, IncidentDetailDatabase.Kind.WEBSOCKET),
-            row.isNull(11) ? null : parse(SystemDiagnostic.Kind.values(), text(row, 11, 32))),
+            row.isNull(11) ? null : parse(SystemDiagnostic.Kind.values(), text(row, 11, 32)),
+            new IncidentSummary.OmittedCounts(count == null ? null : (int) (source - count), omitted(windows.get(IncidentDetailDatabase.Kind.LOGS)),
+                omitted(windows.get(IncidentDetailDatabase.Kind.HTTP)), omitted(windows.get(IncidentDetailDatabase.Kind.WEBSOCKET)))),
             platform, platform == null ? null : integer(row, 6), source == null ? null : source.intValue(), evicted, (int) bytes, windows);
+    }
+    private static Integer omitted(IncidentDetailDatabase.Window window) {
+        return window == null ? null : window.sourceCount - window.count;
     }
     private static Integer count(Map<IncidentDetailDatabase.Kind, IncidentDetailDatabase.Window> windows, IncidentDetailDatabase.Kind kind) {
         IncidentDetailDatabase.Window window = windows.get(kind); return window == null ? null : window.count;

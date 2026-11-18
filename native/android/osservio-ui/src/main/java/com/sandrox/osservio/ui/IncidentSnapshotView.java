@@ -72,10 +72,13 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
             () -> open(R.string.osservio_runtime_environment, new EnvironmentSnapshotView(context, snapshot.environment)));
         LinearLayout attachments = section(header, () -> context.getString(R.string.osservio_incident_evidence_title));
         attachment(attachments, R.string.osservio_logs, snapshot.logs == null ? null : snapshot.logs.events.size(),
+            snapshot.logs == null ? 0 : snapshot.logs.omittedEventCount, snapshot.logs == null ? 0 : snapshot.logs.sourceEvictedCount,
             () -> open(R.string.osservio_logs, new IncidentEvidenceView(context, snapshot.logs, () -> { })));
         attachment(attachments, R.string.osservio_ui_http, snapshot.http == null ? null : snapshot.http.events.size(),
+            snapshot.http == null ? 0 : snapshot.http.omittedEventCount, snapshot.http == null ? 0 : snapshot.http.sourceEvictedEvents,
             () -> open(R.string.osservio_ui_http, new IncidentEvidenceView(context, snapshot.http, () -> { })));
         attachment(attachments, R.string.osservio_ws_title, snapshot.webSockets == null ? null : snapshot.webSockets.events.size(),
+            snapshot.webSockets == null ? 0 : snapshot.webSockets.omittedEventCount, snapshot.webSockets == null ? 0 : snapshot.webSockets.sourceEvictedEvents,
             () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
         list.addHeaderView(header, null, false);
         searchGroup = new InspectorSearchGroup(context, search, R.string.osservio_ui_search_breadcrumbs);
@@ -119,8 +122,10 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         Runnable render = () -> row.bind(title.get(), value.get(), action != null); InspectorAppearance.content(row, render); render.run();
         row.value.setMaxLines(4); row.value.setEllipsize(android.text.TextUtils.TruncateAt.END); row.action(action); InspectorWidgets.addGrouped(group, row);
     }
-    private void attachment(LinearLayout group, int title, Integer count, Runnable open) {
-        field(group, () -> getContext().getString(title), () -> IncidentPresentation.count(getContext(), count), count == null ? null : open);
+    private void attachment(LinearLayout group, int title, Integer count, int omitted, long evicted, Runnable open) {
+        field(group, () -> getContext().getString(title), () -> omitted > 0 || evicted > 0
+            ? getContext().getString(R.string.osservio_incident_evidence_counts, count, omitted, evicted)
+            : IncidentPresentation.count(getContext(), count), count == null ? null : open);
     }
     private void open(int title, View content) { if (detail == null) show(InspectorDialogs.screen(getContext(), title, content)); }
     private void show(InspectorScreen screen) {

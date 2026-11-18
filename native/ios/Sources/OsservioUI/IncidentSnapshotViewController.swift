@@ -133,10 +133,13 @@ final class IncidentSnapshotViewController: UITableViewController {
             cell.detailTextLabel?.text = RuntimePresentation.date(environment.timestampMillis) + " · " + environment.platform.rawValue
             cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button
         } else if indexPath.section == 2 {
-            let counts = [snapshot.logs?.events.count, snapshot.http?.events.count, snapshot.webSockets?.events.count]
+            let windows = [(snapshot.logs?.events.count, snapshot.logs?.omittedEventCount, snapshot.logs?.sourceEvictedCount),
+                           (snapshot.http?.events.count, snapshot.http?.omittedEventCount, snapshot.http?.sourceEvictedEvents),
+                           (snapshot.webSockets?.events.count, snapshot.webSockets?.omittedEventCount, snapshot.webSockets?.sourceEvictedEvents)]
+            let (count, omitted, evicted) = windows[indexPath.row]
             cell.textLabel?.text = [RuntimePresentation.text("logs"), "HTTP", RuntimePresentation.text("ws_title")][indexPath.row]
-            cell.detailTextLabel?.text = IncidentPresentation.count(counts[indexPath.row])
-            if counts[indexPath.row] != nil { cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button }
+            cell.detailTextLabel?.text = IncidentPresentation.savedCount(count, omitted: omitted, evicted: evicted)
+            if count != nil { cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button }
         } else {
             let event = events[indexPath.row - 1]
             cell.textLabel?.text = RuntimePresentation.breadcrumbTitle(event)

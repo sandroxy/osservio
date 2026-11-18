@@ -128,6 +128,24 @@ final class InspectorArchiveTests: XCTestCase {
     }
 
     @MainActor
+    func testIncidentRowsDistinguishUnselectedEmptyOmittedAndUnreportedWindows() {
+        func row(_ retained: Int?, _ omitted: Int?, http: Int? = nil) -> String {
+            let summary = IncidentSummary(id: UUID().uuidString, timestampMillis: 1, note: nil, hasEnvironment: false,
+                breadcrumbCount: nil, logCount: retained, httpCount: http, omitted: .init(logs: omitted, http: http.map { _ in 0 }))
+            return IncidentPresentation.listSubtitle(summary)
+        }
+        let logs = RuntimePresentation.text("logs")
+        XCTAssertEqual(row(nil, nil), RuntimePresentation.text("incident_no_attachments"))
+        XCTAssertEqual(row(0, 0), String(format: RuntimePresentation.text("incident_summary_empty"), logs))
+        XCTAssertEqual(row(0, nil), String(format: RuntimePresentation.text("incident_summary_zero_retained"), logs))
+        let loss = String(format: RuntimePresentation.text("incident_summary_omitted"), logs, 0, 4)
+        XCTAssertEqual(row(0, 4, http: 2), loss + " · HTTP: 2")
+        XCTAssertEqual(row(2, 0), logs + ": 2")
+        XCTAssertEqual(IncidentPresentation.savedCount(0, omitted: 4, evicted: 2),
+            String(format: RuntimePresentation.text("incident_evidence_counts"), 0, 4, Int64(2)))
+    }
+
+    @MainActor
     func testPrivatePresentationKeepsTypeAndAvailableEvidenceWithoutGuessingFromText() throws {
         let privateNote = try IncidentNote.capture(.privateText("not retained"))
         let summary = IncidentSummary(id: UUID().uuidString, timestampMillis: 1_000, note: privateNote,

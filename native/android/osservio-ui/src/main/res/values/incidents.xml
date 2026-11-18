@@ -39,7 +39,7 @@
     <string name="osservio_incident_evidence_time">Window observed at: %1$s</string>
     <string name="osservio_incident_evidence_counts">Included: %1$d · Not included: %2$d · Evicted earlier: %3$d</string>
     <string name="osservio_incident_evidence_payload_evicted">Body evictions reported by the source: %1$d</string>
-    <string name="osservio_incident_evidence_empty">No events in this attached window.</string>
+    <string name="osservio_incident_evidence_empty">No records were saved in this group.</string>
     <string name="osservio_incident_frozen_detail">Saved evidence. It does not refresh from live activity.</string>
     <string name="osservio_incident_payload_missing">Content is missing from this snapshot.</string>
     <string name="osservio_incident_payload_not_selected">This content was not selected for the snapshot.</string>
@@ -74,5 +74,8 @@
     <string name="osservio_incident_discard">Discard record</string>
     <string name="osservio_ui_private_content">Content omitted at capture</string>
     <string name="osservio_incident_private_note">Description omitted at capture</string>
-    <string name="osservio_incident_no_attachments">No evidence attached</string>
+    <string name="osservio_incident_no_attachments">No logs or other evidence attached</string>
+    <string name="osservio_incident_summary_omitted">%1$s: retained %2$d, left out %3$d</string>
+    <string name="osservio_incident_summary_empty">Empty at capture: %1$s</string>
+    <string name="osservio_incident_summary_zero_retained">0 retained: %1$s</string>
 </resources>

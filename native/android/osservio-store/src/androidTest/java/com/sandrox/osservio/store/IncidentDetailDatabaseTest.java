@@ -89,6 +89,8 @@ public final class IncidentDetailDatabaseTest {
                 assertTrue(emptyValue.logs.events.isEmpty()); assertTrue(emptyValue.http.events.isEmpty()); assertTrue(emptyValue.webSockets.events.isEmpty());
                 assertEquals(7, emptyValue.http.sourceEvictedBodies);
                 List<IncidentSummary> summaries = reader.summaries(); assertEquals(Integer.valueOf(0), summaries.get(0).httpCount); assertNull(summaries.get(1).httpCount);
+                assertEquals(Integer.valueOf(3), summaries.get(0).omitted.logs); assertEquals(Integer.valueOf(5), summaries.get(0).omitted.http);
+                assertEquals(Integer.valueOf(8), summaries.get(0).omitted.webSockets); assertNull(summaries.get(1).omitted.logs);
                 assertEquals(snapshot.textByteCount, reader.read(snapshot.id).textByteCount); reader.save(IncidentDetailFixture.snapshot(), 1);
             }
         }

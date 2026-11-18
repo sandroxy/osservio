@@ -8,6 +8,7 @@ final class IncidentDetailDatabase {
         let observedAt: Int64
         let count: Int
         let sourceCount: Int
+        var omittedCount: Int { sourceCount - count }
         let evicted: Int64
         let evictedPayloads: Int64?
         let bytes: Int

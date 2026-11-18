@@ -11,6 +11,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.CaptureController;
+import com.sandrox.osservio.core.IncidentSummary;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
@@ -92,6 +93,23 @@ public final class InspectorPresentationTest {
             assertEquals("[private]", IncidentPresentation.listTitle(context, publicSummary));
             assertTrue(IncidentPresentation.listSubtitle(context, publicSummary).contains(context.getString(R.string.osservio_incident_no_attachments)));
         });
+    }
+
+    @Test public void incidentRowsDistinguishUnselectedEmptyOmittedAndUnreportedWindows() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        String logs = context.getString(R.string.osservio_logs);
+        assertEquals(context.getString(R.string.osservio_incident_no_attachments), row(context, null, null, null));
+        assertEquals(context.getString(R.string.osservio_incident_summary_empty, logs), row(context, 0, 0, null));
+        assertEquals(context.getString(R.string.osservio_incident_summary_zero_retained, logs), row(context, 0, null, null));
+        String loss = context.getString(R.string.osservio_incident_summary_omitted, logs, 0, 4);
+        assertEquals(loss + " · HTTP: 2", row(context, 0, 4, 2));
+        assertEquals(logs + ": 2", row(context, 2, 0, null));
+    }
+
+    private static String row(Context context, Integer retained, Integer omitted, Integer http) {
+        IncidentSummary summary = new IncidentSummary("12345678-1234-1234-1234-123456789abc", 1, null, false, null,
+            retained, http, null, null, new IncidentSummary.OmittedCounts(null, omitted, http == null ? null : 0, null));
+        return IncidentPresentation.listSubtitle(context, summary);
     }
 
     private static boolean visible(View view, View root) {

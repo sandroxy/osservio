@@ -11,14 +11,24 @@ enum IncidentPresentation {
         return title(summary.diagnosticKind)
     }
     static func listSubtitle(_ summary: IncidentSummary) -> String {
-        var evidence: [String] = []
+        var evidence: [String] = [], incomplete: [String] = [], empty: [String] = [], zeroRetained: [String] = []
         if summary.hasEnvironment { evidence.append(RuntimePresentation.text("runtime_environment")) }
-        for (key, count) in [("runtime_breadcrumbs", summary.breadcrumbCount), ("logs", summary.logCount),
-                             ("HTTP", summary.httpCount), ("ws_title", summary.webSocketCount)] {
-            if let count, count > 0 { evidence.append((key == "HTTP" ? key : RuntimePresentation.text(key)) + ": \(count)") }
+        let groups = [(RuntimePresentation.text("runtime_breadcrumbs"), summary.breadcrumbCount, summary.omitted.breadcrumbs),
+                      (RuntimePresentation.text("logs"), summary.logCount, summary.omitted.logs), ("HTTP", summary.httpCount, summary.omitted.http),
+                      (RuntimePresentation.text("ws_title"), summary.webSocketCount, summary.omitted.webSockets)]
+        for (name, retained, omitted) in groups {
+            guard let retained else { continue }
+            if let omitted, omitted > 0 {
+                incomplete.append(String(format: RuntimePresentation.text("incident_summary_omitted"), name, retained, omitted))
+            } else if retained > 0 { evidence.append(name + ": " + String(retained)) }
+            else if omitted == 0 { empty.append(name) }
+            else { zeroRetained.append(name) }
         }
+        if !empty.isEmpty { evidence.append(String(format: RuntimePresentation.text("incident_summary_empty"), empty.joined(separator: " / "))) }
+        if !zeroRetained.isEmpty { evidence.append(String(format: RuntimePresentation.text("incident_summary_zero_retained"), zeroRetained.joined(separator: " / "))) }
+        let attachments = incomplete + evidence
         return (summary.note?.isPrivate == true ? RuntimePresentation.text("incident_private_note") + "\n" : "")
-            + (evidence.isEmpty ? RuntimePresentation.text("incident_no_attachments") : evidence.joined(separator: " · "))
+            + (attachments.isEmpty ? RuntimePresentation.text("incident_no_attachments") : attachments.joined(separator: " · "))
     }
     static func listTime(_ summary: IncidentSummary) -> String {
         (summary.diagnosticKind == nil ? "" : timeLabel(summary.diagnosticKind) + "\n")
@@ -60,6 +70,12 @@ enum IncidentPresentation {
             + " · HTTP: " + count(summary.httpCount) + " · " + RuntimePresentation.text("ws_title") + ": " + count(summary.webSocketCount)
     }
     static func count(_ value: Int?) -> String { value.map(String.init) ?? RuntimePresentation.text("incident_not_attached") }
+    static func savedCount(_ count: Int?, omitted: Int?, evicted: Int64?) -> String {
+        if let count, let omitted, let evicted, omitted > 0 || evicted > 0 {
+            return String(format: RuntimePresentation.text("incident_evidence_counts"), count, omitted, evicted)
+        }
+        return Self.count(count)
+    }
     static func selectionWindow(time: Int64, count: Int, omitted: Int, evicted: Int64, payloadEvicted: Int64? = nil) -> String {
         InspectorValuePresentation.eventTime(time) + " · " + String(format: RuntimePresentation.text("ui_record_count"), count)
             + (omitted > 0 || evicted > 0 || (payloadEvicted ?? 0) > 0 ? "\n" + RuntimePresentation.text("ui_retention_loss") : "")
