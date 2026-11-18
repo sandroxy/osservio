@@ -34,6 +34,45 @@ final class CrashReportsTests: XCTestCase {
             XCTAssertTrue(empty.diagnostics.isEmpty)
         }
     }
+
+    func testPendingReadKeepsDirectoryUntilResultIsDelivered() async throws {
+        try await fixture { directory in
+            var source: CrashReports? = try await open(directory)
+            let worker = try XCTUnwrap(source).worker
+            let startRead = DispatchSemaphore(value: 0)
+            let finishCallback = DispatchSemaphore(value: 0)
+            defer {
+                startRead.signal()
+                finishCallback.signal()
+                worker.sync {}
+            }
+            worker.async { XCTAssertEqual(startRead.wait(timeout: .now() + 10), .success) }
+
+            let delivered = expectation(description: "read delivered after the caller released its handle")
+            source?.read { result in
+                XCTAssertEqual(try? result.get().source, .appleSignal)
+                delivered.fulfill()
+                XCTAssertEqual(finishCallback.wait(timeout: .now() + 10), .success)
+            }
+            source = nil
+            do {
+                _ = try await open(directory)
+                XCTFail("The pending read lost exclusive ownership")
+            } catch {
+                XCTAssertEqual(error as? PersistenceError, .busy)
+            }
+            startRead.signal()
+            await fulfillment(of: [delivered], timeout: 5)
+            do {
+                let reopened = try await open(directory)
+                let batch = try await read(reopened).get()
+                XCTAssertTrue(batch.diagnostics.isEmpty)
+            } catch {
+                XCTFail("Could not reopen and read the directory during result delivery: \(error)")
+            }
+        }
+    }
+
     func testReadAdmissionIsBoundedAndCallbackCanReenter() async throws {
         try await fixture { directory in
             let source = try await open(directory)

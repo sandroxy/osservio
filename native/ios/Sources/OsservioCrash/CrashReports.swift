@@ -11,8 +11,7 @@ public final class CrashReports: SystemDiagnosticProvider, @unchecked Sendable {
     // The installation manager shares this queue so slot selection cannot race a read.
     let worker = DispatchQueue(label: "io.github.sandroxy.osservio.crash.files", qos: .utility)
     let directory: CrashReportDirectory
-    private let admission = NSLock()
-    private var reading = false
+    private let readPermit = DispatchSemaphore(value: 1)
     private init(_ directory: CrashReportDirectory) { self.directory = directory }
 
     /// One open may be pending process-wide. Completion may run immediately for rejection.
@@ -34,15 +33,16 @@ public final class CrashReports: SystemDiagnosticProvider, @unchecked Sendable {
     /// Reads previous-process slots without changing capture or attaching current context.
     /// Use SystemDiagnosticRecovery when persisting through capture-gated admission.
     public func read(completion: @escaping @Sendable (Result<SystemDiagnosticBatch, SystemDiagnosticError>) -> Void) {
-        guard admission.try() else { completion(.failure(.busy)); return }
-        guard !reading else { admission.unlock(); completion(.failure(.busy)); return }
-        reading = true; admission.unlock()
-        worker.async { [self] in
+        guard readPermit.wait(timeout: .now()) == .success else { completion(.failure(.busy)); return }
+        worker.async { [directory, worker, readPermit] in
             let result: Result<SystemDiagnosticBatch, SystemDiagnosticError>
             do { result = .success(try directory.read(observedAtMillis: SystemLogClock().wallTimeMillis())) }
             catch { result = .failure(.unavailable) }
-            admission.lock(); reading = false; admission.unlock()
-            completion(result)
+            // The file work releases its directory reference before caller code can reopen it.
+            worker.async {
+                readPermit.signal()
+                completion(result)
+            }
         }
     }
 }

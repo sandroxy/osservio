@@ -47,8 +47,10 @@ Opening has one pending operation process-wide. Each source accepts one pending
 read, and the installer admits one process-wide installation attempt at a time.
 Rejections may complete immediately; accepted file work and installation complete
 on utility workers. Callbacks run without SDK locks, and UI updates must dispatch
-to the main actor. Releasing an uninstalled source releases its directory lease;
-releasing an installed source does not uninstall or disable the pinned recorder.
+to the main actor. An admitted read keeps the directory leased through file access,
+then releases its own reference before delivering the result. A caller that has
+released its last uninstalled source can reopen the directory from the read callback.
+An installed recorder retains its source and directory until process exit.
 
 ## Pending-file retention
 
