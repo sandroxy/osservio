@@ -115,6 +115,33 @@ public final class InspectorTabMaterialTest {
             return result.getBitmap();
         }
     }
+    @Test public void restingLensRespondsOnTheFirstFrameAfterTouch() throws Exception {
+        InspectorNavigationMaterialActivity host = start();
+        try {
+            await(() -> host.bar().materialReady());
+            for (boolean precedingVsync : new boolean[] {false, true}) {
+                await(() -> !host.bar().motion.running());
+                main(() -> {
+                    InspectorTabBar bar = host.bar();
+                    View tab = bar.getChildAt(bar.motion.selected());
+                    long down = SystemClock.uptimeMillis();
+                    MotionEvent event = MotionEvent.obtain(down, down, MotionEvent.ACTION_DOWN,
+                        tab.getLeft() + tab.getWidth() / 2f, tab.getHeight() / 2f, 0);
+                    try { assertTrue(bar.dispatchTouchEvent(event)); } finally { event.recycle(); }
+                    android.view.Choreographer clock = android.view.Choreographer.getInstance();
+                    clock.removeFrameCallback(bar);
+                    if (precedingVsync) {
+                        bar.doFrame((down - 16) * 1_000_000L); clock.removeFrameCallback(bar);
+                        bar.doFrame(down * 1_000_000L); clock.removeFrameCallback(bar);
+                        assertEquals("A frame at or before the touch cannot advance the animation", 0, bar.motion.progress(), 0);
+                    }
+                    bar.doFrame((down + 16) * 1_000_000L);
+                    assertTrue("The first frame after the touch must advance the resting lens", bar.motion.progress() > 0);
+                    touch(bar, MotionEvent.ACTION_CANCEL, bar.motion.selected());
+                });
+            }
+        } finally { finish(host); }
+    }
     @Test public void sparseFramesSettleUsingElapsedTimeInsteadOfStretchingTheAnimation() throws Exception {
         InspectorNavigationMaterialActivity host = start();
         try {

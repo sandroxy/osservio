@@ -211,6 +211,9 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
             pointer = event.getPointerId(0);
             // Other tabs retain ordinary native click routing. Only the selected lens owns a drag.
             if (event.getX() >= lensX() && event.getX() <= lensX() + tabWidth()) {
+                // Both timestamps use the uptime clock. A resting lens can advance on
+                // the first vsync after touch, even if delivery took part of a frame.
+                if (frameTime == 0) frameTime = event.getEventTime() * 1_000_000L;
                 motion.hold(getHeight() / density); parentIntercept(true); kick(); return true;
             }
         }
@@ -268,7 +271,9 @@ final class InspectorTabBar extends LinearLayout implements InspectorGlassSessio
         if (!registered || !session.allowed() || !isShown()) { stopMotion(); return; }
         // The analytic springs remain stable across missed frames. Truncating elapsed
         // time would stretch a short transition indefinitely on a busy renderer.
-        double seconds = frameTime == 0 ? 0 : Math.max(0, (now - frameTime) / 1e9) / session.animationScale();
+        // Input can be dispatched in a frame whose vsync precedes the event.
+        now = Math.max(now, frameTime);
+        double seconds = frameTime == 0 ? 0 : (now - frameTime) / 1e9 / session.animationScale();
         frameTime = now; motion.step(seconds); invalidate();
         if (motion.running()) kick(); else frameTime = 0;
     }
