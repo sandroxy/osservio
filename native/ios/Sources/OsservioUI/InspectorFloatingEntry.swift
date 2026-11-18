@@ -95,7 +95,7 @@ final class InspectorEntryViewController: UIViewController {
 
 @MainActor
 final class InspectorFloatingEntry: UIControl {
-    private let image = UIImageView(image: InspectorGlyphs.entry)
+    private let image = UIImageView(image: InspectorDebugControl.icon)
     private var material: UIVisualEffectView?
     override init(frame: CGRect) {
         super.init(frame: CGRect(origin: .zero, size: CGSize(width: 48, height: 48)))

@@ -5,6 +5,7 @@ import UIKit
 /// One control model for every root tab. Separate host controllers are reported honestly if a control is rejected.
 @MainActor
 final class InspectorDebugControl: NSObject {
+    static let icon = UIImage(systemName: "ladybug") ?? UIImage(systemName: "ant")
     private let controllers: [CaptureController]
     private var buttons: [UIButton] = []
     private var lastPresentation: String?
@@ -40,7 +41,7 @@ final class InspectorDebugControl: NSObject {
         let signature = value + label + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue
         guard signature != lastPresentation else { return }; lastPresentation = signature
         for button in buttons {
-            button.setImage(UIImage(systemName: "ladybug"), for: .normal)
+            button.setImage(Self.icon, for: .normal)
             if #available(iOS 26.0, *) { button.backgroundColor = .clear }
             else { button.backgroundColor = InspectorTheme.surface }
             button.tintColor = enabled ? InspectorTheme.accent : InspectorTheme.secondary

@@ -65,18 +65,4 @@ final class InspectorContentWindow: UIWindow {
     }
 }
 
-@MainActor
-enum InspectorGlyphs {
-    /// Original diagnostic-panel mark, distinct from the debug toggle's bug.
-    static let entry: UIImage = UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { _ in
-        UIColor.black.setStroke()
-        let outline = UIBezierPath(roundedRect: CGRect(x: 2, y: 4, width: 20, height: 16), cornerRadius: 3)
-        outline.lineWidth = 1.7; outline.stroke()
-        let wave = UIBezierPath(); wave.lineWidth = 1.7; wave.lineCapStyle = .round; wave.lineJoinStyle = .round
-        wave.move(to: CGPoint(x: 5, y: 13))
-        for point in [CGPoint(x: 7, y: 13), CGPoint(x: 9, y: 8), CGPoint(x: 12, y: 17),
-                      CGPoint(x: 15, y: 10), CGPoint(x: 17, y: 13), CGPoint(x: 19, y: 13)] { wave.addLine(to: point) }
-        wave.stroke()
-    }.withRenderingMode(.alwaysTemplate)
-}
 #endif
