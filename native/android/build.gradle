@@ -3,6 +3,18 @@ import groovy.json.JsonSlurper
 plugins { id "com.android.library" version "8.12.3" apply false }
 
 def manifest = new JsonSlurper().parse(file("../../plugin.json"))
+def sourceState = {
+    def gitOutput = { List<String> arguments ->
+        providers.exec { workingDir rootDir; commandLine(["git"] + arguments) }
+            .standardOutput.asText.get().trim()
+    }
+    [revision: gitOutput(["rev-parse", "HEAD"]),
+     status: gitOutput(["status", "--porcelain", "--untracked-files=all"])]
+}
+def artifactSourceBefore
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(":writeArtifactManifest")) artifactSourceBefore = sourceState()
+}
 subprojects {
     apply plugin: "com.android.library"
     apply plugin: "maven-publish"
@@ -107,10 +119,9 @@ tasks.register("writeArtifactManifest") {
             }
             hash.digest().encodeHex().toString()
         }
-        def git = { List<String> arguments ->
-            providers.exec { workingDir rootDir; commandLine(["git"] + arguments) }
-                .standardOutput.asText.get().trim()
-        }
+        def artifactSourceAfter = sourceState()
+        if (artifactSourceBefore != artifactSourceAfter) throw new GradleException(
+            "Source changed during artifact generation; rebuild before freezing a candidate")
         def artifacts = subprojects.sort { it.name }.collectMany { module ->
             def directory = new File(repository, module.group.toString().replace('.', '/') + "/${module.name}/${module.version}")
             def suffixes = ["aar", "pom", "module", "sources.jar", "javadoc.jar"]
@@ -125,9 +136,9 @@ tasks.register("writeArtifactManifest") {
             }
         }
         def record = [schemaVersion: 2, kind: "local-android-artifacts", group: manifest.native.android.group,
-            version: manifest.version, sourceRevision: git(["rev-parse", "HEAD"]),
+            version: manifest.version, sourceRevision: artifactSourceAfter.revision,
             signed: providers.gradleProperty("signArtifacts").getOrElse("false") == "true",
-            sourceDirty: !git(["status", "--porcelain"]).isEmpty(), artifacts: artifacts]
+            sourceDirty: !artifactSourceAfter.status.isEmpty(), artifacts: artifacts]
         new File(repository, "osservio-artifacts.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(record)) + "\n"
     }
 }
