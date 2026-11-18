@@ -26,6 +26,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     public interface Factory { InspectorView create(Context context); }
     private final Application application;
     private final SessionContext context;
+    private final InspectorGlassSession entryMaterial;
     private Factory factory;
     private WeakReference<Activity> owner = new WeakReference<>(null);
     private Presentation presentation = Presentation.HIDDEN;
@@ -48,6 +49,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     public InspectorSession(Application application, Factory factory) {
         mainThread(); this.application = Objects.requireNonNull(application, "application");
         this.factory = Objects.requireNonNull(factory, "factory"); context = new SessionContext(application, this);
+        entryMaterial = new InspectorGlassSession(application); entryMaterial.setEnabled(true);
         application.registerActivityLifecycleCallbacks(this);
     }
     /** Rebinds the same reading/editing session without retaining the previous Activity. */
@@ -66,6 +68,11 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     }
     public Presentation presentation() { mainThread(); return presentation; }
     public boolean isDisposed() { mainThread(); return disposed; }
+    /** Allows the floating control to refract this Activity's ordinary content while it is visible. */
+    public void setFloatingEntryMaterialEnabled(boolean enabled) {
+        mainThread(); entryMaterial.setEnabled(enabled);
+        if (entry != null) entry.material.updateRegistration();
+    }
     public boolean showEntry() {
         mainThread(); if (!available()) return false;
         if (presentation == Presentation.HIDDEN) presentation = Presentation.ENTRY;
@@ -100,7 +107,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         if (activity != null) activity.getWindow().getDecorView().removeOnAttachStateChangeListener(attachment);
         owner.clear(); application.unregisterActivityLifecycleCallbacks(this);
         if (inspector != null) inspector.disposePresentation();
-        inspector = null; entry = null; factory = null;
+        entryMaterial.dispose(); inspector = null; entry = null; factory = null;
     }
     private boolean available() { Activity activity = owner.get(); return !disposed && activity != null && !activity.isDestroyed() && !activity.isFinishing(); }
     private void reconcile() {
@@ -150,6 +157,7 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
             }
         } else if (presentation == Presentation.ENTRY) {
             if (resumed) ensureEntry(activity);
+            else if (entry != null) entry.material.bind(null);
             if (window != null && window.getWindow() != null) {
                 if (!animated || !resumed) { detachContentWindow(); return; }
                 if (transition.isClosing()) return;
@@ -165,8 +173,8 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
     }
     private void ensureEntry(Activity activity) {
         if (entry != null && !entry.matchesPreferences()) { entry.detach(); entry = null; }
-        if (entry == null) entry = new InspectorFloatingEntry(context, this::expand, this::hideEntry, this::reconcile);
-        entry.attach((ViewGroup) activity.getWindow().getDecorView());
+        if (entry == null) entry = new InspectorFloatingEntry(context, entryMaterial, this::expand, this::hideEntry, this::reconcile);
+        entry.attach(activity.getWindow(), presentation == Presentation.ENTRY);
     }
     private void createWindow(Activity activity) {
         Context presentationContext = inspector.getContext();

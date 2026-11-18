@@ -17,7 +17,7 @@ Kotlin, coroutine, graphics-library or JNI runtime dependency.
 
 ## Liquid-Glass-Android
 
-Android UI retains an unbound inward optical kernel from Liquid-Glass-Android
+The Android floating entry uses an inward optical kernel from Liquid-Glass-Android
 v2.0.11, commit `fc6bd34fa3290638c3594cc39386f549d1316ab5`, copyright
 (c) 2025–2026 pandadog, under MIT. The [vendor record](native/android/vendor/liquid-glass/README.md)
 describes source identities, effective parameters and the maintained subset.

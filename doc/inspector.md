@@ -430,7 +430,8 @@ it does not turn an expanded workspace into a fresh opening animation. Restorati
 follows the owning scene before activation, independently of application-level
 notification ordering. UI polling remains suspended while the scene is inactive.
 Neither platform captures per-frame screenshots or runs a persistent full-screen
-blur. The diagnostic-panel entry mark is distinct from the debug toggle's bug.
+blur. The entry uses the same bug symbol as the debug control on each platform.
+Tapping the entry opens the inspector. The toolbar control toggles debugging.
 
 `collapse()` shows the entry, while `hideEntry()` hides both surfaces. Both retain
 the in-process tab, navigation, applied query, reading position and unfinished

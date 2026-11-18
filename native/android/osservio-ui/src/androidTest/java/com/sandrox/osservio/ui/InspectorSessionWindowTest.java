@@ -74,6 +74,34 @@ public final class InspectorSessionWindowTest {
             });
         } finally { main(host::finish); }
     }
+    @Test public void floatingEntryMaterialFollowsTheSessionAndItsIndependentOptOut() throws Exception {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 33);
+        InspectorNavigationMaterialActivity host = InspectorWindowTestSupport.start(InspectorNavigationMaterialActivity.class);
+        try {
+            await(() -> host.inspector != null && host.inspector.hasWindowFocus());
+            main(host.presentation::collapse);
+            InspectorFloatingEntry[] entry = new InspectorFloatingEntry[1];
+            await(() -> {
+                entry[0] = InspectorNavigationMaterialActivity.find(host.getWindow().getDecorView(), InspectorFloatingEntry.class);
+                return entry[0] != null && entry[0].material.renderer != null && entry[0].hasWindowFocus();
+            });
+            main(() -> {
+                host.presentation.setFloatingEntryMaterialEnabled(false);
+                assertNull(entry[0].material.renderer);
+                assertEquals(InspectorSession.Presentation.ENTRY, host.presentation.presentation());
+                host.presentation.setFloatingEntryMaterialEnabled(true);
+            });
+            await(() -> entry[0].material.renderer != null);
+            main(() -> {
+                host.presentation.onActivityPaused(host);
+                assertNull(entry[0].material.renderer);
+                host.presentation.onActivityResumed(host);
+            });
+            await(() -> entry[0].material.renderer != null);
+            main(() -> { assertTrue(entry[0].performClick()); assertNull(entry[0].material.renderer); });
+            await(() -> host.inspector.hasWindowFocus() && host.presentation.presentation() == InspectorSession.Presentation.EXPANDED);
+        } finally { main(host::finish); }
+    }
     private static void main(Runnable action) { InstrumentationRegistry.getInstrumentation().runOnMainSync(action); }
     private static void await(java.util.concurrent.Callable<Boolean> condition) throws Exception {
         long deadline = android.os.SystemClock.uptimeMillis() + 5000;

@@ -2,6 +2,7 @@ package com.sandrox.osservio.ui;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.PowerManager;
@@ -10,6 +11,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.Window;
 import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageButton;
@@ -18,6 +20,7 @@ import android.widget.ImageButton;
 // Session actions are required; this private control is never inflated from XML.
 @android.annotation.SuppressLint("ViewConstructor")
 final class InspectorFloatingEntry extends ImageButton {
+    final InspectorEntryMaterial material;
     private final Runnable open;
     private final Runnable hide;
     private final Runnable configurationChanged;
@@ -37,15 +40,18 @@ final class InspectorFloatingEntry extends ImageButton {
     private float downX, downY, initialX, initialY;
     private boolean dragging;
 
-    InspectorFloatingEntry(Context context, Runnable open, Runnable hide, Runnable configurationChanged) {
+    InspectorFloatingEntry(Context context, InspectorGlassSession session, Runnable open, Runnable hide, Runnable configurationChanged) {
         super(InspectorTheme.context(context)); this.open = open; this.hide = hide;
         this.preferencesContext = context; this.configurationChanged = configurationChanged;
         dark = InspectorPreferences.dark(context); english = InspectorPreferences.english(context);
         palette = InspectorPreferences.palette(context); densityDpi = context.getResources().getConfiguration().densityDpi;
         size = InspectorTheme.dp(context, 48); slop = ViewConfiguration.get(context).getScaledTouchSlop();
-        setImageResource(R.drawable.osservio_entry); setImageTintList(ColorStateList.valueOf(InspectorTheme.accent(getContext())));
+        material = new InspectorEntryMaterial(this, session);
+        setImageResource(R.drawable.osservio_debug); setImageTintList(ColorStateList.valueOf(InspectorTheme.accent(getContext())));
         int inset = InspectorTheme.dp(context, 12); setPadding(inset, inset, inset, inset);
-        InspectorTheme.surface(this, true, 24); setElevation(InspectorTheme.dp(context, 6)); setClipToOutline(true);
+        InspectorTheme.surface(this, false, 24);
+        setForeground(InspectorTheme.ripple(getContext(), null, InspectorTheme.shape(getContext(), android.graphics.Color.WHITE, 24, false)));
+        setElevation(InspectorTheme.dp(context, 6)); setClipToOutline(true);
         setContentDescription(getContext().getString(R.string.osservio_ui_open)); setOnClickListener(ignored -> this.open.run());
         trailing = InspectorPreferences.storage(context).getBoolean("entryTrailing", true);
         fraction = InspectorPreferences.storage(context).getFloat("entryFraction", 0.35f);
@@ -60,12 +66,31 @@ final class InspectorFloatingEntry extends ImageButton {
         super.onConfigurationChanged(configuration);
         if (!matchesPreferences()) { removeCallbacks(configurationChanged); post(configurationChanged); }
     }
-    void attach(ViewGroup parent) {
-        if (getParent() == parent) { position(); return; }
-        detach(); parent.addView(this, new ViewGroup.LayoutParams(size, size));
-        parent.getViewTreeObserver().addOnGlobalLayoutListener(layout); position();
+    @Override protected void onDraw(Canvas canvas) {
+        material.draw(canvas);
+        super.onDraw(canvas);
+    }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); material.updateRegistration(); }
+    @Override protected void onDetachedFromWindow() { material.bind(null); super.onDetachedFromWindow(); }
+    @Override protected void onVisibilityChanged(View changed, int visibility) {
+        super.onVisibilityChanged(changed, visibility);
+        if (material != null) material.updateRegistration();
+    }
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (material != null) material.updateRegistration();
+    }
+    void attach(Window window, boolean showMaterial) {
+        ViewGroup parent = (ViewGroup) window.getDecorView();
+        if (getParent() != parent) {
+            detach(); parent.addView(this, new ViewGroup.LayoutParams(size, size));
+            parent.getViewTreeObserver().addOnGlobalLayoutListener(layout);
+        }
+        material.bind(showMaterial ? window : null);
+        position();
     }
     void detach() {
+        material.bind(null);
         removeCallbacks(configurationChanged); animate().cancel(); dragging = false;
         if (getParent() instanceof ViewGroup) {
             ViewGroup parent = (ViewGroup) getParent(); parent.getViewTreeObserver().removeOnGlobalLayoutListener(layout); parent.removeView(this);
@@ -119,7 +144,10 @@ final class InspectorFloatingEntry extends ImageButton {
         bounds(); trailing = getX() >= available.exactCenterX();
         fraction = available.height() == 0 ? 0 : Math.max(0, Math.min(1, (getY() - available.top) / available.height()));
         InspectorPreferences.storage(getContext()).edit().putBoolean("entryTrailing", trailing).putFloat("entryFraction", fraction).apply();
-        animate().x(trailing ? available.right : available.left).y(available.top + available.height() * fraction).setDuration(motionDuration(getContext())).start();
+        // An update listener keeps the docking translation on the UI timeline with the backdrop coordinates.
+        animate().x(trailing ? available.right : available.left).y(available.top + available.height() * fraction)
+            .setUpdateListener(material.tracksMotion() ? animation -> invalidate() : null)
+            .setDuration(motionDuration(getContext())).start();
     }
     static long motionDuration(Context context) {
         if (Build.VERSION.SDK_INT >= 26 && !android.animation.ValueAnimator.areAnimatorsEnabled()) return 0;

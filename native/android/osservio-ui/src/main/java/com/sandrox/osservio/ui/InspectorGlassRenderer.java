@@ -12,31 +12,31 @@ import android.view.View;
 
 /** API-isolated, single-surface inward lens. No bitmap capture or software/JNI fallback. */
 @androidx.annotation.RequiresApi(33)
-final class InspectorGlassRenderer implements InspectorGlassBar.Renderer {
+final class InspectorGlassRenderer implements InspectorEntryMaterial.Renderer {
     private final RuntimeShader shader = new RuntimeShader(InspectorGlassShader.SOURCE);
-    private final RenderNode node = new RenderNode("OsservioNavigationMaterial");
-    private final int[] location = new int[2], origin = new int[2];
+    private final RenderNode node = new RenderNode("OsservioFloatingEntry");
     private int width, height, tint;
     private float radius, density;
 
     // The consumer rules preserve this factory boundary against R8 inlining into API-23 code.
-    static InspectorGlassBar.Renderer create() { return new InspectorGlassRenderer(); }
+    @androidx.annotation.DoNotInline static InspectorEntryMaterial.Renderer create() { return new InspectorGlassRenderer(); }
 
-    @Override public void draw(Canvas canvas, View source, View target, float cornerRadius, int color) {
+    @Override public void draw(Canvas canvas, View source, View target, int left, int top, int base, int color) {
         int w = target.getWidth(), h = target.getHeight();
+        float cornerRadius = Math.min(w, h) / 2f;
         float scale = target.getResources().getDisplayMetrics().density;
         if (w != width || h != height || color != tint || cornerRadius != radius || scale != density) {
             configure(w, h, cornerRadius, color, scale);
             width = w; height = h; radius = cornerRadius; tint = color; density = scale;
         }
-        target.getLocationOnScreen(location); source.getLocationOnScreen(origin);
         int margin = InspectorGlassBudget.MARGIN;
         int recordedWidth = w + margin * 2, recordedHeight = h + margin * 2;
         node.setPosition(-margin, -margin, w + margin, h + margin);
         Canvas recording = node.beginRecording(recordedWidth, recordedHeight);
         try {
-            recording.translate(margin - (location[0] - origin[0]) - source.getScrollX(),
-                margin - (location[1] - origin[1]) - source.getScrollY());
+            recording.clipRect(0, 0, recordedWidth, recordedHeight);
+            recording.drawColor(base);
+            recording.translate(margin - left - source.getScrollX(), margin - top - source.getScrollY());
             source.draw(recording);
         } finally { node.endRecording(); }
         canvas.drawRenderNode(node);

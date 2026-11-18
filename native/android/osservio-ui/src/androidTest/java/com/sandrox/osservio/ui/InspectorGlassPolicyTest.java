@@ -6,7 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
-import android.widget.FrameLayout;
+
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;
@@ -20,22 +20,22 @@ public final class InspectorGlassPolicyTest {
             Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
             InspectorGlassSession session = new InspectorGlassSession(context);
             session.setEnabled(true);
-            InspectorNavigation source = new InspectorNavigation(context, new View(context), new FrameLayout(context), new View(context));
-            InspectorGlassBar bar = new InspectorGlassBar(context, source, session);
-            ColorDrawable original = new ColorDrawable(Color.MAGENTA); bar.setBackground(original);
-            bar.setPadding(3, 4, 5, 6); bar.layout(0, 0, 100, 40);
+            InspectorFloatingEntry entry = new InspectorFloatingEntry(context, session, () -> { }, () -> { }, () -> { });
+            InspectorEntryMaterial material = entry.material;
+            ColorDrawable original = new ColorDrawable(Color.MAGENTA); entry.setBackground(original);
+            entry.setPadding(3, 4, 5, 6); entry.layout(0, 0, 100, 40);
             int[] releases = {0};
-            bar.renderer = new InspectorGlassBar.Renderer() {
-                @Override public void draw(Canvas canvas, View from, View target, float radius, int tint) { fail("Software canvas must not sample"); }
+            material.renderer = new InspectorEntryMaterial.Renderer() {
+                @Override public void draw(Canvas canvas, View from, View target, int x, int y, int base, int tint) { fail("Software canvas must not sample"); }
                 @Override public void release() { releases[0]++; }
             };
-            session.budget.reserve(bar, 100, 40);
+            session.budget.reserve(material, 100, 40);
             Bitmap image = Bitmap.createBitmap(100, 40, Bitmap.Config.ARGB_8888);
-            bar.draw(new Canvas(image));
-            assertEquals(Color.MAGENTA, image.getPixel(50, 20)); assertSame(original, bar.getBackground());
-            assertEquals(3, bar.getPaddingLeft()); assertEquals(6, bar.getPaddingBottom());
-            assertNull(bar.renderer); assertEquals(1, releases[0]); assertEquals(0, session.budget.pixels());
-            image.recycle(); session.dispose(); source.dispose();
+            entry.draw(new Canvas(image));
+            assertEquals(Color.MAGENTA, image.getPixel(12, 20)); assertSame(original, entry.getBackground());
+            assertEquals(3, entry.getPaddingLeft()); assertEquals(6, entry.getPaddingBottom());
+            assertNull(material.renderer); assertEquals(1, releases[0]); assertEquals(0, session.budget.pixels());
+            image.recycle(); session.dispose();
         });
     }
     @SuppressWarnings("deprecation")
@@ -60,15 +60,15 @@ public final class InspectorGlassPolicyTest {
             Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
             InspectorGlassSession session = new InspectorGlassSession(context);
             session.setEnabled(true);
-            InspectorNavigation source = new InspectorNavigation(context, new View(context), new FrameLayout(context), new View(context));
-            InspectorGlassBar bar = new InspectorGlassBar(context, source, session);
-            bar.renderer = new InspectorGlassBar.Renderer() {
-                @Override public void draw(Canvas c, View s, View t, float r, int color) { }
+            InspectorFloatingEntry entry = new InspectorFloatingEntry(context, session, () -> { }, () -> { }, () -> { });
+            InspectorEntryMaterial material = entry.material;
+            material.renderer = new InspectorEntryMaterial.Renderer() {
+                @Override public void draw(Canvas c, View s, View t, int x, int y, int base, int color) { }
                 @Override public void release() { throw new IllegalStateException("Test-owned renderer failure"); }
             };
-            session.budget.reserve(bar, 100, 40); bar.release(); bar.release();
-            assertNull(bar.renderer); assertEquals(0, session.budget.pixels()); assertFalse(session.enabled());
-            source.dispose(); session.dispose();
+            session.budget.reserve(material, 100, 40); material.release(); material.release();
+            assertNull(material.renderer); assertEquals(0, session.budget.pixels()); assertFalse(session.enabled());
+            session.dispose();
         });
     }
     private static void main(Runnable action) { InstrumentationRegistry.getInstrumentation().runOnMainSync(action); }

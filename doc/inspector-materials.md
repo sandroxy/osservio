@@ -17,10 +17,11 @@ to be transparent.
 | Filters and problem composer | Opaque content, top rounded corners | Opaque content in the system sheet |
 | Details, JSON, cards, inputs | Opaque reading surfaces | Opaque reading surfaces |
 | Switches and segments | Existing native controls | System controls |
-| Floating entry | Existing native surface; no host capture | System glass where supported, native fallback otherwise |
+| Floating entry | Bounded circular lens over ordinary Activity content, native fallback otherwise | System glass where supported, native fallback otherwise |
 
-Android enables only bottom-navigation enhancement by default, subject to device
-admission. The host can opt out with `InspectorView.setEnhancedMaterialsEnabled(false)`.
+Android enables the bottom navigation and floating entry when device policy permits.
+The host can opt out of the floating material with
+`InspectorSession.setFloatingEntryMaterialEnabled(false)` and of the navigation material with `InspectorView.setEnhancedMaterialsEnabled(false)`.
 Setting it to `false` restores the native navigation background and releases
 material resources and listeners. The choice belongs to each viewer instance.
 Setting it back to `true` reassesses admission without clearing a failure lock.
@@ -31,7 +32,7 @@ settings do not disable platform-owned control effects or alter capture.
 
 ## Android rendering and admission
 
-Only the inspector's own navigation content is sampled. Source and tab surface
+The bottom bar samples the inspector’s own navigation content. Source and tab surface
 are siblings in the same window; the material never samples itself, the host
 DecorView, a WebView or a SurfaceView. Source invalidation, scroll and geometry
 changes update the recording. Geometry checks run on existing pre-draw events;
@@ -44,6 +45,20 @@ while only refraction inputs change. No host View layer or software image captur
 is forced. Detachment clears effects, compositing layers and display lists.
 Platform glyph/texture caches can outlive these resources and remain part of
 process memory; the SDK does not force global cache eviction or garbage collection.
+
+The floating entry uses the [inward lens](../native/android/vendor/liquid-glass/README.md).
+Its 48 dp button sits beside the Activity content hierarchy. The GPU recording
+covers the button and its sampling margin inside the same window's
+`android.R.id.content`. The original button fill stays beneath the lens, with
+the bug and native press feedback above it. The window's solid background color
+or the themed button fill supplies a base for transparent content. The entry
+uses the native button on secure windows, outside the visible content, or over a
+WebView, SurfaceView, TextureView or software layer. The eligibility check
+visits intersecting branches with a fixed work limit. Host invalidation, dragging
+and docking update the source coordinates on existing frames. Pausing the
+Activity, opening the viewer, hiding the entry or disposing the session releases
+its material. Floating-entry and navigation opt-outs and renderer failures are
+independent.
 
 The [navigation recipe](../native/android/vendor/backdrop/README.md) composes a
 base, colored native labels and a moving lens. A tap selects its destination
@@ -88,8 +103,8 @@ callbacks, so entry admission, bounded allocation and timely release are primary
 protections, rather than reliance on a low-memory callback.
 
 The original Drawable, padding and native controls remain available for fallback.
-The optical shadow replaces native elevation only after successful rendering;
-fallback restores the native elevation.
+The bottom bar switches to its optical shadow after successful rendering. The floating
+entry keeps its native elevation around the circular lens.
 Native controls retain their hit regions and accessibility nodes. Accessibility
 and thermal listeners exist only for enabled, eligible, attached visible surfaces.
 Covering sheets and confirmations
