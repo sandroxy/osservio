@@ -26,7 +26,7 @@ public final class InspectorConfirmationTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
             FrameLayout modals = new FrameLayout(base); View workspace = new View(base);
-            InspectorNavigation navigation = new InspectorNavigation(base, new View(base), modals, workspace);
+            InspectorNavigation navigation = new InspectorNavigation(base, new View(base), modals, workspace, new InspectorGlassSession(base));
             Context context = new InspectorNavigation.OwnerContext(base, navigation, 0);
             InspectorScreen page = InspectorDialogs.screen(context, R.string.osservio_ui_retained_run, new View(context)); page.show();
             int[] accepted = {0}, cancelled = {0};
@@ -82,7 +82,7 @@ public final class InspectorConfirmationTest {
                         host.applyOverrideConfiguration(sizing);
                         Context base = InspectorTheme.context(host);
                         FrameLayout modals = new FrameLayout(base);
-                        InspectorNavigation navigation = new InspectorNavigation(base, new View(base), modals, new View(base));
+                        InspectorNavigation navigation = new InspectorNavigation(base, new View(base), modals, new View(base), new InspectorGlassSession(base));
                         Context context = new InspectorNavigation.OwnerContext(base, navigation, 0);
                         InspectorScreen confirmation = InspectorDialogs.confirm(context, R.string.osservio_archive_delete_all,
                             R.string.osservio_archive_delete_confirmation, R.string.osservio_archive_delete_all, (ignored, which) -> fail("Layout must not confirm"));

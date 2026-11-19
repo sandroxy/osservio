@@ -218,9 +218,17 @@ final class InspectorFilterSheet {
                 return label;
             }
             if (row.type == Type.SCOPE) {
+                int selected = "http".equals(draft.transport()) ? 1 : "webSocket".equals(draft.transport()) ? 2 : 0;
+                if (recycled instanceof LinearLayout && ((LinearLayout) recycled).getChildAt(0) instanceof InspectorSegmentControl) {
+                    InspectorSegmentControl control = (InspectorSegmentControl) ((LinearLayout) recycled).getChildAt(0);
+                    control.setOnCheckedChangeListener(null);
+                    ((android.widget.RadioButton) control.getChildAt(selected)).setChecked(true);
+                    control.setOnCheckedChangeListener((group, id) -> scopeSelected((Integer) group.findViewById(id).getTag()));
+                    return recycled;
+                }
                 LinearLayout region = column();
-                region.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_all, R.string.osservio_ui_http, R.string.osservio_ws_title}, "http".equals(draft.transport()) ? 1 : "webSocket".equals(draft.transport()) ? 2 : 0,
-                    index -> { InspectorWidgets.hideKeyboard(list); draft.select(InspectorQuery.Field.TRANSPORT, index == 1 ? "http" : index == 2 ? "webSocket" : null); if (conditions != null) conditions.sync(); rebuild(); }));
+                region.setClipChildren(false); region.setClipToPadding(false);
+                region.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_all, R.string.osservio_ui_http, R.string.osservio_ws_title}, selected, this::scopeSelected));
                 TextView hint = InspectorWidgets.caption(context); hint.setPadding(dp(16), dp(8), dp(16), 0); hint.setText(R.string.osservio_ui_filter_switch); region.addView(hint); return region;
             }
             boolean first = position == 0 || rows.get(position - 1).type == Type.HEADING;
@@ -250,6 +258,11 @@ final class InspectorFilterSheet {
             boolean opensPicker = row.type == Type.GROUP && (row.group.options.size() > 6 || row.group.field == InspectorQuery.Field.STATUS);
             boolean open = row.type == Type.GROUP ? expanded.contains(row.group.field) : row.type == Type.TIME ? timeExpanded : row.type == Type.DURATION ? durationExpanded : refined;
             view.disclosureRotation(opensPicker ? 0 : open ? -90 : 90); view.action(() -> choose(row)); InspectorWidgets.groupedRow(view, first, last); return view;
+        }
+        void scopeSelected(int index) {
+            InspectorWidgets.hideKeyboard(list);
+            draft.select(InspectorQuery.Field.TRANSPORT, index == 1 ? "http" : index == 2 ? "webSocket" : null);
+            if (conditions != null) conditions.sync(); rebuild();
         }
         void choose(Row row) {
             switch (row.type) {

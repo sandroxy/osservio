@@ -1,6 +1,6 @@
 # Liquid Glass optical kernel
 
-The optional Android UI module uses an inward optical kernel for its floating entry from
+The optional Android UI module uses an inward optical kernel for its floating entry and action controls from
 [Liquid-Glass-Android v2.0.11](https://github.com/QWEA0/Liquid-Glass-Android/tree/fc6bd34fa3290638c3594cc39386f549d1316ab5),
 commit `fc6bd34fa3290638c3594cc39386f549d1316ab5`, copyright (c) 2025–2026
 pandadog, under MIT. [Original file hashes](source.json) identify the four Kotlin
@@ -21,8 +21,12 @@ and backdrop recording. Osservio distributes derived source, not the upstream AA
   light direction (0.866, 0.5). Bevel, refraction cap, sampling bounds and rim
   band retain upstream size/density mapping. The circular radius is half the
   short side. Appearance comes from the host, not the inspector preference.
+- `InspectorActionRenderer` uses the same inward-lens equations over the known
+  opaque inspector backing or primary theme color. It needs no backdrop capture
+  or blur of a uniform source. Native button state drives local press relief;
+  text, hit regions and accessibility remain native.
 - Only the single inward surface is retained. There is no outward composite
-  node, sensor, press animation, automatic brightness sampling, shape merging,
+  node, sensor, upstream press animation, automatic brightness sampling, shape merging,
   software blur, JNI, upstream control wrapper, bitmap cache, or optional widget
   dependency. Adaptive tint remains disabled; the floating entry uses its
   appearance's neutral tint without background readback or a material selector.

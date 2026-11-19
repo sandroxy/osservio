@@ -11,12 +11,13 @@ to be transparent.
 | Scene | Android | iOS |
 | --- | --- | --- |
 | Bottom navigation | Bounded GPU backdrop and movable lens when admitted; native fallback | System tab material on iOS 26 |
-| Top actions | Existing native controls on the page header | System bar controls; existing header treatment |
+| Top actions | Bounded local optical surface and press feedback over native buttons | System bar controls; existing header treatment |
+| Record problem | Emphasized local optical action | System prominent glass on iOS 26; filled action on older systems |
 | View latest | Existing readable floating pill | Existing readable floating pill |
 | Short menus and confirmations | Existing native surfaces | System surfaces; no added optical layer |
-| Filters and problem composer | Opaque content, top rounded corners | Opaque content in the system sheet |
+| Filters and problem composer | Opaque content, top rounded corners; material on header actions | Opaque content in the system sheet; native bar actions |
 | Details, JSON, cards, inputs | Opaque reading surfaces | Opaque reading surfaces |
-| Switches and segments | Existing native controls | System controls |
+| Switches and segments | Native switches; shared moving lens over native segmented choices | System controls, with native segmented material |
 | Floating entry | Bounded frosted circular lens over ordinary Activity content, native fallback otherwise | System Regular glass where supported, native fallback otherwise |
 
 The floating entry follows the host's effective light/dark appearance, independently
@@ -26,10 +27,11 @@ host root view's traits through a noninteractive observer, including explicit
 window/controller overrides. Neither implementation changes the host's appearance
 or infers it from sampled pixels.
 
-Android enables the bottom navigation and floating entry when device policy permits.
+Android enables bottom navigation, segmented choices, designated action controls
+and the floating entry when device policy permits.
 The host can opt out of the floating material with
-`InspectorSession.setFloatingEntryMaterialEnabled(false)` and of the navigation material with `InspectorView.setEnhancedMaterialsEnabled(false)`.
-Setting it to `false` restores the native navigation background and releases
+`InspectorSession.setFloatingEntryMaterialEnabled(false)` and of inspector control materials with `InspectorView.setEnhancedMaterialsEnabled(false)`.
+Setting it to `false` restores native control backgrounds and releases
 material resources and listeners. The choice belongs to each viewer instance.
 Setting it back to `true` reassesses admission without clearing a failure lock.
 iOS independently uses its system navigation material by default where supported;
@@ -87,7 +89,7 @@ RuntimeShader and RenderNode types stay in an API-isolated implementation;
 consumer rules prevent R8 from moving it into old-system entry points.
 
 Recording includes a 32 px source margin and the enlarged control's overflow.
-Limits are 786,432 logical pixels per recording node, 3,145,728 summed per viewer,
+Limits are 786,432 logical pixels per recording node, 4,718,592 summed per viewer, with a 3,145,728 limit per selection control,
 and 4,096 px per recording edge. The navigation reservation includes source,
 colored-label recording, and the three layers' images, outer/inner shadows and
 highlights before renderer creation. These limits are not GPU-memory byte limits,
@@ -121,6 +123,43 @@ and thermal listeners exist only for enabled, eligible, attached visible surface
 Covering sheets and confirmations
 release the navigation renderer until that navigation becomes usable again.
 
+## Actions and segmented choices
+
+Android's native icon buttons, sheet header actions and inline problem action
+retain their own input, enabled state, focus and accessibility behavior. The
+material does not receive touch events. It uses the existing inward-lens program
+over the known opaque inspector backing or emphasized theme color, with no host
+or page capture. A bounded press spring transforms drawing only, leaving layout
+and hit regions unchanged. Each surface records only its small geometry and
+reuses that recording until size or theme changes. Keyboard-focused controls
+retain their native focus background. Disabled, detached or covered controls
+release rendering resources; shared policy changes also reach attached controls
+that previously opted out. Detached candidates are weakly held.
+
+Within an inspector, network scope, HTTP/WebSocket detail sections,
+structured/source readers and runtime sections share the navigation lens and
+motion implementation. Their
+opaque backing does not need the bottom bar's two full-width optical chains;
+the moving lens still samples the separately colored native labels with the
+same refraction, dispersion and spring recipe. Lens expansion respects the actual
+drawing viewport in clipped reader headers without changing text-scroll clipping.
+The original RadioButtons own
+selection, keyboard and accessibility. A horizontal drag from the selected lens
+previews a destination; release commits the nearest choice once. Vertical motion
+remains available to the containing list. Cancellation, interception, focus loss
+or fallback restores the committed choice. Filter changes remain drafts until
+Apply, and scope-row reuse preserves settling motion without rebuilding during
+preview. Long labels and large fonts use full-width native choices instead of
+truncation. iOS uses UISegmentedControl and the corresponding full-width fallback.
+
+The combined viewer budget is 4,718,592 logical pixels, accommodating a bottom
+bar, one inline selector and small actions. Each selection surface retains the
+previous 3,145,728 pixel limit and each recording remains limited to 786,432
+pixels and 4,096 px per edge. Admission includes simultaneous surfaces before
+allocation. These are recording-area limits, not native heap or GPU byte limits;
+native shadows and intermediate effects have additional costs. Floating-entry
+admission and its separate session remain independent.
+
 ## iOS rendering
 
 On iOS 26, the tab bar uses its system default material without stacking a custom
@@ -132,6 +171,12 @@ optional navigation setting. The floating entry uses unmodified system Regular
 glass on iOS 26 and system material blur on older systems. Its symbol belongs to
 the effect view's `contentView`; no custom glass tint, outline or dark optical parameters
 are added.
+The inline problem action uses the system prominent glass button configuration,
+with a filled fallback and the same label, icon and target. Its tint follows the
+inspector palette. Segmented controls preserve UIKit's interactive material and
+refresh their title colors without emitting a selection action. Internal
+controls follow the inspector appearance; they do not inherit the floating
+entry's host-appearance ownership.
 
 ## Validation boundaries
 

@@ -29,6 +29,7 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
     final InspectorGlassBudget budget = new InspectorGlassBudget();
     private final Context context;
     private final Set<Surface> surfaces = new LinkedHashSet<>();
+    private final Set<Surface> candidates = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
     private boolean failed, restricted, thermalLimited, enabled, disposed;
     private boolean observerRegistered, receiverRegistered, callbacksRegistered;
     private Thermal thermal;
@@ -42,11 +43,14 @@ final class InspectorGlassSession implements ComponentCallbacks2 {
     InspectorGlassSession(Context context) { this.context = context.getApplicationContext(); }
     boolean allowed() { return enabled && !disposed && !failed && !restricted; }
     boolean enabled() { return enabled && !disposed && !failed; }
+    void watch(Surface surface) { candidates.add(surface); }
+    void refresh() { for (Surface surface : new ArrayList<>(candidates)) { surface.updateRegistration(); surface.invalidate(); } }
     float animationScale() { return animationScale; }
     void setEnabled(boolean value) {
         if (enabled == value) return;
         enabled = value;
         for (Surface surface : new ArrayList<>(surfaces)) surface.updateRegistration();
+        refresh();
     }
     void attach(Surface surface) {
         if (disposed || !enabled || !surfaces.add(surface)) return;

@@ -19,7 +19,7 @@ final class InspectorWidgets {
     interface Selection { void selected(int value); }
     private InspectorWidgets() { }
     static ImageButton icon(Context context, int symbol, int label, Runnable action) {
-        ImageButton button = new ImageButton(context);
+        ImageButton button = new InspectorActionIcon(context);
         button.setImageResource(symbol);
         button.setTag(R.id.osservio_destructive_action, symbol == R.drawable.osservio_trash);
         InspectorAppearance.style(button, () -> styleIcon(button, label));
@@ -50,7 +50,7 @@ final class InspectorWidgets {
         if (keyboard != null) keyboard.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
     static Button button(Context context, int label, Runnable action) {
-        Button button = new Button(context); InspectorAppearance.text(button, label); button.setAllCaps(false);
+        Button button = new InspectorActionButton(context); InspectorAppearance.text(button, label); button.setAllCaps(false);
         InspectorTheme.typography(button, 15, false); button.setMinHeight(InspectorTheme.dp(context, 48));
         button.setMinimumWidth(0); button.setMinWidth(0); button.setSingleLine(false);
         button.setStateListAnimator(null); button.setPadding(InspectorTheme.dp(context, 12), InspectorTheme.dp(context, 8), InspectorTheme.dp(context, 12), InspectorTheme.dp(context, 8));
@@ -62,35 +62,41 @@ final class InspectorWidgets {
         button.setOnClickListener(ignored -> action.run()); return button;
     }
     static void primaryAction(Button button) {
+        if (button instanceof InspectorActionButton) ((InspectorActionButton) button).configureMaterial(true);
         Context context = button.getContext(); button.setTextSize(15);
         int horizontal = InspectorTheme.dp(context, 20), vertical = InspectorTheme.dp(context, 12);
         button.setPadding(horizontal, vertical, horizontal, vertical);
         InspectorAppearance.style(button, () -> {
-            button.setBackgroundTintList(null); button.setTextColor(InspectorTheme.accent(context));
+            button.setBackgroundTintList(null); button.setTextColor(actionColors(context, android.graphics.Color.WHITE));
+            android.graphics.drawable.GradientDrawable fill = InspectorTheme.shape(context, InspectorPreferences.palette(context).light, 1000, false);
+            fill.setColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[0]},
+                new int[] {InspectorTheme.surface(context), InspectorPreferences.palette(context).light}));
             button.setBackground(InspectorTheme.ripple(context,
-                InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 1000, false), null));
+                fill, null));
         });
     }
     static void sheetAction(Button button, boolean primary) {
+        if (button instanceof InspectorActionButton) ((InspectorActionButton) button).configureMaterial(primary);
         Context context = button.getContext();
         button.setGravity(Gravity.CENTER);
         button.setPadding(InspectorTheme.dp(context, 18), InspectorTheme.dp(context, 10), InspectorTheme.dp(context, 18), InspectorTheme.dp(context, 10));
         InspectorAppearance.style(button, () -> {
             int accent = InspectorTheme.accent(context);
-            // Dark palettes use light accents, which need dark text for contrast.
-            int foreground = primary ? (InspectorPreferences.dark(context) ? 0xFF16161D : android.graphics.Color.WHITE) : accent;
+            int foreground = primary ? android.graphics.Color.WHITE : accent;
             button.setTextColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[] {}},
                 new int[] {InspectorTheme.secondary(context), foreground}));
-            android.graphics.drawable.GradientDrawable fill = InspectorTheme.shape(context, primary ? accent : InspectorTheme.surface(context), 1000, false);
+            int background = primary ? InspectorPreferences.palette(context).light : InspectorTheme.surface(context);
+            android.graphics.drawable.GradientDrawable fill = InspectorTheme.shape(context, background, 1000, false);
             fill.setColor(new android.content.res.ColorStateList(new int[][] {new int[] {-android.R.attr.state_enabled}, new int[] {}},
-                new int[] {InspectorTheme.surface(context), primary ? accent : InspectorTheme.surface(context)}));
+                new int[] {InspectorTheme.surface(context), background}));
             button.setBackgroundTintList(null); button.setBackground(InspectorTheme.ripple(context, fill, null));
         });
     }
     static CharSequence actionTitle(Context context, int label, int icon) {
         android.text.SpannableString text = new android.text.SpannableString("\uFFFC\u00A0 " + context.getString(label));
         // Center the icon in the text line on API 23+, without raising the text baseline.
-        android.text.style.ImageSpan span = new android.text.style.ImageSpan(symbol(context, icon, 20, InspectorTheme.accent(context))) {
+        android.text.style.ImageSpan span = new android.text.style.ImageSpan(symbol(context, icon, 20, android.graphics.Color.WHITE)) {
+            private int tint = android.graphics.Color.WHITE;
             @Override public int getSize(android.graphics.Paint paint, CharSequence text, int start, int end, android.graphics.Paint.FontMetricsInt metrics) {
                 if (metrics != null) {
                     paint.getFontMetricsInt(metrics);
@@ -102,6 +108,7 @@ final class InspectorWidgets {
             }
             @Override public void draw(android.graphics.Canvas canvas, CharSequence text, int start, int end, float x,
                                        int top, int baseline, int bottom, android.graphics.Paint paint) {
+                if (tint != paint.getColor()) { tint = paint.getColor(); getDrawable().setTint(tint); }
                 canvas.save(); canvas.translate(x, (top + bottom - getDrawable().getBounds().height()) / 2f);
                 getDrawable().draw(canvas); canvas.restore();
             }
@@ -269,12 +276,12 @@ final class InspectorWidgets {
         return bar;
     }
     static View segments(Context context, String[] labels, int selected, Selection changed) {
-        android.widget.RadioGroup bar = new SegmentGroup(context);
+        android.widget.RadioGroup bar = new InspectorSegmentControl(context, labels.length);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         int inset = InspectorTheme.dp(context, 4); bar.setPadding(inset, inset, inset, inset);
         InspectorAppearance.style(bar, () -> bar.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false)));
         for (int i = 0; i < labels.length; i++) {
-            android.widget.RadioButton button = new android.widget.RadioButton(context);
+            android.widget.RadioButton button = new InspectorSegmentControl.Choice(context);
             button.setId(View.generateViewId()); button.setTag(i); button.setButtonDrawable(null);
             button.setText(labels[i]); InspectorTheme.typography(button, 14, false); button.setGravity(Gravity.CENTER); button.setAllCaps(false);
             button.setMinHeight(InspectorTheme.dp(context, 44)); button.setPadding(inset * 2, inset, inset * 2, inset);
@@ -297,33 +304,6 @@ final class InspectorWidgets {
             if (selectedView != null) changed.selected((Integer) selectedView.getTag());
         });
         return bar;
-    }
-    /** Keep every choice legible at large text sizes instead of splitting protocol names. */
-    private static final class SegmentGroup extends android.widget.RadioGroup {
-        SegmentGroup(Context context) { super(context); }
-        @Override protected void onMeasure(int widthSpec, int heightSpec) {
-            int available = MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight();
-            boolean vertical = false;
-            if (getChildCount() > 0 && MeasureSpec.getMode(widthSpec) != MeasureSpec.UNSPECIFIED) {
-                int share = Math.max(0, available / getChildCount());
-                for (int index = 0; index < getChildCount(); index++) {
-                    TextView choice = (TextView) getChildAt(index);
-                    float needed = android.text.Layout.getDesiredWidth(choice.getText(), choice.getPaint())
-                        + choice.getCompoundPaddingLeft() + choice.getCompoundPaddingRight();
-                    if (needed > share) { vertical = true; break; }
-                }
-            }
-            int orientation = vertical ? VERTICAL : HORIZONTAL;
-            if (getOrientation() != orientation) {
-                setOrientation(orientation);
-                for (int index = 0; index < getChildCount(); index++) {
-                    LayoutParams params = (LayoutParams) getChildAt(index).getLayoutParams();
-                    params.width = vertical ? LayoutParams.MATCH_PARENT : 0; params.weight = vertical ? 0 : 1;
-                    params.topMargin = vertical && index > 0 ? InspectorTheme.dp(getContext(), 2) : 0;
-                }
-            }
-            super.onMeasure(widthSpec, heightSpec);
-        }
     }
     static View divider(Context context) {
         View divider = new View(context); InspectorAppearance.style(divider, () -> divider.setBackgroundColor(InspectorTheme.color(context, R.color.osservio_separator)));

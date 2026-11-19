@@ -34,7 +34,7 @@ public final class InspectorSheetTest {
                 @Override public void clear() { payload[0] = null; }
             };
             Context base = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
-            FrameLayout container = new FrameLayout(base); InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, new View(base));
+            FrameLayout container = new FrameLayout(base); InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, new View(base), new InspectorGlassSession(base));
             Context context = new InspectorNavigation.OwnerContext(base, navigation, 0);
             IncidentSnapshot[] saved = {null};
             IncidentArchive archive = new NoWritesArchive() {
@@ -82,7 +82,7 @@ public final class InspectorSheetTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
             FrameLayout container = new FrameLayout(base);
-            InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, new View(base));
+            InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, new View(base), new InspectorGlassSession(base));
             navigation.setMinimize(() -> fail("A sheet must not minimize the inspector"));
             Context context = new InspectorNavigation.OwnerContext(base, navigation, 0);
             int[] dismissed = {0};

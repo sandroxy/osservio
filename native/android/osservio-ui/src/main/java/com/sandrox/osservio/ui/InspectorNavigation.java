@@ -10,6 +10,7 @@ import java.util.List;
 /** Independent tab stacks share one presentation owner. Temporary panels cover the tab bar. */
 @android.annotation.SuppressLint("ViewConstructor")
 final class InspectorNavigation extends FrameLayout {
+    final InspectorGlassSession materials;
     private final List<List<InspectorScreen>> stacks = new ArrayList<>();
     private final View rootPage;
     private final FrameLayout modalContainer;
@@ -63,8 +64,8 @@ final class InspectorNavigation extends FrameLayout {
         }
     }
 
-    InspectorNavigation(Context context, View rootPage, FrameLayout modalContainer, View workspace) {
-        super(context); this.rootPage = rootPage; this.modalContainer = modalContainer; this.workspace = workspace;
+    InspectorNavigation(Context context, View rootPage, FrameLayout modalContainer, View workspace, InspectorGlassSession materials) {
+        super(context); this.materials = materials; this.rootPage = rootPage; this.modalContainer = modalContainer; this.workspace = workspace;
         for (int i = 0; i < 4; i++) stacks.add(new ArrayList<>());
         addView(rootPage, new LayoutParams(-1, -1));
     }
@@ -74,6 +75,13 @@ final class InspectorNavigation extends FrameLayout {
     boolean coversNavigation() {
         List<InspectorScreen> active = stacks.get(selection);
         return !active.isEmpty() && active.get(active.size() - 1).coversTabs();
+    }
+    boolean materialVisible(View view) {
+        if (!view.isShown()) return false;
+        for (View current = view; current != null; current = current.getParent() instanceof View ? (View) current.getParent() : null) {
+            if (current.getImportantForAccessibility() == IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS) return false;
+        }
+        return true;
     }
     void setMinimize(Runnable action) {
         minimize = action;
@@ -148,6 +156,7 @@ final class InspectorNavigation extends FrameLayout {
             }
         }
         if (changed != null) changed.run();
+        materials.refresh();
     }
     private static OwnerContext owner(Context context) {
         for (int i = 0; i < 16 && context instanceof ContextWrapper; i++) {

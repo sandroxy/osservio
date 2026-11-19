@@ -19,7 +19,7 @@ import java.util.List;
 
 /** Hardware-only optical layers. Its owner admits geometry before constructing any shaders. */
 @RequiresApi(33)
-final class InspectorTabRenderer implements InspectorTabBar.Renderer {
+final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer {
     private static final ColorMatrixColorFilter VIBRANCY = new ColorMatrixColorFilter(new float[] {
         1.3935f, -.3575f, -.036f, 0, 0, -.1065f, 1.1425f, -.036f, 0, 0,
         -.1065f, -.3575f, 1.464f, 0, 0, 0, 0, 0, 1, 0
@@ -36,12 +36,12 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
     private float inkPress = -1, inkOffset, inkPosition, inkGlow;
     private int sourceWidth, sourceHeight;
 
-    @DoNotInline static InspectorTabBar.Renderer create() { return new InspectorTabRenderer(RuntimeShader::new); }
+    @DoNotInline static InspectorSelectionMaterial.Renderer create() { return new InspectorTabRenderer(RuntimeShader::new); }
     InspectorTabRenderer(ShaderCompiler shaders) { this.shaders = shaders; erase.setBlendMode(BlendMode.CLEAR); plus.setBlendMode(BlendMode.PLUS); }
     private RenderNode node(String name) {
         RenderNode result = new RenderNode(name); result.setClipToBounds(false); nodes.add(result); return result;
     }
-    @Override public void draw(Canvas canvas, InspectorTabBar bar) {
+    @Override public void draw(Canvas canvas, InspectorSelectionMaterial bar) {
         float width = bar.getWidth(), height = bar.getHeight(), density = bar.density;
         float inkHeight = height - bar.dp(8), progress = bar.motion.progress();
         if (source == null) {
@@ -49,8 +49,10 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
             // Rasterize background text at a stable scale before optical transforms.
             // Its display list is still re-recorded whenever the page content or geometry changes.
             source.setUseCompositingLayer(true, null);
-            base = new Surface("Navigation base", false);
-            selectedInk = new Surface("Navigation labels", false);
+            if (!bar.segmented()) {
+                base = new Surface("Navigation base", false);
+                selectedInk = new Surface("Navigation labels", false);
+            }
             lens = new Surface("Navigation lens", true);
         }
         // Retain the overflow used by the enlarged control without wrapping or reparenting pages.
@@ -69,15 +71,18 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
             sourceVersion = bar.sourceVersion();
         }
         float offset = bar.panelOffset(), baseScale = 1 + bar.dp(16) / width * progress;
-        base.draw(canvas, bar, offset, 0, width, height, baseScale, baseScale,
-            8 * density, 24 * density, 24 * density, 1, 1, 0, false, false);
+        if (bar.segmented()) drawSegmentBase(canvas, bar, width, height, false, 1);
+        else base.draw(canvas, bar, offset, 0, width, height, baseScale, baseScale,
+                8 * density, 24 * density, 24 * density, 1, 1, 0, false, false);
         if (sourceChanged || inkVersion != bar.inkVersion() || inkPress != progress || inkOffset != offset
             || inkPosition != bar.visualPosition() || inkGlow != (float) bar.motion.glow.value) {
             ink.setPosition(-overflowX, -overflowY, sourceWidth - overflowX, sourceHeight - overflowY);
             Canvas content = ink.beginRecording(sourceWidth, sourceHeight);
             try {
                 content.translate(overflowX, overflowY);
-                selectedInk.draw(content, bar, offset, bar.dp(4), width, inkHeight, 1, 1,
+                if (bar.segmented()) {
+                    content.translate(0, bar.dp(4)); drawSegmentBase(content, bar, width, inkHeight, true, 1 + .2f * progress);
+                } else selectedInk.draw(content, bar, offset, bar.dp(4), width, inkHeight, 1, 1,
                     8 * density, 24 * density * progress, 24 * density * progress, progress, 1, 0, true, false);
             } finally { ink.endRecording(); }
             inkVersion = bar.inkVersion(); inkPress = progress; inkOffset = offset;
@@ -86,6 +91,14 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
         lens.draw(canvas, bar, bar.lensX(), bar.dp(4), bar.tabWidth(), inkHeight,
             bar.lensScaleX(), bar.lensScaleY(), 0, 10 * density * progress, 14 * density * progress,
             progress, progress, 8 * density * progress, false, true);
+    }
+    private void drawSegmentBase(Canvas canvas, InspectorSelectionMaterial bar, float width, float height, boolean colored, float scale) {
+        // These controls sit on opaque reading surfaces. Recording that known solid base
+        // avoids two redundant optical/shadow chains while keeping the same moving lens.
+        paint.setShader(null); paint.setBlendMode(BlendMode.SRC_OVER); paint.setStyle(Paint.Style.FILL);
+        paint.setColor(bar.dark() ? 0xFF1D2330 : 0xFFFFFFFF);
+        canvas.drawRoundRect(0, 0, width, height, height / 2, height / 2, paint);
+        bar.drawLabels(canvas, width, height, colored, scale);
     }
     private void roundClip(Canvas canvas, float width, float height) {
         clip.reset(); clip.addRoundRect(0, 0, width, height, height / 2, height / 2, Path.Direction.CW); canvas.clipPath(clip);
@@ -125,7 +138,7 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
             image.setRenderEffect(effect); oldWidth = width; oldHeight = height; oldBlur = blur;
             oldBand = band; oldAmount = amount; oldPadding = padding;
         }
-        void draw(Canvas target, InspectorTabBar bar, float x, float y, float width, float height,
+        void draw(Canvas target, InspectorSelectionMaterial bar, float x, float y, float width, float height,
                   float scaleX, float scaleY, float blur, float band, float amount,
                   float highlightAlpha, float shadowAlpha, float innerRadius, boolean colored, boolean selector) {
             float density = bar.density, progress = bar.motion.progress();
@@ -201,7 +214,7 @@ final class InspectorTabRenderer implements InspectorTabBar.Renderer {
             } finally { inner.endRecording(); }
             int save = canvas.save(); roundClip(canvas, width, height); canvas.drawRenderNode(inner); canvas.restoreToCount(save);
         }
-        void drawGlow(Canvas canvas, InspectorTabBar bar, float width, float height) {
+        void drawGlow(Canvas canvas, InspectorSelectionMaterial bar, float width, float height) {
             float glow = (float) bar.motion.glow.value;
             if (glow <= 0) return;
             paint.setBlendMode(BlendMode.PLUS); paint.setColor(Color.WHITE); paint.setAlpha(Math.round(255 * .08f * glow));

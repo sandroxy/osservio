@@ -22,7 +22,7 @@ public final class InspectorTabMaterialTest {
             for (float progress : new float[] {0, 1, .4f, 0, 1}) {
                 main(() -> {
                     InspectorTabBar bar = host.bar();
-                    android.view.Choreographer.getInstance().removeFrameCallback(bar);
+                    android.view.Choreographer.getInstance().removeFrameCallback(bar.material);
                     bar.motion.stop(); bar.motion.press.snap(progress);
                     bar.motion.position.snap(progress * 2.5); bar.motion.glow.snap(progress);
                     bar.motion.scaleX.snap(1 + progress * .2); bar.motion.scaleY.snap(1 + progress * .2);
@@ -32,8 +32,8 @@ public final class InspectorTabMaterialTest {
                     if (previousState != null) assertFalse("Distinct press states must produce distinct pixels", previousState.sameAs(reused));
                     main(() -> {
                         assertTrue(host.bar().materialReady());
-                        InspectorTabBar.Renderer previous = host.bar().renderer;
-                        host.bar().renderer = null; previous.release();
+                        InspectorSelectionMaterial.Renderer previous = host.bar().material.renderer;
+                        host.bar().material.renderer = null; previous.release();
                     });
                     android.graphics.Bitmap fresh = navigationImage(host.bar());
                     try {
@@ -86,9 +86,9 @@ public final class InspectorTabMaterialTest {
             bar.getLocationOnScreen(position);
             navigationInset[0] = bar.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.navigationBars()).bottom;
         });
-        int top = Math.max(0, position[1] - Math.round(bar.dp(60)));
+        int top = Math.max(0, position[1] - Math.round(bar.material.dp(60)));
         // System gesture-handle dimming is unrelated to the cached navigation pixels.
-        int bottom = Math.min(screen.getHeight() - navigationInset[0], position[1] + bar.getHeight() + Math.round(bar.dp(60)));
+        int bottom = Math.min(screen.getHeight() - navigationInset[0], position[1] + bar.getHeight() + Math.round(bar.material.dp(60)));
         try { return android.graphics.Bitmap.createBitmap(screen, 0, top, screen.getWidth(), bottom - top); }
         finally { screen.recycle(); }
     }
@@ -104,7 +104,7 @@ public final class InspectorTabMaterialTest {
                 int[] position = new int[2]; bar.getLocationInWindow(position);
                 View root = bar.getRootView();
                 int inset = root.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.navigationBars()).bottom;
-                int margin = Math.round(bar.dp(60));
+                int margin = Math.round(bar.material.dp(60));
                 android.graphics.Rect area = new android.graphics.Rect(0, Math.max(0, position[1] - margin),
                     root.getWidth(), Math.min(root.getHeight() - inset, position[1] + bar.getHeight() + margin));
                 android.view.PixelCopy.request(android.view.PixelCopy.Request.Builder.ofWindow(bar).setSourceRect(area).build(),
@@ -129,13 +129,13 @@ public final class InspectorTabMaterialTest {
                         tab.getLeft() + tab.getWidth() / 2f, tab.getHeight() / 2f, 0);
                     try { assertTrue(bar.dispatchTouchEvent(event)); } finally { event.recycle(); }
                     android.view.Choreographer clock = android.view.Choreographer.getInstance();
-                    clock.removeFrameCallback(bar);
+                    clock.removeFrameCallback(bar.material);
                     if (precedingVsync) {
-                        bar.doFrame((down - 16) * 1_000_000L); clock.removeFrameCallback(bar);
-                        bar.doFrame(down * 1_000_000L); clock.removeFrameCallback(bar);
+                        bar.material.doFrame((down - 16) * 1_000_000L); clock.removeFrameCallback(bar.material);
+                        bar.material.doFrame(down * 1_000_000L); clock.removeFrameCallback(bar.material);
                         assertEquals("A frame at or before the touch cannot advance the animation", 0, bar.motion.progress(), 0);
                     }
-                    bar.doFrame((down + 16) * 1_000_000L);
+                    bar.material.doFrame((down + 16) * 1_000_000L);
                     assertTrue("The first frame after the touch must advance the resting lens", bar.motion.progress() > 0);
                     touch(bar, MotionEvent.ACTION_CANCEL, bar.motion.selected());
                 });
@@ -149,10 +149,10 @@ public final class InspectorTabMaterialTest {
             main(() -> {
                 InspectorTabBar bar = host.bar(); bar.getChildAt(1).performClick();
                 android.view.Choreographer clock = android.view.Choreographer.getInstance();
-                clock.removeFrameCallback(bar);
+                clock.removeFrameCallback(bar.material);
                 long now = System.nanoTime();
                 for (int frame = 0; frame < 6; frame++) {
-                    bar.doFrame(now + frame * 500_000_000L); clock.removeFrameCallback(bar);
+                    bar.material.doFrame(now + frame * 500_000_000L); clock.removeFrameCallback(bar.material);
                 }
                 assertEquals(1, bar.motion.selected());
                 assertFalse("A stalled frame must not stretch a short selection animation", bar.motion.running());
@@ -225,7 +225,7 @@ public final class InspectorTabMaterialTest {
         try {
             await(() -> host.bar().materialReady());
             main(() -> {
-                host.inspector.setEnhancedMaterialsEnabled(false); assertNull(host.bar().renderer);
+                host.inspector.setEnhancedMaterialsEnabled(false); assertNull(host.bar().material.renderer);
                 assertEquals(InspectorTheme.dp(host.bar().getContext(), 1), host.bar().getElevation(), 0);
                 host.bar().getChildAt(2).performClick(); assertEquals(2, host.bar().motion.selected());
                 host.inspector.setEnhancedMaterialsEnabled(true);
@@ -233,14 +233,14 @@ public final class InspectorTabMaterialTest {
             await(() -> host.bar().materialReady());
             main(() -> {
                 assertEquals(2, host.bar().motion.position.value, .001);
-                host.bar().renderer.release();
-                host.bar().renderer = new InspectorTabBar.Renderer() {
-                    @Override public void draw(Canvas canvas, InspectorTabBar bar) { throw new IllegalStateException("test-owned drawing failure"); }
+                host.bar().material.renderer.release();
+                host.bar().material.renderer = new InspectorSelectionMaterial.Renderer() {
+                    @Override public void draw(Canvas canvas, InspectorSelectionMaterial bar) { throw new IllegalStateException("test-owned drawing failure"); }
                     @Override public void release() { }
                 };
                 host.bar().invalidate();
             });
-            await(() -> host.bar().renderer == null);
+            await(() -> host.bar().material.renderer == null);
             main(() -> {
                 host.bar().getChildAt(3).performClick(); assertEquals(3, host.bar().motion.selected());
                 host.presentation.collapse();
@@ -248,7 +248,7 @@ public final class InspectorTabMaterialTest {
             await(() -> !host.bar().isAttachedToWindow()); main(host.presentation::expand);
             await(() -> host.bar().hasWindowFocus());
             main(() -> {
-                assertNull(host.bar().renderer); assertFalse(host.bar().materialReady());
+                assertNull(host.bar().material.renderer); assertFalse(host.bar().materialReady());
                 host.bar().getChildAt(0).performClick(); assertEquals(0, host.bar().motion.selected());
             });
         } finally { finish(host); }
@@ -262,7 +262,7 @@ public final class InspectorTabMaterialTest {
                 main(() -> { previous[0] = host.bar(); InspectorPreferences.setDark(host.inspector.getContext(), dark); });
                 await(() -> host.bar() != previous[0] && host.bar().materialReady());
                 main(() -> {
-                    assertNull(previous[0].renderer); assertFalse(previous[0].motion.running());
+                    assertNull(previous[0].material.renderer); assertFalse(previous[0].motion.running());
                     assertEquals(3, host.bar().motion.selected()); assertEquals(3, host.bar().motion.position.value, .001);
                 });
             }
@@ -276,7 +276,7 @@ public final class InspectorTabMaterialTest {
             main(() -> { assertSame(bar[0], host.bar()); assertEquals(3, host.bar().motion.selected()); });
             main(() -> { bar[0] = host.bar(); host.presentation.collapse(); });
             await(() -> !bar[0].isAttachedToWindow());
-            main(() -> { assertNull(bar[0].renderer); assertFalse(bar[0].motion.running()); host.presentation.expand(); });
+            main(() -> { assertNull(bar[0].material.renderer); assertFalse(bar[0].motion.running()); host.presentation.expand(); });
             await(() -> host.bar().materialReady()); main(() -> assertEquals(3, host.bar().motion.selected()));
         } finally { finish(host); }
     }
@@ -288,9 +288,9 @@ public final class InspectorTabMaterialTest {
             for (int i = 0; i < 32; i++) {
                 int[] released = {0};
                 main(() -> {
-                    InspectorTabBar bar = host.bar(); InspectorTabBar.Renderer delegate = bar.renderer;
-                    bar.renderer = new InspectorTabBar.Renderer() {
-                        @Override public void draw(Canvas canvas, InspectorTabBar view) { delegate.draw(canvas, view); }
+                    InspectorTabBar bar = host.bar(); InspectorSelectionMaterial.Renderer delegate = bar.material.renderer;
+                    bar.material.renderer = new InspectorSelectionMaterial.Renderer() {
+                        @Override public void draw(Canvas canvas, InspectorSelectionMaterial view) { delegate.draw(canvas, view); }
                         @Override public void release() { released[0]++; delegate.release(); }
                     };
                     touch(bar, MotionEvent.ACTION_DOWN, 2); touch(bar, MotionEvent.ACTION_MOVE, 0);
@@ -298,7 +298,7 @@ public final class InspectorTabMaterialTest {
                 });
                 await(() -> !host.bar().isAttachedToWindow());
                 main(() -> {
-                    assertEquals(1, released[0]); assertNull(host.bar().renderer); assertFalse(host.bar().motion.running());
+                    assertEquals(1, released[0]); assertNull(host.bar().material.renderer); assertFalse(host.bar().motion.running());
                     assertEquals(2, host.bar().motion.selected()); host.presentation.expand();
                 });
                 await(() -> host.bar().materialReady());
@@ -314,7 +314,7 @@ public final class InspectorTabMaterialTest {
                 await(() -> host.bar().materialReady());
                 int[] compiled = {0}; InspectorTabRenderer[] renderer = new InspectorTabRenderer[1];
                 main(() -> {
-                    host.bar().release();
+                    host.bar().material.release();
                     renderer[0] = new InspectorTabRenderer(program -> {
                         if (++compiled[0] == 2) {
                             if (allocationFailure) throw new OutOfMemoryError("test-owned material allocation failure");
@@ -322,9 +322,9 @@ public final class InspectorTabMaterialTest {
                         }
                         return new android.graphics.RuntimeShader(program);
                     });
-                    host.bar().renderer = renderer[0]; host.bar().invalidate();
+                    host.bar().material.renderer = renderer[0]; host.bar().invalidate();
                 });
-                await(() -> host.bar().renderer == null);
+                await(() -> host.bar().material.renderer == null);
                 java.lang.reflect.Field resources = InspectorTabRenderer.class.getDeclaredField("nodes");
                 resources.setAccessible(true);
                 main(() -> {
@@ -336,7 +336,7 @@ public final class InspectorTabMaterialTest {
                 });
                 await(() -> !host.bar().isAttachedToWindow()); main(host.presentation::expand);
                 await(() -> host.bar().hasWindowFocus());
-                main(() -> { assertNull(host.bar().renderer); assertEquals(2, compiled[0]); assertEquals(2, host.bar().motion.selected()); });
+                main(() -> { assertNull(host.bar().material.renderer); assertEquals(2, compiled[0]); assertEquals(2, host.bar().motion.selected()); });
             } finally { finish(host); }
         }
     }
@@ -379,7 +379,7 @@ public final class InspectorTabMaterialTest {
             main(() -> {
                 touch(host.bar(), MotionEvent.ACTION_DOWN, 3); touch(host.bar(), MotionEvent.ACTION_MOVE, 0);
                 host.bar().setMaterialVisible(false);
-                assertFalse(host.bar().motion.held()); assertFalse(host.bar().motion.running()); assertNull(host.bar().renderer);
+                assertFalse(host.bar().motion.held()); assertFalse(host.bar().motion.running()); assertNull(host.bar().material.renderer);
                 assertEquals(3, host.bar().motion.selected()); host.bar().setMaterialVisible(true);
             });
             await(() -> host.bar().materialReady());

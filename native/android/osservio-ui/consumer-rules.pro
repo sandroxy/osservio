@@ -4,3 +4,4 @@
 -keep,allowshrinking,allowobfuscation class com.sandrox.osservio.ui.InspectorGlassThermal { *; }
 -keep,allowshrinking,allowobfuscation class com.sandrox.osservio.ui.InspectorTabRenderer { *; }
 -keep,allowshrinking,allowobfuscation class com.sandrox.osservio.ui.InspectorTabRenderer$* { *; }
+-keep,allowshrinking,allowobfuscation class com.sandrox.osservio.ui.InspectorActionRenderer { *; }

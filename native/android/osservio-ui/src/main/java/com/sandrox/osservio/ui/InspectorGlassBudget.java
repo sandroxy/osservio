@@ -7,7 +7,10 @@ import java.util.Map;
 final class InspectorGlassBudget {
     static final int MARGIN = 32;
     static final long MAX_SURFACE_PIXELS = 786_432;
-    static final long MAX_SESSION_PIXELS = 3_145_728;
+    static final long MAX_SELECTION_PIXELS = 3_145_728;
+    // One bottom bar plus an inline segmented control and small page actions.
+    // Individual selection and recording limits remain independent of this combined cap.
+    static final long MAX_SESSION_PIXELS = 4_718_592;
     private final Map<Object, Long> reservations = new IdentityHashMap<>();
     private long used;
     long pixels() { return used; }

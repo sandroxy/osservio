@@ -18,7 +18,7 @@ public final class InspectorSessionWindowTest {
             main(() -> { root[0] = host.inspector.getRootView(); token[0] = host.inspector.getWindowToken(); });
             assertTrue(InstrumentationRegistry.getInstrumentation().getUiAutomation().performGlobalAction(
                 android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME));
-            await(() -> !host.inspector.hasWindowFocus() && host.bar().renderer == null);
+            await(() -> !host.inspector.hasWindowFocus() && host.bar().material.renderer == null);
             main(() -> {
                 assertSame(root[0], host.inspector.getRootView()); assertSame(token[0], host.inspector.getWindowToken());
                 assertEquals(InspectorSession.Presentation.EXPANDED, host.presentation.presentation());

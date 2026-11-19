@@ -14,6 +14,9 @@ final class InspectorTabGeometry {
     }
 
     static boolean reserve(InspectorGlassBudget budget, Object owner, int width, int height, float density, int count) {
+        return reserve(budget, owner, width, height, density, count, false);
+    }
+    static boolean reserve(InspectorGlassBudget budget, Object owner, int width, int height, float density, int count, boolean segmented) {
         if (width <= 0 || height <= 0 || Float.isNaN(density) || Float.isInfinite(density) || density <= 0 || count <= 0
             || width > MAX_EDGE || height > MAX_EDGE || height <= 8 * density || width <= 8 * density) return false;
         double inkHeight = height - 8 * density, tabWidth = (width - 8 * density) / count;
@@ -25,9 +28,11 @@ final class InspectorTabGeometry {
         long edgeHeight = Math.max(sourceHeight, (long) Math.ceil(height + 4 * density) + 2 * shadowMargin);
         if (edgeWidth > MAX_EDGE || edgeHeight > MAX_EDGE) return false;
         long source = sourceWidth * sourceHeight;
-        long largest = Math.max(source, shadow(width, height, density));
+        long largest = Math.max(source, shadow(segmented ? tabWidth : width, height, density));
         long required = source + area(width + 24 * density, height + 28 * density)
-            + surface(width, height, density) + surface(width, inkHeight, density) + surface(tabWidth, inkHeight, density);
+            + (segmented ? 0 : surface(width, height, density) + surface(width, inkHeight, density))
+            + surface(tabWidth, inkHeight, density);
+        if (required > InspectorGlassBudget.MAX_SELECTION_PIXELS) return false;
         return budget.reserve(owner, largest, required, edgeWidth, edgeHeight);
     }
     private static long area(double width, double height) { return (long) Math.ceil(width) * (long) Math.ceil(height); }

@@ -42,7 +42,7 @@ public final class InspectorNavigationTest {
                 host.setBaseContext(base.createConfigurationContext(changed));
                 inspector.dispatchConfigurationChanged(changed); layout(inspector, 390, 844);
                 InspectorTabBar after = first(inspector, InspectorTabBar.class);
-                assertNotSame(before, after); assertNull(before.renderer); assertEquals(3, after.density, .001);
+                assertNotSame(before, after); assertNull(before.material.renderer); assertEquals(3, after.material.density, .001);
                 assertTrue(sheet.isShowing()); assertSame(draft, first(sheet.view, EditText.class));
                 assertEquals("unsaved input", draft.getText().toString()); assertEquals(3, draft.getSelectionStart()); assertEquals(7, draft.getSelectionEnd());
                 assertTrue(draft.getTextSize() > oldTextSize * 1.5f);
@@ -351,7 +351,7 @@ public final class InspectorNavigationTest {
                 InspectorPreferences.setEnglish(base, false); InspectorPreferences.setDark(base, false);
                 android.widget.FrameLayout container = new android.widget.FrameLayout(base);
                 View workspace = new View(base);
-                InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, workspace);
+                InspectorNavigation navigation = new InspectorNavigation(base, new View(base), container, workspace, new InspectorGlassSession(base));
                 Context context = new InspectorNavigation.OwnerContext(InspectorTheme.context(base), navigation, 0);
                 assertSame(context, InspectorTheme.context(context));
                 InspectorContentReader reader = new InspectorContentReader(context);

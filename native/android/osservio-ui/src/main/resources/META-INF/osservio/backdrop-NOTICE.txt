@@ -12,4 +12,6 @@ and add bounded source recording, shared resource admission, local failure
 isolation, lifecycle ownership and cancellation-safe selection. The source uses
 a bounded stable-scale compositing layer, blur chains are reused, and the final
 lens outline is constrained to the visible window. Compose and
-upstream control wrappers are not distributed.
+upstream control wrappers are not distributed. Native segmented choices share
+the lens and motion; their opaque backing omits redundant full-width optical
+and shadow chains and preserves native scroll/selection ownership.

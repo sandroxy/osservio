@@ -130,7 +130,7 @@ public final class InspectorView extends FrameLayout {
         workspace = new FrameLayout(getContext());
         workspace.setClipChildren(false);
         rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
-        navigation = new InspectorNavigation(getContext(), rootPage, this, workspace);
+        navigation = new InspectorNavigation(getContext(), rootPage, this, workspace, materials);
         ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
         addView(workspace, new FrameLayout.LayoutParams(-1, -1)); rebuild(null);
         navigation.setChanged(this::updateDebugPolling);
@@ -150,7 +150,7 @@ public final class InspectorView extends FrameLayout {
     }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); updateDebugPolling(); }
     void disposePresentation() { materials.dispose(); navigation.dispose(); appearanceListener = null; onClose = null; }
-    /** Controls bottom-navigation refraction, enabled when the device admits it. Main thread only. */
+    /** Controls inspector navigation and action materials when the device admits them. Main thread only. */
     public void setEnhancedMaterialsEnabled(boolean enabled) {
         materials.setEnabled(enabled);
         if (tabBar != null) { tabBar.updateRegistration(); tabBar.invalidate(); }

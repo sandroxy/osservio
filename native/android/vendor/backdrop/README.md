@@ -14,8 +14,13 @@ are in `osservio-ui/src/main/resources/META-INF/osservio/` and travel in the AAR
 refraction, seven-sample dispersion, edge highlight and interactive light.
 `InspectorTabRenderer` ports the recipe to Java, RenderNodes and RuntimeShader.
 It uses three layers: a page backdrop with ordinary native labels, a separately
-colored label backdrop, and the moving lens sampling both. Its source is the
+colored label backdrop, and the moving lens sampling both. For bottom navigation, its source is the
 inspector page, never the host window or the navigation itself.
+`InspectorSelectionMaterial` also binds this lens to native segmented choices.
+Those controls have a known opaque backing, so they record native labels without
+allocating redundant full-width base/label optical and shadow chains. The moving
+lens keeps the same shader, parameters and motion. Scroll-direction arbitration
+belongs to that binding; filter drafts still commit through Apply.
 
 | Parameter | Value |
 | --- | --- |
