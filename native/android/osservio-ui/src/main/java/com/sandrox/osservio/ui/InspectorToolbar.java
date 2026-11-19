@@ -24,7 +24,7 @@ final class InspectorToolbar extends ViewGroup {
         int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
     }
     private static LinearLayout actions(Context context) {
-        LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL); row.setBaselineAligned(false);
+        LinearLayout row = new InspectorActionGroup(context); row.setGravity(Gravity.CENTER_VERTICAL); row.setBaselineAligned(false);
         row.setShowDividers(LinearLayout.SHOW_DIVIDER_MIDDLE);
         android.graphics.drawable.GradientDrawable gap = new android.graphics.drawable.GradientDrawable();
         gap.setColor(android.graphics.Color.TRANSPARENT); gap.setSize(InspectorTheme.dp(context, 8), 1); row.setDividerDrawable(gap); return row;

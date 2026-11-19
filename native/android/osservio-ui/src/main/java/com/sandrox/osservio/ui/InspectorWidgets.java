@@ -36,7 +36,8 @@ final class InspectorWidgets {
     }
     static void iconBackground(ImageButton button) {
         button.setBackgroundTintList(null);
-        InspectorTheme.surface(button, true, 24);
+        if (button instanceof InspectorActionIcon && ((InspectorActionIcon) button).isGrouped()) InspectorTheme.feedback(button, 24);
+        else InspectorTheme.surface(button, true, 24);
     }
     static android.content.res.ColorStateList actionColors(Context context, int enabled) {
         int disabled = (InspectorTheme.secondary(context) & 0x00FFFFFF) | 0x66000000;
@@ -249,11 +250,14 @@ final class InspectorWidgets {
     static void styleSwitch(android.widget.Switch control) {
         Context context = control.getContext(); InspectorTheme.typography(control, 16, false);
         control.setTextColor(InspectorTheme.primary(context)); control.setSplitTrack(false);
+        control.setShowText(false); control.setThumbTextPadding(0);
         control.setSwitchPadding(InspectorTheme.dp(context, 16)); control.setSwitchMinWidth(InspectorTheme.dp(context, 50));
         control.setThumbTintList(null); control.setTrackTintList(null);
         android.graphics.drawable.GradientDrawable thumb = InspectorTheme.shape(context, android.graphics.Color.WHITE, 15, false);
         thumb.setSize(InspectorTheme.dp(context, 26), InspectorTheme.dp(context, 26));
-        control.setThumbDrawable(new android.graphics.drawable.InsetDrawable(thumb, InspectorTheme.dp(context, 2)));
+        // Horizontal optical insets are subtracted by Switch's native travel calculation.
+        // Only inset vertically; the track owns the equal leading/trailing clearance.
+        control.setThumbDrawable(new android.graphics.drawable.InsetDrawable(thumb, 0, InspectorTheme.dp(context, 2), 0, InspectorTheme.dp(context, 2)));
         android.graphics.drawable.StateListDrawable track = new android.graphics.drawable.StateListDrawable();
         for (boolean checked : new boolean[] {true, false}) {
             android.graphics.drawable.GradientDrawable fill = new android.graphics.drawable.GradientDrawable() {

@@ -25,6 +25,10 @@ and backdrop recording. Osservio distributes derived source, not the upstream AA
   opaque inspector backing or primary theme color. It needs no backdrop capture
   or blur of a uniform source. Native button state drives local press relief;
   text, hit regions and accessibility remain native.
+  Neutral actions use the inspector surface color, blended 10% toward white in
+  dark appearance. Their specular strength is 0.65 in light appearance and 0.45
+  in dark appearance; emphasized actions retain the primary color with the same
+  highlight strengths. Adjacent toolbar icons share one backing renderer.
 - Only the single inward surface is retained. There is no outward composite
   node, sensor, upstream press animation, automatic brightness sampling, shape merging,
   software blur, JNI, upstream control wrapper, bitmap cache, or optional widget

@@ -129,7 +129,11 @@ Android's native icon buttons, sheet header actions and inline problem action
 retain their own input, enabled state, focus and accessibility behavior. The
 material does not receive touch events. It uses the existing inward-lens program
 over the known opaque inspector backing or emphasized theme color, with no host
-or page capture. A bounded press spring transforms drawing only, leaving layout
+or page capture. Adjacent toolbar icons share one capsule backing while retaining
+their separate native buttons, spacing and click targets. A single icon retains
+its individual surface; sheet text actions remain separate. Dark neutral controls
+use a lighter body and softer edge highlights to distinguish them from the page.
+A bounded press spring transforms drawing only, leaving layout
 and hit regions unchanged. Each surface records only its small geometry and
 reuses that recording until size or theme changes. Keyboard-focused controls
 retain their native focus background. Disabled, detached or covered controls
@@ -177,6 +181,11 @@ inspector palette. Segmented controls preserve UIKit's interactive material and
 refresh their title colors without emitting a selection action. Internal
 controls follow the inspector appearance; they do not inherit the floating
 entry's host-appearance ownership.
+Search-adjacent filter and list action buttons also use the system glass button
+configuration on iOS 26, with their existing opaque treatment on older systems
+or when transparency is reduced. Active-filter counts and accessibility summaries
+remain visible. The floating latest action and content-reading controls keep
+their existing surfaces.
 
 ## Validation boundaries
 

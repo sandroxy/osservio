@@ -7,6 +7,35 @@ import OsservioStore
 
 final class InspectorMaterialTests: XCTestCase {
     @MainActor
+    func testFilterMaterialUpdatesKeepCountDescriptionAndSingleActionTarget() throws {
+        guard #available(iOS 15, *) else { throw XCTSkip("Configured buttons require iOS 15") }
+        let previous = InspectorPreferences.shared.palette
+        defer { InspectorPreferences.shared.palette = previous }
+        InspectorPreferences.shared.palette = .purple
+        let header = InspectorFeedHeader(compact: true)
+        let action = ButtonAction()
+        header.filters.addTarget(action, action: #selector(ButtonAction.activate), for: .touchUpInside)
+        var query = InspectorQuery(); query.recentMinutes = 5
+        header.relabel(paused: false, query: query)
+        XCTAssertEqual(header.filters.configuration?.title, "1")
+        XCTAssertEqual(header.filters.accessibilityValue, InspectorFilterOptions.summary(query))
+        InspectorPreferences.shared.palette = .teal
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        XCTAssertEqual(header.filters.configuration?.baseForegroundColor?.resolvedColor(with: light), InspectorTheme.accent.resolvedColor(with: light))
+        XCTAssertEqual(action.calls, 0)
+        // This UIKit runner has no application event dispatcher. Check the native
+        // target registration and invoke it directly; device journeys own input.
+        let actions = header.filters.actions(forTarget: action, forControlEvent: .touchUpInside) ?? []
+        XCTAssertEqual(actions.count, 1)
+        for selector in actions { _ = action.perform(NSSelectorFromString(selector)) }
+        XCTAssertEqual(action.calls, 1)
+        header.relabel(paused: false, query: InspectorQuery())
+        XCTAssertNil(header.filters.configuration?.title)
+        XCTAssertNil(header.filters.accessibilityValue)
+        XCTAssertEqual(action.calls, 1)
+    }
+
+    @MainActor
     func testSegmentReflowAndAppearancePreserveSelectionWithoutSendingAnAction() throws {
         let previous = InspectorPreferences.shared.palette
         defer { InspectorPreferences.shared.palette = previous }

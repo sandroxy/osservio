@@ -23,6 +23,7 @@ final class InspectorActionMaterial implements InspectorGlassSession.Surface, Ch
         if (session != null) session.watch(this);
     }
     void configure(boolean prominent) { enabled = true; this.prominent = prominent; updateRegistration(); view.invalidate(); }
+    void setEnabled(boolean value) { enabled = value; updateRegistration(); view.invalidate(); }
     @Override public void updateRegistration() {
         boolean wanted = enabled && session != null && Build.VERSION.SDK_INT >= 33 && session.enabled()
             && view.isAttachedToWindow() && view.isShown() && view.hasWindowFocus()

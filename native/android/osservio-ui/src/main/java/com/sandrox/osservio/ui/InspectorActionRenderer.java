@@ -16,14 +16,23 @@ final class InspectorActionRenderer implements InspectorActionMaterial.Renderer 
     private final RuntimeShader shader = new RuntimeShader(InspectorGlassShader.SOURCE);
     private final RenderNode node = new RenderNode("Inspector control material");
     private int width, height, color;
+    private boolean darkAppearance;
     private float density, oldPress = -1;
     @DoNotInline static InspectorActionMaterial.Renderer create() { return new InspectorActionRenderer(); }
     @Override public void draw(Canvas canvas, View target, boolean prominent, float press) {
         int w = target.getWidth(), h = target.getHeight();
         float scale = target.getResources().getDisplayMetrics().density;
-        int base = prominent ? InspectorPreferences.palette(target.getContext()).light : InspectorTheme.canvas(target.getContext());
-        if (w != width || h != height || scale != density || base != color) {
+        boolean dark = (target.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        int base = prominent ? InspectorPreferences.palette(target.getContext()).light : InspectorTheme.surface(target.getContext());
+        if (!prominent && dark) base = android.graphics.Color.rgb(
+            Math.round(android.graphics.Color.red(base) * .9f + 25.5f),
+            Math.round(android.graphics.Color.green(base) * .9f + 25.5f),
+            Math.round(android.graphics.Color.blue(base) * .9f + 25.5f));
+        if (w != width || h != height || scale != density || base != color || dark != darkAppearance) {
             configure(w, h, scale); width = w; height = h; density = scale; color = base;
+            darkAppearance = dark;
+            shader.setFloatUniform("specStrength", dark ? .45f : .65f);
             int margin = InspectorGlassBudget.MARGIN;
             node.setPosition(-margin, -margin, width + margin, height + margin);
             Canvas source = node.beginRecording(width + margin * 2, height + margin * 2);

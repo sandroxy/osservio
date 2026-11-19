@@ -9,7 +9,13 @@ import android.widget.ImageButton;
 @android.annotation.SuppressLint("ViewConstructor")
 final class InspectorActionIcon extends ImageButton {
     final InspectorActionMaterial material;
+    private boolean grouped;
     InspectorActionIcon(Context context) { super(context); material = new InspectorActionMaterial(this); material.configure(false); }
+    boolean isGrouped() { return grouped; }
+    void setGrouped(boolean value) {
+        if (grouped == value) return;
+        grouped = value; material.setEnabled(!value); InspectorWidgets.iconBackground(this);
+    }
     @Override public void draw(Canvas canvas) {
         int save = canvas.save(); float scale = material.scale();
         canvas.scale(scale, scale, getWidth() / 2f, getHeight() / 2f);

@@ -25,6 +25,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     private var displayedQuery: InspectorQuery?
     private var displayedPaused: Bool?
     private var displayedStyle = ""
+    private var styleObserver: InspectorStyleObserver?
 
 
     init(compact: Bool = false, actionLabel: String = "clear") {
@@ -67,6 +68,10 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             [extra, searchRow, tokenScroll, controls].forEach(addArrangedSubview)
         } else { [extra, searchRow, controls, criteria, count].forEach(addArrangedSubview) }
         relabel(paused: false, query: InspectorQuery())
+        styleObserver = InspectorStyleObserver { [weak self] in
+            guard let self, let query = self.displayedQuery else { return }
+            if self.relabel(paused: self.displayedPaused ?? false, query: query) { self.setNeedsLayout() }
+        }
     }
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
@@ -74,6 +79,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     func relabel(paused: Bool, query: InspectorQuery) -> Bool {
         let style = InspectorLocalization.text("ui_filters") + InspectorPreferences.shared.appearance.rawValue
             + InspectorPreferences.shared.palette.rawValue + traitCollection.preferredContentSizeCategory.rawValue
+            + String(InspectorTheme.allowsTransparentMaterial)
         let hidesStatus = compact && status.text?.isEmpty != false
         let statusChanged = compact && status.isHidden != hidesStatus
         if compact { status.isHidden = hidesStatus }
@@ -139,17 +145,33 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             button.layer.cornerRadius = 22; button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 12, bottom: 10, right: 12)
             return
         }
-        var configuration = UIButton.Configuration.plain()
+        var configuration: UIButton.Configuration
+        // The floating latest action retains its existing reading surface. Inline
+        // search/filter actions use the same system material as navigation actions.
+        if #available(iOS 26, *), (!compact || button !== pause), InspectorTheme.allowsTransparentMaterial {
+            configuration = .glass()
+            configuration.baseBackgroundColor = selected ? InspectorTheme.tint : nil
+            let accent = InspectorTheme.accent, disabled = InspectorTheme.secondary.withAlphaComponent(0.4)
+            configuration.imageColorTransformer = UIConfigurationColorTransformer { [weak button] _ in
+                button?.isEnabled == false ? disabled : accent
+            }
+        } else {
+            configuration = .plain()
+            configuration.background.backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.surface
+        }
         configuration.image = UIImage(systemName: symbol)
         configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
         configuration.title = title; configuration.imagePadding = 5
         configuration.titleLineBreakMode = .byTruncatingTail
         let font = UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection)
-        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-            var attributes = attributes; attributes.font = font; return attributes
+        let accent = InspectorTheme.accent, disabled = InspectorTheme.secondary.withAlphaComponent(0.4)
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { [weak button] attributes in
+            var attributes = attributes; attributes.font = font
+            attributes.foregroundColor = button?.isEnabled == false ? disabled : accent
+            return attributes
         }
         configuration.baseForegroundColor = InspectorTheme.accent
-        configuration.background.backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.surface
+        button.tintColor = InspectorTheme.accent
         configuration.cornerStyle = .capsule
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
         button.configuration = configuration
