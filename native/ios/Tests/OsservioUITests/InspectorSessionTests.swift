@@ -79,9 +79,11 @@ final class InspectorSessionTests: XCTestCase {
         XCTAssertTrue(session?.expand() == true)
         window = controller?.view.window
         XCTAssertNotNil(window)
+        XCTAssertEqual(host.rootViewController?.view.subviews.compactMap { $0 as? InspectorHostAppearanceView }.count, 1)
         session = nil
         try await Task.sleep(nanoseconds: 100_000_000)
         XCTAssertNil(controller); XCTAssertNil(window); XCTAssertTrue(host.isKeyWindow)
+        XCTAssertEqual(host.rootViewController?.view.subviews.compactMap { $0 as? InspectorHostAppearanceView }.count, 0)
         XCTAssertEqual(sources.capture.status()?.mode, .detailed)
     }
 

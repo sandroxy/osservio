@@ -38,7 +38,9 @@ final class InspectorEntryMaterial implements InspectorGlassSession.Surface, Vie
     InspectorEntryMaterial(View target, InspectorGlassSession session) {
         this.target = target; this.session = session;
         fallback = InspectorTheme.surface(target.getContext());
-        tint = InspectorPreferences.dark(target.getContext()) ? (InspectorTheme.canvas(target.getContext()) & 0xFFFFFF) | 0x14000000 : 0;
+        // Light appearance uses a neutral body. Dark appearance has no custom tint;
+        // the renderer keeps the upstream regular defaults for that appearance.
+        tint = InspectorTheme.dark(target.getContext()) ? Color.TRANSPARENT : (fallback & 0xFFFFFF) | 0xB3000000;
     }
     void bind(Window window) {
         if (this.window != window) {

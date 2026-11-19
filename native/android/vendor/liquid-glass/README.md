@@ -11,16 +11,21 @@ and backdrop recording. Osservio distributes derived source, not the upstream AA
 
 - `InspectorGlassShader` retains the original AGSL equations and uniforms;
   Java string encoding removes comments and whitespace only.
-- `InspectorGlassRenderer` maps the upstream effective CLEAR inward-lens values:
-  2 px quantized blur, 32 px recording margin, white base tint `0x14FFFFFF`,
-  dimming 0.16, saturation 1.4, dispersion 0.1, specular strength 1.2, falloff 2,
-  light direction (0.866, 0.5). Bevel, refraction cap, sampling bounds and rim band
-  retain upstream size/density mapping. The circular radius is half the short side. Light mode adds no glass tint; dark mode adds canvas
-  color at alpha `0x14`.
+- `InspectorGlassRenderer` retains the upstream inward-lens geometry. The light
+  floating entry uses its native surface color at alpha `0xB3`, no absorbing
+  glass tint and no saturation boost. Light blur is 1.5 dp, quantized down to
+  0.5 px and capped at one third of the 32 px recording margin. Dark appearance
+  keeps the effective REGULAR mapping: 6 px blur, white base tint `0x24FFFFFF`,
+  saturation 1.4 and no custom glass tint.
+  Both have no dimming, dispersion 0.1, specular strength 1.0, falloff 2 and
+  light direction (0.866, 0.5). Bevel, refraction cap, sampling bounds and rim
+  band retain upstream size/density mapping. The circular radius is half the
+  short side. Appearance comes from the host, not the inspector preference.
 - Only the single inward surface is retained. There is no outward composite
   node, sensor, press animation, automatic brightness sampling, shape merging,
   software blur, JNI, upstream control wrapper, bitmap cache, or optional widget
-  dependency. REGULAR is not a selectable material in this integration.
+  dependency. Adaptive tint remains disabled; the floating entry uses its
+  appearance's neutral tint without background readback or a material selector.
 - Lifecycle, admission and native component binding are Osservio-owned Java.
   The floating button draws the clipped content before its bug glyph. Its original Drawable remains underneath, including during
   startup and failure. Its antialiased edge therefore composites over the native

@@ -13,6 +13,7 @@ public final class InspectorSession: NSObject {
     private weak var returnWindow: UIWindow?
     private var makeInspector: (() -> InspectorViewController)?
     private var entryWindow: InspectorEntryWindow?
+    private var entryAppearance: InspectorHostAppearanceView?
     private var contentWindow: UIWindow?
     private var inspector: InspectorViewController?
     private var suspended = false
@@ -39,9 +40,10 @@ public final class InspectorSession: NSObject {
         NotificationCenter.default.removeObserver(self)
         // A host may release its owner without explicitly disposing. UIKit cleanup
         // must still run on the main actor, including when the last release did not.
-        let content = contentWindow, entry = entryWindow, previous = returnWindow, host = hostWindow, animation = transition
+        let content = contentWindow, entry = entryWindow, appearance = entryAppearance, previous = returnWindow, host = hostWindow, animation = transition
         Task { @MainActor in
             animation.cancel()
+            appearance?.unbind()
             if content?.isKeyWindow == true, let target = previous ?? host, !target.isHidden { target.makeKey() }
             content?.isHidden = true; entry?.isHidden = true
             content?.rootViewController = nil; entry?.rootViewController = nil
@@ -80,6 +82,7 @@ public final class InspectorSession: NSObject {
         inspector?.dismiss(animated: false)
         restoreHostFocus(); contentWindow?.isHidden = true; entryWindow?.isHidden = true
         inspector?.session = nil
+        entryAppearance?.unbind(); entryAppearance = nil
         contentWindow?.rootViewController = nil; entryWindow?.rootViewController = nil
         inspector = nil; contentWindow = nil; entryWindow = nil; makeInspector = nil; hostWindow = nil
         NotificationCenter.default.removeObserver(self)
@@ -138,7 +141,7 @@ public final class InspectorSession: NSObject {
         return window
     }
     private func ensureEntry(host: UIWindow) {
-        guard entryWindow == nil else { return }
+        guard entryWindow == nil else { entryAppearance?.bind(to: host); return }
         let window = host.windowScene.map(InspectorEntryWindow.init(windowScene:)) ?? InspectorEntryWindow(frame: host.frame)
         window.frame = host.frame; window.windowLevel = host.windowLevel + 1; window.backgroundColor = .clear
         let controller = InspectorEntryViewController()
@@ -146,6 +149,8 @@ public final class InspectorSession: NSObject {
         controller.onHide = { [weak self] in self?.hideEntry() }
         window.rootViewController = controller; entryWindow = window
         controller.loadViewIfNeeded(); controller.view.frame = window.bounds; controller.view.layoutIfNeeded()
+        let appearance = InspectorHostAppearanceView(entry: controller)
+        entryAppearance = appearance; appearance.bind(to: host)
     }
     private func animate(_ window: UIWindow, opening: Bool, enabled: Bool) {
         entryWindow?.layoutIfNeeded()

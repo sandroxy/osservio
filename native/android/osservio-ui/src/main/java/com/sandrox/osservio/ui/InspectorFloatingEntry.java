@@ -40,10 +40,10 @@ final class InspectorFloatingEntry extends ImageButton {
     private float downX, downY, initialX, initialY;
     private boolean dragging;
 
-    InspectorFloatingEntry(Context context, InspectorGlassSession session, Runnable open, Runnable hide, Runnable configurationChanged) {
-        super(InspectorTheme.context(context)); this.open = open; this.hide = hide;
+    InspectorFloatingEntry(Context context, boolean dark, InspectorGlassSession session, Runnable open, Runnable hide, Runnable configurationChanged) {
+        super(InspectorTheme.context(context, dark)); this.open = open; this.hide = hide;
         this.preferencesContext = context; this.configurationChanged = configurationChanged;
-        dark = InspectorPreferences.dark(context); english = InspectorPreferences.english(context);
+        this.dark = dark; english = InspectorPreferences.english(context);
         palette = InspectorPreferences.palette(context); densityDpi = context.getResources().getConfiguration().densityDpi;
         size = InspectorTheme.dp(context, 48); slop = ViewConfiguration.get(context).getScaledTouchSlop();
         material = new InspectorEntryMaterial(this, session);
@@ -58,13 +58,15 @@ final class InspectorFloatingEntry extends ImageButton {
         if (!Float.isFinite(fraction)) fraction = 0.35f;
         fraction = Math.max(0, Math.min(1, fraction));
     }
-    boolean matchesPreferences() {
-        return dark == InspectorPreferences.dark(preferencesContext) && english == InspectorPreferences.english(preferencesContext)
+    boolean matchesPreferences(boolean hostDark) {
+        return dark == hostDark && english == InspectorPreferences.english(preferencesContext)
             && palette == InspectorPreferences.palette(preferencesContext) && densityDpi == preferencesContext.getResources().getConfiguration().densityDpi;
     }
     @Override protected void onConfigurationChanged(android.content.res.Configuration configuration) {
         super.onConfigurationChanged(configuration);
-        if (!matchesPreferences()) { removeCallbacks(configurationChanged); post(configurationChanged); }
+        // The session resolves the owning Activity's appearance, not the application
+        // or this control's scoped configuration. No Activity is retained here.
+        removeCallbacks(configurationChanged); post(configurationChanged);
     }
     @Override protected void onDraw(Canvas canvas) {
         material.draw(canvas);

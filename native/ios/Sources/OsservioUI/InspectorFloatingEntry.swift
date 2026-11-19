@@ -49,7 +49,6 @@ final class InspectorEntryViewController: UIViewController {
                       width: max(0, bounds.width - inset * 2), height: max(0, bounds.height - inset * 2))
     }
     private func updateStyle() {
-        overrideUserInterfaceStyle = InspectorPreferences.shared.appearance == .dark ? .dark : .light
         entry.accessibilityLabel = InspectorLocalization.text("ui_open_inspector")
         entry.accessibilityHint = InspectorLocalization.text("ui_entry_hint")
         entry.refreshAppearance()
@@ -104,6 +103,7 @@ final class InspectorFloatingEntry: UIControl {
         layer.shadowColor = UIColor.black.cgColor; layer.shadowOpacity = 0.16; layer.shadowRadius = 9; layer.shadowOffset = CGSize(width: 0, height: 4)
         image.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
         image.contentMode = .center; image.isUserInteractionEnabled = false
+        image.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(image); refreshAppearance()
         NotificationCenter.default.addObserver(self, selector: #selector(refreshAppearance), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(refreshAppearance), name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification, object: nil)
@@ -129,11 +129,67 @@ final class InspectorFloatingEntry: UIControl {
             #else
             effect = UIBlurEffect(style: .systemMaterial)
             #endif
-            let view = UIVisualEffectView(effect: effect); view.isUserInteractionEnabled = false
+            let view = UIVisualEffectView(effect: effect); view.frame = bounds; view.isUserInteractionEnabled = false
             view.layer.cornerRadius = 24; view.layer.cornerCurve = .continuous; view.clipsToBounds = true
             insertSubview(view, at: 0); material = view; backgroundColor = .clear
-        }
+            // Keep the symbol in the system material's foreground hierarchy.
+            view.contentView.addSubview(image)
+        } else { addSubview(image) }
         setNeedsLayout()
+    }
+}
+
+/// A zero-sized, noninteractive trait observer in the host's root view. The entry
+/// lives in a separate window, so it cannot inherit a host controller's override.
+@MainActor
+final class InspectorHostAppearanceView: UIView {
+    private weak var host: UIWindow?
+    private weak var entry: InspectorEntryViewController?
+    private var reattachmentPending = false
+
+    init(entry: InspectorEntryViewController) {
+        self.entry = entry
+        super.init(frame: .zero)
+        isHidden = true; isUserInteractionEnabled = false; accessibilityElementsHidden = true
+        if #available(iOS 17, *) {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: InspectorHostAppearanceView, _) in view.updateAppearance() }
+        }
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { return nil }
+
+    func bind(to host: UIWindow) {
+        self.host = host
+        let parent = host.rootViewController?.viewIfLoaded ?? host
+        if superview !== parent { parent.addSubview(self) }
+        updateAppearance()
+    }
+    func unbind() {
+        host = nil; removeFromSuperview()
+    }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { updateAppearance(); return }
+        guard host != nil, !reattachmentPending else { return }
+        // A root-controller replacement removes the old hierarchy first. Rebind
+        // after UIKit has installed the replacement, without polling the host.
+        reattachmentPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.reattachmentPending = false
+            if let host = self.host { self.bind(to: host) }
+        }
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 17, *) { return }
+        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle { updateAppearance() }
+    }
+    private func updateAppearance() {
+        guard host != nil, window != nil, let entry else { return }
+        let appearance = traitCollection.userInterfaceStyle
+        guard entry.overrideUserInterfaceStyle != appearance else { return }
+        entry.overrideUserInterfaceStyle = appearance
+        entry.entry.refreshAppearance()
     }
 }
 #endif

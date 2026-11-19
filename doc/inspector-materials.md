@@ -17,7 +17,14 @@ to be transparent.
 | Filters and problem composer | Opaque content, top rounded corners | Opaque content in the system sheet |
 | Details, JSON, cards, inputs | Opaque reading surfaces | Opaque reading surfaces |
 | Switches and segments | Existing native controls | System controls |
-| Floating entry | Bounded circular lens over ordinary Activity content, native fallback otherwise | System glass where supported, native fallback otherwise |
+| Floating entry | Bounded frosted circular lens over ordinary Activity content, native fallback otherwise | System Regular glass where supported, native fallback otherwise |
+
+The floating entry follows the host's effective light/dark appearance, independently
+of the inspector's appearance preference. Its palette and language remain inspector
+settings. Android reads the Activity theme and configuration; iOS inherits the
+host root view's traits through a noninteractive observer, including explicit
+window/controller overrides. Neither implementation changes the host's appearance
+or infers it from sampled pixels.
 
 Android enables the bottom navigation and floating entry when device policy permits.
 The host can opt out of the floating material with
@@ -46,7 +53,11 @@ is forced. Detachment clears effects, compositing layers and display lists.
 Platform glyph/texture caches can outlive these resources and remain part of
 process memory; the SDK does not force global cache eviction or garbage collection.
 
-The floating entry uses the [inward lens](../native/android/vendor/liquid-glass/README.md).
+The floating entry uses the [inward lens](../native/android/vendor/liquid-glass/README.md)
+with a neutral body and modest blur in light appearance. Dark appearance uses
+the upstream regular mapping without a custom glass tint. Neither appearance
+adds a glyph outline. These Android material recipes do not reproduce Apple's
+system Regular effect.
 Its 48 dp button sits beside the Activity content hierarchy. The GPU recording
 covers the button and its sampling margin inside the same window's
 `android.R.id.content`. The original button fill stays beneath the lens, with
@@ -117,7 +128,10 @@ blur. Older systems keep the existing opaque tab background. Reduce Transparency
 or Increase Contrast selects the opaque navigation surface and solid floating
 entry; changes are observed live. Top actions, switches, alerts and sheets remain
 owned by UIKit. System controls may retain native effects independently of the
-optional navigation setting.
+optional navigation setting. The floating entry uses unmodified system Regular
+glass on iOS 26 and system material blur on older systems. Its symbol belongs to
+the effect view's `contentView`; no custom glass tint, outline or dark optical parameters
+are added.
 
 ## Validation boundaries
 

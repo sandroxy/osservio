@@ -17,6 +17,7 @@ final class InspectorGlassRenderer implements InspectorEntryMaterial.Renderer {
     private final RenderNode node = new RenderNode("OsservioFloatingEntry");
     private int width, height, tint;
     private float radius, density;
+    private boolean dark;
 
     // The consumer rules preserve this factory boundary against R8 inlining into API-23 code.
     @androidx.annotation.DoNotInline static InspectorEntryMaterial.Renderer create() { return new InspectorGlassRenderer(); }
@@ -25,9 +26,11 @@ final class InspectorGlassRenderer implements InspectorEntryMaterial.Renderer {
         int w = target.getWidth(), h = target.getHeight();
         float cornerRadius = Math.min(w, h) / 2f;
         float scale = target.getResources().getDisplayMetrics().density;
-        if (w != width || h != height || color != tint || cornerRadius != radius || scale != density) {
-            configure(w, h, cornerRadius, color, scale);
+        boolean appearance = InspectorTheme.dark(target.getContext());
+        if (w != width || h != height || color != tint || cornerRadius != radius || scale != density || dark != appearance) {
+            configure(w, h, cornerRadius, color, scale, appearance);
             width = w; height = h; radius = cornerRadius; tint = color; density = scale;
+            dark = appearance;
         }
         int margin = InspectorGlassBudget.MARGIN;
         int recordedWidth = w + margin * 2, recordedHeight = h + margin * 2;
@@ -42,11 +45,11 @@ final class InspectorGlassRenderer implements InspectorEntryMaterial.Renderer {
         canvas.drawRenderNode(node);
     }
 
-    private void configure(int width, int height, float radius, int tint, float density) {
+    private void configure(int width, int height, float radius, int tint, float density, boolean dark) {
         float w = width, h = height, shortSide = Math.min(w, h);
         float corner = Math.min(radius, shortSide / 2f);
         float margin = InspectorGlassBudget.MARGIN;
-        // Effective CLEAR defaults from LiquidGlassView.tryDrawLensGlass. Keep geometry in pixels.
+        // Upstream inward-lens geometry with a neutral body for the small, themed entry.
         shader.setFloatUniform("margin", margin);
         shader.setFloatUniform("viewSize", w, h);
         shader.setFloatUniform("shape1", w / 2, h / 2, w / 2, h / 2);
@@ -63,13 +66,15 @@ final class InspectorGlassRenderer implements InspectorEntryMaterial.Renderer {
         shader.setFloatUniform("sampleHi", margin + w - 1, margin + h - 1);
         shader.setFloatUniform("dispersion", .1f);
         shader.setFloatUniform("lightDir", .866f, .5f);
-        shader.setFloatUniform("specStrength", 1.2f);
+        shader.setFloatUniform("specStrength", 1f);
         shader.setFloatUniform("rimBandMax", Math.max(2f, Math.min(6f, shortSide * .05f)));
-        color("tintColor", 0x14FFFFFF); color("glassTint", tint);
-        shader.setFloatUniform("adaptiveTint", 0); shader.setFloatUniform("dimAmount", .16f);
-        shader.setFloatUniform("satFactor", 1.4f);
+        color("tintColor", dark ? 0x24FFFFFF : tint); color("glassTint", Color.TRANSPARENT);
+        shader.setFloatUniform("adaptiveTint", 0); shader.setFloatUniform("dimAmount", 0);
+        shader.setFloatUniform("satFactor", dark ? 1.4f : 1f);
         shader.setFloatUniform("press", 0); shader.setFloatUniform("touchPos", 0, 0); shader.setFloatUniform("touchAmp", 0);
-        float blur = ((int) ((6f * .35f) * 2)) / 2f;
+        // Dark appearance uses the upstream regular mapping. The light body needs
+        // less blur. Both remain inside the existing three-sigma recording margin.
+        float blur = dark ? 6f : (float) Math.floor(Math.min(1.5f * density, margin / 3f) * 2f) / 2f;
         node.setRenderEffect(RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(shader, "content"),
             RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP)));
     }

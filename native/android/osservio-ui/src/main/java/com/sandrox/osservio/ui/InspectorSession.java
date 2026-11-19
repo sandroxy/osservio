@@ -172,8 +172,9 @@ public final class InspectorSession implements Application.ActivityLifecycleCall
         }
     }
     private void ensureEntry(Activity activity) {
-        if (entry != null && !entry.matchesPreferences()) { entry.detach(); entry = null; }
-        if (entry == null) entry = new InspectorFloatingEntry(context, entryMaterial, this::expand, this::hideEntry, this::reconcile);
+        boolean dark = InspectorTheme.hostDark(activity);
+        if (entry != null && !entry.matchesPreferences(dark)) { entry.detach(); entry = null; }
+        if (entry == null) entry = new InspectorFloatingEntry(context, dark, entryMaterial, this::expand, this::hideEntry, this::reconcile);
         entry.attach(activity.getWindow(), presentation == Presentation.ENTRY);
     }
     private void createWindow(Activity activity) {

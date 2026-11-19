@@ -20,7 +20,7 @@ public final class InspectorMaterialTestActivity extends Activity {
         container.addView(content, new FrameLayout.LayoutParams(-1, -1));
         setContentView(container);
         session = new InspectorGlassSession(this);
-        entry = new InspectorFloatingEntry(this, session, () -> { }, () -> { }, () -> { });
+        entry = new InspectorFloatingEntry(this, InspectorTheme.hostDark(this), session, () -> { }, () -> { }, () -> { });
         entry.attach(getWindow(), true);
     }
     @Override public void onDestroy() { entry.detach(); session.dispose(); super.onDestroy(); }

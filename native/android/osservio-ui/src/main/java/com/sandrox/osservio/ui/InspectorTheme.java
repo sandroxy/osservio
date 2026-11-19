@@ -17,7 +17,21 @@ import java.util.Locale;
 final class InspectorTheme {
     private InspectorTheme() { }
     static Context context(Context host) {
-        boolean dark = InspectorPreferences.dark(host), english = InspectorPreferences.english(host);
+        return context(host, InspectorPreferences.dark(host));
+    }
+    static boolean hostDark(Context host) {
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            android.util.TypedValue value = new android.util.TypedValue();
+            if (host.getTheme().resolveAttribute(android.R.attr.isLightTheme, value, true)
+                && value.type == android.util.TypedValue.TYPE_INT_BOOLEAN) return value.data == 0;
+        }
+        return dark(host);
+    }
+    static boolean dark(Context context) {
+        return (context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+    }
+    static Context context(Context host, boolean dark) {
+        boolean english = InspectorPreferences.english(host);
         Context candidate = host;
         for (int i = 0; i < 16 && candidate instanceof android.content.ContextWrapper; i++) {
             if (candidate instanceof ScopedContext) {
