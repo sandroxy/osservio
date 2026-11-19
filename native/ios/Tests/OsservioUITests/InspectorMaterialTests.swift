@@ -7,6 +7,50 @@ import OsservioStore
 
 final class InspectorMaterialTests: XCTestCase {
     @MainActor
+    func testSegmentReflowAndAppearancePreserveSelectionWithoutSendingAnAction() throws {
+        let previous = InspectorPreferences.shared.palette
+        defer { InspectorPreferences.shared.palette = previous }
+        let control = InspectorScopeControl(titles: ["All", "HTTP", "WebSocket"])
+        var changes = 0; control.onSelect = { _ in changes += 1 }; control.selectedIndex = 2
+        control.frame = CGRect(x: 0, y: 0, width: 340, height: 52); control.layoutIfNeeded()
+        let segments = try XCTUnwrap(control.arrangedSubviews.first as? UISegmentedControl)
+        XCTAssertFalse(segments.isHidden); XCTAssertEqual(segments.selectedSegmentIndex, 2)
+        control.frame.size.width = 180; control.setNeedsLayout(); control.layoutIfNeeded()
+        XCTAssertTrue(segments.isHidden)
+        let choices = try XCTUnwrap(control.arrangedSubviews.last as? UIStackView)
+        XCTAssertEqual(choices.axis, .vertical)
+        let selected = try XCTUnwrap(choices.arrangedSubviews.last as? UIButton)
+        XCTAssertEqual(selected.title(for: .normal), "WebSocket"); XCTAssertTrue(selected.isSelected)
+        InspectorPreferences.shared.palette = .teal
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        XCTAssertEqual(selected.titleColor(for: .selected)?.resolvedColor(with: light), InspectorTheme.accent.resolvedColor(with: light))
+        XCTAssertEqual(control.selectedIndex, 2); XCTAssertEqual(changes, 0)
+        control.frame.size.width = 340; control.setNeedsLayout(); control.layoutIfNeeded()
+        XCTAssertFalse(segments.isHidden); XCTAssertEqual(segments.selectedSegmentIndex, 2); XCTAssertEqual(changes, 0)
+    }
+
+    @MainActor
+    func testPrimaryActionKeepsItsLabelAndTargetAcrossAppearanceUpdates() throws {
+        let button = InspectorCapsuleButton(type: .system)
+        let action = ButtonAction(); button.addTarget(action, action: #selector(ButtonAction.activate), for: .touchUpInside)
+        for (index, title) in ["记录问题", "Record a problem with the current diagnostic context"].enumerated() {
+            button.configure(title: title, image: UIImage(systemName: "plus"))
+            XCTAssertEqual(button.accessibilityLabel, title); XCTAssertEqual(action.calls, index)
+            XCTAssertGreaterThanOrEqual(button.intrinsicContentSize.height, 48)
+            for target in button.allTargets {
+                for selector in button.actions(forTarget: target, forControlEvent: .touchUpInside) ?? [] {
+                    _ = (target.base as? NSObject)?.perform(NSSelectorFromString(selector))
+                }
+            }
+        }
+        XCTAssertEqual(action.calls, 2)
+    }
+    @MainActor private final class ButtonAction: NSObject {
+        var calls = 0
+        @objc func activate() { calls += 1 }
+    }
+
+    @MainActor
     func testFloatingEntryUsesHostAppearanceIndependentlyOfInspectorPreference() async throws {
         let previous = InspectorPreferences.shared.appearance
         let host = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))

@@ -143,9 +143,39 @@ final class InspectorControls: UIStackView {
 /// The primary inline action keeps a capsule shape at every supported text size.
 @MainActor
 final class InspectorCapsuleButton: UIButton {
+    private var actionTitle: String?, actionImage: UIImage?
+    func configure(title: String, image: UIImage?) {
+        actionTitle = title; actionImage = image
+        if #available(iOS 15, *) {
+            var style: UIButton.Configuration
+            if #available(iOS 26, *), InspectorTheme.allowsTransparentMaterial { style = .prominentGlass() }
+            else { style = .filled() }
+            style.title = title; style.image = image; style.imagePadding = 8
+            style.cornerStyle = .capsule; style.titleAlignment = .center
+            style.titleLineBreakMode = .byWordWrapping
+            style.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16)
+            style.baseBackgroundColor = InspectorTheme.filledAccent; style.baseForegroundColor = .white
+            let font = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+            style.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+                var result = incoming; result.font = font; return result
+            }
+            backgroundColor = .clear; configuration = style
+        } else {
+            backgroundColor = InspectorTheme.filledAccent; tintColor = .white
+            setTitle(title, for: .normal); setImage(image, for: .normal)
+            setTitleColor(.white, for: .normal); setTitleColor(InspectorTheme.secondary, for: .disabled)
+        }
+        accessibilityLabel = title
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory,
+           let actionTitle { configure(title: actionTitle, image: actionImage) }
+    }
     override func layoutSubviews() { super.layoutSubviews(); layer.cornerRadius = bounds.height / 2 }
     override var intrinsicContentSize: CGSize {
         let size = super.intrinsicContentSize
+        if #available(iOS 15, *), configuration != nil { return CGSize(width: size.width, height: max(48, size.height)) }
         return CGSize(width: size.width + 32, height: max(48, size.height + 20))
     }
 }

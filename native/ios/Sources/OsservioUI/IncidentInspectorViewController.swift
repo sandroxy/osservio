@@ -56,9 +56,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         InspectorTheme.apply(self); title = InspectorLocalization.text("incident_title")
         inspectorPrimaryAction = inspectorDeleteItem(target: self, action: #selector(showActions), label: "incident_delete_all")
         header.search.placeholder = InspectorLocalization.text("ui_problem_search")
-        markButton.backgroundColor = InspectorTheme.tint
-        markButton.setTitle("  " + InspectorLocalization.text("ui_record_problem"), for: .normal)
-        markButton.setImage(UIImage(systemName: "plus"), for: .normal)
+        markButton.configure(title: InspectorLocalization.text("ui_record_problem"), image: UIImage(systemName: "plus"))
         retryButton.setTitle(InspectorLocalization.text("ui_retry"), for: .normal); render()
     }
     public override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); read() }
