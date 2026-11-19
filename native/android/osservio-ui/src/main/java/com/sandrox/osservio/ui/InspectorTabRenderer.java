@@ -151,8 +151,14 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
                 recorded.translate(-(x + (1 - scaleX) * width / 2), -(y + (1 - scaleY) * height / 2));
                 recorded.drawRenderNode(source); if (selector) recorded.drawRenderNode(ink);
             } finally { image.endRecording(); }
-            int save = target.save(); target.translate(x, y); target.scale(scaleX, scaleY, width / 2, height / 2);
+            int shadow = target.save();
+            // Embedded selectors have a rounded track inside clipped reading containers.
+            // Keep only their shadow within that track; the lens still scales independently.
+            if (bar.segmented()) roundClip(target, bar.getWidth(), bar.getHeight());
+            target.translate(x, y); target.scale(scaleX, scaleY, width / 2, height / 2);
             drawOuter(target, width, height, 24 * density, 4 * density, shadowAlpha);
+            target.restoreToCount(shadow);
+            int save = target.save(); target.translate(x, y); target.scale(scaleX, scaleY, width / 2, height / 2);
             int body = target.save(); roundClip(target, width, height); target.drawRenderNode(image);
             paint.setShader(null); paint.setBlendMode(BlendMode.SRC_OVER); paint.setStyle(Paint.Style.FILL);
             if (selector) {
