@@ -7,6 +7,65 @@ import OsservioStore
 
 final class InspectorMaterialTests: XCTestCase {
     @MainActor
+    func testGlassFilterSymbolRendersPaletteAfterAppearanceAndEnabledStateChanges() throws {
+        guard #available(iOS 26, *), InspectorTheme.allowsTransparentMaterial else { throw XCTSkip("Transparent system glass is unavailable") }
+        let previous = InspectorPreferences.shared.palette
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+        let host = UIViewController(), header = InspectorFeedHeader(compact: true)
+        defer { window.isHidden = true; window.rootViewController = nil; InspectorPreferences.shared.palette = previous }
+        window.rootViewController = host
+        header.frame = CGRect(x: 0, y: 50, width: 390, height: 170); host.view.addSubview(header)
+        window.makeKeyAndVisible()
+        for appearance in [UIUserInterfaceStyle.light, .dark] {
+            window.overrideUserInterfaceStyle = appearance
+            for palette in [InspectorPalette.purple, .teal] {
+                InspectorPreferences.shared.palette = palette
+                for active in [false, true] {
+                    var query = InspectorQuery(); query.recentMinutes = active ? 5 : 0
+                    header.relabel(paused: false, query: query)
+                    header.filters.isHighlighted = true
+                    header.filters.updateConfiguration()
+                    header.filters.isHighlighted = false
+                    header.filters.isEnabled = false
+                    header.filters.updateConfiguration()
+                    header.filters.isEnabled = true
+                    header.filters.updateConfiguration()
+                    host.view.layoutIfNeeded(); header.filters.layoutIfNeeded()
+                    let image = try XCTUnwrap(header.filters.imageView)
+                    assertRenderedColor(image, expected: InspectorTheme.accent)
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func assertRenderedColor(_ view: UIView, expected: UIColor, file: StaticString = #filePath, line: UInt = #line) {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 2
+        let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { view.layer.render(in: $0.cgContext) }
+        guard let bitmap = image.cgImage else { return XCTFail("Missing rendered foreground", file: file, line: line) }
+        var bytes = [UInt8](repeating: 0, count: bitmap.width * bitmap.height * 4)
+        bytes.withUnsafeMutableBytes { storage in
+            guard let context = CGContext(data: storage.baseAddress, width: bitmap.width, height: bitmap.height, bitsPerComponent: 8,
+                bytesPerRow: bitmap.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                return XCTFail("Missing foreground context", file: file, line: line)
+            }
+            context.draw(bitmap, in: CGRect(x: 0, y: 0, width: bitmap.width, height: bitmap.height))
+        }
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        expected.resolvedColor(with: view.traitCollection).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        var opaque = 0, matches = 0
+        for index in stride(from: 0, to: bytes.count, by: 4) where bytes[index + 3] > 250 {
+            opaque += 1
+            if abs(CGFloat(bytes[index]) / 255 - red) < 0.04 && abs(CGFloat(bytes[index + 1]) / 255 - green) < 0.04
+                && abs(CGFloat(bytes[index + 2]) / 255 - blue) < 0.04 { matches += 1 }
+        }
+        XCTAssertGreaterThan(opaque, 0, "The native foreground must render", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(Double(matches) / Double(max(1, opaque)), 0.95,
+            "The rendered foreground must retain its palette", file: file, line: line)
+    }
+
+    @MainActor
     func testFilterMaterialUpdatesKeepCountDescriptionAndSingleActionTarget() throws {
         guard #available(iOS 15, *) else { throw XCTSkip("Configured buttons require iOS 15") }
         let previous = InspectorPreferences.shared.palette

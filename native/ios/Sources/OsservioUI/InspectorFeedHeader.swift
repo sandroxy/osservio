@@ -146,25 +146,32 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             return
         }
         var configuration: UIButton.Configuration
+        let symbolImage = UIImage(systemName: symbol)
+        let accent = InspectorTheme.accent, disabled = InspectorTheme.secondary.withAlphaComponent(0.4)
         // The floating latest action retains its existing reading surface. Inline
         // search/filter actions use the same system material as navigation actions.
         if #available(iOS 26, *), (!compact || button !== pause), InspectorTheme.allowsTransparentMaterial {
             configuration = .glass()
             configuration.baseBackgroundColor = selected ? InspectorTheme.tint : nil
-            let accent = InspectorTheme.accent, disabled = InspectorTheme.secondary.withAlphaComponent(0.4)
-            configuration.imageColorTransformer = UIConfigurationColorTransformer { [weak button] _ in
-                button?.isEnabled == false ? disabled : accent
+            // Glass can replace a template symbol's tint even with a color
+            // transformer. Preserve the palette in the symbol itself; UIKit
+            // still owns the material, layout and native state feedback.
+            let enabledImage = symbolImage?.withTintColor(accent, renderingMode: .alwaysOriginal)
+            let disabledImage = symbolImage?.withTintColor(disabled, renderingMode: .alwaysOriginal)
+            configuration.image = button.isEnabled ? enabledImage : disabledImage
+            button.configurationUpdateHandler = { button in
+                button.configuration?.image = button.isEnabled ? enabledImage : disabledImage
             }
         } else {
             configuration = .plain()
             configuration.background.backgroundColor = selected ? InspectorTheme.tint : InspectorTheme.surface
+            configuration.image = symbolImage
+            button.configurationUpdateHandler = nil
         }
-        configuration.image = UIImage(systemName: symbol)
         configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
         configuration.title = title; configuration.imagePadding = 5
         configuration.titleLineBreakMode = .byTruncatingTail
         let font = UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection)
-        let accent = InspectorTheme.accent, disabled = InspectorTheme.secondary.withAlphaComponent(0.4)
         configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { [weak button] attributes in
             var attributes = attributes; attributes.font = font
             attributes.foregroundColor = button?.isEnabled == false ? disabled : accent
