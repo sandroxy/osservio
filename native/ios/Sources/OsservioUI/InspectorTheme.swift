@@ -118,6 +118,11 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         let appearance = UINavigationBarAppearance(); appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = InspectorTheme.surface
         appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
+        // Keep UIKit's indicator and transition mask; system glass can override
+        // the tint of its template image even when the Back item has a tint.
+        let traits = UITraitCollection(userInterfaceStyle: overrideUserInterfaceStyle)
+        let back = appearance.backIndicatorImage.withTintColor(InspectorTheme.accent.resolvedColor(with: traits), renderingMode: .alwaysOriginal)
+        appearance.setBackIndicatorImage(back, transitionMaskImage: appearance.backIndicatorTransitionMaskImage)
         navigationBar.standardAppearance = appearance; navigationBar.scrollEdgeAppearance = appearance
         navigationBar.compactAppearance = appearance; navigationBar.tintColor = InspectorTheme.accent
         navigationBar.prefersLargeTitles = false

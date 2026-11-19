@@ -7,6 +7,55 @@ import OsservioStore
 
 final class InspectorMaterialTests: XCTestCase {
     @MainActor
+    func testNativeBackSymbolRendersAccentAcrossNavigationAndAppearanceChanges() async throws {
+        let preferences = InspectorPreferences.shared, palette = preferences.palette, appearance = preferences.appearance
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 700))
+        defer {
+            window.isHidden = true; window.rootViewController = nil
+            preferences.palette = palette; preferences.appearance = appearance
+        }
+        for panel in [false, true] {
+            let root = UIViewController(), detail = UIViewController(), nested = UIViewController()
+            root.title = "Records"; detail.title = "Detail"; nested.title = "Content"
+            let navigation = InspectorNavigationController(rootViewController: root)
+            navigation.transientPanel = panel; window.rootViewController = navigation; window.makeKeyAndVisible()
+            navigation.pushViewController(detail, animated: false)
+            navigation.pushViewController(nested, animated: false)
+            for mode in [InspectorPreferences.Appearance.light, .dark] {
+                preferences.appearance = mode
+                for color in [InspectorPalette.purple, .teal] {
+                    preferences.palette = color
+                    try await Task.sleep(nanoseconds: 50_000_000)
+                    navigation.view.layoutIfNeeded(); navigation.navigationBar.layoutIfNeeded()
+                    XCTAssertNil(nested.navigationItem.leftBarButtonItem)
+                    XCTAssertTrue(navigation.navigationBar.backItem === detail.navigationItem)
+                    let glyphs = backImages(in: navigation.navigationBar, bar: navigation.navigationBar)
+                    XCTAssertEqual(glyphs.count, 1, "The native back indicator must remain visible")
+                    for glyph in glyphs { assertRenderedColor(glyph, expected: InspectorTheme.accent) }
+                }
+            }
+            XCTAssertTrue(navigation.popViewController(animated: false) === nested)
+            try await Task.sleep(nanoseconds: 50_000_000)
+            navigation.view.layoutIfNeeded()
+            XCTAssertTrue(navigation.navigationBar.backItem === root.navigationItem)
+            let glyphs = backImages(in: navigation.navigationBar, bar: navigation.navigationBar)
+            XCTAssertEqual(glyphs.count, 1)
+            for glyph in glyphs { assertRenderedColor(glyph, expected: InspectorTheme.accent) }
+            XCTAssertNotNil(navigation.interactivePopGestureRecognizer)
+            XCTAssertTrue(navigation.popViewController(animated: false) === detail)
+            XCTAssertNil(navigation.navigationBar.backItem)
+        }
+    }
+
+    @MainActor
+    private func backImages(in view: UIView, bar: UINavigationBar) -> [UIImageView] {
+        guard !view.isHidden, view.alpha > 0 else { return [] }
+        if let image = view as? UIImageView, image.image != nil, !image.bounds.isEmpty,
+           image.convert(image.bounds, to: bar).maxX < 90 { return [image] }
+        return view.subviews.flatMap { backImages(in: $0, bar: bar) }
+    }
+
+    @MainActor
     func testGlassFilterSymbolRendersPaletteAfterAppearanceAndEnabledStateChanges() throws {
         guard #available(iOS 26, *), InspectorTheme.allowsTransparentMaterial else { throw XCTSkip("Transparent system glass is unavailable") }
         let previous = InspectorPreferences.shared.palette
