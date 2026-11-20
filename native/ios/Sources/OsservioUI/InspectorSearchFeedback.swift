@@ -7,8 +7,12 @@ enum InspectorSearchFeedback {
         }
         return running ? InspectorLocalization.text("ui_searching") : nil
     }
+    static func filteredEmpty(_ result: InspectorRecordSearch.Result?) -> String {
+        if let result, !result.complete || result.hasIncompleteContent { return "ui_filtered_empty_partial" }
+        return "ui_filtered_empty"
+    }
     static func text(_ result: InspectorRecordSearch.Result?) -> String? {
-        guard let result, result.limited || result.unavailable > 0 || result.truncated > 0 else { return nil }
+        guard let result, result.hasIncompleteContent else { return nil }
         return InspectorLocalization.text("ui_search_partial")
     }
 }

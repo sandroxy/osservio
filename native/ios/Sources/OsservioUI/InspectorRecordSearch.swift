@@ -106,6 +106,7 @@ enum InspectorRecordSearch {
         var previewSources: [String: String] = [:]
         var unavailable = 0, truncated = 0
         var limited = false
+        var hasIncompleteContent: Bool { limited || unavailable > 0 || truncated > 0 }
     }
     private struct Payload {
         let text: String?; let truncated: Bool; var source: String = "ui_search_message"

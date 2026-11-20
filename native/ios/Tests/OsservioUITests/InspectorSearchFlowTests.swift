@@ -6,6 +6,38 @@ import UIKit
 import XCTest
 
 final class InspectorSearchFlowTests: XCTestCase {
+    @MainActor func testChipEditingRemovingAndUndoUseIndependentActions() throws {
+        let header = InspectorFeedHeader(compact: true)
+        var active = InspectorQuery(), target: InspectorQuery.Target?
+        active.select(.level, value: "error"); active.text = "checkout"
+        let original = active
+        header.onFilters = { target = $0 }
+        header.onQueryChange = { [weak header] changed in
+            active = changed; header?.relabel(paused: false, query: changed)
+        }
+        header.relabel(paused: false, query: active)
+        func buttons(_ view: UIView) -> [UIButton] {
+            (view as? UIButton).map { [$0] } ?? view.subviews.flatMap(buttons)
+        }
+        func tap(_ button: UIButton) {
+            for case let target as NSObject in button.allTargets.map(\.base) {
+                for action in button.actions(forTarget: target, forControlEvent: .touchUpInside) ?? [] {
+                    _ = target.perform(NSSelectorFromString(action), with: button)
+                }
+            }
+        }
+        let editHint = InspectorLocalization.text("ui_edit_filter"), removeLabel = InspectorLocalization.text("ui_remove_filter")
+        let edit = try XCTUnwrap(buttons(header).first { $0.accessibilityHint == editHint })
+        tap(edit)
+        XCTAssertEqual(target, .field(.level)); XCTAssertEqual(active, original)
+        let close = try XCTUnwrap(buttons(header).first { $0.accessibilityLabel?.hasPrefix(removeLabel) == true })
+        tap(close)
+        XCTAssertTrue(active.values[.level]?.isEmpty ?? true); XCTAssertEqual(active.text, "checkout")
+        let undo = try XCTUnwrap(buttons(header).first { $0.currentTitle == InspectorLocalization.text("ui_undo_filter") })
+        XCTAssertFalse(undo.isHidden); tap(undo)
+        XCTAssertEqual(active, original)
+    }
+
     @MainActor func testClearActionsDependOnRetainedDataRatherThanSearchMatches() async throws {
         let capture = CaptureController(debugEnabled: true), logs = try MemoryLogStore(), requests = try MemoryHTTPStore()
         let logger = try LogRecorder(sink: logs, captureController: capture)

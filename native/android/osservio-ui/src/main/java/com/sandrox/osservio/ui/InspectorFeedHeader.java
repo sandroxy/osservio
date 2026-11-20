@@ -142,7 +142,7 @@ final class InspectorFeedHeader extends LinearLayout {
     }
     void emptyMessage(int reason) {
         empty.setText(reason);
-        showAdjustment(reason == R.string.osservio_ui_filtered_empty && empty.getVisibility() == VISIBLE);
+        showAdjustment((reason == R.string.osservio_ui_filtered_empty || reason == R.string.osservio_ui_filtered_empty_partial) && empty.getVisibility() == VISIBLE);
     }
     void showAdjustment(boolean filteredEmpty) {
         adjustFilters.setVisibility(filteredEmpty && displayedQuery != null && displayedQuery.activeCount() > 0 ? VISIBLE : GONE);

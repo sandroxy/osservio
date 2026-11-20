@@ -5,6 +5,10 @@ import android.content.Context;
 /** Search progress describes the frozen input window, independently of matching rows. */
 final class InspectorSearchFeedback {
     private InspectorSearchFeedback() { }
+    static int filteredEmpty(InspectorRecordSearch.Result result) {
+        return result != null && (!result.complete || result.hasIncompleteContent())
+            ? R.string.osservio_ui_filtered_empty_partial : R.string.osservio_ui_filtered_empty;
+    }
     static String activity(Context context, InspectorRecordSearch.Result result, boolean running, boolean paused) {
         if (result != null && !result.complete && (running || paused)) {
             return context.getString(paused && !running ? R.string.osservio_ui_search_paused : R.string.osservio_ui_search_progress, result.scanned, result.total);

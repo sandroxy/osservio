@@ -167,7 +167,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         List<String> notes = new ArrayList<>(); Context context = getContext();
         String activity = InspectorSearchFeedback.activity(context, result, task != null || dirty && state.query.searchesPayload(), state.paused);
         if (activity != null) notes.add(activity);
-        if (result != null && (result.limited || result.unavailable > 0 || result.truncated > 0)) notes.add(context.getString(R.string.osservio_ui_search_partial));
+        if (result != null && result.hasIncompleteContent()) notes.add(context.getString(R.string.osservio_ui_search_partial));
         if (stale) notes.add(context.getString(R.string.osservio_ui_previous_window));
         WebSocketRecorder.Status socket = socketRecorder == null ? null : socketRecorder.status();
         if ((state.http != null && (state.http.evictedEvents > 0 || state.http.evictedBodies > 0))
@@ -181,7 +181,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.NETWORK_APPLY);
         try {
             header.setQuery(state.query, this::groups, items.size(), available);
-            header.emptyMessage(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
+            header.emptyMessage(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? InspectorSearchFeedback.filteredEmpty(result)
                 : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
             rows.notifyDataSetChanged(); status();
             if (!state.paused) list.setSelectionFromTop(0, 0);

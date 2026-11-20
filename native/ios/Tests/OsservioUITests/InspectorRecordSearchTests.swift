@@ -4,6 +4,14 @@ import OsservioCore
 import XCTest
 
 final class InspectorRecordSearchTests: XCTestCase {
+    func testZeroMatchesDistinguishUncheckedEvidenceFromACompleteSearch() {
+        var result = InspectorRecordSearch.Result()
+        XCTAssertEqual(InspectorSearchFeedback.filteredEmpty(result), "ui_filtered_empty")
+        result.truncated = 1
+        XCTAssertEqual(InspectorSearchFeedback.filteredEmpty(result), "ui_filtered_empty_partial")
+        result.truncated = 0; result.complete = false
+        XCTAssertEqual(InspectorSearchFeedback.filteredEmpty(result), "ui_filtered_empty_partial")
+    }
     func testLazySearchKeepsOriginalPositionsAndOrderingCanCancelBeforeReads() throws {
         let history = History()
         let records = [InspectorSearchRecord.socket(try message(1, connection: 10, text: "needle", history: history, time: 10)),

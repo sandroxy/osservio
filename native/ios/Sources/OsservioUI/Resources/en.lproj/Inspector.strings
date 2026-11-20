@@ -65,6 +65,7 @@
 "ui_follow_latest" = "View latest";
 "ui_pause" = "Pause updates";
 "ui_inactive_empty" = "Debugging is off. Use the debug button at the top left of a root tab to inspect subsequent logs and network activity.";
+"ui_filtered_empty_partial" = "No matches in the content that could be checked.";
 "ui_filtered_empty" = "No records match. Try another search or reset the filters.";
 "ui_waiting" = "Waiting for records";
 "ui_previous_window" = "Showing the last available snapshot";

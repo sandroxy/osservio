@@ -100,7 +100,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         header.relabel(paused: false, query: query)
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), indices.count, availableCount)
         table.refreshFeed(rowCount: indices.count, preservingPosition: result != nil)
-        table.setFeedEmpty(indices.isEmpty ? (query.searchesPayload && result == nil ? searchBusy ? "busy" : "ui_searching" : records.isEmpty ? "incident_evidence_empty" : "ui_filtered_empty") : nil, header: header, query: query)
+        table.setFeedEmpty(indices.isEmpty ? (query.searchesPayload && result == nil ? searchBusy ? "busy" : "ui_searching" : records.isEmpty ? "incident_evidence_empty" : InspectorSearchFeedback.filteredEmpty(result)) : nil, header: header, query: query)
     }
     private func showFilters(_ target: InspectorQuery.Target?) {
         let groups: [InspectorFilterGroup]

@@ -66,6 +66,7 @@
     <string name="osservio_ui_follow_latest">查看最新</string>
     <string name="osservio_ui_pause">暂停更新</string>
     <string name="osservio_ui_inactive_empty">调试尚未开启。可使用首页左上角的调试按钮，观察之后发生的日志与网络活动。</string>
+    <string name="osservio_ui_filtered_empty_partial">在可检查的内容中未找到匹配。</string>
     <string name="osservio_ui_filtered_empty">没有符合条件的记录。可以修改搜索词或重置筛选。</string>
     <string name="osservio_ui_waiting">等待新的记录</string>
     <string name="osservio_ui_previous_window">当前显示上次取得的记录</string>
@@ -152,7 +153,6 @@
     <string name="osservio_ui_socket_direction">Socket 消息方向</string>
     <string name="osservio_ui_record_problem">记录问题</string>
     <string name="osservio_ui_retry">重试</string>
-    <string name="osservio_ui_filter_token">%1$s ×</string>
     <string name="osservio_ui_content_filters">内容筛选</string>
     <string name="osservio_ui_json_field">JSON 字段匹配</string>
     <string name="osservio_ui_not_set">未设置</string>

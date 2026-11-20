@@ -67,6 +67,7 @@
     <string name="osservio_ui_follow_latest">View latest</string>
     <string name="osservio_ui_pause">Pause updates</string>
     <string name="osservio_ui_inactive_empty">Debugging is off. Use the debug button at the top left of a root tab to inspect subsequent logs and network activity.</string>
+    <string name="osservio_ui_filtered_empty_partial">No matches in the content that could be checked.</string>
     <string name="osservio_ui_filtered_empty">No records match. Try another search or reset the filters.</string>
     <string name="osservio_ui_waiting">Waiting for records</string>
     <string name="osservio_ui_previous_window">Showing the last available snapshot</string>
@@ -153,7 +154,6 @@
     <string name="osservio_ui_socket_direction">Socket message direction</string>
     <string name="osservio_ui_record_problem">Record a problem</string>
     <string name="osservio_ui_retry">Retry</string>
-    <string name="osservio_ui_filter_token">%1$s ×</string>
     <string name="osservio_ui_content_filters">Content filters</string>
     <string name="osservio_ui_json_field">JSON field match</string>
     <string name="osservio_ui_not_set">Not set</string>

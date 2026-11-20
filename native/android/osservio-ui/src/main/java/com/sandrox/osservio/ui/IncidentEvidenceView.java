@@ -126,7 +126,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private void cancelSearch() { generation++; handler.removeCallbacksAndMessages(null); if (task != null) task.cancel(); task = null; }
     private void display() {
         header.setQuery(query, this::groups, indices.size(), scopeCount()); header.empty.setVisibility(GONE);
-        footer.setText(query.searchesPayload() && result == null ? searchBusy ? R.string.osservio_busy : R.string.osservio_ui_searching : count() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty);
+        footer.setText(query.searchesPayload() && result == null ? searchBusy ? R.string.osservio_busy : R.string.osservio_ui_searching : count() == 0 ? R.string.osservio_incident_evidence_empty : InspectorSearchFeedback.filteredEmpty(result));
         footer.setVisibility(indices.isEmpty() ? VISIBLE : GONE);
         header.showAdjustment(indices.isEmpty() && scopeCount() > 0 && !(query.searchesPayload() && result == null));
         long time = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;

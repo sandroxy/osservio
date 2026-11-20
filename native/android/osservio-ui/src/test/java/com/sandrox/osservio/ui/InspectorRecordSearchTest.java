@@ -15,6 +15,14 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public final class InspectorRecordSearchTest {
+    @Test public void zeroMatchesIdentifyIncompleteEvidenceAndSearchProgress() {
+        InspectorRecordSearch.Result result = new InspectorRecordSearch.Result();
+        assertEquals(R.string.osservio_ui_filtered_empty, InspectorSearchFeedback.filteredEmpty(result));
+        result.unavailable = 1;
+        assertEquals(R.string.osservio_ui_filtered_empty_partial, InspectorSearchFeedback.filteredEmpty(result));
+        result.unavailable = 0; result.complete = false;
+        assertEquals(R.string.osservio_ui_filtered_empty_partial, InspectorSearchFeedback.filteredEmpty(result));
+    }
     @Test public void entireWindowIncludesOldRecordsBeyondAggregateBudgets() {
         String text = new String(new char[600]).replace('\0', 'x');
         List<InspectorRecordSearch.Record> records = new java.util.ArrayList<>();

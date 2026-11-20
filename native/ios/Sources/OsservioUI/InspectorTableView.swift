@@ -58,7 +58,7 @@ final class InspectorTableView: UITableView {
 
     func setFeedEmpty(_ reason: String?, header: InspectorFeedHeader, query: InspectorQuery) {
         var action: UIButton?
-        if reason == "ui_filtered_empty" && query.activeCount > 0 {
+        if (reason == "ui_filtered_empty" || reason == "ui_filtered_empty_partial") && query.activeCount > 0 {
             action = header.adjustFiltersButton
             action?.setTitle(InspectorLocalization.text("ui_adjust_filters"), for: .normal)
             action?.tintColor = InspectorTheme.accent

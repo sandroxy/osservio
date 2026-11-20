@@ -132,7 +132,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         List<String> notes = new ArrayList<>(); Context context = getContext();
         String activity = InspectorSearchFeedback.activity(context, result, task != null || dirty && state.query.searchesPayload(), state.paused);
         if (activity != null) notes.add(activity);
-        if (result != null && (result.limited || result.unavailable > 0 || result.truncated > 0)) notes.add(context.getString(R.string.osservio_ui_search_partial));
+        if (result != null && result.hasIncompleteContent()) notes.add(context.getString(R.string.osservio_ui_search_partial));
         if (stale) notes.add(context.getString(R.string.osservio_ui_previous_window));
         LogRecorder.Status status = recorder.status();
         if ((state.snapshot != null && (state.snapshot.evictedCount > 0 || state.snapshot.evictedDetails > 0)) || status != null && status.rateLimitedCount > 0) notes.add(context.getString(R.string.osservio_ui_retention_loss));
@@ -172,7 +172,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         try {
             header.setQuery(state.query, () -> InspectorFilterOptions.logs(getContext(), retained()), events.size(), retained().size());
             LogRecorder.Status status = recorder.status();
-            header.emptyMessage(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
+            header.emptyMessage(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? InspectorSearchFeedback.filteredEmpty(result)
                 : stale || status == null ? R.string.osservio_busy : status.isRecording ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
             rows.notifyDataSetChanged(); status();
             if (!state.paused) list.setSelectionFromTop(0, 0);

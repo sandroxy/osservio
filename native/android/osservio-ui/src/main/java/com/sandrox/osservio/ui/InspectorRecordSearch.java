@@ -100,6 +100,7 @@ final class InspectorRecordSearch {
         final Map<String, String> previewSources = new HashMap<>();
         int unavailable, truncated;
         boolean limited;
+        boolean hasIncompleteContent() { return limited || unavailable > 0 || truncated > 0; }
         Result copy() {
             Result copy = new Result(); copy.keys.addAll(keys); copy.positions.addAll(positions);
             copy.previews.putAll(previews); copy.previewSources.putAll(previewSources);

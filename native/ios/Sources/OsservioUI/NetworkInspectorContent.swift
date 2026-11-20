@@ -146,7 +146,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         let count = String(format: InspectorLocalization.text("ui_result_count"), rows.count, available)
         if header.count.text != count { header.count.text = count }
         let active = http?.recorder.captureController.status()?.debugEnabled == true || sockets?.recorder.captureController.status()?.debugEnabled == true
-        let key = dirty && query.searchesPayload ? "ui_searching" : available > 0 ? "ui_filtered_empty" : !attemptedRead ? "ui_reading"
+        let key = dirty && query.searchesPayload ? "ui_searching" : available > 0 ? InspectorSearchFeedback.filteredEmpty(result) : !attemptedRead ? "ui_reading"
             : staleHTTP || staleSockets ? "busy" : active ? "ui_waiting" : "ui_inactive_empty"
         table.setFeedEmpty(rows.isEmpty ? key : nil, header: header, query: query); updateStatus()
         DispatchQueue.main.async { [weak self] in self?.requestPreviews() }

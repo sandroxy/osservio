@@ -124,7 +124,7 @@ public final class LogInspectorViewController: UITableViewController {
         let count = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
         if header.count.text != count { header.count.text = count }
         let key = dirty && query.searchesPayload ? "ui_searching" : latest == nil ? attemptedRead ? "busy" : "ui_reading"
-            : latest?.events.isEmpty == false ? "ui_filtered_empty" : recorder.status()?.isRecording == true ? "ui_waiting" : "ui_inactive_empty"
+            : latest?.events.isEmpty == false ? InspectorSearchFeedback.filteredEmpty(result) : recorder.status()?.isRecording == true ? "ui_waiting" : "ui_inactive_empty"
         table.setFeedEmpty(events.isEmpty ? key : nil, header: header, query: query); updateStatus()
     }
     @objc private func followLatest() {
