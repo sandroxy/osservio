@@ -29,6 +29,17 @@ final class InspectorWidgets {
         button.setStateListAnimator(null);
         button.setOnClickListener(ignored -> action.run()); return button;
     }
+    static ImageButton filterRemoval(Context context, String description, Runnable action) {
+        ImageButton button = new ImageButton(context);
+        int inset = InspectorTheme.dp(context, 12), size = InspectorTheme.dp(context, 48);
+        button.setPadding(inset, inset, inset, inset); button.setMinimumWidth(size); button.setMinimumHeight(size);
+        button.setBackgroundTintList(null); button.setStateListAnimator(null);
+        InspectorAppearance.style(button, () -> {
+            button.setImageDrawable(symbol(context, R.drawable.osservio_close, 24, InspectorTheme.accent(context)));
+        });
+        InspectorTheme.feedback(button, 0);
+        button.setContentDescription(description); button.setOnClickListener(ignored -> action.run()); return button;
+    }
     private static void styleIcon(ImageButton button, int label) {
         Context context = button.getContext(); button.setImageTintList(actionColors(context, InspectorTheme.accent(context)));
         button.setContentDescription(context.getString(label));

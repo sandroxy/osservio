@@ -211,11 +211,8 @@ final class InspectorFeedHeader extends LinearLayout {
         edit.setContentDescription(label + ", " + context.getString(R.string.osservio_ui_edit_filter));
         group.addView(edit);
         if (changed != null) {
-            ImageButton close = new ImageButton(context);
-            close.setImageDrawable(InspectorWidgets.symbol(context, R.drawable.osservio_close, 24, InspectorTheme.accent(context)));
-            close.setPadding(dp(12), dp(12), dp(12), dp(12)); close.setBackgroundTintList(null);
-            InspectorTheme.feedback(close, 0); close.setOnClickListener(v -> replaceWithUndo(changed));
-            close.setContentDescription(context.getString(R.string.osservio_ui_remove_filter) + ", " + label);
+            ImageButton close = InspectorWidgets.filterRemoval(context,
+                context.getString(R.string.osservio_ui_remove_filter) + ", " + label, () -> replaceWithUndo(changed));
             group.addView(close, new LayoutParams(InspectorTheme.dp(context, 48), -1));
         }
         fitToken(group, tokenScroll.getWidth() > 0 ? tokenScroll.getWidth() : getResources().getDisplayMetrics().widthPixels);

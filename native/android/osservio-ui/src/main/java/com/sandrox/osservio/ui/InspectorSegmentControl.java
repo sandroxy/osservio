@@ -13,6 +13,7 @@ import android.widget.TextView;
 @android.annotation.SuppressLint("ViewConstructor")
 final class InspectorSegmentControl extends RadioGroup {
     final InspectorSelectionMaterial material;
+    private boolean restoreMaterial;
     InspectorSegmentControl(ViewGroup owner, View viewport, int count) {
         super(owner.getContext());
         InspectorNavigation navigation = InspectorNavigation.from(getContext());
@@ -62,7 +63,10 @@ final class InspectorSegmentControl extends RadioGroup {
         }
         super.onMeasure(widthSpec, heightSpec);
     }
-    @Override public void draw(Canvas canvas) { if (!material.draw(canvas)) super.draw(canvas); }
+    @Override public void draw(Canvas canvas) {
+        if (restoreMaterial) { restoreMaterial = false; material.updateRegistration(); }
+        if (!material.draw(canvas)) super.draw(canvas);
+    }
     @Override public boolean onInterceptTouchEvent(MotionEvent event) { return material.intercept(event); }
     @android.annotation.SuppressLint("ClickableViewAccessibility") // Commit dispatches through the selected RadioButton, including keyboard/accessibility.
     @Override public boolean onTouchEvent(MotionEvent event) { return material.touch(event) || super.onTouchEvent(event); }
@@ -78,8 +82,14 @@ final class InspectorSegmentControl extends RadioGroup {
     @Override public void onRtlPropertiesChanged(int direction) {
         super.onRtlPropertiesChanged(direction); if (material != null) material.directionChanged();
     }
-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); material.updateRegistration(); }
-    @Override protected void onDetachedFromWindow() { material.detach(); super.onDetachedFromWindow(); }
+    @Override public void onFinishTemporaryDetach() {
+        super.onFinishTemporaryDetach();
+        // ListView finishes temporary detach before putting the row back in its parent.
+        // Rejoin on the first draw, with valid ancestry and no interim fallback frame.
+        restoreMaterial = true; invalidate();
+    }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); restoreMaterial = false; material.updateRegistration(); }
+    @Override protected void onDetachedFromWindow() { restoreMaterial = false; material.detach(); super.onDetachedFromWindow(); }
     @Override protected void onVisibilityChanged(View view, int visibility) {
         super.onVisibilityChanged(view, visibility); if (material != null) material.updateRegistration();
     }

@@ -273,6 +273,15 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
     override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].rows.count }
+    override func tableView(_ tableView: UITableView, shouldHighlightRowAt path: IndexPath) -> Bool {
+        switch sections[path.section].rows[path.row] {
+        case .scope, .groupHeading, .durationInput: return false
+        default: return true
+        }
+    }
+    override func tableView(_ tableView: UITableView, willSelectRowAt path: IndexPath) -> IndexPath? {
+        self.tableView(tableView, shouldHighlightRowAt: path) ? path : nil
+    }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { sections[section].title }
     override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         sections[section].title == nil ? UIView() : nil
@@ -387,7 +396,11 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         return cell
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt path: IndexPath) {
-        tableView.deselectRow(at: path, animated: true)
+        // The same index path may describe a different row after expansion or navigation.
+        // Finish its feedback before reloadData can reuse the cell for that new row.
+        let pressedCell = tableView.cellForRow(at: path)
+        tableView.deselectRow(at: path, animated: false)
+        pressedCell?.setHighlighted(false, animated: false)
         let wasPicker = picker != nil
         switch sections[path.section].rows[path.row] {
         case .scope, .groupHeading, .durationInput: return

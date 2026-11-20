@@ -200,6 +200,67 @@ final class InspectorNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testFilterReloadEndsFeedbackBeforeRowsChangeIdentity() throws {
+        var query = InspectorQuery(); query.select(.transport, value: "http")
+        let filters = InspectorFilterViewController(query: query,
+            groups: InspectorFilterOptions.network([], sockets: [], query: query), payload: true) { _ in XCTFail("Applied a draft") }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = filters; window.makeKeyAndVisible(); filters.view.layoutIfNeeded()
+        defer { window.isHidden = true }
+        func select(_ key: String) throws {
+            let table = filters.tableView!
+            for section in 0..<filters.numberOfSections(in: table) {
+                for row in 0..<filters.tableView(table, numberOfRowsInSection: section) {
+                    let path = IndexPath(row: row, section: section)
+                    table.scrollToRow(at: path, at: .middle, animated: false); table.layoutIfNeeded()
+                    let value = try XCTUnwrap(table.cellForRow(at: path))
+                    guard ((value as? InspectorFilterSummaryCell)?.labels.name.text ?? value.textLabel?.text) == InspectorLocalization.text(key) else { continue }
+                    table.selectRow(at: path, animated: false, scrollPosition: .none)
+                    table.layoutIfNeeded()
+                    let pressed = try XCTUnwrap(table.cellForRow(at: path))
+                    pressed.setHighlighted(true, animated: false)
+                    filters.tableView(table, didSelectRowAt: path); table.layoutIfNeeded()
+                    XCTAssertFalse(pressed.isHighlighted, "Stale highlight after \(key)")
+                    XCTAssertTrue(table.indexPathsForSelectedRows?.isEmpty ?? true)
+                    XCTAssertFalse(table.visibleCells.contains { $0.isSelected || $0.isHighlighted })
+                    return
+                }
+            }
+            XCTFail("Missing filter row: \(key)")
+        }
+        try select("ui_time"); try select("ui_time_5")
+        try select("ui_http_status")
+        let back = try XCTUnwrap(filters.navigationItem.leftBarButtonItem)
+        _ = (back.target as? NSObject)?.perform(try XCTUnwrap(back.action))
+        filters.tableView.layoutIfNeeded()
+        XCTAssertFalse(filters.tableView.visibleCells.contains { $0.isHighlighted || $0.isSelected })
+    }
+
+    @MainActor
+    func testFilterEmbeddedControlsAndHeadingsDoNotHighlightTheirContainer() throws {
+        let filters = InspectorFilterViewController(query: InspectorQuery(), groups: [
+            InspectorFilterGroup(.transport, values: ["http", "webSocket"]),
+            InspectorFilterGroup(.level, values: ["info", "error"])
+        ]) { _ in }
+        filters.loadViewIfNeeded()
+        var noninteractive = 0
+        for section in 0..<filters.numberOfSections(in: filters.tableView) {
+            for row in 0..<filters.tableView(filters.tableView, numberOfRowsInSection: section) {
+                let path = IndexPath(row: row, section: section)
+                let cell = filters.tableView(filters.tableView, cellForRowAt: path)
+                if cell.selectionStyle == .none {
+                    noninteractive += 1
+                    XCTAssertFalse(filters.tableView(filters.tableView, shouldHighlightRowAt: path))
+                    XCTAssertNil(filters.tableView(filters.tableView, willSelectRowAt: path))
+                } else {
+                    XCTAssertTrue(filters.tableView(filters.tableView, shouldHighlightRowAt: path))
+                }
+            }
+        }
+        XCTAssertEqual(noninteractive, 2)
+    }
+
+    @MainActor
     private func selectFilter(_ filters: InspectorFilterViewController, title: String) throws {
         for section in 0..<filters.numberOfSections(in: filters.tableView) {
             for row in 0..<filters.tableView(filters.tableView, numberOfRowsInSection: section) {

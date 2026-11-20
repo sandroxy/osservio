@@ -289,6 +289,10 @@ final class InspectorFilterSheet {
         }
         View rowView(int position, View recycled) {
             Row row = rows.get(position);
+            if (recycled != null && row.type != Type.SCOPE) {
+                // A new ripple must not inherit a press from the row's previous binding.
+                recycled.cancelPendingInputEvents(); recycled.setPressed(false); recycled.jumpDrawablesToCurrentState();
+            }
             if (row.type == Type.GAP) {
                 View gap = recycled != null ? recycled : new View(context);
                 gap.setMinimumHeight(dp(12)); gap.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -312,10 +316,9 @@ final class InspectorFilterSheet {
                 restore.hideDisclosure(); restore.bind(row.label, text(R.string.osservio_ui_restore_filter), true);
                 restore.setOnClickListener(v -> choose(row));
                 entry.addView(restore, new LinearLayout.LayoutParams(0, -2, 1));
-                Button remove = new Button(context); remove.setText("×"); remove.setMinWidth(0); remove.setMinimumWidth(0);
-                remove.setPadding(0, 0, 0, 0); remove.setMinHeight(dp(48)); remove.setStateListAnimator(null);
-                remove.setTextColor(InspectorTheme.accent(context)); remove.setContentDescription(text(R.string.osservio_ui_forget_filter) + ", " + row.label);
-                remove.setOnClickListener(v -> { recent.update(preset, true); recentItems.remove(preset); rebuild(); });
+                android.widget.ImageButton remove = InspectorWidgets.filterRemoval(context,
+                    text(R.string.osservio_ui_forget_filter) + ", " + row.label,
+                    () -> { recent.update(preset, true); recentItems.remove(preset); rebuild(); });
                 entry.addView(remove, new LinearLayout.LayoutParams(dp(48), -1));
                 InspectorWidgets.groupedRow(entry, false, last);
                 recentFeedback(restore, last, true); recentFeedback(remove, last, false);
@@ -410,6 +413,7 @@ final class InspectorFilterSheet {
             if (conditions != null) conditions.sync(); rebuild();
         }
         void choose(Row row) {
+            if (!rows.contains(row)) return;
             switch (row.type) {
                 case RECENT_TOGGLE: showsRecent = !showsRecent; break;
                 case RECENT:
