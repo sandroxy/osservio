@@ -26,7 +26,11 @@ public final class InspectorFeedUpdateTest {
             assertEquals(context.getString(R.string.osservio_ui_result_count, 2, 20), header.results.getText().toString());
             query.text = "latest"; header.setQuery(query, groups, 1, 20);
             InspectorQuery[] applied = {null}; header.onQueryChange = value -> applied[0] = value;
-            token(header, false).performClick();
+            Button edit = token(header, false), close = token(header, true);
+            assertSame(edit.getParent(), close.getParent());
+            assertTrue(((ViewGroup) edit.getParent()).getClipToOutline());
+            edit.setPressed(true); assertFalse(close.isPressed()); edit.setPressed(false);
+            edit.performClick();
             assertEquals(InspectorQuery.Field.LEVEL, editing[0].field); assertNull(applied[0]);
             token(header, true).performClick(); assertNotNull(applied[0]);
             assertEquals("latest", applied[0].text); assertEquals(0, applied[0].activeCount());

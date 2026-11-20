@@ -22,6 +22,8 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     private let actionLabel: String
     private let tokens = UIStackView()
     private let tokenScroll = UIScrollView()
+    private lazy var tokenHeight = tokenScroll.heightAnchor.constraint(equalToConstant: 44)
+    private var measuredTokenWidth: CGFloat = 0
     private var tokenQuery: InspectorQuery?
     private var tokenStyle = ""
     private var latestStyle = ""
@@ -71,7 +73,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
                 tokens.trailingAnchor.constraint(equalTo: tokenScroll.contentLayoutGuide.trailingAnchor),
                 tokens.topAnchor.constraint(equalTo: tokenScroll.contentLayoutGuide.topAnchor), tokens.bottomAnchor.constraint(equalTo: tokenScroll.contentLayoutGuide.bottomAnchor),
                 tokens.heightAnchor.constraint(equalTo: tokenScroll.frameLayoutGuide.heightAnchor)])
-            tokenScroll.heightAnchor.constraint(equalToConstant: 44).isActive = true
+            tokenHeight.isActive = true
             [extra, searchRow, tokenScroll, controls].forEach(addArrangedSubview)
         } else { [extra, searchRow, controls, criteria, count].forEach(addArrangedSubview) }
         relabel(paused: false, query: InspectorQuery())
@@ -123,20 +125,18 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         undo.setTitle(InspectorLocalization.text("ui_undo_filter"), for: .normal)
         undo.tintColor = InspectorTheme.accent
         tokenScroll.isHidden = query.activeCount == 0
-        let style = InspectorLocalization.text("ui_remove_filter") + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue
+        let style = InspectorLocalization.text("ui_remove_filter") + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue + traitCollection.preferredContentSizeCategory.rawValue
         guard tokenQuery != query || tokenStyle != style else { return }
-        tokenQuery = query; tokenStyle = style
+        tokenQuery = query; tokenStyle = style; measuredTokenWidth = 0
         for view in tokens.arrangedSubviews { tokens.removeArrangedSubview(view); view.removeFromSuperview() }
         func add(_ title: String, target: InspectorQuery.Target, changed: InspectorQuery?) {
             let group = UIStackView()
-            group.backgroundColor = InspectorTheme.tint; group.layer.cornerRadius = 18
+            group.backgroundColor = InspectorTheme.tint; group.layer.cornerRadius = 18; group.clipsToBounds = true
             let edit = InspectorFilterToken { [weak self] in self?.onFilters?(target) }
             edit.setTitle(title, for: .normal)
             edit.accessibilityLabel = title; edit.accessibilityHint = InspectorLocalization.text("ui_edit_filter")
-            edit.titleLabel?.lineBreakMode = .byTruncatingTail
+            edit.titleLabel?.numberOfLines = 0; edit.titleLabel?.lineBreakMode = .byWordWrapping
             group.addArrangedSubview(edit); tokens.addArrangedSubview(group)
-            let readableWidth = edit.widthAnchor.constraint(lessThanOrEqualTo: tokenScroll.frameLayoutGuide.widthAnchor, constant: -52)
-            readableWidth.priority = .defaultHigh; readableWidth.isActive = true
             if let changed {
                 let close = InspectorFilterToken { [weak self] in self?.replace(query, with: changed) }
                 close.setImage(UIImage(systemName: "xmark"), for: .normal)
@@ -149,12 +149,25 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             guard let values = query.values[field], !values.isEmpty else { continue }
             var changed = query
             if field == .transport { changed.select(.transport, value: nil) } else { changed.values[field] = nil }
-            add(InspectorFilterOptions.title(field, transport: query.transport) + ": " + values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), target: .field(field), changed: field == .transport && query.hasTransportConditions ? nil : changed)
+            add(InspectorFilterOptions.title(field, transport: query.transport) + ": " + InspectorFilterOptions.selectionSummary(values) { InspectorFilterOptions.label(field, $0) }, target: .field(field), changed: field == .transport && query.hasTransportConditions ? nil : changed)
         }
         if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorLocalization.text("ui_time_\(query.recentMinutes)"), target: .time, changed: changed) }
         if !query.excludedText.isEmpty { var changed = query; changed.excludedText = ""; add(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText, target: .excludedText, changed: changed) }
         if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(InspectorFilterOptions.jsonCondition(path: query.fieldPath, value: query.fieldValue), target: .json, changed: changed) }
         if query.minimumDurationMillis > 0 { var changed = query; changed.minimumDurationMillis = 0; add("HTTP ≥ \(query.minimumDurationMillis) ms", target: .duration, changed: changed) }
+    }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let width = tokenScroll.bounds.width
+        guard compact, !tokenScroll.isHidden, width > 0, width != measuredTokenWidth else { return }
+        measuredTokenWidth = width
+        var height: CGFloat = 44
+        for case let group as UIStackView in tokens.arrangedSubviews {
+            guard let edit = group.arrangedSubviews.first as? InspectorFilterToken else { continue }
+            edit.fitTitle(in: width - (group.arrangedSubviews.count > 1 ? 44 : 0))
+            height = max(height, edit.intrinsicContentSize.height)
+        }
+        tokenHeight.constant = height
     }
     lazy var adjustFiltersButton: UIButton = {
         let button = UIButton(type: .system)
@@ -252,6 +265,21 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
 @MainActor
 final class InspectorFilterToken: UIButton {
     private let operation: () -> Void
+    private var titleSize: CGSize?
+    override var intrinsicContentSize: CGSize { titleSize ?? super.intrinsicContentSize }
+    override var isHighlighted: Bool {
+        didSet { backgroundColor = isHighlighted ? .tertiarySystemFill : .clear }
+    }
+    func fitTitle(in available: CGFloat) {
+        guard let label = titleLabel, currentTitle != nil else { return }
+        let insets = contentEdgeInsets
+        let natural = ceil(label.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)).width)
+        // Very long tokens can scroll horizontally without taking over the feed vertically.
+        let width = min(natural, max(ceil(natural / 2), available - insets.left - insets.right))
+        let height = label.sizeThatFits(CGSize(width: max(1, width), height: CGFloat.greatestFiniteMagnitude)).height
+        titleSize = CGSize(width: max(44, width + insets.left + insets.right), height: max(44, ceil(height + insets.top + insets.bottom)))
+        invalidateIntrinsicContentSize()
+    }
     init(operation: @escaping () -> Void) {
         self.operation = operation; super.init(frame: .zero)
         tintColor = InspectorTheme.accent; setTitleColor(InspectorTheme.accent, for: .normal)

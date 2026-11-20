@@ -31,6 +31,11 @@ final class InspectorSearchFlowTests: XCTestCase {
         tap(edit)
         XCTAssertEqual(target, .field(.level)); XCTAssertEqual(active, original)
         let close = try XCTUnwrap(buttons(header).first { $0.accessibilityLabel?.hasPrefix(removeLabel) == true })
+        XCTAssertTrue(edit.superview === close.superview)
+        XCTAssertTrue(edit.superview?.clipsToBounds == true)
+        edit.isHighlighted = true
+        XCTAssertEqual(edit.backgroundColor, .tertiarySystemFill)
+        XCTAssertFalse(close.isHighlighted); edit.isHighlighted = false
         tap(close)
         XCTAssertTrue(active.values[.level]?.isEmpty ?? true); XCTAssertEqual(active.text, "checkout")
         let undo = try XCTUnwrap(buttons(header).first { $0.currentTitle == InspectorLocalization.text("ui_undo_filter") })

@@ -95,6 +95,10 @@ final class InspectorFeedHeader extends LinearLayout {
         menuLayout.leftMargin = InspectorTheme.dp(context, 8); bar.addView(menu, menuLayout);
         tokens = new LinearLayout(context); tokenScroll = new android.widget.HorizontalScrollView(context);
         tokenScroll.setHorizontalScrollBarEnabled(false); tokenScroll.addView(tokens);
+        tokenScroll.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left == oldRight - oldLeft) return;
+            for (int index = 0; index < tokens.getChildCount(); index++) fitToken((LinearLayout) tokens.getChildAt(index), right - left);
+        });
         if (compact) addView(tokenScroll, new LayoutParams(-1, -2));
         addView(bar, new LayoutParams(-1, -2));
         criteria = InspectorWidgets.caption(context); criteria.setMaxLines(3); criteria.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -162,11 +166,9 @@ final class InspectorFeedHeader extends LinearLayout {
         for (InspectorFilterSheet.Group group : InspectorFilterOptions.displayGroups(getContext(), query, groups)) {
             java.util.Set<String> values = query.values.get(group.field);
             if (values == null || values.isEmpty()) continue;
-            java.util.List<String> labels = new java.util.ArrayList<>();
-            for (String value : new java.util.TreeSet<>(values)) labels.add(InspectorFilterOptions.label(getContext(), group.field, value));
             InspectorQuery changed = query.copy();
             if (group.field == InspectorQuery.Field.TRANSPORT) changed.select(group.field, null); else changed.values.remove(group.field);
-            token(group.title + ": " + android.text.TextUtils.join(", ", labels), InspectorFilterSheet.Target.field(group.field),
+            token(group.title + ": " + InspectorFilterOptions.selectionSummary(getContext(), group, values), InspectorFilterSheet.Target.field(group.field),
                 group.field == InspectorQuery.Field.TRANSPORT && query.hasTransportConditions() ? null : changed);
         }
         if (query.recentMinutes > 0) { InspectorQuery changed = query.copy(); changed.recentMinutes = 0;
@@ -178,30 +180,36 @@ final class InspectorFeedHeader extends LinearLayout {
     private void token(String label, InspectorFilterSheet.Target target, InspectorQuery changed) {
         Context context = getContext();
         LinearLayout group = new LinearLayout(context);
-        group.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        group.setGravity(android.view.Gravity.CENTER_VERTICAL); group.setClipToOutline(true);
         group.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false));
         Button edit = tokenAction(label, () -> editFilter.open(target));
         edit.setContentDescription(label + ", " + context.getString(R.string.osservio_ui_edit_filter));
-        int available = tokenScroll.getWidth() > 0 ? tokenScroll.getWidth() : getResources().getDisplayMetrics().widthPixels;
-        edit.setMaxWidth(Math.max(InspectorTheme.dp(context, 48), available - InspectorTheme.dp(context, 54)));
         group.addView(edit);
         if (changed != null) {
             Button close = tokenAction("×", () -> replaceWithUndo(changed));
             close.setContentDescription(context.getString(R.string.osservio_ui_remove_filter) + ", " + label);
-            group.addView(close, new LayoutParams(InspectorTheme.dp(context, 48), -2));
+            group.addView(close, new LayoutParams(InspectorTheme.dp(context, 48), -1));
         }
+        fitToken(group, tokenScroll.getWidth() > 0 ? tokenScroll.getWidth() : getResources().getDisplayMetrics().widthPixels);
         LayoutParams layout = new LayoutParams(-2, -2);
         layout.setMarginEnd(InspectorTheme.dp(context, 6)); tokens.addView(group, layout);
+    }
+    private void fitToken(LinearLayout group, int available) {
+        Button edit = (Button) group.getChildAt(0);
+        int inset = edit.getPaddingLeft() + edit.getPaddingRight();
+        int natural = (int) Math.ceil(android.text.Layout.getDesiredWidth(edit.getText(), edit.getPaint()));
+        int close = group.getChildCount() > 1 ? InspectorTheme.dp(getContext(), 48) : 0;
+        edit.setMaxWidth(Math.max(available - close, (natural + 1) / 2 + inset));
     }
     private Button tokenAction(String text, Runnable action) {
         Context context = getContext();
         Button button = new Button(context);
-        button.setAllCaps(false); button.setText(text); button.setSingleLine(true);
-        button.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        button.setAllCaps(false); button.setText(text); button.setSingleLine(false);
+        button.setEllipsize(null);
         button.setMinWidth(InspectorTheme.dp(context, 48)); button.setMinimumWidth(0);
         button.setMinHeight(InspectorTheme.dp(context, 48)); button.setStateListAnimator(null);
         button.setPadding(InspectorTheme.dp(context, 10), 0, InspectorTheme.dp(context, 10), 0);
-        InspectorTheme.typography(button, 14, false); InspectorTheme.feedback(button, 20);
+        InspectorTheme.typography(button, 14, false); InspectorTheme.feedback(button, 0);
         button.setTextColor(InspectorTheme.accent(context)); button.setOnClickListener(v -> action.run());
         return button;
     }
