@@ -7,6 +7,58 @@ import XCTest
 
 final class InspectorLayoutTests: XCTestCase {
     @MainActor
+    func testFilterDisclosureAlignsWithInlineValueAndKeepsItsShapeWhenRotated() throws {
+        let cell = InspectorFilterSummaryCell(style: .default, reuseIdentifier: nil)
+        cell.overrideUserInterfaceStyle = .light
+        cell.frame = CGRect(x: 0, y: 0, width: 340, height: 48)
+        let arrow = try XCTUnwrap(cell.contentView.subviews.compactMap { $0 as? InspectorFilterDisclosure }.first)
+        for value in ["全部", "不限时间", "All"] {
+            var sizes = [CGSize]()
+            for direction in [InspectorFilterDisclosure.Direction.forward, .down, .up] {
+                cell.bind("HTTP", value, direction: direction)
+                cell.setNeedsLayout(); cell.layoutIfNeeded()
+                cell.contentView.layoutIfNeeded()
+                XCTAssertEqual(cell.labels.axis, .horizontal)
+                let size = cell.contentView.bounds.size
+                let scale = 2
+                let width = Int(size.width) * scale, height = Int(size.height) * scale
+                var pixels = [UInt8](repeating: 255, count: width * height)
+                try pixels.withUnsafeMutableBytes { buffer in
+                    let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height,
+                        bitsPerComponent: 8, bytesPerRow: width, space: CGColorSpaceCreateDeviceGray(),
+                        bitmapInfo: CGImageAlphaInfo.none.rawValue))
+                    context.translateBy(x: 0, y: CGFloat(height))
+                    context.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
+                    cell.contentView.layer.render(in: context)
+                }
+                func inkBounds(from left: CGFloat, to right: CGFloat) throws -> CGRect {
+                    var bounds = CGRect.null
+                    for y in (4 * scale)..<(height - 4 * scale) {
+                        for x in Int(left * CGFloat(scale))..<Int(right * CGFloat(scale)) where pixels[y * width + x] < 190 {
+                            bounds = bounds.union(CGRect(x: x, y: y, width: 1, height: 1))
+                        }
+                    }
+                    return try XCTUnwrap(bounds.isNull ? nil : bounds)
+                }
+                let valueInk = try inkBounds(from: size.width / 2, to: arrow.frame.minX - 4)
+                let arrowInk = try inkBounds(from: arrow.frame.minX - 2, to: arrow.frame.maxX + 2)
+                XCTAssertEqual(arrowInk.midY, valueInk.midY, accuracy: CGFloat(scale), "\(value) · \(direction)")
+                sizes.append(arrowInk.size)
+            }
+            for rotated in sizes.dropFirst() {
+                XCTAssertEqual(rotated.width, sizes[0].height, accuracy: 1)
+                XCTAssertEqual(rotated.height, sizes[0].width, accuracy: 1)
+            }
+        }
+        cell.frame.size.height = 70
+        cell.bind("精细筛选", "类别、主机、请求标识", direction: .down, stacked: true)
+        cell.setNeedsLayout(); cell.layoutIfNeeded()
+        cell.contentView.layoutIfNeeded()
+        XCTAssertEqual(cell.labels.axis, .vertical)
+        XCTAssertEqual(arrow.frame.midY, cell.contentView.bounds.midY, accuracy: 0.5)
+    }
+
+    @MainActor
     func testFilterCardsPlaceShortValuesInlineAndKeepLongHostsReadable() throws {
         let longHost = String(repeating: "orders-eu-central.", count: 6) + "example.com"
         var query = InspectorQuery(); query.select(.host, value: longHost)

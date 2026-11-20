@@ -306,22 +306,22 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     }
     override func tableView(_ tableView: UITableView, cellForRowAt path: IndexPath) -> UITableViewCell {
         let row = sections[path.section].rows[path.row]
-        func summaryCell(_ title: String, _ value: String, symbol: String?, stacked: Bool = false) -> UITableViewCell {
+        func summaryCell(_ title: String, _ value: String, direction: InspectorFilterDisclosure.Direction?, stacked: Bool = false) -> UITableViewCell {
             let cell = tableView.dequeueReusableCell(withIdentifier: "filterSummary") as? InspectorFilterSummaryCell
                 ?? InspectorFilterSummaryCell(style: .default, reuseIdentifier: "filterSummary")
-            cell.bind(title, value, symbol: symbol, stacked: stacked)
+            cell.bind(title, value, direction: direction, stacked: stacked)
             return cell
         }
-        func chevron(_ open: Bool) -> String { open ? "chevron.up" : "chevron.down" }
+        func chevron(_ open: Bool) -> InspectorFilterDisclosure.Direction { open ? .up : .down }
         switch row {
-        case .groupHeading(let i): return summaryCell(groups[i].title, selectionRule(groups[i]), symbol: nil)
+        case .groupHeading(let i): return summaryCell(groups[i].title, selectionRule(groups[i]), direction: nil)
         case .group(let i):
             let group = groups[i], nested = group.options.count > 6 || group.field == .status
-            return summaryCell(group.title, summary(group), symbol: nested ? "chevron.right" : chevron(expanded.contains(group.field)))
-        case .time: return summaryCell(text(timeLabel), text(draft.recentMinutes == 0 ? "ui_time_all" : "ui_time_\(draft.recentMinutes)"), symbol: chevron(timeExpanded))
-        case .duration: return summaryCell(text("ui_http_timing"), draft.minimumDurationMillis == 0 ? text("ui_all") : "≥ \(draft.minimumDurationMillis) ms", symbol: chevron(durationExpanded))
-        case .recentToggle: return summaryCell(text("ui_recent_filters"), "", symbol: chevron(showsRecent))
-        case .refine: return summaryCell(text("ui_filter_refine"), refineSummary(), symbol: chevron(refined), stacked: true)
+            return summaryCell(group.title, summary(group), direction: nested ? .forward : chevron(expanded.contains(group.field)))
+        case .time: return summaryCell(text(timeLabel), text(draft.recentMinutes == 0 ? "ui_time_all" : "ui_time_\(draft.recentMinutes)"), direction: chevron(timeExpanded))
+        case .duration: return summaryCell(text("ui_http_timing"), draft.minimumDurationMillis == 0 ? text("ui_all") : "≥ \(draft.minimumDurationMillis) ms", direction: chevron(durationExpanded))
+        case .recentToggle: return summaryCell(text("ui_recent_filters"), "", direction: chevron(showsRecent))
+        case .refine: return summaryCell(text("ui_filter_refine"), refineSummary(), direction: chevron(refined), stacked: true)
         default: break
         }
         let reusable: Bool

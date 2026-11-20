@@ -42,19 +42,16 @@ final class InspectorFilterConditions: UIStackView {
     }
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("Programmatic construction only") }
-    private func configure(_ button: UIButton, key: String, summary: UILabel, editor: UIStackView, card: UIStackView) {
+    private func configure(_ button: FilterDisclosureButton, key: String, summary: UILabel, editor: UIStackView, card: UIStackView) {
         button.accessibilityLabel = InspectorLocalization.text(key)
         button.addTarget(self, action: #selector(toggle(_:)), for: .touchUpInside)
         let labels = InspectorFilterLabels(value: summary); labels.name.text = InspectorLocalization.text(key)
         labels.isUserInteractionEnabled = false; labels.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(labels)
         NSLayoutConstraint.activate([labels.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 16),
-            labels.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -44),
+            labels.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -(16 + InspectorFilterDisclosure.width + 10)),
             labels.topAnchor.constraint(equalTo: button.topAnchor, constant: 12), labels.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -12)])
-        let arrow = UIImageView(image: UIImage(systemName: "chevron.down")); arrow.contentMode = .scaleAspectFit; arrow.tintColor = InspectorTheme.secondary
-        arrow.translatesAutoresizingMaskIntoConstraints = false; arrow.tag = 1; button.addSubview(arrow)
-        NSLayoutConstraint.activate([arrow.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -16),
-            arrow.centerYAnchor.constraint(equalTo: button.centerYAnchor), arrow.widthAnchor.constraint(equalToConstant: 16), arrow.heightAnchor.constraint(equalToConstant: 20)])
+        button.arrow.attach(to: button, beside: labels)
         editor.axis = .vertical; editor.spacing = 10; editor.isLayoutMarginsRelativeArrangement = true
         editor.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16)
         card.addArrangedSubview(button); card.addArrangedSubview(editor)
@@ -83,7 +80,7 @@ final class InspectorFilterConditions: UIStackView {
         fieldSummary.text = path.text.flatMap { $0.isEmpty ? nil : InspectorFilterOptions.jsonCondition(path: $0, value: value.text ?? "") } ?? empty
         for (button, summary, editor) in [(excludeToggle, excludeSummary, excludeEditor), (fieldToggle, fieldSummary, fieldEditor)] {
             button.accessibilityValue = summary.text
-            (button.viewWithTag(1) as? UIImageView)?.image = UIImage(systemName: editor.isHidden ? "chevron.down" : "chevron.up")
+            button.arrow.direction = editor.isHidden ? .down : .up
         }
         layoutChanged?()
     }
@@ -91,6 +88,7 @@ final class InspectorFilterConditions: UIStackView {
 
 @MainActor
 private final class FilterDisclosureButton: UIButton {
+    let arrow = InspectorFilterDisclosure()
     override var isHighlighted: Bool {
         didSet { backgroundColor = isHighlighted ? .tertiarySystemFill : .clear }
     }

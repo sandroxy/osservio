@@ -180,7 +180,7 @@ final class InspectorNavigationTests: XCTestCase {
                     let path = IndexPath(row: row, section: section)
                     table.scrollToRow(at: path, at: .middle, animated: false); table.layoutIfNeeded()
                     guard let cell = table.cellForRow(at: path) as? InspectorFilterSummaryCell, cell.accessibilityLabel == name else { continue }
-                    let arrow = try XCTUnwrap(descendants(cell.contentView).compactMap { $0 as? UIImageView }.first { $0.image?.isSymbolImage == true })
+                    let arrow = try XCTUnwrap(descendants(cell.contentView).compactMap { $0 as? InspectorFilterDisclosure }.first)
                     let frame = arrow.convert(arrow.bounds, to: cell.contentView)
                     XCTAssertEqual(frame.width, 16, accuracy: 0.5, name)
                     XCTAssertEqual(cell.contentView.bounds.width - frame.maxX, 16, accuracy: 0.5, name)
