@@ -301,8 +301,8 @@
 "ui_outcome" = "Message result";
 "ui_close_code" = "Close code";
 "ui_filter_common" = "Common filters";
-"ui_filter_single_title" = "%@ · Select one";
-"ui_filter_multiple_title" = "%@ · Select multiple";
+"ui_filter_single" = "Select one";
+"ui_filter_multiple" = "Select multiple";
 "ui_filter_refine" = "Refine filters";
 "ui_filter_scope" = "View";
 "ui_filter_switch" = "You can switch back to review your choices. Apply uses the selected scope.";

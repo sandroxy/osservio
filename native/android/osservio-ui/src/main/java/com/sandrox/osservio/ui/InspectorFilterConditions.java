@@ -10,7 +10,7 @@ import android.widget.TextView;
 
 /** Stable editors for a private filter draft, expanded inside the same sheet. */
 final class InspectorFilterConditions {
-    final LinearLayout view, durationView;
+    final LinearLayout view;
     final EditText exclude, path, value, duration;
     private final InspectorQuery draft;
     private final Context context;
@@ -18,7 +18,7 @@ final class InspectorFilterConditions {
     private boolean syncing;
     InspectorFilterConditions(Context context, InspectorQuery draft, Runnable changed) {
         this.context = context; this.draft = draft;
-        view = column(); durationView = column();
+        view = column();
         TextView heading = InspectorWidgets.sectionLabel(context); heading.setText(R.string.osservio_ui_content_filters); view.addView(heading);
         LinearLayout card = column(); card.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 20, false));
         card.setClipToOutline(true);
@@ -34,8 +34,6 @@ final class InspectorFilterConditions {
         excludeSummary = row(card, R.string.osservio_ui_exclude, excludeEditor);
         card.addView(InspectorWidgets.divider(context));
         fieldSummary = row(card, R.string.osservio_ui_json_field, fieldEditor);
-        TextView timing = InspectorWidgets.sectionLabel(context); timing.setText(R.string.osservio_ui_http_timing);
-        durationView.addView(timing); durationView.addView(duration, new LinearLayout.LayoutParams(-1, -2));
         for (EditText field : new EditText[] {exclude, path, value, duration}) {
             field.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) { }
@@ -53,10 +51,11 @@ final class InspectorFilterConditions {
         LinearLayout result = column(); int inset = InspectorTheme.dp(context, 12); result.setPadding(inset, 0, inset, inset); return result;
     }
     private TextView row(LinearLayout card, int label, LinearLayout editor) {
-        InspectorWidgets.ValueRow row = new InspectorWidgets.ValueRow(context);
-        row.bind(context.getString(label), "", true); row.value.setVisibility(View.VISIBLE); row.value.setMaxLines(2);
+        InspectorFilterRow row = new InspectorFilterRow(context);
+        row.bind(context.getString(label), context.getString(R.string.osservio_ui_not_set), false);
+        InspectorTheme.feedback(row, 0);
         row.disclosureRotation(editor.getVisibility() == View.VISIBLE ? -90 : 90);
-        row.action(() -> {
+        row.setOnClickListener(v -> {
             if (editor.getVisibility() == View.VISIBLE) InspectorWidgets.hideKeyboard(editor);
             editor.setVisibility(editor.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
             row.disclosureRotation(editor.getVisibility() == View.VISIBLE ? -90 : 90);
@@ -79,10 +78,9 @@ final class InspectorFilterConditions {
         duration.setText(draft.minimumDurationMillis == 0 ? "" : Long.toString(draft.minimumDurationMillis)); syncing = false; summaries();
     }
     private void summaries() {
-        excludeSummary.setText(draft.excludedText.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : clip(draft.excludedText, 80));
-        fieldSummary.setText(draft.fieldPath.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : clip(InspectorFilterOptions.jsonCondition(context, draft.fieldPath, draft.fieldValue), 120));
+        excludeSummary.setText(draft.excludedText.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : draft.excludedText);
+        fieldSummary.setText(draft.fieldPath.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : InspectorFilterOptions.jsonCondition(context, draft.fieldPath, draft.fieldValue));
     }
-    private static String clip(String text, int limit) { return text.length() <= limit ? text : text.substring(0, limit) + "…"; }
     private void read() {
         draft.excludedText = exclude.getText().toString(); draft.fieldPath = path.getText().toString(); draft.fieldValue = value.getText().toString();
         long millis = 0; try { if (duration.length() > 0) millis = Long.parseLong(duration.getText().toString()); } catch (NumberFormatException invalid) { /* Validated on Apply. */ }

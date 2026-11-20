@@ -26,6 +26,12 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private struct Section { let title: String?; let rows: [Row] }
     private var sections: [Section] = []
     private var scope: InspectorScopeControl?
+    private lazy var optionHeader: UIStackView = {
+        let header = UIStackView(arrangedSubviews: [search])
+        header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
+        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20)
+        return header
+    }()
     private lazy var resetAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(resetDraft))
     private lazy var backAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(backToFilters))
 
@@ -72,11 +78,15 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         if payload {
             let editor = InspectorFilterConditions(query: draft, delegate: self); conditions = editor
             editor.changed = { [weak self] in self?.editConditions() }
-            editor.layoutChanged = { [weak self] in self?.resizeFooter() }
+            editor.layoutChanged = { [weak self] in self?.resizeSupplementaryView() }
             footer.addArrangedSubview(editor)
         }
-        let hint = InspectorTheme.label(.caption1, secondary: true); hint.text = text("ui_filter_hint"); footer.addArrangedSubview(hint)
+        let hint = InspectorTheme.label(.caption1, secondary: true); hint.text = text("ui_filter_hint")
+        let note = UIStackView(arrangedSubviews: [hint]); note.isLayoutMarginsRelativeArrangement = true
+        note.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
+        footer.addArrangedSubview(note)
         tableView.keyboardDismissMode = .onDrag
+        if #available(iOS 15, *) { tableView.sectionHeaderTopPadding = 0 }
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 58
         rebuild()
         recent?.ownerChanged = { [weak self] in self?.dismiss(animated: false) }
@@ -131,17 +141,31 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             term.isEmpty || $0.label.localizedCaseInsensitiveContains(term) || $0.value.localizedCaseInsensitiveContains(term)
         }.map { .option(index, $0.value, $0.label) }
     }
+    private func selectionRule(_ group: InspectorFilterGroup) -> String {
+        text(group.field == .activity || group.field == .searchScope ? "ui_filter_single" : "ui_filter_multiple")
+    }
+    private func commonSections() -> [Section] {
+        let common = groups.indices.filter { applicable(groups[$0]) && !advanced(groups[$0]) }
+        var cards = common.filter { direct(groups[$0]) }.map { rows(for: [$0]) }
+        let summaries = common.filter { !direct(groups[$0]) }
+        func protocolField(_ index: Int) -> Bool {
+            network && (InspectorQuery.httpFields.contains(groups[index].field) || InspectorQuery.socketFields.contains(groups[index].field))
+        }
+        let time: [Row] = [.time] + (timeExpanded ? times.map(Row.timeOption) : [])
+        cards.append(time + rows(for: summaries.filter { !protocolField($0) }))
+        var specific = rows(for: summaries.filter(protocolField))
+        if payload && transport == "http" {
+            specific.append(.duration)
+            if durationExpanded { specific.append(.durationInput) }
+        }
+        if !specific.isEmpty { cards.append(specific) }
+        return cards.enumerated().map { Section(title: $0.offset == 0 ? text("ui_filter_common") : nil, rows: $0.element) }
+    }
     private func rebuild() {
         if let picker {
-            sections = [Section(title: nil, rows: choices(picker))]
+            sections = [Section(title: selectionRule(groups[picker]), rows: choices(picker))]
         } else {
-            let commonGroups = groups.indices.filter { applicable(groups[$0]) && !advanced(groups[$0]) }
-            var common = rows(for: commonGroups.filter { direct(groups[$0]) }) + [.time]
-            if timeExpanded { common += times.map(Row.timeOption) }
-            common += rows(for: commonGroups.filter { !direct(groups[$0]) })
-            if payload && transport == "http" { common.append(.duration); if durationExpanded { common.append(.durationInput) } }
-            sections = (hasHTTP && hasSockets ? [Section(title: text("ui_filter_scope"), rows: [.scope])] : [])
-                + [Section(title: text("ui_filter_common"), rows: common)]
+            sections = (hasHTTP && hasSockets ? [Section(title: text("ui_filter_scope"), rows: [.scope])] : []) + commonSections()
             if !recentItems.isEmpty {
                 sections.append(Section(title: nil, rows: [.recentToggle] + (showsRecent ? recentItems.indices.map(Row.recent) : [])))
             }
@@ -157,25 +181,32 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         if navigationItem.leftBarButtonItem !== leading { navigationItem.leftBarButtonItem = leading }
         if picker != nil {
             search.placeholder = text(groups[picker!].field == .status ? "ui_specific_status" : "ui_filter_options")
-            let header = UIStackView(arrangedSubviews: [search]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
-            header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20)
-            tableView.tableHeaderView = header; tableView.tableFooterView = nil
+            if tableView.tableHeaderView !== optionHeader { tableView.tableHeaderView = optionHeader }
+            tableView.tableFooterView = nil
         } else {
             tableView.tableHeaderView = nil; conditions?.isHidden = !refined; tableView.tableFooterView = footer
         }
-        tableView.reloadData(); resizeFooter()
+        tableView.reloadData(); resizeSupplementaryView()
     }
-    private func resizeFooter() {
-        guard isViewLoaded, picker == nil, tableView.bounds.width > 0 else { return }
-        let height = footer.systemLayoutSizeFitting(CGSize(width: tableView.bounds.width, height: UIView.layoutFittingCompressedSize.height), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height
+    private func resizeSupplementaryView() {
+        guard isViewLoaded, tableView.bounds.width > 0 else { return }
+        let content = picker == nil ? footer : optionHeader
+        if let cell = tableView.visibleCells.first, cell.frame.minX > 0 {
+            var margins = content.directionalLayoutMargins
+            margins.leading = cell.frame.minX; margins.trailing = tableView.bounds.width - cell.frame.maxX
+            if margins != content.directionalLayoutMargins { content.directionalLayoutMargins = margins }
+        }
+        let height = content.systemLayoutSizeFitting(CGSize(width: tableView.bounds.width, height: UIView.layoutFittingCompressedSize.height), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height
         let size = CGSize(width: tableView.bounds.width, height: ceil(height))
-        if footer.frame.size != size { footer.frame.size = size; tableView.tableFooterView = footer }
+        guard size != content.frame.size else { return }
+        content.frame.size = size
+        if picker == nil { tableView.tableFooterView = content } else { tableView.tableHeaderView = content }
     }
-    override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); resizeFooter() }
+    override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); resizeSupplementaryView() }
     @objc private func filterOptions() {
         guard search.markedTextRange == nil, let picker else { return }
         let value = String((search.text ?? "").prefix(512)); if value != search.text { search.text = value }
-        sections = [Section(title: nil, rows: choices(picker))]; tableView.reloadData()
+        sections = [Section(title: selectionRule(groups[picker]), rows: choices(picker))]; tableView.reloadData()
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -241,6 +272,18 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].rows.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { sections[section].title }
+    override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        sections[section].title == nil ? UIView() : nil
+    }
+    override func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        self.tableView(tableView, titleForFooterInSection: section) == nil ? UIView() : nil
+    }
+    override func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        sections[section].title == nil ? 12 : UITableView.automaticDimension
+    }
+    override func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        self.tableView(tableView, titleForFooterInSection: section) == nil ? 1 / traitCollection.displayScale : UITableView.automaticDimension
+    }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if picker != nil, sections[section].rows.isEmpty { return text("ui_filter_options_empty") }
         if let picker, groups[picker].field == .searchScope { return text("ui_search_scope_hint") }
@@ -257,12 +300,30 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     }
     private func compact(_ value: String) -> String { String(value.prefix(80)) + (value.count > 80 ? "…" : "") }
     private func summary(_ group: InspectorFilterGroup) -> String {
-        let values = draft.values[group.field] ?? []
-        guard !values.isEmpty else { return text("ui_all") }
-        return values.sorted().prefix(2).map { value in group.options.first { $0.value == value }?.label ?? InspectorFilterOptions.label(group.field, value) }.joined(separator: ", ") + (values.count > 2 ? " +\(values.count - 2)" : "")
+        InspectorFilterOptions.selectionSummary(draft.values[group.field] ?? []) { value in
+            group.options.first { $0.value == value }?.label ?? InspectorFilterOptions.label(group.field, value)
+        }
     }
     override func tableView(_ tableView: UITableView, cellForRowAt path: IndexPath) -> UITableViewCell {
         let row = sections[path.section].rows[path.row]
+        func summaryCell(_ title: String, _ value: String, symbol: String?, stacked: Bool = false) -> UITableViewCell {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "filterSummary") as? InspectorFilterSummaryCell
+                ?? InspectorFilterSummaryCell(style: .default, reuseIdentifier: "filterSummary")
+            cell.bind(title, value, symbol: symbol, stacked: stacked)
+            return cell
+        }
+        func chevron(_ open: Bool) -> String { open ? "chevron.up" : "chevron.down" }
+        switch row {
+        case .groupHeading(let i): return summaryCell(groups[i].title, selectionRule(groups[i]), symbol: nil)
+        case .group(let i):
+            let group = groups[i], nested = group.options.count > 6 || group.field == .status
+            return summaryCell(group.title, summary(group), symbol: nested ? "chevron.right" : chevron(expanded.contains(group.field)))
+        case .time: return summaryCell(text(timeLabel), text(draft.recentMinutes == 0 ? "ui_time_all" : "ui_time_\(draft.recentMinutes)"), symbol: chevron(timeExpanded))
+        case .duration: return summaryCell(text("ui_http_timing"), draft.minimumDurationMillis == 0 ? text("ui_all") : "≥ \(draft.minimumDurationMillis) ms", symbol: chevron(durationExpanded))
+        case .recentToggle: return summaryCell(text("ui_recent_filters"), "", symbol: chevron(showsRecent))
+        case .refine: return summaryCell(text("ui_filter_refine"), refineSummary(), symbol: chevron(refined), stacked: true)
+        default: break
+        }
         let reusable: Bool
         switch row { case .option, .timeOption: reusable = true; default: reusable = false }
         let cell = reusable ? tableView.dequeueReusableCell(withIdentifier: "choice") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "choice")
@@ -273,7 +334,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         cell.textLabel?.font = .preferredFont(forTextStyle: .body); cell.textLabel?.adjustsFontForContentSizeCategory = true; cell.textLabel?.numberOfLines = 0
         cell.textLabel?.lineBreakMode = .byWordWrapping
         cell.detailTextLabel?.font = .preferredFont(forTextStyle: .subheadline); cell.detailTextLabel?.adjustsFontForContentSizeCategory = true
-        cell.detailTextLabel?.textColor = InspectorTheme.secondary; cell.detailTextLabel?.numberOfLines = 2
+        cell.detailTextLabel?.textColor = InspectorTheme.secondary; cell.detailTextLabel?.numberOfLines = 0
         func selected(_ value: Bool) {
             let mark = UIImageView(image: value ? UIImage(systemName: "checkmark") : nil)
             mark.frame.size = CGSize(width: 22, height: 22); mark.contentMode = .scaleAspectFit
@@ -281,21 +342,13 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             // Reserve trailing space without relying on accessory alpha, which UIKit manages.
             cell.accessoryView = mark; cell.accessibilityTraits = value ? [.button, .selected] : .button
         }
-        func disclosure(_ open: Bool) { let icon = UIImageView(image: UIImage(systemName: open ? "chevron.up" : "chevron.down")); icon.tintColor = InspectorTheme.secondary; cell.accessoryView = icon; cell.accessibilityTraits = .button }
-        func embed(_ view: UIView) {
+        func embed(_ view: UIView, edgeToEdge: Bool = false) {
             view.removeFromSuperview(); view.translatesAutoresizingMaskIntoConstraints = false; cell.contentView.addSubview(view)
             let margins = cell.contentView.layoutMarginsGuide
-            NSLayoutConstraint.activate([view.leadingAnchor.constraint(equalTo: margins.leadingAnchor), view.trailingAnchor.constraint(equalTo: margins.trailingAnchor), view.topAnchor.constraint(equalTo: margins.topAnchor), view.bottomAnchor.constraint(equalTo: margins.bottomAnchor)])
+            NSLayoutConstraint.activate([view.leadingAnchor.constraint(equalTo: edgeToEdge ? cell.contentView.leadingAnchor : margins.leadingAnchor), view.trailingAnchor.constraint(equalTo: edgeToEdge ? cell.contentView.trailingAnchor : margins.trailingAnchor), view.topAnchor.constraint(equalTo: margins.topAnchor), view.bottomAnchor.constraint(equalTo: margins.bottomAnchor)])
             cell.selectionStyle = .none
         }
         switch row {
-        case .groupHeading(let index):
-            let group = groups[index]
-            cell.textLabel?.text = String(format: text(group.field == .activity ? "ui_filter_single_title" : "ui_filter_multiple_title"), group.title)
-            cell.textLabel?.font = .preferredFont(forTextStyle: .subheadline); cell.textLabel?.textColor = InspectorTheme.secondary
-            cell.accessibilityTraits = .header; cell.selectionStyle = .none
-        case .recentToggle:
-            cell.textLabel?.text = text("ui_recent_filters"); disclosure(showsRecent)
         case .recent(let index):
             let item = recentItems[index], label = InspectorFilterOptions.summary(item)
             cell.textLabel?.text = label; cell.detailTextLabel?.text = text("ui_restore_filter")
@@ -316,19 +369,14 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
                 }; scope = control
             }
             scope?.selectedIndex = draft.transport == "http" ? 1 : draft.transport == "webSocket" ? 2 : 0
-            if let scope { embed(scope) }; cell.backgroundColor = InspectorTheme.canvas
-        case .group(let index):
-            cell.textLabel?.text = groups[index].title; cell.detailTextLabel?.text = summary(groups[index]); disclosure(expanded.contains(groups[index].field))
-            if groups[index].options.count > 6 || groups[index].field == .status { cell.accessoryView = nil; cell.accessoryType = .disclosureIndicator }
+            if let scope { embed(scope, edgeToEdge: true) }; cell.backgroundColor = .clear
         case .option(let index, let value, let label):
             cell.textLabel?.text = label
             if picker == nil && !direct(groups[index]) { cell.indentationLevel = 1; cell.indentationWidth = 12 }
             let values = draft.values[groups[index].field] ?? []; selected(value.map(values.contains) ?? values.isEmpty)
-        case .time: cell.textLabel?.text = text(timeLabel); cell.detailTextLabel?.text = text(draft.recentMinutes == 0 ? "ui_time_all" : "ui_time_\(draft.recentMinutes)"); disclosure(timeExpanded)
         case .timeOption(let value): cell.textLabel?.text = text(value == 0 ? "ui_time_all" : "ui_time_\(value)"); cell.indentationLevel = 1; cell.indentationWidth = 12; selected(value == draft.recentMinutes)
-        case .duration: cell.textLabel?.text = text("ui_http_timing"); cell.detailTextLabel?.text = draft.minimumDurationMillis == 0 ? text("ui_all") : "≥ \(draft.minimumDurationMillis) ms"; disclosure(durationExpanded)
         case .durationInput: if let field = conditions?.duration { embed(field) }
-        case .refine: cell.textLabel?.text = text("ui_filter_refine"); cell.detailTextLabel?.text = refineSummary(); cell.detailTextLabel?.numberOfLines = 3; disclosure(refined)
+        default: break
         }
         return cell
     }

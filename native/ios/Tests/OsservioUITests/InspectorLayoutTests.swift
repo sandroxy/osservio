@@ -7,6 +7,33 @@ import XCTest
 
 final class InspectorLayoutTests: XCTestCase {
     @MainActor
+    func testFilterCardsPlaceShortValuesInlineAndKeepLongHostsReadable() throws {
+        let longHost = String(repeating: "orders-eu-central.", count: 6) + "example.com"
+        var query = InspectorQuery(); query.select(.host, value: longHost)
+        let groups = [InspectorFilterGroup(.level, values: ["error", "warning"]),
+                      InspectorFilterGroup(.host, values: [longHost, "example.org"])]
+        let viewer = InspectorFilterViewController(query: query, groups: groups) { _ in XCTFail("Layout applied a draft") }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 840))
+        window.rootViewController = viewer; window.makeKeyAndVisible(); viewer.view.layoutIfNeeded()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        let table = try XCTUnwrap(viewer.tableView)
+        XCTAssertEqual(table.numberOfRows(inSection: 0), 4)
+        XCTAssertEqual(table.numberOfRows(inSection: 1), 2)
+        let time = try XCTUnwrap(table.cellForRow(at: IndexPath(row: 0, section: 1)) as? InspectorFilterSummaryCell)
+        let host = try XCTUnwrap(table.cellForRow(at: IndexPath(row: 1, section: 1)) as? InspectorFilterSummaryCell)
+        let gap = time.frame.minY - table.rectForRow(at: IndexPath(row: 3, section: 0)).maxY
+        XCTAssertGreaterThanOrEqual(gap, 8)
+        XCTAssertLessThanOrEqual(gap, 18, "Header \(table.rectForHeader(inSection: 1)), footer \(table.rectForFooter(inSection: 0))")
+        XCTAssertEqual(time.labels.axis, .horizontal)
+        XCTAssertEqual(host.labels.axis, .vertical)
+        XCTAssertEqual(host.accessibilityValue, longHost)
+        XCTAssertGreaterThan(host.labels.value.frame.minY, host.labels.name.frame.minY)
+        let size = host.labels.value.sizeThatFits(CGSize(width: host.labels.value.bounds.width, height: .greatestFiniteMagnitude))
+        XCTAssertGreaterThanOrEqual(host.labels.value.bounds.height + 1, size.height)
+        XCTAssertEqual(host.labels.name.frame.minX, host.labels.value.frame.minX, accuracy: 1)
+    }
+
+    @MainActor
     func testFilterRowsKeepCompleteLabelsInBothLanguagesAndTextSizes() throws {
         let previous = InspectorPreferences.shared.language
         defer { InspectorPreferences.shared.language = previous }
@@ -34,7 +61,7 @@ final class InspectorLayoutTests: XCTestCase {
                                 let path = IndexPath(row: row, section: section)
                                 viewer.tableView.scrollToRow(at: path, at: .middle, animated: false); viewer.tableView.layoutIfNeeded()
                                 let cell = try XCTUnwrap(viewer.tableView.cellForRow(at: path))
-                                guard let label = cell.textLabel, let title = label.text, !title.isEmpty else { continue }
+                                guard let label = (cell as? InspectorFilterSummaryCell)?.labels.name ?? cell.textLabel, let title = label.text, !title.isEmpty else { continue }
                                 if cell.accessibilityTraits.contains(.header) { headings += 1 }
                                 else if cell.accessibilityTraits.contains(.button) { options += 1; XCTAssertGreaterThanOrEqual(cell.bounds.height, 44) }
                                 if cell.reuseIdentifier == "choice" {

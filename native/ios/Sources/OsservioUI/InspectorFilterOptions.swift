@@ -93,6 +93,11 @@ enum InspectorFilterOptions {
     static func jsonCondition(path: String, value: String) -> String {
         value.isEmpty ? String(format: InspectorLocalization.text("ui_path_exists"), path) : path + " = " + value
     }
+    static func selectionSummary(_ values: Set<String>, label: (String) -> String) -> String {
+        guard !values.isEmpty else { return InspectorLocalization.text("ui_all") }
+        let shown = values.sorted().prefix(6)
+        return shown.map(label).joined(separator: ", ") + (values.count > shown.count ? " +\(values.count - shown.count)" : "")
+    }
     static func summary(_ query: InspectorQuery) -> String {
         var parts = InspectorQuery.fieldOrder.compactMap { field -> String? in
             guard let values = query.values[field], !values.isEmpty else { return nil }

@@ -301,8 +301,8 @@
 "ui_outcome" = "消息结果";
 "ui_close_code" = "关闭码";
 "ui_filter_common" = "常用筛选";
-"ui_filter_single_title" = "%@ · 单选";
-"ui_filter_multiple_title" = "%@ · 可多选";
+"ui_filter_single" = "单选";
+"ui_filter_multiple" = "可多选";
 "ui_filter_refine" = "精细筛选";
 "ui_filter_scope" = "查看范围";
 "ui_filter_switch" = "切回原范围可继续编辑，确定后仅应用当前范围的条件。";

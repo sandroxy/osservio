@@ -8,14 +8,17 @@ final class InspectorFilterConditions: UIStackView {
     private let excludeSummary = InspectorTheme.label(.subheadline, secondary: true)
     private let fieldSummary = InspectorTheme.label(.subheadline, secondary: true)
     private let excludeEditor = UIStackView(), fieldEditor = UIStackView()
-    private let excludeToggle = UIButton(type: .system), fieldToggle = UIButton(type: .system)
+    private let excludeToggle = FilterDisclosureButton(), fieldToggle = FilterDisclosureButton()
     var changed: (() -> Void)?
     var layoutChanged: (() -> Void)?
 
     init(query: InspectorQuery, delegate: UITextFieldDelegate) {
         super.init(frame: .zero); axis = .vertical; spacing = 8
         let title = InspectorTheme.label(.footnote, secondary: true)
-        title.text = InspectorLocalization.text("ui_content_filters"); addArrangedSubview(title)
+        title.text = InspectorLocalization.text("ui_content_filters")
+        let heading = UIStackView(arrangedSubviews: [title]); heading.isLayoutMarginsRelativeArrangement = true
+        heading.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
+        addArrangedSubview(heading)
         let card = UIStackView(); card.axis = .vertical; card.spacing = 0
         card.backgroundColor = InspectorTheme.surface; card.layer.cornerRadius = 20; card.clipsToBounds = true
         for (field, key) in [(exclude, "ui_exclude"), (path, "ui_field_path"), (value, "ui_field_value"), (duration, "ui_duration")] {
@@ -42,8 +45,7 @@ final class InspectorFilterConditions: UIStackView {
     private func configure(_ button: UIButton, key: String, summary: UILabel, editor: UIStackView, card: UIStackView) {
         button.accessibilityLabel = InspectorLocalization.text(key)
         button.addTarget(self, action: #selector(toggle(_:)), for: .touchUpInside)
-        let title = InspectorTheme.label(.body); title.text = InspectorLocalization.text(key)
-        let labels = UIStackView(arrangedSubviews: [title, summary]); labels.axis = .vertical; labels.spacing = 4
+        let labels = InspectorFilterLabels(value: summary); labels.name.text = InspectorLocalization.text(key)
         labels.isUserInteractionEnabled = false; labels.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(labels)
         NSLayoutConstraint.activate([labels.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 16),
@@ -77,13 +79,20 @@ final class InspectorFilterConditions: UIStackView {
     }
     private func updateSummaries() {
         let empty = InspectorLocalization.text("ui_not_set")
-        excludeSummary.text = exclude.text?.isEmpty == false ? String(exclude.text!.prefix(80)) : empty
-        fieldSummary.text = path.text.flatMap { $0.isEmpty ? nil : String(InspectorFilterOptions.jsonCondition(path: $0, value: value.text ?? "").prefix(120)) } ?? empty
+        excludeSummary.text = exclude.text?.isEmpty == false ? exclude.text : empty
+        fieldSummary.text = path.text.flatMap { $0.isEmpty ? nil : InspectorFilterOptions.jsonCondition(path: $0, value: value.text ?? "") } ?? empty
         for (button, summary, editor) in [(excludeToggle, excludeSummary, excludeEditor), (fieldToggle, fieldSummary, fieldEditor)] {
-            summary.numberOfLines = 2; button.accessibilityValue = summary.text
+            button.accessibilityValue = summary.text
             (button.viewWithTag(1) as? UIImageView)?.image = UIImage(systemName: editor.isHidden ? "chevron.down" : "chevron.up")
         }
         layoutChanged?()
+    }
+}
+
+@MainActor
+private final class FilterDisclosureButton: UIButton {
+    override var isHighlighted: Bool {
+        didSet { backgroundColor = isHighlighted ? .tertiarySystemFill : .clear }
     }
 }
 #endif

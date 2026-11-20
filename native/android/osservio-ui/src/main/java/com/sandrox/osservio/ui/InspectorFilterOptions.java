@@ -166,6 +166,16 @@ final class InspectorFilterOptions {
     static String jsonCondition(Context context, String path, String value) {
         return value.isEmpty() ? context.getString(R.string.osservio_ui_path_exists, path) : path + " = " + value;
     }
+    static String selectionSummary(Context context, InspectorFilterSheet.Group group, Set<String> values) {
+        if (values == null || values.isEmpty()) return context.getString(R.string.osservio_ui_all);
+        List<String> labels = new ArrayList<>();
+        for (String value : new TreeSet<>(values)) {
+            if (labels.size() == 6) break;
+            String title = group.options.get(value);
+            labels.add(title != null ? title : label(context, group.field, value));
+        }
+        return android.text.TextUtils.join(", ", labels) + (values.size() > labels.size() ? " +" + (values.size() - labels.size()) : "");
+    }
     static String summary(Context context, InspectorQuery query, List<InspectorFilterSheet.Group> groups) {
         List<String> parts = new ArrayList<>();
         for (InspectorFilterSheet.Group group : displayGroups(context, query, groups)) {

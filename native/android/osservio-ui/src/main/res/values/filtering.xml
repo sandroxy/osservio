@@ -21,8 +21,8 @@
     <string name="osservio_ui_outcome">Message result</string>
     <string name="osservio_ui_close_code">Close code</string>
     <string name="osservio_ui_filter_common">Common filters</string>
-    <string name="osservio_ui_filter_single_title">%1$s · Select one</string>
-    <string name="osservio_ui_filter_multiple_title">%1$s · Select multiple</string>
+    <string name="osservio_ui_filter_single">Select one</string>
+    <string name="osservio_ui_filter_multiple">Select multiple</string>
     <string name="osservio_ui_filter_refine">Refine filters</string>
     <string name="osservio_ui_filter_scope">View</string>
     <string name="osservio_ui_filter_switch">You can switch back to review your choices. Apply uses the selected scope.</string>

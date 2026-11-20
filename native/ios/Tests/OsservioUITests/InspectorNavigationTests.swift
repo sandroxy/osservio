@@ -170,7 +170,7 @@ final class InspectorNavigationTests: XCTestCase {
             for row in 0..<filters.tableView(filters.tableView, numberOfRowsInSection: section) {
                 let path = IndexPath(row: row, section: section)
                 let cell = filters.tableView(filters.tableView, cellForRowAt: path)
-                if cell.textLabel?.text == title {
+                if ((cell as? InspectorFilterSummaryCell)?.labels.name.text ?? cell.textLabel?.text) == title {
                     filters.tableView(filters.tableView, didSelectRowAt: path); return
                 }
             }
@@ -197,7 +197,7 @@ final class InspectorNavigationTests: XCTestCase {
         try selectFilter(filters, title: InspectorFilterOptions.label(.activity, "messages"))
         try selectFilter(filters, title: InspectorFilterOptions.label(.direction, "incoming"))
         try selectFilter(filters, title: InspectorFilterOptions.label(.direction, "outgoing"))
-        let summary = try XCTUnwrap(cells().first { $0.textLabel?.text == InspectorLocalization.text("ui_filter_refine") }?.detailTextLabel?.text)
+        let summary = try XCTUnwrap(cells().first { $0.accessibilityLabel == InspectorLocalization.text("ui_filter_refine") }?.accessibilityValue)
         XCTAssertTrue(summary.contains("heartbeat")); XCTAssertTrue(summary.contains("/data/id = 42"))
         let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
         _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))

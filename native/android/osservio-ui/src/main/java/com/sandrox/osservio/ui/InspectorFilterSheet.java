@@ -58,7 +58,7 @@ final class InspectorFilterSheet {
         }
         return result;
     }
-    private enum Type { HEADING, NOTE, SCOPE, GROUP_HEADING, GROUP, OPTION, TIME, TIME_OPTION, DURATION, INPUT, REFINE, RECENT_TOGGLE, RECENT }
+    private enum Type { HEADING, GAP, NOTE, SCOPE, GROUP_HEADING, GROUP, OPTION, TIME, TIME_OPTION, DURATION, INPUT, REFINE, RECENT_TOGGLE, RECENT }
     private static final class Row {
         final Type type; final Group group; final String value, label;
         Row(Type type, Group group, String value, String label) { this.type = type; this.group = group; this.value = value; this.label = label; }
@@ -101,10 +101,10 @@ final class InspectorFilterSheet {
             header = column(); search = InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", value -> filterChoices());
             header.addView(search, new LinearLayout.LayoutParams(-1, -2)); header.setPadding(0, dp(12), 0, dp(12));
             list.addHeaderView(header, null, false);
-            footer = column(); footer.setPadding(inset, dp(12), inset, dp(24));
+            footer = column(); footer.setPadding(0, dp(12), 0, dp(24));
             conditions = payload ? new InspectorFilterConditions(context, draft, () -> { }) : null;
             if (conditions != null) footer.addView(conditions.view);
-            TextView hint = InspectorWidgets.caption(context); hint.setText(R.string.osservio_ui_filter_hint); footer.addView(hint);
+            TextView hint = InspectorWidgets.caption(context); hint.setPadding(inset, dp(8), inset, dp(8)); hint.setText(R.string.osservio_ui_filter_hint); footer.addView(hint);
             list.addFooterView(footer, null, false);
             adapter = new BaseAdapter() {
                 @Override public int getCount() { return rows.size(); }
@@ -201,27 +201,49 @@ final class InspectorFilterSheet {
             if (rows.size() == start) rows.add(new Row(Type.NOTE, text(R.string.osservio_ui_filter_options_empty)));
             if (group.field == InspectorQuery.Field.SEARCH_SCOPE) rows.add(new Row(Type.NOTE, text(R.string.osservio_ui_search_scope_hint)));
         }
-        void filterChoices() { if (picker == null || adapter == null) return; rows.clear(); addChoices(picker, search.getText().toString().toLowerCase(Locale.ROOT)); adapter.notifyDataSetChanged(); }
+        String selectionRule(Group group) {
+            return text(group.field == InspectorQuery.Field.ACTIVITY || group.field == InspectorQuery.Field.SEARCH_SCOPE
+                ? R.string.osservio_ui_filter_single : R.string.osservio_ui_filter_multiple);
+        }
+        void pickerRows() {
+            rows.add(new Row(Type.NOTE, selectionRule(picker)));
+            addChoices(picker, search.getText().toString().toLowerCase(Locale.ROOT));
+        }
+        boolean protocolField(Group group) {
+            return network && (Arrays.asList(InspectorQuery.HTTP_FIELDS).contains(group.field)
+                || Arrays.asList(InspectorQuery.SOCKET_FIELDS).contains(group.field));
+        }
+        void filterChoices() { if (picker == null || adapter == null) return; rows.clear(); pickerRows(); adapter.notifyDataSetChanged(); }
         void rebuild() {
             rows.clear();
-            if (picker != null) addChoices(picker, search.getText().toString().toLowerCase(Locale.ROOT));
+            if (picker != null) pickerRows();
             else {
                 if (hasHTTP && hasSockets) { rows.add(new Row(Type.HEADING, text(R.string.osservio_ui_filter_scope))); rows.add(new Row(Type.SCOPE, "")); }
                 rows.add(new Row(Type.HEADING, text(R.string.osservio_ui_filter_common)));
-                for (Group group : groups) if (applicable(group) && !advanced(group) && direct(group)) addGroup(group);
+                List<Group> shared = new ArrayList<>(), specific = new ArrayList<>();
+                for (Group group : groups) {
+                    if (!applicable(group) || advanced(group)) continue;
+                    if (direct(group)) {
+                        addGroup(group);
+                        rows.add(new Row(Type.GAP, ""));
+                    } else if (protocolField(group)) specific.add(group);
+                    else shared.add(group);
+                }
                 rows.add(new Row(Type.TIME, text(timeLabel)));
                 if (timeExpanded) for (int value : times) rows.add(new Row(Type.TIME_OPTION, null, Integer.toString(value), timeText(value)));
-                for (Group group : groups) if (applicable(group) && !advanced(group) && !direct(group)) addGroup(group);
+                for (Group group : shared) addGroup(group);
+                if (!specific.isEmpty() || (payload && "http".equals(transport()))) rows.add(new Row(Type.GAP, ""));
+                for (Group group : specific) addGroup(group);
                 if (payload && "http".equals(transport())) { rows.add(new Row(Type.DURATION, text(R.string.osservio_ui_http_timing))); if (durationExpanded) rows.add(new Row(Type.INPUT, "")); }
                 if (!recentItems.isEmpty()) {
-                    rows.add(new Row(Type.HEADING, "")); rows.add(new Row(Type.RECENT_TOGGLE, text(R.string.osservio_ui_recent_filters)));
+                    rows.add(new Row(Type.GAP, "")); rows.add(new Row(Type.RECENT_TOGGLE, text(R.string.osservio_ui_recent_filters)));
                     if (showsRecent) for (int i = 0; i < recentItems.size(); i++) {
                         InspectorQuery item = recentItems.get(i);
                         rows.add(new Row(Type.RECENT, null, Integer.toString(i), InspectorFilterOptions.summary(context, item, candidates)));
                     }
                 }
                 boolean precise = payload; for (Group group : groups) if (applicable(group) && advanced(group)) { precise = true; break; }
-                if (precise) { rows.add(new Row(Type.HEADING, "")); rows.add(new Row(Type.REFINE, text(R.string.osservio_ui_filter_refine))); if (refined) for (Group group : groups) if (applicable(group) && advanced(group)) addGroup(group); }
+                if (precise) { rows.add(new Row(Type.GAP, "")); rows.add(new Row(Type.REFINE, text(R.string.osservio_ui_filter_refine))); if (refined) for (Group group : groups) if (applicable(group) && advanced(group)) addGroup(group); }
             }
             // Fixed ListView items are measured even when GONE or assigned zero height.
             // Detach unused regions so the overview and picker have no phantom spacing.
@@ -250,35 +272,45 @@ final class InspectorFilterSheet {
         String compact(String value) { return value.codePointCount(0, value.length()) > 80 ? value.substring(0, value.offsetByCodePoints(0, 80)) + "…" : value; }
         String timeText(int value) { return text(value == 0 ? R.string.osservio_ui_time_all : value == 5 ? R.string.osservio_ui_time_5 : value == 30 ? R.string.osservio_ui_time_30 : value == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440); }
         String summary(Group group) {
-            Set<String> values = draft.values.get(group.field); if (values == null || values.isEmpty()) return text(R.string.osservio_ui_all);
-            List<String> labels = new ArrayList<>(); for (String value : new java.util.TreeSet<>(values)) { if (labels.size() == 2) break; labels.add(group.options.containsKey(value) ? group.options.get(value) : InspectorFilterOptions.label(context, group.field, value)); }
-            return android.text.TextUtils.join(", ", labels) + (values.size() > 2 ? " +" + (values.size() - 2) : "");
+            return InspectorFilterOptions.selectionSummary(context, group, draft.values.get(group.field));
+        }
+        boolean outsideCard(int position) {
+            if (position < 0 || position >= rows.size()) return true;
+            Type type = rows.get(position).type;
+            return type == Type.HEADING || type == Type.GAP || type == Type.NOTE || type == Type.SCOPE;
         }
         View rowView(int position, View recycled) {
             Row row = rows.get(position);
+            if (row.type == Type.GAP) {
+                View gap = recycled != null ? recycled : new View(context);
+                gap.setMinimumHeight(dp(12)); gap.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                return gap;
+            }
             if (row.type == Type.NOTE) { TextView label = InspectorWidgets.caption(context); label.setText(row.label); label.setPadding(dp(16), dp(12), dp(16), dp(12)); return label; }
             if (row.type == Type.HEADING) {
                 TextView label = InspectorWidgets.sectionLabel(context); label.setText(row.label);
-                if (row.label.isEmpty()) { label.setPadding(0, 0, 0, 0); label.setHeight(dp(20)); }
                 return label;
             }
             if (row.type == Type.RECENT_TOGGLE) {
-                InspectorWidgets.ValueRow toggle = new InspectorWidgets.ValueRow(context); toggle.bind(row.label, "", true);
-                toggle.disclosureRotation(showsRecent ? -90 : 90); toggle.action(() -> choose(row));
+                InspectorFilterRow toggle = new InspectorFilterRow(context); toggle.bind(row.label, "", false);
+                toggle.disclosureRotation(showsRecent ? -90 : 90); toggle.setOnClickListener(v -> choose(row));
                 InspectorWidgets.groupedRow(toggle, true, !showsRecent); return toggle;
             }
             if (row.type == Type.RECENT) {
                 InspectorQuery preset = recentItems.get(Integer.parseInt(row.value));
                 LinearLayout entry = new LinearLayout(context); entry.setGravity(android.view.Gravity.CENTER_VERTICAL);
-                InspectorWidgets.ValueRow restore = new InspectorWidgets.ValueRow(context);
-                restore.bind(row.label, text(R.string.osservio_ui_restore_filter), false); restore.action(() -> choose(row));
+                boolean last = outsideCard(position + 1);
+                InspectorFilterRow restore = new InspectorFilterRow(context);
+                restore.hideDisclosure(); restore.bind(row.label, text(R.string.osservio_ui_restore_filter), true);
+                restore.setOnClickListener(v -> choose(row));
                 entry.addView(restore, new LinearLayout.LayoutParams(0, -2, 1));
-                Button remove = InspectorWidgets.button(context, R.string.osservio_ui_forget_filter, () -> {
-                    recent.update(preset, true); recentItems.remove(preset); rebuild();
-                });
-                InspectorAppearance.text(remove, () -> "×"); remove.setContentDescription(text(R.string.osservio_ui_forget_filter) + ", " + row.label);
-                entry.addView(remove, new LinearLayout.LayoutParams(dp(48), -2));
-                InspectorWidgets.groupedRow(entry, false, position + 1 == rows.size() || rows.get(position + 1).type == Type.HEADING);
+                Button remove = new Button(context); remove.setText("×"); remove.setMinWidth(0); remove.setMinimumWidth(0);
+                remove.setPadding(0, 0, 0, 0); remove.setMinHeight(dp(48)); remove.setStateListAnimator(null);
+                remove.setTextColor(InspectorTheme.accent(context)); remove.setContentDescription(text(R.string.osservio_ui_forget_filter) + ", " + row.label);
+                remove.setOnClickListener(v -> { recent.update(preset, true); recentItems.remove(preset); rebuild(); });
+                entry.addView(remove, new LinearLayout.LayoutParams(dp(48), -1));
+                InspectorWidgets.groupedRow(entry, false, last);
+                recentFeedback(restore, last, true); recentFeedback(remove, last, false);
                 return entry;
             }
             if (row.type == Type.SCOPE) {
@@ -295,15 +327,11 @@ final class InspectorFilterSheet {
                 region.addView(InspectorWidgets.segments(content, list, new int[] {R.string.osservio_ui_all, R.string.osservio_ui_http, R.string.osservio_ws_title}, selected, this::scopeSelected));
                 TextView hint = InspectorWidgets.caption(context); hint.setPadding(dp(16), dp(8), dp(16), 0); hint.setText(R.string.osservio_ui_filter_switch); region.addView(hint); return region;
             }
-            boolean first = position == 0 || rows.get(position - 1).type == Type.HEADING;
-            boolean last = position + 1 == rows.size() || rows.get(position + 1).type == Type.HEADING || rows.get(position + 1).type == Type.NOTE;
+            boolean first = outsideCard(position - 1), last = outsideCard(position + 1);
             if (row.type == Type.GROUP_HEADING) {
-                TextView label = recycled instanceof TextView ? (TextView) recycled : InspectorWidgets.caption(context);
-                InspectorTheme.typography(label, 15, false);
-                label.setText(context.getString(row.group.field == InspectorQuery.Field.ACTIVITY ? R.string.osservio_ui_filter_single_title : R.string.osservio_ui_filter_multiple_title, row.label));
-                label.setPadding(dp(16), dp(14), dp(16), dp(10));
-                if (android.os.Build.VERSION.SDK_INT >= 28) label.setAccessibilityHeading(true);
-                InspectorWidgets.groupedRow(label, first, last); return label;
+                InspectorFilterRow heading = recycled instanceof InspectorFilterRow ? (InspectorFilterRow) recycled : new InspectorFilterRow(context, true);
+                heading.bind(row.label, selectionRule(row.group), false);
+                InspectorWidgets.groupedRow(heading, first, last); return heading;
             }
             if (row.type == Type.INPUT) {
                 if (conditions.duration.getParent() instanceof ViewGroup) ((ViewGroup) conditions.duration.getParent()).removeView(conditions.duration);
@@ -316,12 +344,19 @@ final class InspectorFilterSheet {
                 view.setChecked(row.type == Type.TIME_OPTION ? row.value.equals(Integer.toString(draft.recentMinutes)) : row.value.equals(ALL) ? values == null || values.isEmpty() : values != null && values.contains(row.value));
                 InspectorWidgets.groupedRow(view, first, last); return view;
             }
-            InspectorWidgets.ValueRow view = recycled instanceof InspectorWidgets.ValueRow ? (InspectorWidgets.ValueRow) recycled : new InspectorWidgets.ValueRow(context);
+            InspectorFilterRow view = recycled instanceof InspectorFilterRow ? (InspectorFilterRow) recycled : new InspectorFilterRow(context);
             String detail = row.type == Type.GROUP ? summary(row.group) : row.type == Type.TIME ? timeText(draft.recentMinutes) : row.type == Type.DURATION ? draft.minimumDurationMillis == 0 ? text(R.string.osservio_ui_all) : "≥ " + draft.minimumDurationMillis + " ms" : refineSummary();
-            view.bind(row.label, detail, true); view.value.setMaxLines(row.type == Type.REFINE ? 3 : 2); view.value.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            view.bind(row.label, detail, row.type == Type.REFINE);
             boolean opensPicker = row.type == Type.GROUP && (row.group.options.size() > 6 || row.group.field == InspectorQuery.Field.STATUS);
             boolean open = row.type == Type.GROUP ? expanded.contains(row.group.field) : row.type == Type.TIME ? timeExpanded : row.type == Type.DURATION ? durationExpanded : refined;
-            view.disclosureRotation(opensPicker ? 0 : open ? -90 : 90); view.action(() -> choose(row)); InspectorWidgets.groupedRow(view, first, last); return view;
+            view.disclosureRotation(opensPicker ? 0 : open ? -90 : 90); view.setOnClickListener(v -> choose(row)); InspectorWidgets.groupedRow(view, first, last); return view;
+        }
+        void recentFeedback(View view, boolean last, boolean start) {
+            boolean left = start != (list.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL);
+            float endLeft = last && left ? dp(20) : 0, endRight = last && !left ? dp(20) : 0;
+            android.graphics.drawable.GradientDrawable mask = InspectorTheme.shape(context, android.graphics.Color.WHITE, 0, false);
+            mask.setCornerRadii(new float[] {0, 0, 0, 0, endRight, endRight, endLeft, endLeft});
+            view.setBackground(InspectorTheme.ripple(context, null, mask));
         }
         boolean backToOverview() {
             if (picker == null) return false;

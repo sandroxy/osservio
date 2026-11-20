@@ -126,8 +126,8 @@ public final class InspectorNavigationTest {
                 boolean summary = false;
                 for (int i = 0; i < list.getCount(); i++) {
                     View row = list.getAdapter().getView(i, null, list);
-                    if (row instanceof InspectorWidgets.ValueRow && ((InspectorWidgets.ValueRow) row).title.getText().toString().equals(context.getString(R.string.osservio_ui_filter_refine))) {
-                        String detail = ((InspectorWidgets.ValueRow) row).value.getText().toString();
+                    if (row instanceof InspectorFilterRow && ((InspectorFilterRow) row).title.getText().toString().equals(context.getString(R.string.osservio_ui_filter_refine))) {
+                        String detail = ((InspectorFilterRow) row).value.getText().toString();
                         assertTrue(detail.contains("heartbeat")); assertTrue(detail.contains("/data/id = 42")); summary = true;
                     }
                 }
@@ -185,14 +185,22 @@ public final class InspectorNavigationTest {
                             int pixels = InspectorTheme.dp(context, width), choices = 0, headings = 0;
                             for (int i = 0; i < list.getCount(); i++) {
                                 View row = list.getAdapter().getView(i, null, list);
-                                if (!(row instanceof android.widget.TextView)) continue;
-                                android.widget.TextView text = (android.widget.TextView) row;
-                                boolean choice = text instanceof android.widget.CheckedTextView;
-                                if (!choice && !text.getText().toString().contains(" · ")) continue;
+                                boolean choice = row instanceof android.widget.CheckedTextView;
+                                if (!choice && (!(row instanceof InspectorFilterRow) || row.isClickable())) continue;
+                                android.widget.TextView text = choice ? (android.widget.TextView) row : ((InspectorFilterRow) row).title;
                                 row.measure(View.MeasureSpec.makeMeasureSpec(pixels, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                                 row.layout(0, 0, pixels, row.getMeasuredHeight());
-                                if (choice) { choices++; assertTrue(row.getHeight() >= InspectorTheme.dp(context, 50)); }
-                                else headings++;
+                                if (choice) {
+                                    choices++; assertTrue(row.getHeight() >= InspectorTheme.dp(context, 50));
+                                    if (android.os.Build.VERSION.SDK_INT >= 24) {
+                                        android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable) row.getBackground();
+                                        android.graphics.drawable.GradientDrawable mask = (android.graphics.drawable.GradientDrawable) ripple.findDrawableByLayerId(android.R.id.mask);
+                                        float[] corners = mask.getCornerRadii();
+                                        assertNotNull(corners);
+                                        assertEquals(0, corners[0], 0);
+                                        assertEquals(choices % 3 == 0, corners[4] > 0);
+                                    }
+                                } else headings++;
                                 assertTrue(text.getLayout().getHeight() <= text.getHeight() - text.getCompoundPaddingTop() - text.getCompoundPaddingBottom());
                                 for (int line = 0; line < text.getLineCount(); line++) assertEquals(0, text.getLayout().getEllipsisCount(line));
                                 assertEquals(text.getText().length(), text.getLayout().getLineEnd(text.getLineCount() - 1));
@@ -202,6 +210,30 @@ public final class InspectorNavigationTest {
                     } finally { inspector.disposePresentation(); capture.close(); }
                 }
             } finally { InspectorPreferences.setEnglish(base, previous); }
+        });
+    }
+    @Test public void filterSummaryUsesTrailingSpaceAndWrapsACompleteHost() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            InspectorFilterRow row = new InspectorFilterRow(context);
+            String host = "orders-eu-central.orders-eu-central.orders-eu-central.orders-eu-central.example.com";
+            int width = View.MeasureSpec.makeMeasureSpec(InspectorTheme.dp(context, 320), View.MeasureSpec.EXACTLY);
+            int height = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+            for (String value : new String[] {"HTTP", host, "HTTP"}) {
+                row.bind("Host", value, false);
+                row.measure(width, height); row.layout(0, 0, row.getMeasuredWidth(), row.getMeasuredHeight());
+                android.widget.LinearLayout labels = (android.widget.LinearLayout) row.value.getParent();
+                if (value.equals(host)) {
+                    assertEquals(android.widget.LinearLayout.VERTICAL, labels.getOrientation());
+                    assertEquals(row.title.getLeft(), row.value.getLeft());
+                    assertTrue(row.value.getTop() >= row.title.getBottom());
+                    assertTrue(row.value.getLineCount() > 1);
+                    assertEquals(host.length(), row.value.getLayout().getLineEnd(row.value.getLineCount() - 1));
+                } else {
+                    assertEquals(android.widget.LinearLayout.HORIZONTAL, labels.getOrientation());
+                    assertEquals(labels.getWidth(), row.value.getRight());
+                }
+            }
         });
     }
     @Test public void protocolChoicesStackWhenLargeTextCannotFitWithoutChangingSelection() {
@@ -302,9 +334,9 @@ public final class InspectorNavigationTest {
             layout(inspector, 390, 844);
             ListView list = first(filters.view, ListView.class); assertNotNull(list);
             assertEquals("The overview must not reserve a choice-search header", 0, list.getHeaderViewsCount());
-            List<InspectorWidgets.ValueRow> summaries = new ArrayList<>(); collect(filters.view, InspectorWidgets.ValueRow.class, summaries);
-            InspectorWidgets.ValueRow group = null;
-            for (InspectorWidgets.ValueRow row : summaries) if (row.title.getText().toString().equals(kinds.title)) group = row;
+            List<InspectorFilterRow> summaries = new ArrayList<>(); collect(filters.view, InspectorFilterRow.class, summaries);
+            InspectorFilterRow group = null;
+            for (InspectorFilterRow row : summaries) if (row.title.getText().toString().equals(kinds.title)) group = row;
             assertNotNull(group); group.performClick(); layout(inspector, 390, 844);
             for (int index = 0; index < list.getCount(); index++) {
                 View row = list.getAdapter().getView(index, null, list);

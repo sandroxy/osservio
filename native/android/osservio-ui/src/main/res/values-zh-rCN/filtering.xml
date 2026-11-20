@@ -21,8 +21,8 @@
     <string name="osservio_ui_outcome">消息结果</string>
     <string name="osservio_ui_close_code">关闭码</string>
     <string name="osservio_ui_filter_common">常用筛选</string>
-    <string name="osservio_ui_filter_single_title">%1$s · 单选</string>
-    <string name="osservio_ui_filter_multiple_title">%1$s · 可多选</string>
+    <string name="osservio_ui_filter_single">单选</string>
+    <string name="osservio_ui_filter_multiple">可多选</string>
     <string name="osservio_ui_filter_refine">精细筛选</string>
     <string name="osservio_ui_filter_scope">查看范围</string>
     <string name="osservio_ui_filter_switch">切回原范围可继续编辑，确定后仅应用当前范围的条件。</string>
