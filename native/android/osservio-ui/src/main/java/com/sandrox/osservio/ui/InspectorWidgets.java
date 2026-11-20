@@ -226,12 +226,22 @@ final class InspectorWidgets {
             layers.setLayerGravity(1, Gravity.BOTTOM); layers.setLayerHeight(1, 1);
             layers.setLayerInset(1, InspectorTheme.dp(context, 16), 0, InspectorTheme.dp(context, 16), 0); background = layers;
         }
-        row.setBackground(InspectorTheme.ripple(context, background, fill));
+        row.setBackground(row instanceof CheckedTextView ? choiceFeedback(context, background, fill) : InspectorTheme.ripple(context, background, fill));
+    }
+    private static android.graphics.drawable.RippleDrawable choiceFeedback(Context context, android.graphics.drawable.Drawable content, android.graphics.drawable.Drawable mask) {
+        return new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(InspectorTheme.color(context, R.color.osservio_press)), content, mask) {
+            @Override public void setHotspotBounds(int left, int top, int right, int bottom) {
+                // CheckedTextView normally confines its background ripple to the trailing checkmark.
+                android.graphics.Rect row = getBounds();
+                super.setHotspotBounds(row.left, row.top, row.right, row.bottom);
+            }
+        };
     }
     static CheckedTextView choice(Context context) {
         CheckedTextView row = new CheckedTextView(context); InspectorTheme.typography(row, 16, false);
         row.setGravity(Gravity.CENTER_VERTICAL); row.setMinimumHeight(InspectorTheme.dp(context, 50));
         row.setSingleLine(false); row.setEllipsize(null);
+        row.setBackground(choiceFeedback(context, null, InspectorTheme.shape(context, android.graphics.Color.WHITE, 0, false)));
         row.setPadding(InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 13), InspectorTheme.dp(context, 16), InspectorTheme.dp(context, 13));
         InspectorAppearance.style(row, () -> {
             row.setTextColor(InspectorTheme.primary(context));

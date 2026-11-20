@@ -165,6 +165,41 @@ final class InspectorNavigationTests: XCTestCase {
     }
 
     @MainActor
+    func testReturningFromSearchScopeKeepsDisclosureAtTrailingEdge() throws {
+        var query = InspectorQuery(); query.select(.transport, value: "http")
+        let filters = InspectorFilterViewController(query: query,
+            groups: [InspectorFilterGroup(.transport, values: ["http", "webSocket"])], payload: true) { _ in }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 414, height: 896))
+        window.rootViewController = filters; window.makeKeyAndVisible(); filters.view.layoutIfNeeded()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        let table = try XCTUnwrap(filters.tableView)
+        let refine = InspectorLocalization.text("ui_filter_refine"), scope = InspectorLocalization.text("ui_search_scope")
+        func checkDisclosure(_ name: String) throws {
+            for section in 0..<table.numberOfSections {
+                for row in 0..<table.numberOfRows(inSection: section) {
+                    let path = IndexPath(row: row, section: section)
+                    table.scrollToRow(at: path, at: .middle, animated: false); table.layoutIfNeeded()
+                    guard let cell = table.cellForRow(at: path) as? InspectorFilterSummaryCell, cell.accessibilityLabel == name else { continue }
+                    let arrow = try XCTUnwrap(descendants(cell.contentView).compactMap { $0 as? UIImageView }.first { $0.image?.isSymbolImage == true })
+                    let frame = arrow.convert(arrow.bounds, to: cell.contentView)
+                    XCTAssertEqual(frame.width, 16, accuracy: 0.5, name)
+                    XCTAssertEqual(cell.contentView.bounds.width - frame.maxX, 16, accuracy: 0.5, name)
+                    return
+                }
+            }
+            XCTFail(name)
+        }
+        try selectFilter(filters, title: InspectorLocalization.text("ui_time"))
+        try selectFilter(filters, title: refine)
+        try checkDisclosure(refine)
+        try selectFilter(filters, title: scope)
+        try selectFilter(filters, title: InspectorFilterOptions.label(.searchScope, "request"))
+        let back = try XCTUnwrap(filters.navigationItem.leftBarButtonItem)
+        _ = (back.target as? NSObject)?.perform(try XCTUnwrap(back.action))
+        try checkDisclosure(refine); try checkDisclosure(scope)
+    }
+
+    @MainActor
     private func selectFilter(_ filters: InspectorFilterViewController, title: String) throws {
         for section in 0..<filters.numberOfSections(in: filters.tableView) {
             for row in 0..<filters.tableView(filters.tableView, numberOfRowsInSection: section) {

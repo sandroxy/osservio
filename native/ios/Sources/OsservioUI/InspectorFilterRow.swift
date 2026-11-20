@@ -21,8 +21,9 @@ final class InspectorFilterLabels: UIStackView {
 
     func arrange(width: CGFloat) {
         guard width > 0 else { return }
+        let unconstrained = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         let inline = !prefersStacked && !traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-            && name.intrinsicContentSize.width + 12 + value.intrinsicContentSize.width <= width
+            && name.sizeThatFits(unconstrained).width + 12 + value.sizeThatFits(unconstrained).width <= width
             && value.text?.contains("\n") != true
         let direction: NSLayoutConstraint.Axis = inline ? .horizontal : .vertical
         if axis != direction {
@@ -38,22 +39,22 @@ final class InspectorFilterLabels: UIStackView {
 final class InspectorFilterSummaryCell: UITableViewCell {
     let labels = InspectorFilterLabels()
     private let arrow = UIImageView()
-    private let line = UIStackView()
-    private let inset: CGFloat = 16
+    private let inset: CGFloat = 16, arrowWidth: CGFloat = 16, arrowSpacing: CGFloat = 10
+    private lazy var labelsTrailing = labels.trailingAnchor.constraint(equalTo: contentView.trailingAnchor)
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = InspectorTheme.surface
-        line.alignment = .center; line.spacing = 10; line.translatesAutoresizingMaskIntoConstraints = false
-        arrow.contentMode = .scaleAspectFit; arrow.tintColor = InspectorTheme.secondary
-        arrow.isAccessibilityElement = false
-        let arrowWidth = arrow.widthAnchor.constraint(equalToConstant: 16); arrowWidth.priority = .defaultHigh; arrowWidth.isActive = true
-        line.addArrangedSubview(labels); line.addArrangedSubview(arrow); contentView.addSubview(line)
+        labels.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(labels)
+        arrow.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(arrow)
+        arrow.contentMode = .scaleAspectFit; arrow.tintColor = InspectorTheme.secondary; arrow.isAccessibilityElement = false
         let minimum = contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 46); minimum.priority = .defaultHigh
-        NSLayoutConstraint.activate([minimum, line.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: inset),
-            line.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -inset),
-            line.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
-            line.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10)])
+        NSLayoutConstraint.activate([minimum, labels.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: inset),
+            labelsTrailing, labels.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+            labels.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
+            arrow.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -inset),
+            arrow.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            arrow.widthAnchor.constraint(equalToConstant: arrowWidth), arrow.heightAnchor.constraint(equalToConstant: 20)])
         isAccessibilityElement = true
     }
     @available(*, unavailable) required init?(coder: NSCoder) { return nil }
@@ -68,13 +69,13 @@ final class InspectorFilterSummaryCell: UITableViewCell {
             let image = UIImage(systemName: $0, withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
             return $0 == "chevron.right" ? image?.imageFlippedForRightToLeftLayoutDirection() : image
         }
-        arrow.isHidden = heading
+        arrow.isHidden = heading; labelsTrailing.constant = -inset - (heading ? 0 : arrowWidth + arrowSpacing)
         accessibilityLabel = name; accessibilityValue = value.isEmpty ? nil : value
         accessibilityTraits = heading ? .header : .button; selectionStyle = heading ? .none : .default
     }
     override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontal: UILayoutPriority,
                                           verticalFittingPriority vertical: UILayoutPriority) -> CGSize {
-        labels.arrange(width: targetSize.width - 2 * inset - (arrow.isHidden ? 0 : 16 + line.spacing))
+        labels.arrange(width: targetSize.width - inset + labelsTrailing.constant)
         return super.systemLayoutSizeFitting(targetSize, withHorizontalFittingPriority: horizontal, verticalFittingPriority: vertical)
     }
 }
