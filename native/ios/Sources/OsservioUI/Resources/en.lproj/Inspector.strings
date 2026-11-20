@@ -186,6 +186,7 @@
 "ui_retry" = "Retry";
 
 "ui_content_filters" = "Content filters";
+"ui_path_exists" = "Has field %@";
 "ui_json_field" = "JSON field match";
 "ui_not_set" = "Not set";
 "ui_http_timing" = "HTTP duration";

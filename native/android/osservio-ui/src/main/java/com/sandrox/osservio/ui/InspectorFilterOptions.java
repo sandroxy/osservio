@@ -163,6 +163,9 @@ final class InspectorFilterOptions {
         }
         return ordered(result);
     }
+    static String jsonCondition(Context context, String path, String value) {
+        return value.isEmpty() ? context.getString(R.string.osservio_ui_path_exists, path) : path + " = " + value;
+    }
     static String summary(Context context, InspectorQuery query, List<InspectorFilterSheet.Group> groups) {
         List<String> parts = new ArrayList<>();
         for (InspectorFilterSheet.Group group : displayGroups(context, query, groups)) {
@@ -182,7 +185,7 @@ final class InspectorFilterOptions {
             parts.add(context.getString(label));
         }
         if (!query.excludedText.isEmpty()) parts.add(context.getString(R.string.osservio_ui_exclude) + ": " + query.excludedText);
-        if (!query.fieldPath.isEmpty()) parts.add(query.fieldPath + " = " + query.fieldValue);
+        if (!query.fieldPath.isEmpty()) parts.add(InspectorFilterOptions.jsonCondition(context, query.fieldPath, query.fieldValue));
         if (query.minimumDurationMillis > 0) parts.add("HTTP ≥ " + query.minimumDurationMillis + " ms");
         return parts.isEmpty() ? context.getString(R.string.osservio_ui_no_filters) : android.text.TextUtils.join(" · ", parts);
     }

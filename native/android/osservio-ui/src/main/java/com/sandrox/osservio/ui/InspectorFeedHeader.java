@@ -172,7 +172,7 @@ final class InspectorFeedHeader extends LinearLayout {
         if (query.recentMinutes > 0) { InspectorQuery changed = query.copy(); changed.recentMinutes = 0;
             token(getContext().getString(query.recentMinutes == 5 ? R.string.osservio_ui_time_5 : query.recentMinutes == 30 ? R.string.osservio_ui_time_30 : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440), InspectorFilterSheet.Target.TIME, changed); }
         if (!query.excludedText.isEmpty()) { InspectorQuery changed = query.copy(); changed.excludedText = ""; token(getContext().getString(R.string.osservio_ui_exclude) + ": " + query.excludedText, InspectorFilterSheet.Target.EXCLUDED_TEXT, changed); }
-        if (!query.fieldPath.isEmpty()) { InspectorQuery changed = query.copy(); changed.fieldPath = ""; changed.fieldValue = ""; token(query.fieldPath + " = " + query.fieldValue, InspectorFilterSheet.Target.JSON, changed); }
+        if (!query.fieldPath.isEmpty()) { InspectorQuery changed = query.copy(); changed.fieldPath = ""; changed.fieldValue = ""; token(InspectorFilterOptions.jsonCondition(getContext(), query.fieldPath, query.fieldValue), InspectorFilterSheet.Target.JSON, changed); }
         if (query.minimumDurationMillis > 0) { InspectorQuery changed = query.copy(); changed.minimumDurationMillis = 0; token("HTTP ≥ " + query.minimumDurationMillis + " ms", InspectorFilterSheet.Target.DURATION, changed); }
     }
     private void token(String label, InspectorFilterSheet.Target target, InspectorQuery changed) {

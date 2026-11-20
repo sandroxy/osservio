@@ -4,6 +4,19 @@ import OsservioCore
 import XCTest
 
 final class InspectorQueryTests: XCTestCase {
+    func testAppliedHTTPConditionsUseTheSameNamesAsTheirEditors() throws {
+        var query = InspectorQuery()
+        query.select(.method, value: "POST")
+        let groups = InspectorFilterOptions.network([], sockets: [], query: query)
+        let editor = try XCTUnwrap(groups.first { $0.field == .method })
+        XCTAssertEqual(editor.title, InspectorFilterOptions.title(.method, transport: query.transport))
+        XCTAssertTrue(InspectorFilterOptions.summary(query).contains(editor.title + ": POST"))
+        query.fieldPath = "/id"
+        let presence = String(format: InspectorLocalization.text("ui_path_exists"), "/id")
+        XCTAssertTrue(InspectorFilterOptions.summary(query).contains(presence))
+        query.fieldValue = "42"
+        XCTAssertTrue(InspectorFilterOptions.summary(query).contains("/id = 42"))
+    }
     func testRecordFilteringKeepsExactValuesAndTheOtherDimensions() {
         var query = InspectorQuery()
         query.select(.level, value: "warning"); query.select(.host, value: "api.example")

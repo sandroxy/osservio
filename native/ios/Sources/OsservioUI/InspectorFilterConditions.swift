@@ -78,7 +78,7 @@ final class InspectorFilterConditions: UIStackView {
     private func updateSummaries() {
         let empty = InspectorLocalization.text("ui_not_set")
         excludeSummary.text = exclude.text?.isEmpty == false ? String(exclude.text!.prefix(80)) : empty
-        fieldSummary.text = path.text?.isEmpty == false ? String((path.text! + " = " + (value.text ?? "")).prefix(120)) : empty
+        fieldSummary.text = path.text.flatMap { $0.isEmpty ? nil : String(InspectorFilterOptions.jsonCondition(path: $0, value: value.text ?? "").prefix(120)) } ?? empty
         for (button, summary, editor) in [(excludeToggle, excludeSummary, excludeEditor), (fieldToggle, fieldSummary, fieldEditor)] {
             summary.numberOfLines = 2; button.accessibilityValue = summary.text
             (button.viewWithTag(1) as? UIImageView)?.image = UIImage(systemName: editor.isHidden ? "chevron.down" : "chevron.up")

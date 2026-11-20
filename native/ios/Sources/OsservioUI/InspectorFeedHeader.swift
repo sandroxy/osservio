@@ -149,11 +149,11 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             guard let values = query.values[field], !values.isEmpty else { continue }
             var changed = query
             if field == .transport { changed.select(.transport, value: nil) } else { changed.values[field] = nil }
-            add(InspectorLocalization.text("ui_" + field.rawValue) + ": " + values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), target: .field(field), changed: field == .transport && query.hasTransportConditions ? nil : changed)
+            add(InspectorFilterOptions.title(field, transport: query.transport) + ": " + values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), target: .field(field), changed: field == .transport && query.hasTransportConditions ? nil : changed)
         }
         if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorLocalization.text("ui_time_\(query.recentMinutes)"), target: .time, changed: changed) }
         if !query.excludedText.isEmpty { var changed = query; changed.excludedText = ""; add(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText, target: .excludedText, changed: changed) }
-        if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(query.fieldPath + " = " + query.fieldValue, target: .json, changed: changed) }
+        if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(InspectorFilterOptions.jsonCondition(path: query.fieldPath, value: query.fieldValue), target: .json, changed: changed) }
         if query.minimumDurationMillis > 0 { var changed = query; changed.minimumDurationMillis = 0; add("HTTP ≥ \(query.minimumDurationMillis) ms", target: .duration, changed: changed) }
     }
     lazy var adjustFiltersButton: UIButton = {

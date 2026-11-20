@@ -154,6 +154,7 @@
     <string name="osservio_ui_record_problem">记录问题</string>
     <string name="osservio_ui_retry">重试</string>
     <string name="osservio_ui_content_filters">内容筛选</string>
+    <string name="osservio_ui_path_exists">包含字段 %1$s</string>
     <string name="osservio_ui_json_field">JSON 字段匹配</string>
     <string name="osservio_ui_not_set">未设置</string>
     <string name="osservio_ui_http_timing">HTTP 耗时</string>

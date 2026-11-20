@@ -80,7 +80,7 @@ final class InspectorFilterConditions {
     }
     private void summaries() {
         excludeSummary.setText(draft.excludedText.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : clip(draft.excludedText, 80));
-        fieldSummary.setText(draft.fieldPath.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : clip(draft.fieldPath + " = " + draft.fieldValue, 120));
+        fieldSummary.setText(draft.fieldPath.isEmpty() ? context.getString(R.string.osservio_ui_not_set) : clip(InspectorFilterOptions.jsonCondition(context, draft.fieldPath, draft.fieldValue), 120));
     }
     private static String clip(String text, int limit) { return text.length() <= limit ? text : text.substring(0, limit) + "…"; }
     private void read() {

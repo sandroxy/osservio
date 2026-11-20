@@ -244,7 +244,7 @@ final class InspectorFilterSheet {
             List<String> details = new ArrayList<>();
             for (Group group : groups) if (applicable(group) && advanced(group) && draft.values.containsKey(group.field) && !draft.values.get(group.field).isEmpty()) details.add(group.title + ": " + compact(summary(group)));
             if (!draft.excludedText.isEmpty()) details.add(text(R.string.osservio_ui_exclude) + ": " + compact(draft.excludedText));
-            if (!draft.fieldPath.isEmpty()) details.add(text(R.string.osservio_ui_json_field) + ": " + compact(draft.fieldPath + " = " + draft.fieldValue));
+            if (!draft.fieldPath.isEmpty()) details.add(text(R.string.osservio_ui_json_field) + ": " + compact(InspectorFilterOptions.jsonCondition(context, draft.fieldPath, draft.fieldValue)));
             return details.isEmpty() ? text(R.string.osservio_ui_filter_refine_hint) : android.text.TextUtils.join(" · ", details.subList(0, Math.min(3, details.size()))) + (details.size() > 3 ? " · +" + (details.size() - 3) : "");
         }
         String compact(String value) { return value.codePointCount(0, value.length()) > 80 ? value.substring(0, value.offsetByCodePoints(0, 80)) + "…" : value; }

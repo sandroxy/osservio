@@ -186,6 +186,7 @@
 "ui_retry" = "重试";
 
 "ui_content_filters" = "内容筛选";
+"ui_path_exists" = "包含字段 %@";
 "ui_json_field" = "JSON 字段匹配";
 "ui_not_set" = "未设置";
 "ui_http_timing" = "HTTP 耗时";

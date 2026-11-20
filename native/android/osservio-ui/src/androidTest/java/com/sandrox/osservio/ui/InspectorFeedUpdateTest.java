@@ -13,6 +13,8 @@ public final class InspectorFeedUpdateTest {
     @Test public void liveCountsKeepFilterControlsAndTheirCurrentQuery() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            assertEquals(context.getString(R.string.osservio_ui_path_exists, "/id"), InspectorFilterOptions.jsonCondition(context, "/id", ""));
+            assertEquals("/id = 42", InspectorFilterOptions.jsonCondition(context, "/id", "42"));
             InspectorFilterSheet.Target[] editing = {null};
             InspectorFeedHeader header = new InspectorFeedHeader(context, R.string.osservio_search, "", text -> { }, () -> { }, target -> editing[0] = target, () -> { }, true);
             InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.LEVEL, "ERROR"); query.text = "first";

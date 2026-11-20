@@ -251,7 +251,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         var details = groups.filter { applicable($0) && advanced($0) && !(draft.values[$0.field]?.isEmpty ?? true) }
             .map { $0.title + ": " + compact(summary($0)) }
         if !draft.excludedText.isEmpty { details.append(text("ui_exclude") + ": " + compact(draft.excludedText)) }
-        if !draft.fieldPath.isEmpty { details.append(text("ui_json_field") + ": " + compact(draft.fieldPath + " = " + draft.fieldValue)) }
+        if !draft.fieldPath.isEmpty { details.append(text("ui_json_field") + ": " + compact(InspectorFilterOptions.jsonCondition(path: draft.fieldPath, value: draft.fieldValue))) }
         return details.isEmpty ? text("ui_filter_refine_hint") : details.prefix(3).joined(separator: " · ")
             + (details.count > 3 ? " · +\(details.count - 3)" : "")
     }

@@ -6,7 +6,7 @@ struct InspectorFilterGroup {
     let title: String
     var options: [(value: String, label: String)]
     init(_ field: InspectorQuery.Field, title: String? = nil, values: [String]) {
-        self.field = field; self.title = title ?? InspectorLocalization.text("ui_" + field.rawValue)
+        self.field = field; self.title = title ?? InspectorFilterOptions.title(field)
         var seen = Set<String>()
         options = values.filter { seen.insert($0).inserted }.map { ($0, InspectorFilterOptions.label(field, $0)) }
     }
@@ -27,10 +27,10 @@ enum InspectorFilterOptions {
             InspectorFilterGroup(.host, values: hosts), InspectorFilterGroup(.excludedHost, values: hosts)]
         let sources = Set(events.map { $0.source.rawValue } + sockets.map { $0.source.rawValue })
         result.append(InspectorFilterGroup(.source, values: sources.count > 1 || !(query.values[.source]?.isEmpty ?? true) ? sources.sorted() : []))
-        result += [InspectorFilterGroup(.method, title: InspectorLocalization.text("ui_http_method"), values: events.map(\.method).sorted()),
-            InspectorFilterGroup(.status, title: InspectorLocalization.text("ui_http_status"), values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"] + events.compactMap { $0.statusCode }.sorted().map(String.init)),
-            InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_http_state"), values: [HTTPState.pending, .receiving, .completed, .failed, .cancelled, .closedEarly, .captureEnded].map(\.rawValue)),
-            InspectorFilterGroup(.content, title: InspectorLocalization.text("ui_http_content"), values: events.map { InspectorHTTPContent.category($0.responseHeaders) }.sorted()),
+        result += [InspectorFilterGroup(.method, values: events.map(\.method).sorted()),
+            InspectorFilterGroup(.status, values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"] + events.compactMap { $0.statusCode }.sorted().map(String.init)),
+            InspectorFilterGroup(.state, values: [HTTPState.pending, .receiving, .completed, .failed, .cancelled, .closedEarly, .captureEnded].map(\.rawValue)),
+            InspectorFilterGroup(.content, values: events.map { InspectorHTTPContent.category($0.responseHeaders) }.sorted()),
             InspectorFilterGroup(.activity, values: ["messages", "connections"]),
             InspectorFilterGroup(.direction, title: InspectorLocalization.text("ui_socket_direction"), values: ["incoming", "outgoing"]),
             InspectorFilterGroup(.kind, title: InspectorLocalization.text("ui_socket_kind"), values: sockets.map { $0.kind.rawValue }.sorted()),
@@ -77,15 +77,31 @@ enum InspectorFilterOptions {
         default: return value
         }
     }
+    static func title(_ field: InspectorQuery.Field, transport: String? = nil) -> String {
+        let key: String
+        switch field {
+        case .method: key = "ui_http_method"
+        case .status: key = "ui_http_status"
+        case .state: key = "ui_http_state"
+        case .content: key = "ui_http_content"
+        case .direction where transport == "webSocket": key = "ui_socket_direction"
+        case .kind where transport == "webSocket": key = "ui_socket_kind"
+        default: key = "ui_" + field.rawValue
+        }
+        return InspectorLocalization.text(key)
+    }
+    static func jsonCondition(path: String, value: String) -> String {
+        value.isEmpty ? String(format: InspectorLocalization.text("ui_path_exists"), path) : path + " = " + value
+    }
     static func summary(_ query: InspectorQuery) -> String {
         var parts = InspectorQuery.fieldOrder.compactMap { field -> String? in
             guard let values = query.values[field], !values.isEmpty else { return nil }
             let labels = values.sorted().prefix(2).map { String(label(field, $0).prefix(48)) }
-            return InspectorLocalization.text("ui_" + field.rawValue) + ": " + labels.joined(separator: ", ") + (values.count > 2 ? " +\(values.count - 2)" : "")
+            return title(field, transport: query.transport) + ": " + labels.joined(separator: ", ") + (values.count > 2 ? " +\(values.count - 2)" : "")
         }
         if query.recentMinutes > 0 { parts.append(InspectorLocalization.text("ui_time_\(query.recentMinutes)")) }
         if !query.excludedText.isEmpty { parts.append(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText) }
-        if !query.fieldPath.isEmpty { parts.append(query.fieldPath + " = " + query.fieldValue) }
+        if !query.fieldPath.isEmpty { parts.append(InspectorFilterOptions.jsonCondition(path: query.fieldPath, value: query.fieldValue)) }
         if query.minimumDurationMillis > 0 { parts.append("HTTP ≥ \(query.minimumDurationMillis) ms") }
         return parts.isEmpty ? InspectorLocalization.text("ui_no_filters") : parts.joined(separator: " · ")
     }
