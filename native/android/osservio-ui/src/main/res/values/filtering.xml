@@ -25,7 +25,7 @@
     <string name="osservio_ui_filter_multiple_title">%1$s · Select multiple</string>
     <string name="osservio_ui_filter_refine">Refine filters</string>
     <string name="osservio_ui_filter_scope">View</string>
-    <string name="osservio_ui_filter_switch">Switching HTTP / Socket keeps shared conditions and clears conditions for the other protocol.</string>
+    <string name="osservio_ui_filter_switch">You can switch back to review your choices. Apply uses the selected scope.</string>
     <string name="osservio_ui_filter_refine_hint">Content, source and precise conditions</string>
     <string name="osservio_ui_specific_status">Status code (100–599)</string>
     <string name="osservio_ui_status_1xx">Informational (1xx)</string>

@@ -45,6 +45,21 @@ public final class InspectorQueryTest {
         assertTrue(query.matchesFacets(event, 1));
         query.select(InspectorQuery.Field.TRANSPORT, "webSocket"); assertFalse(query.values.containsKey(InspectorQuery.Field.STATUS));
     }
+    @Test public void scopeDraftRestoresProtocolChoicesWithoutApplyingHiddenConditions() {
+        InspectorQuery query = new InspectorQuery();
+        InspectorQuery.ScopeDraft scopes = new InspectorQuery.ScopeDraft();
+        query.select(InspectorQuery.Field.STATUS, "5xx"); query.minimumDurationMillis = 800;
+        query.select(InspectorQuery.Field.SEARCH_SCOPE, "response");
+        scopes.switchTo("webSocket", query); assertFalse(query.hasTransportConditions());
+        query.select(InspectorQuery.Field.HOST, "example.test"); query.select(InspectorQuery.Field.OUTCOME, "FAILED");
+        scopes.switchTo("http", query);
+        assertEquals(Collections.singleton("5xx"), query.values.get(InspectorQuery.Field.STATUS));
+        assertEquals("response", query.searchScope()); assertEquals(800, query.minimumDurationMillis);
+        assertNull(query.values.get(InspectorQuery.Field.OUTCOME));
+        assertEquals(Collections.singleton("example.test"), query.values.get(InspectorQuery.Field.HOST));
+        scopes.switchTo(null, query); assertFalse(query.hasTransportConditions());
+        scopes.switchTo("webSocket", query); assertEquals(Collections.singleton("FAILED"), query.values.get(InspectorQuery.Field.OUTCOME));
+    }
     @Test public void socketActivityAndSearchScopesKeepApplicableConditions() {
         InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.TRANSPORT, "webSocket");
         query.select(InspectorQuery.Field.ACTIVITY, "messages");

@@ -129,6 +129,8 @@
     <string name="osservio_ui_search_progress">正在检索：已检查 %1$d / %2$d 条</string>
     <string name="osservio_ui_search_paused">检索已暂停：已检查 %1$d / %2$d 条</string>
     <string name="osservio_ui_retention_loss">部分历史已因容量或限流被丢弃</string>
+    <string name="osservio_ui_edit_filter">编辑此条件</string>
+    <string name="osservio_ui_undo_remove">撤销移除</string>
     <string name="osservio_ui_remove_filter">移除此条件</string>
     <string name="osservio_ui_connection_context">查看此连接的记录</string>
     <string name="osservio_ui_socket_kind">Socket 记录类型</string>

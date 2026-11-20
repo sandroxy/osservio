@@ -114,7 +114,7 @@ final class InspectorNavigation extends FrameLayout {
     boolean back() {
         List<InspectorScreen> stack = stacks.get(selection);
         if (stack.isEmpty()) return false;
-        stack.get(stack.size() - 1).cancel(); return true;
+        stack.get(stack.size() - 1).navigateBack(); return true;
     }
     void refreshAppearance(Context themed) { refreshAppearance(themed, null); }
     void refreshAppearance(Context themed, InspectorLayoutConfiguration layout) {

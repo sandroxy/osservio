@@ -13,6 +13,9 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     let count = InspectorTheme.label(.caption1, secondary: true)
     let activity = UIActivityIndicatorView(style: .medium)
     let extra = UIStackView()
+    var onFilters: ((InspectorQuery.Target?) -> Void)?
+    private let undo = UIButton(type: .system)
+    private var removed: (before: InspectorQuery, after: InspectorQuery)?
     var onSearch: ((String) -> Void)?
     var onQueryChange: ((InspectorQuery) -> Void)?
     private let compact: Bool
@@ -46,13 +49,17 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             button.setContentHuggingPriority(.required, for: .horizontal)
             button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
+        filters.addTarget(self, action: #selector(openFilters), for: .touchUpInside)
+        undo.isHidden = true
+        undo.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        undo.addTarget(self, action: #selector(undoRemoval), for: .touchUpInside)
         let searchRow = UIStackView(arrangedSubviews: [search, filters]); searchRow.spacing = 8
         let activitySlot = UIView(); activitySlot.translatesAutoresizingMaskIntoConstraints = false
         activity.translatesAutoresizingMaskIntoConstraints = false; activitySlot.addSubview(activity)
         NSLayoutConstraint.activate([activitySlot.widthAnchor.constraint(equalToConstant: 20),
             activitySlot.heightAnchor.constraint(equalToConstant: 20), activity.centerXAnchor.constraint(equalTo: activitySlot.centerXAnchor),
             activity.centerYAnchor.constraint(equalTo: activitySlot.centerYAnchor)])
-        let countRow = UIStackView(arrangedSubviews: [count, activitySlot]); countRow.spacing = 8; countRow.alignment = .center
+        let countRow = UIStackView(arrangedSubviews: [count, activitySlot, undo]); countRow.spacing = 8; countRow.alignment = .center
         let summary = UIStackView(arrangedSubviews: compact ? [countRow, status] : [status]); summary.axis = .vertical; summary.spacing = 4
         let controls = UIStackView(arrangedSubviews: compact ? [summary] : [summary, pause, actions]); controls.spacing = 8; controls.alignment = .center
         status.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -112,32 +119,57 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         return true
     }
     private func updateTokens(_ query: InspectorQuery) {
+        if let removed, removed.after != query { expireUndo() }
+        undo.setTitle(InspectorLocalization.text("ui_undo_remove"), for: .normal)
+        undo.tintColor = InspectorTheme.accent
         tokenScroll.isHidden = query.activeCount == 0
         let style = InspectorLocalization.text("ui_remove_filter") + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue
         guard tokenQuery != query || tokenStyle != style else { return }
         tokenQuery = query; tokenStyle = style
         for view in tokens.arrangedSubviews { tokens.removeArrangedSubview(view); view.removeFromSuperview() }
-        func add(_ title: String, changed: InspectorQuery) {
-            let button = InspectorFilterToken { [weak self] in self?.onQueryChange?(changed) }
-            button.setTitle(String(title.prefix(34)) + (title.count > 34 ? "…" : "") + " ×", for: .normal)
-            button.titleLabel?.font = .preferredFont(forTextStyle: .caption1); button.titleLabel?.adjustsFontForContentSizeCategory = true
-            button.tintColor = InspectorTheme.accent; button.backgroundColor = InspectorTheme.tint; button.layer.cornerRadius = 14
-            button.setTitleColor(InspectorTheme.accent, for: .normal)
-            button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
-            button.accessibilityLabel = title; button.accessibilityHint = InspectorLocalization.text("ui_remove_filter")
-            tokens.addArrangedSubview(button)
+        func add(_ title: String, target: InspectorQuery.Target, changed: InspectorQuery?) {
+            let group = UIStackView()
+            group.backgroundColor = InspectorTheme.tint; group.layer.cornerRadius = 18
+            let edit = InspectorFilterToken { [weak self] in self?.onFilters?(target) }
+            edit.setTitle(title, for: .normal)
+            edit.accessibilityLabel = title; edit.accessibilityHint = InspectorLocalization.text("ui_edit_filter")
+            edit.titleLabel?.lineBreakMode = .byTruncatingTail
+            let readableWidth = edit.widthAnchor.constraint(lessThanOrEqualTo: tokenScroll.frameLayoutGuide.widthAnchor, constant: -52)
+            readableWidth.priority = .defaultHigh; readableWidth.isActive = true
+            group.addArrangedSubview(edit)
+            if let changed {
+                let close = InspectorFilterToken { [weak self] in self?.remove(query, replacingWith: changed) }
+                close.setImage(UIImage(systemName: "xmark"), for: .normal)
+                close.widthAnchor.constraint(equalToConstant: 44).isActive = true
+                close.accessibilityLabel = InspectorLocalization.text("ui_remove_filter") + ", " + title
+                group.addArrangedSubview(close)
+            }
+            tokens.addArrangedSubview(group)
         }
         for field in InspectorQuery.fieldOrder {
             guard let values = query.values[field], !values.isEmpty else { continue }
             var changed = query
             if field == .transport { changed.select(.transport, value: nil) } else { changed.values[field] = nil }
-            add(InspectorLocalization.text("ui_" + field.rawValue) + ": " + values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), changed: changed)
+            add(InspectorLocalization.text("ui_" + field.rawValue) + ": " + values.sorted().map { InspectorFilterOptions.label(field, $0) }.joined(separator: ", "), target: .field(field), changed: field == .transport && query.hasTransportConditions ? nil : changed)
         }
-        if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorLocalization.text("ui_time_\(query.recentMinutes)"), changed: changed) }
-        if !query.excludedText.isEmpty { var changed = query; changed.excludedText = ""; add(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText, changed: changed) }
-        if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(query.fieldPath + " = " + query.fieldValue, changed: changed) }
-        if query.minimumDurationMillis > 0 { var changed = query; changed.minimumDurationMillis = 0; add("HTTP ≥ \(query.minimumDurationMillis) ms", changed: changed) }
+        if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorLocalization.text("ui_time_\(query.recentMinutes)"), target: .time, changed: changed) }
+        if !query.excludedText.isEmpty { var changed = query; changed.excludedText = ""; add(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText, target: .excludedText, changed: changed) }
+        if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(query.fieldPath + " = " + query.fieldValue, target: .json, changed: changed) }
+        if query.minimumDurationMillis > 0 { var changed = query; changed.minimumDurationMillis = 0; add("HTTP ≥ \(query.minimumDurationMillis) ms", target: .duration, changed: changed) }
     }
+    @objc private func openFilters() { onFilters?(nil) }
+    private func remove(_ original: InspectorQuery, replacingWith changed: InspectorQuery) {
+        guard displayedQuery == original else { return }
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(expireUndo), object: nil)
+        removed = (original, changed); undo.isHidden = false
+        perform(#selector(expireUndo), with: nil, afterDelay: UIAccessibility.isVoiceOverRunning ? 15 : 6)
+        onQueryChange?(changed)
+    }
+    @objc private func undoRemoval() {
+        guard let removed, displayedQuery == removed.after else { expireUndo(); return }
+        expireUndo(); onQueryChange?(removed.before)
+    }
+    @objc private func expireUndo() { removed = nil; undo.isHidden = true; superview?.setNeedsLayout() }
     private func configure(_ button: UIButton, symbol: String, selected: Bool = false, title: String? = nil) {
         guard #available(iOS 15, *) else {
             button.setImage(UIImage(systemName: symbol), for: .normal); button.setTitle(title, for: .normal)
@@ -195,7 +227,13 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
 @MainActor
 private final class InspectorFilterToken: UIButton {
     private let operation: () -> Void
-    init(operation: @escaping () -> Void) { self.operation = operation; super.init(frame: .zero); addTarget(self, action: #selector(run), for: .touchUpInside) }
+    init(operation: @escaping () -> Void) {
+        self.operation = operation; super.init(frame: .zero)
+        tintColor = InspectorTheme.accent; setTitleColor(InspectorTheme.accent, for: .normal)
+        titleLabel?.font = .preferredFont(forTextStyle: .caption1); titleLabel?.adjustsFontForContentSizeCategory = true
+        contentEdgeInsets = UIEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+        addTarget(self, action: #selector(run), for: .touchUpInside)
+    }
     @available(*, unavailable) required init?(coder: NSCoder) { return nil }
     @objc private func run() { operation() }
 }

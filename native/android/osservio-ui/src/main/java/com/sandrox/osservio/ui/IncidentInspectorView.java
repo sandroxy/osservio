@@ -137,8 +137,8 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         groups.add(types);
         return groups;
     }
-    private void filters() {
-        confirmation = InspectorFilterSheet.show(getContext(), state.query, filterGroups(), R.string.osservio_ui_record_time,
+    private void filters(InspectorFilterSheet.Target target) {
+        confirmation = InspectorFilterSheet.show(getContext(), state.query, filterGroups(), R.string.osservio_ui_record_time, false, target,
             query -> { state.query = query; render(); });
         confirmation.setOnDismissListener(ignored -> confirmation = null);
     }

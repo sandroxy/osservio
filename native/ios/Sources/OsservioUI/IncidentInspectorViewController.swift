@@ -49,7 +49,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         retryButton.addTarget(self, action: #selector(refreshPressed), for: .touchUpInside)
         header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
-        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.onFilters = { [weak self] in self?.showFilters($0) }
         style.changed()
     }
     private func relabel() {
@@ -102,10 +102,10 @@ public final class IncidentInspectorViewController: UITableViewController {
     }
     @objc private func markPressed() { if !reading { mark() } }
     @objc private func refreshPressed() { read() }
-    @objc private func showFilters() {
+    private func showFilters(_ target: InspectorQuery.Target?) {
         let kinds = snapshots.map { $0.diagnosticKind?.rawValue ?? "manual" }.sorted()
         let groups = [InspectorFilterGroup(.record, values: kinds)]
-        let filters = InspectorFilterViewController(query: query, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
+        let filters = InspectorFilterViewController(query: query, focus: target, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
     }
     @objc private func showActions() { confirmDeletion(id: nil) }

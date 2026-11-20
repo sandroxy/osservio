@@ -5,6 +5,8 @@ import UIKit
 @MainActor
 final class InspectorFilterViewController: UITableViewController, UITextFieldDelegate {
     private var draft: InspectorQuery
+    private var scopes = InspectorQuery.ScopeDraft()
+    private var focusTarget: InspectorQuery.Target?
     private var groups: [InspectorFilterGroup]
     private let apply: (InspectorQuery) -> Void
     private let search = UISearchTextField(), footer = UIStackView()
@@ -23,8 +25,8 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private lazy var resetAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(resetDraft))
     private lazy var backAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(backToFilters))
 
-    init(query: InspectorQuery, groups: [InspectorFilterGroup], timeLabel: String = "ui_time", payload: Bool = false, apply: @escaping (InspectorQuery) -> Void) {
-        draft = query; self.groups = groups; self.apply = apply; self.timeLabel = timeLabel; self.payload = payload
+    init(query: InspectorQuery, focus: InspectorQuery.Target? = nil, groups: [InspectorFilterGroup], timeLabel: String = "ui_time", payload: Bool = false, apply: @escaping (InspectorQuery) -> Void) {
+        draft = query; focusTarget = focus; self.groups = groups; self.apply = apply; self.timeLabel = timeLabel; self.payload = payload
         hasHTTP = groups.contains { $0.field == .method || $0.field == .transport && $0.options.contains(where: { $0.value == "http" }) }
         hasSockets = groups.contains { $0.field == .direction || $0.field == .transport && $0.options.contains(where: { $0.value == "webSocket" }) }
         network = hasHTTP || hasSockets
@@ -155,13 +157,55 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         let value = String((search.text ?? "").prefix(512)); if value != search.text { search.text = value }
         sections = [Section(title: nil, rows: choices(picker))]; tableView.reloadData()
     }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        guard let target = focusTarget else { return }
+        focusTarget = nil
+        switch target {
+        case .field(.transport): break
+        case .field(let field):
+            guard let index = groups.firstIndex(where: { $0.field == field }) else { return }
+            refined = advanced(groups[index])
+            if !direct(groups[index]) && (groups[index].options.count > 6 || field == .status) { picker = index }
+            else { expanded.insert(field) }
+        case .time: timeExpanded = true
+        case .duration: durationExpanded = true
+        case .excludedText, .json: refined = true
+        }
+        rebuild()
+        tableView.layoutIfNeeded()
+        guard picker == nil else { return }
+        if target == .excludedText || target == .json {
+            if let field = target == .json ? conditions?.path : conditions?.exclude {
+                tableView.scrollRectToVisible(field.convert(field.bounds, to: tableView), animated: false)
+            }
+            return
+        }
+        for (section, group) in sections.enumerated() {
+            for (row, item) in group.rows.enumerated() {
+                let matches: Bool
+                switch item {
+                case .scope: matches = target == .field(.transport)
+                case .group(let index), .groupHeading(let index): matches = target == .field(groups[index].field)
+                case .time: matches = target == .time
+                case .duration: matches = target == .duration
+                default: matches = false
+                }
+                if matches { tableView.scrollToRow(at: IndexPath(row: row, section: section), at: .top, animated: false); return }
+            }
+        }
+    }
+    override func accessibilityPerformEscape() -> Bool {
+        if picker != nil { backToFilters(); return true }
+        return super.accessibilityPerformEscape()
+    }
     @objc private func backToFilters() { view.endEditing(true); picker = nil; search.text = ""; rebuild(); tableView.setContentOffset(overviewOffset, animated: false) }
     private func editConditions() {
         guard let fields = conditions else { return }
         draft.excludedText = fields.exclude.text ?? ""; draft.fieldPath = fields.path.text ?? ""; draft.fieldValue = fields.value.text ?? ""
         draft.minimumDurationMillis = UInt64(fields.duration.text ?? "") ?? 0
     }
-    @objc private func resetDraft() { view.endEditing(true); draft.resetFilters(); conditions?.sync(draft); rebuild() }
+    @objc private func resetDraft() { view.endEditing(true); scopes = InspectorQuery.ScopeDraft(); draft.resetFilters(); conditions?.sync(draft); rebuild() }
     @objc private func save() {
         view.endEditing(true); editConditions()
         if let fields = conditions {
@@ -235,7 +279,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
                 let control = InspectorScopeControl(titles: [text("ui_all"), "HTTP", "WebSocket"])
                 control.onSelect = { [weak self] index in
                     guard let self else { return }; self.view.endEditing(true)
-                    self.draft.select(.transport, value: index == 1 ? "http" : index == 2 ? "webSocket" : nil)
+                    self.scopes.switchTo(index == 1 ? "http" : index == 2 ? "webSocket" : nil, in: &self.draft)
                     self.conditions?.sync(self.draft); self.rebuild()
                 }; scope = control
             }

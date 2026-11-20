@@ -151,6 +151,8 @@
 
 "ui_retention_loss" = "部分历史已因容量或限流被丢弃";
 
+"ui_edit_filter" = "编辑此条件";
+"ui_undo_remove" = "撤销移除";
 "ui_remove_filter" = "移除此条件";
 
 "ui_connection_context" = "查看此连接的记录";
@@ -290,7 +292,7 @@
 "ui_filter_multiple_title" = "%@ · 可多选";
 "ui_filter_refine" = "精细筛选";
 "ui_filter_scope" = "查看范围";
-"ui_filter_switch" = "切换 HTTP / Socket 会保留共同条件，并清除另一协议的专属条件。";
+"ui_filter_switch" = "切回原范围可继续编辑，确定后仅应用当前范围的条件。";
 "ui_filter_refine_hint" = "内容、采集来源与精确条件";
 "ui_specific_status" = "状态码（100–599）";
 "ui_status_1xx" = "信息响应（1xx）";

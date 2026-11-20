@@ -108,8 +108,8 @@ never resends a request or a Socket message.
 
 Network has one search and one filter draft. Choose All, HTTP or WebSocket at
 the top of the sheet; only the selected protocol's conditions appear below.
-Switching scope clears incompatible conditions while preserving common text,
-host and time criteria. Switching tabs, minimizing, or changing language and
+Switching scope preserves each protocol's choices in the open draft and shares
+text, host and time criteria. Apply commits only the currently visible scope. Switching tabs, minimizing, or changing language and
 theme preserves the applied query and reading position. Reset clears filter
 conditions while retaining the main search text. Closing the sheet discards its
 draft; Apply commits the entire draft, including choices made in a nested picker.
@@ -125,8 +125,9 @@ Time and other dimensions remain summary rows; small
 choice sets expand in place and long sets open a searchable picker within the
 same sheet. Back returns to the overview with its draft and scroll position.
 Precise conditions remain under Refine filters, whose collapsed summary names
-the selected criteria and values. Applied conditions stay visible as removable
-chips above the results, including a restricted text-search scope. Live arrivals
+the selected criteria and values. Applied conditions stay visible above the results. Tap the label to edit its
+current values or its separate close button to remove that dimension and briefly
+undo the removal. A protocol with dependent criteria opens the scope editor. Live arrivals
 never expand or collapse a draft's groups.
 
 | View | Common conditions | Precise conditions |

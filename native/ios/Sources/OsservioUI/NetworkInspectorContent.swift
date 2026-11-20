@@ -48,7 +48,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         header.onQueryChange = { [weak self] in self?.apply($0) }
         table.followLatestButton = header.pause; table.followsLatest = true
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
-        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.onFilters = { [weak self] in self?.showFilters($0) }
         style.changed()
     }
     func show() { loop.show(in: table) }
@@ -192,9 +192,9 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         cancelSearch(); nextSearchAt = 0; paused = false; refresh()
         table.showLatest()
     }
-    @objc private func showFilters() {
+    private func showFilters(_ target: InspectorQuery.Target?) {
         table.endEditing(true)
-        let filters = InspectorFilterViewController(query: query,
+        let filters = InspectorFilterViewController(query: query, focus: target,
             groups: InspectorFilterOptions.network(latestHTTP?.events ?? [], sockets: (latestSockets?.events ?? []).filter { connectionID == nil || $0.connectionID == connectionID }, query: query,
                 includeHTTP: http != nil, includeSockets: sockets != nil).filter { connectionID == nil || $0.field != .connection }, payload: true) { [weak self] in self?.apply($0) }
         owner?.inspectorPresent(filters)

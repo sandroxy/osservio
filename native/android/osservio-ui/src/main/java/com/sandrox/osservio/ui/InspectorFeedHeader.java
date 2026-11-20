@@ -30,23 +30,27 @@ final class InspectorFeedHeader extends LinearLayout {
     private final LinearLayout tokens;
     private InspectorQuery displayedQuery;
     private String displayedStyle;
+    private final InspectorFilterSheet.Edit editFilter;
+    private final Button undo;
+    private InspectorQuery beforeRemoval, afterRemoval;
+    private final Runnable expireUndo = this::finishUndo;
     InspectorFilterSheet.Applied onQueryChange;
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
-                        Runnable togglePause, Runnable showFilters, Runnable actions) {
+                        Runnable togglePause, InspectorFilterSheet.Edit showFilters, Runnable actions) {
         this(context, searchHint, text, changed, togglePause, showFilters, actions, false);
     }
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
-                        Runnable togglePause, Runnable showFilters, Runnable actions, boolean compact) {
+                        Runnable togglePause, InspectorFilterSheet.Edit showFilters, Runnable actions, boolean compact) {
         this(context, searchHint, text, changed, togglePause, showFilters, actions, compact, R.string.osservio_clear);
     }
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
-                        Runnable togglePause, Runnable showFilters, Runnable actions, boolean compact, int actionLabel) {
-        super(context); this.compact = compact; setOrientation(VERTICAL);
+                        Runnable togglePause, InspectorFilterSheet.Edit showFilters, Runnable actions, boolean compact, int actionLabel) {
+        super(context); this.compact = compact; this.editFilter = showFilters; setOrientation(VERTICAL);
         int inset = InspectorTheme.dp(context, 16); setPadding(inset, InspectorTheme.dp(context, 12), inset, 0);
         LinearLayout searchRow = new LinearLayout(context); searchRow.setGravity(android.view.Gravity.CENTER_VERTICAL); searchRow.setBaselineAligned(false);
         search = InspectorWidgets.search(context, searchHint, text, changed);
         searchRow.addView(search, new LayoutParams(0, -2, 1));
-        filters = InspectorWidgets.icon(context, R.drawable.osservio_filter, R.string.osservio_ui_filters, showFilters);
+        filters = InspectorWidgets.icon(context, R.drawable.osservio_filter, R.string.osservio_ui_filters, () -> editFilter.open(null));
         LayoutParams filterLayout = new LayoutParams(InspectorTheme.dp(context, 48), InspectorTheme.dp(context, 48)); filterLayout.leftMargin = InspectorTheme.dp(context, 8);
         searchRow.addView(filters, filterLayout); addView(searchRow, new LayoutParams(-1, -2));
         LinearLayout bar = new LinearLayout(context); bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -71,11 +75,18 @@ final class InspectorFeedHeader extends LinearLayout {
         activity.setContentDescription(context.getString(R.string.osservio_archive_reading));
         InspectorAppearance.style(activity, () -> activity.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.accent(context))));
         LinearLayout summary = new LinearLayout(context); summary.setOrientation(VERTICAL);
+        undo = InspectorWidgets.button(context, R.string.osservio_ui_undo_remove, () -> {
+            InspectorQuery original = beforeRemoval;
+            boolean current = afterRemoval != null && afterRemoval.sameAs(displayedQuery);
+            finishUndo();
+            if (current && onQueryChange != null) onQueryChange.apply(original);
+        });
+        undo.setVisibility(GONE);
         if (compact) {
             LinearLayout countRow = new LinearLayout(context); countRow.setGravity(android.view.Gravity.CENTER_VERTICAL); countRow.setBaselineAligned(false);
             countRow.addView(results, new LayoutParams(0, -2, 1));
             LayoutParams progress = new LayoutParams(InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 20)); progress.leftMargin = InspectorTheme.dp(context, 8);
-            countRow.addView(activity, progress); summary.addView(countRow);
+            countRow.addView(activity, progress); countRow.addView(undo); summary.addView(countRow);
             results.setPadding(0, 0, 0, 0); status.setPadding(0, 0, 0, 0);
         }
         summary.addView(status);
@@ -99,6 +110,7 @@ final class InspectorFeedHeader extends LinearLayout {
         String style = getContext().getString(R.string.osservio_ui_filters) + InspectorTheme.accent(getContext())
             + getResources().getConfiguration().fontScale;
         if (!query.sameAs(displayedQuery) || !style.equals(displayedStyle)) {
+            if (afterRemoval != null && !query.sameAs(afterRemoval)) finishUndo();
             displayedQuery = query.copy(); displayedStyle = style;
             filters.setContentDescription(getContext().getString(R.string.osservio_ui_filters));
             if (android.os.Build.VERSION.SDK_INT >= 30) filters.setStateDescription(getContext().getString(R.string.osservio_ui_filter_count, query.activeCount()));
@@ -145,20 +157,58 @@ final class InspectorFeedHeader extends LinearLayout {
             for (String value : new java.util.TreeSet<>(values)) labels.add(InspectorFilterOptions.label(getContext(), group.field, value));
             InspectorQuery changed = query.copy();
             if (group.field == InspectorQuery.Field.TRANSPORT) changed.select(group.field, null); else changed.values.remove(group.field);
-            token(group.title + ": " + android.text.TextUtils.join(", ", labels), changed);
+            token(group.title + ": " + android.text.TextUtils.join(", ", labels), InspectorFilterSheet.Target.field(group.field),
+                group.field == InspectorQuery.Field.TRANSPORT && query.hasTransportConditions() ? null : changed);
         }
         if (query.recentMinutes > 0) { InspectorQuery changed = query.copy(); changed.recentMinutes = 0;
-            token(getContext().getString(query.recentMinutes == 5 ? R.string.osservio_ui_time_5 : query.recentMinutes == 30 ? R.string.osservio_ui_time_30 : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440), changed); }
-        if (!query.excludedText.isEmpty()) { InspectorQuery changed = query.copy(); changed.excludedText = ""; token(getContext().getString(R.string.osservio_ui_exclude) + ": " + query.excludedText, changed); }
-        if (!query.fieldPath.isEmpty()) { InspectorQuery changed = query.copy(); changed.fieldPath = ""; changed.fieldValue = ""; token(query.fieldPath + " = " + query.fieldValue, changed); }
-        if (query.minimumDurationMillis > 0) { InspectorQuery changed = query.copy(); changed.minimumDurationMillis = 0; token("HTTP ≥ " + query.minimumDurationMillis + " ms", changed); }
+            token(getContext().getString(query.recentMinutes == 5 ? R.string.osservio_ui_time_5 : query.recentMinutes == 30 ? R.string.osservio_ui_time_30 : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440), InspectorFilterSheet.Target.TIME, changed); }
+        if (!query.excludedText.isEmpty()) { InspectorQuery changed = query.copy(); changed.excludedText = ""; token(getContext().getString(R.string.osservio_ui_exclude) + ": " + query.excludedText, InspectorFilterSheet.Target.EXCLUDED_TEXT, changed); }
+        if (!query.fieldPath.isEmpty()) { InspectorQuery changed = query.copy(); changed.fieldPath = ""; changed.fieldValue = ""; token(query.fieldPath + " = " + query.fieldValue, InspectorFilterSheet.Target.JSON, changed); }
+        if (query.minimumDurationMillis > 0) { InspectorQuery changed = query.copy(); changed.minimumDurationMillis = 0; token("HTTP ≥ " + query.minimumDurationMillis + " ms", InspectorFilterSheet.Target.DURATION, changed); }
     }
-    private void token(String label, InspectorQuery changed) {
-        Button token = InspectorWidgets.button(getContext(), R.string.osservio_ui_remove_filter, () -> { if (onQueryChange != null) onQueryChange.apply(changed); });
-        token.setText(getContext().getString(R.string.osservio_ui_filter_token, label.length() > 34 ? label.substring(0, 34) + "…" : label));
-        token.setContentDescription(label + ", " + getContext().getString(R.string.osservio_ui_remove_filter));
-        InspectorWidgets.chip(token, true);
-        LayoutParams layout = new LayoutParams(-2, -2); layout.rightMargin = InspectorTheme.dp(getContext(), 6); tokens.addView(token, layout);
+    private void token(String label, InspectorFilterSheet.Target target, InspectorQuery changed) {
+        Context context = getContext();
+        LinearLayout group = new LinearLayout(context);
+        group.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        group.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false));
+        Button edit = tokenAction(label, () -> editFilter.open(target));
+        edit.setContentDescription(label + ", " + context.getString(R.string.osservio_ui_edit_filter));
+        int available = tokenScroll.getWidth() > 0 ? tokenScroll.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        edit.setMaxWidth(Math.max(InspectorTheme.dp(context, 48), available - InspectorTheme.dp(context, 54)));
+        group.addView(edit);
+        if (changed != null) {
+            Button close = tokenAction("×", () -> removeCondition(changed));
+            close.setContentDescription(context.getString(R.string.osservio_ui_remove_filter) + ", " + label);
+            group.addView(close, new LayoutParams(InspectorTheme.dp(context, 48), -2));
+        }
+        LayoutParams layout = new LayoutParams(-2, -2);
+        layout.setMarginEnd(InspectorTheme.dp(context, 6)); tokens.addView(group, layout);
     }
-
+    private Button tokenAction(String text, Runnable action) {
+        Context context = getContext();
+        Button button = new Button(context);
+        button.setAllCaps(false); button.setText(text); button.setSingleLine(true);
+        button.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        button.setMinWidth(InspectorTheme.dp(context, 48)); button.setMinimumWidth(0);
+        button.setMinHeight(InspectorTheme.dp(context, 48)); button.setStateListAnimator(null);
+        button.setPadding(InspectorTheme.dp(context, 10), 0, InspectorTheme.dp(context, 10), 0);
+        InspectorTheme.typography(button, 14, false); InspectorTheme.feedback(button, 20);
+        button.setTextColor(InspectorTheme.accent(context)); button.setOnClickListener(v -> action.run());
+        return button;
+    }
+    private void removeCondition(InspectorQuery changed) {
+        if (onQueryChange == null) return;
+        removeCallbacks(expireUndo);
+        beforeRemoval = displayedQuery.copy(); afterRemoval = changed.copy(); undo.setVisibility(VISIBLE);
+        int timeout = 6000;
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            android.view.accessibility.AccessibilityManager manager = getContext().getSystemService(android.view.accessibility.AccessibilityManager.class);
+            if (manager != null) timeout = manager.getRecommendedTimeoutMillis(timeout, android.view.accessibility.AccessibilityManager.FLAG_CONTENT_CONTROLS);
+        }
+        postDelayed(expireUndo, timeout);
+        onQueryChange.apply(changed);
+    }
+    private void finishUndo() {
+        removeCallbacks(expireUndo); beforeRemoval = null; afterRemoval = null; undo.setVisibility(GONE);
+    }
 }

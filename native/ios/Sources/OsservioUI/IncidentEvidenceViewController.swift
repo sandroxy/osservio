@@ -42,7 +42,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
         header.pause.isHidden = true; header.actions.isHidden = true
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
-        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.onFilters = { [weak self] in self?.showFilters($0) }
         header.onQueryChange = { [weak self] in self?.query = $0; self?.render() }
         render()
     }
@@ -102,7 +102,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         table.refreshFeed(rowCount: indices.count, preservingPosition: result != nil)
         table.setEmptyState(indices.isEmpty ? InspectorTheme.empty(query.searchesPayload && result == nil ? searchBusy ? "busy" : "ui_searching" : records.isEmpty ? "incident_evidence_empty" : "ui_filtered_empty") : nil)
     }
-    @objc private func showFilters() {
+    private func showFilters(_ target: InspectorQuery.Target?) {
         let groups: [InspectorFilterGroup]
         switch evidence {
         case .logs(let value): groups = InspectorFilterOptions.logs(value.events)
@@ -110,7 +110,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         case .webSockets(let value): groups = InspectorFilterOptions.network([], sockets: value.events.filter { connectionID == nil || $0.connectionID == connectionID }, query: query, includeHTTP: false)
             .filter { connectionID == nil || $0.field != .connection }
         }
-        let filters = InspectorFilterViewController(query: query, groups: groups, payload: true) { [weak self] value in self?.query = value; self?.render() }
+        let filters = InspectorFilterViewController(query: query, focus: target, groups: groups, payload: true) { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
     }
     private func inScope(_ index: Int) -> Bool {

@@ -48,8 +48,8 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         else if (http != null) for (HTTPEvent event : http.events) records.add(new InspectorRecordSearch.Record(event));
         else for (WebSocketEvent event : sockets.events) records.add(new InspectorRecordSearch.Record(event));
         goBack = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, back); addView(goBack);
-        header = new InspectorFeedHeader(context, R.string.osservio_ui_search_saved, "", value -> { query.text = value; filter(); }, () -> { }, () -> {
-            detail = InspectorFilterSheet.show(context, query, groups(), true, value -> { query = value; filter(); });
+        header = new InspectorFeedHeader(context, R.string.osservio_ui_search_saved, "", value -> { query.text = value; filter(); }, () -> { }, target -> {
+            detail = InspectorFilterSheet.show(context, query, groups(), R.string.osservio_ui_time, true, target, value -> { query = value; filter(); });
             detail.setOnDismissListener(ignored -> detail = null);
         }, () -> { }, true); header.hideActions();
         header.onQueryChange = value -> { query = value; filter(); };

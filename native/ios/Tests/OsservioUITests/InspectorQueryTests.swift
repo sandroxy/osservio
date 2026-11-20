@@ -4,6 +4,22 @@ import OsservioCore
 import XCTest
 
 final class InspectorQueryTests: XCTestCase {
+    func testSwitchingScopePreservesOnlyVisibleConditionsInTheAppliedDraft() {
+        var query = InspectorQuery(), scopes = InspectorQuery.ScopeDraft()
+        query.select(.status, value: "5xx"); query.minimumDurationMillis = 800
+        query.select(.searchScope, value: "response")
+        scopes.switchTo("webSocket", in: &query)
+        XCTAssertFalse(query.hasTransportConditions)
+        query.select(.host, value: "example.test"); query.select(.outcome, value: "failed")
+        scopes.switchTo("http", in: &query)
+        XCTAssertEqual(query.values[.status], ["5xx"]); XCTAssertEqual(query.searchScope, "response")
+        XCTAssertEqual(query.minimumDurationMillis, 800); XCTAssertNil(query.values[.outcome])
+        XCTAssertEqual(query.values[.host], ["example.test"])
+        scopes.switchTo(nil, in: &query)
+        XCTAssertFalse(query.hasTransportConditions)
+        scopes.switchTo("webSocket", in: &query)
+        XCTAssertEqual(query.values[.outcome], ["failed"])
+    }
     func testUnselectedFacetDoesNotParseAnUnusedValue() {
         var query = InspectorQuery(), reads = 0
         func host() -> String { reads += 1; return "example.test" }

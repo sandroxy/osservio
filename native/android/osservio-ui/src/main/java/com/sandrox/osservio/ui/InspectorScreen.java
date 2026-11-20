@@ -18,7 +18,9 @@ final class InspectorScreen implements DialogInterface {
     enum Presentation { PAGE, SHEET, CONFIRMATION }
     interface Content { void bindScreen(InspectorScreen screen); }
     interface BackInterceptor { boolean consume(); }
-    private BackInterceptor backInterceptor;
+    private BackInterceptor backInterceptor, backNavigation;
+    void setBackNavigation(BackInterceptor navigation) { backNavigation = navigation; }
+    void navigateBack() { if (backNavigation == null || !backNavigation.consume()) cancel(); }
     void setBackInterceptor(BackInterceptor interceptor) { backInterceptor = interceptor; }
     final FrameLayout view;
     private final Presentation presentation;
@@ -143,7 +145,7 @@ final class InspectorScreen implements DialogInterface {
         Context context = view.getContext();
         fallback = new Dialog(context, InspectorPreferences.dark(context) ? R.style.OsservioScreenDark : R.style.OsservioScreenLight) {
             @SuppressWarnings("deprecation")
-            @Override public void onBackPressed() { InspectorScreen.this.cancel(); }
+            @Override public void onBackPressed() { InspectorScreen.this.navigateBack(); }
         };
         fallback.setContentView(view); fallback.setCancelable(cancelable);
         fallback.setCanceledOnTouchOutside(false);

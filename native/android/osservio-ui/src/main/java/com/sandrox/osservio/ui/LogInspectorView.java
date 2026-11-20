@@ -166,7 +166,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             if (!state.paused) list.setSelectionFromTop(0, 0);
         } finally { InspectorPerformance.end(tracing); }
     }
-    private void filters() { dialog = InspectorFilterSheet.show(getContext(), state.query, InspectorFilterOptions.logs(getContext(), retained()), true, this::apply); watchDialog(); }
+    private void filters(InspectorFilterSheet.Target target) { dialog = InspectorFilterSheet.show(getContext(), state.query, InspectorFilterOptions.logs(getContext(), retained()), R.string.osservio_ui_time, true, target, this::apply); watchDialog(); }
     private void confirmClear() {
         dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_clear, R.string.osservio_ui_clear_hint, R.string.osservio_clear, (ignored, which) -> {
                 cancelSearch(); history.clear(); state.snapshot = history.snapshot(); result = null; events.clear(); nextSearchAt = 0; search();

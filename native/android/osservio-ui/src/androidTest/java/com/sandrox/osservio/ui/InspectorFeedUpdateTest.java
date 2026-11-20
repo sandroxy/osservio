@@ -13,24 +13,27 @@ public final class InspectorFeedUpdateTest {
     @Test public void liveCountsKeepFilterControlsAndTheirCurrentQuery() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
-            InspectorFeedHeader header = new InspectorFeedHeader(context, R.string.osservio_search, "", text -> { }, () -> { }, () -> { }, () -> { }, true);
+            InspectorFilterSheet.Target[] editing = {null};
+            InspectorFeedHeader header = new InspectorFeedHeader(context, R.string.osservio_search, "", text -> { }, () -> { }, target -> editing[0] = target, () -> { }, true);
             InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.LEVEL, "ERROR"); query.text = "first";
             InspectorFeedHeader.Groups groups = () -> InspectorFilterOptions.logs(context, Collections.emptyList());
             header.setQuery(query, groups, 1, 10);
-            Button original = token(header); assertNotNull(original);
+            Button original = token(header, false); assertNotNull(original);
             header.setQuery(query, () -> { fail("Count-only updates must not rebuild filter candidates"); return Collections.emptyList(); }, 2, 20);
-            assertSame(original, token(header));
+            assertSame(original, token(header, false));
             assertEquals(context.getString(R.string.osservio_ui_result_count, 2, 20), header.results.getText().toString());
             query.text = "latest"; header.setQuery(query, groups, 1, 20);
             InspectorQuery[] applied = {null}; header.onQueryChange = value -> applied[0] = value;
-            token(header).performClick(); assertNotNull(applied[0]);
+            token(header, false).performClick();
+            assertEquals(InspectorQuery.Field.LEVEL, editing[0].field); assertNull(applied[0]);
+            token(header, true).performClick(); assertNotNull(applied[0]);
             assertEquals("latest", applied[0].text); assertEquals(0, applied[0].activeCount());
         });
     }
-    private static Button token(View view) {
-        if (view instanceof Button && view.getContentDescription() != null && view.getContentDescription().toString().contains("ERROR")) return (Button) view;
+    private static Button token(View view, boolean remove) {
+        if (view instanceof Button && view.getContentDescription() != null && view.getContentDescription().toString().contains("ERROR") && "×".contentEquals(((Button) view).getText()) == remove) return (Button) view;
         if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
-            Button found = token(((ViewGroup) view).getChildAt(i)); if (found != null) return found;
+            Button found = token(((ViewGroup) view).getChildAt(i), remove); if (found != null) return found;
         }
         return null;
     }

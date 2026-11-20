@@ -43,7 +43,7 @@ public final class LogInspectorViewController: UITableViewController {
         header.onQueryChange = { [weak self] in self?.apply($0) }
         table.followLatestButton = header.pause; table.followsLatest = true
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
-        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.onFilters = { [weak self] in self?.showFilters($0) }
         style.changed()
     }
     private func relabel() {
@@ -124,9 +124,9 @@ public final class LogInspectorViewController: UITableViewController {
         cancelSearch(); nextSearchAt = 0; paused = false; refresh()
         table.showLatest()
     }
-    @objc private func showFilters() {
+    private func showFilters(_ target: InspectorQuery.Target?) {
         view.endEditing(true)
-        inspectorPresent(InspectorFilterViewController(query: query, groups: InspectorFilterOptions.logs(latest?.events ?? []), payload: true) { [weak self] in self?.apply($0) })
+        inspectorPresent(InspectorFilterViewController(query: query, focus: target, groups: InspectorFilterOptions.logs(latest?.events ?? []), payload: true) { [weak self] in self?.apply($0) })
     }
     @objc private func clear() {
         inspectorConfirm(InspectorLocalization.text("clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in

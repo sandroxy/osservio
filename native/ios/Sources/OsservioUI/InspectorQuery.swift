@@ -4,6 +4,9 @@ import OsservioCore
 /// View-only criteria. Each value set is a union; independent fields intersect.
 /// The caller supplies a fixed time anchor while reading a paused snapshot.
 struct InspectorQuery: Equatable {
+    enum Target: Equatable {
+        case field(Field), time, duration, excludedText, json
+    }
     enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope" }
     static let fieldOrder: [Field] = [.transport, .level, .record, .host, .category, .method, .status, .state,
         .activity, .direction, .kind, .outcome, .closeCode, .connection, .content, .source, .searchScope]
@@ -55,6 +58,29 @@ struct InspectorQuery: Equatable {
         if selection.contains(value) { selection.remove(value) } else { selection.insert(value) }
         values[field] = selection
     }
+    var hasTransportConditions: Bool {
+        minimumDurationMillis > 0 || Self.httpFields.union(Self.socketFields).contains { !(values[$0]?.isEmpty ?? true) }
+            || ["request", "response", "message"].contains(searchScope)
+    }
+
+    /// Only the open sheet retains inactive protocol choices. Common criteria stay live in the draft.
+    struct ScopeDraft {
+        private var choices: [String: InspectorQuery] = [:]
+
+        mutating func switchTo(_ scope: String?, in query: inout InspectorQuery) {
+            guard query.transport != scope else { return }
+            choices[query.transport ?? "all"] = query
+            query.select(.transport, value: scope)
+            guard let saved = choices[scope ?? "all"] else { return }
+            let fields: Set<Field> = scope == "http" ? httpFields : scope == "webSocket" ? socketFields : []
+            for field in fields { query.values[field] = saved.values[field] }
+            if scope == "http" { query.minimumDurationMillis = saved.minimumDurationMillis }
+            if ["request", "response", "message"].contains(saved.searchScope) {
+                query.values[.searchScope] = saved.values[.searchScope]
+            }
+        }
+    }
+
     mutating func resetFilters() {
         values.removeAll(); recentMinutes = 0; minimumDurationMillis = 0
         fieldPath = ""; fieldValue = ""; excludedText = ""

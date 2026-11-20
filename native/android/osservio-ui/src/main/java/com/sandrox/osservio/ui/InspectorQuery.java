@@ -90,6 +90,35 @@ final class InspectorQuery {
         if (selected == null) { selected = new HashSet<>(); values.put(field, selected); }
         if (!selected.remove(value)) selected.add(value);
     }
+    boolean hasTransportConditions() {
+        return !empty(HTTP_FIELDS) || !empty(SOCKET_FIELDS) || minimumDurationMillis > 0 || protocolScope(searchScope());
+    }
+    private static boolean protocolScope(String value) {
+        return "request".equals(value) || "response".equals(value) || "message".equals(value);
+    }
+    static final class ScopeDraft {
+        private final Map<String, InspectorQuery> choices = new java.util.HashMap<>();
+        void switchTo(String scope, InspectorQuery query) {
+            if (java.util.Objects.equals(scope, query.transport())) return;
+            choices.put(query.transport(), query.copy());
+            query.select(Field.TRANSPORT, scope);
+            InspectorQuery saved = choices.get(scope);
+            if (saved == null) return;
+            if ("http".equals(scope)) {
+                for (Field key : HTTP_FIELDS) restore(saved, query, key);
+                query.minimumDurationMillis = saved.minimumDurationMillis;
+            } else if ("webSocket".equals(scope)) {
+                for (Field key : SOCKET_FIELDS) restore(saved, query, key);
+            }
+            if (protocolScope(saved.searchScope())) restore(saved, query, Field.SEARCH_SCOPE);
+        }
+        private static void restore(InspectorQuery from, InspectorQuery to, Field key) {
+            Set<String> value = from.values.get(key);
+            if (value == null) to.values.remove(key); else to.values.put(key, new HashSet<>(value));
+        }
+        void reset() { choices.clear(); }
+    }
+
     void resetFilters() {
         values.clear(); recentMinutes = 0; minimumDurationMillis = 0; fieldPath = ""; fieldValue = ""; excludedText = "";
     }

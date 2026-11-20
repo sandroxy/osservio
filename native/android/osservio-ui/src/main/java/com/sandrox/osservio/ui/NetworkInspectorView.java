@@ -219,7 +219,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         CaptureController.Status socket = socketRecorder == null ? null : socketRecorder.captureController.status();
         return http != null && http.debugEnabled || socket != null && socket.debugEnabled;
     }
-    private void filters() { dialog = InspectorFilterSheet.show(getContext(), state.query, groups(), true, this::apply); watchDialog(); }
+    private void filters(InspectorFilterSheet.Target target) { dialog = InspectorFilterSheet.show(getContext(), state.query, groups(), R.string.osservio_ui_time, true, target, this::apply); watchDialog(); }
     private void confirmClear() {
         dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_ui_network_clear, R.string.osservio_ui_clear_hint, R.string.osservio_ui_network_clear, (ignored, which) -> {
             cancelSearch(); if (httpHistory != null) { httpHistory.clear(); state.http = httpHistory.snapshot(); }

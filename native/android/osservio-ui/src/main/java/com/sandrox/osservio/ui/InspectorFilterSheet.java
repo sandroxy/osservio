@@ -22,6 +22,14 @@ import java.util.Set;
 /** One virtualized draft: common criteria first, precise criteria on demand. */
 final class InspectorFilterSheet {
     private static final String ALL = "\u0000";
+    static final class Target {
+        static final Target TIME = new Target(null), DURATION = new Target(null),
+            EXCLUDED_TEXT = new Target(null), JSON = new Target(null);
+        final InspectorQuery.Field field;
+        private Target(InspectorQuery.Field field) { this.field = field; }
+        static Target field(InspectorQuery.Field field) { return new Target(field); }
+    }
+    interface Edit { void open(Target target); }
     interface Applied { void apply(InspectorQuery query); }
     static final class Group {
         final InspectorQuery.Field field; final String title;
@@ -30,11 +38,11 @@ final class InspectorFilterSheet {
         Group option(String value, String title) { options.put(value, title); return this; }
     }
     private InspectorFilterSheet() { }
-    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, Applied applied) { return show(context, original, groups, R.string.osservio_ui_time, false, applied); }
-    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, boolean payload, Applied applied) { return show(context, original, groups, R.string.osservio_ui_time, payload, applied); }
-    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, Applied applied) { return show(context, original, groups, timeLabel, false, applied); }
-    private static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, boolean payload, Applied applied) {
-        Editor editor = new Editor(context, original, groups, timeLabel, payload, applied); editor.screen.show(); return editor.screen;
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, Applied applied) { return show(context, original, groups, R.string.osservio_ui_time, false, null, applied); }
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, boolean payload, Applied applied) { return show(context, original, groups, R.string.osservio_ui_time, payload, null, applied); }
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, Applied applied) { return show(context, original, groups, timeLabel, false, null, applied); }
+    static InspectorScreen show(Context context, InspectorQuery original, List<Group> groups, int timeLabel, boolean payload, Target target, Applied applied) {
+        Editor editor = new Editor(context, original, groups, timeLabel, payload, applied); editor.focus(target); editor.screen.show(); return editor.screen;
     }
     static List<Group> available(List<Group> groups, InspectorQuery draft) {
         List<Group> result = new ArrayList<>();
@@ -61,6 +69,7 @@ final class InspectorFilterSheet {
         final int[] times = {0, 5, 30, 60, 1440};
         final BaseAdapter adapter;
         boolean refined, timeExpanded, durationExpanded, searchAttached = true, footerAttached = true; Group picker;
+        final InspectorQuery.ScopeDraft scopes = new InspectorQuery.ScopeDraft();
         int overviewPosition, overviewOffset;
         Editor(Context context, InspectorQuery original, List<Group> candidates, int timeLabel, boolean payload, Applied applied) {
             this.context = context; draft = original.copy(); this.timeLabel = timeLabel; this.payload = payload; this.applied = applied;
@@ -106,9 +115,9 @@ final class InspectorFilterSheet {
             screen = InspectorDialogs.panel(context, R.string.osservio_ui_filters, content);
             leading = screen.leadingAction(R.string.osservio_ui_reset, () -> {
                 InspectorWidgets.hideKeyboard(content);
-                if (picker != null) { picker = null; search.setText(""); rebuild(); list.setSelectionFromTop(overviewPosition, overviewOffset); }
-                else { draft.resetFilters(); if (conditions != null) conditions.sync(); rebuild(); }
+                if (!backToOverview()) { scopes.reset(); draft.resetFilters(); if (conditions != null) conditions.sync(); rebuild(); }
             });
+            screen.setBackNavigation(this::backToOverview);
             screen.action(R.string.osservio_ui_apply, () -> {
                 InspectorWidgets.hideKeyboard(content);
                 if (conditions != null && !conditions.valid()) { android.widget.Toast.makeText(context, R.string.osservio_ui_field_invalid, android.widget.Toast.LENGTH_LONG).show(); return; }
@@ -259,9 +268,47 @@ final class InspectorFilterSheet {
             boolean open = row.type == Type.GROUP ? expanded.contains(row.group.field) : row.type == Type.TIME ? timeExpanded : row.type == Type.DURATION ? durationExpanded : refined;
             view.disclosureRotation(opensPicker ? 0 : open ? -90 : 90); view.action(() -> choose(row)); InspectorWidgets.groupedRow(view, first, last); return view;
         }
+        boolean backToOverview() {
+            if (picker == null) return false;
+            picker = null; search.setText(""); rebuild();
+            list.setSelectionFromTop(overviewPosition, overviewOffset);
+            return true;
+        }
+        void focus(Target target) {
+            if (target == null) return;
+            Type type;
+            if (target.field == InspectorQuery.Field.TRANSPORT) type = Type.SCOPE;
+            else if (target == Target.TIME) { timeExpanded = true; type = Type.TIME; }
+            else if (target == Target.DURATION) { durationExpanded = true; type = Type.DURATION; }
+            else if (target == Target.EXCLUDED_TEXT || target == Target.JSON) {
+                refined = true; rebuild();
+                if (conditions != null) {
+                    View field = target == Target.JSON ? conditions.path : conditions.exclude;
+                    list.setSelection(list.getCount() - 1);
+                    field.post(() -> field.requestRectangleOnScreen(new android.graphics.Rect(0, 0, field.getWidth(), field.getHeight())));
+                }
+                return;
+            } else {
+                Group group = null;
+                for (Group candidate : groups) if (candidate.field == target.field) { group = candidate; break; }
+                if (group == null) return;
+                refined = advanced(group);
+                if (!direct(group) && (group.options.size() > 6 || group.field == InspectorQuery.Field.STATUS)) {
+                    picker = group; rebuild(); return;
+                }
+                expanded.add(group.field); type = direct(group) ? Type.GROUP_HEADING : Type.GROUP;
+            }
+            rebuild();
+            for (int i = 0; i < rows.size(); i++) {
+                Row row = rows.get(i);
+                if (row.type == type && (row.group == null || row.group.field == target.field)) {
+                    list.setSelectionFromTop(i + list.getHeaderViewsCount(), 0); return;
+                }
+            }
+        }
         void scopeSelected(int index) {
             InspectorWidgets.hideKeyboard(list);
-            draft.select(InspectorQuery.Field.TRANSPORT, index == 1 ? "http" : index == 2 ? "webSocket" : null);
+            scopes.switchTo(index == 1 ? "http" : index == 2 ? "webSocket" : null, draft);
             if (conditions != null) conditions.sync(); rebuild();
         }
         void choose(Row row) {

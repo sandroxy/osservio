@@ -31,7 +31,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
         table.followLatestButton = header.pause; table.followsLatest = true
         header.pause.addTarget(self, action: #selector(followLatest), for: .touchUpInside)
-        header.filters.addTarget(self, action: #selector(showFilters), for: .touchUpInside)
+        header.onFilters = { [weak self] in self?.showFilters($0) }
         style.changed()
     }
     private func relabel() {
@@ -74,9 +74,9 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         paused = false; dirty = true; refresh()
         table.showLatest()
     }
-    @objc private func showFilters() {
+    private func showFilters(_ target: InspectorQuery.Target?) {
         let group = InspectorFilterGroup(.kind, values: (latest?.events ?? []).map { $0.kind.rawValue })
-        let filters = InspectorFilterViewController(query: query, groups: [group]) { [weak self] value in self?.query = value; self?.render() }
+        let filters = InspectorFilterViewController(query: query, focus: target, groups: [group]) { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
     }
     @objc private func showActions() {
