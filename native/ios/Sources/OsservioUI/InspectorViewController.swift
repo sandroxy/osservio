@@ -9,12 +9,14 @@ public final class InspectorViewController: UITabBarController, UITabBarControll
     public var enhancedMaterialsEnabled = true {
         didSet { if isViewLoaded { relabel() } }
     }
-    /// Set a stable, host-owned account namespace to retain recent log and network criteria across launches.
+    /// Set a stable, host-owned account namespace to retain recent criteria across launches.
     /// With no owner, history is confined to this inspector's lifetime.
     public var recentFilterOwner: UUID? {
         didSet {
             for (controller, _, _) in sections {
                 (controller as? LogInspectorViewController)?.setRecentFilterOwner(recentFilterOwner)
+                (controller as? IncidentInspectorViewController)?.setRecentFilterOwner(recentFilterOwner)
+                (controller as? AppInspectorViewController)?.setRecentFilterOwner(recentFilterOwner)
                 (controller as? NetworkInspectorViewController)?.content.setRecentFilterOwner(recentFilterOwner)
             }
         }

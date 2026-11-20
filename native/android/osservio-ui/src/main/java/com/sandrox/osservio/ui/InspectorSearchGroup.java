@@ -10,11 +10,18 @@ import android.widget.TextView;
 final class InspectorSearchGroup extends LinearLayout {
     private final LinearLayout content;
     private final TextView title, summary, message;
-    private final EditText search;
+    private final android.view.View searchControls;
     private boolean hasResults;
 
     InspectorSearchGroup(Context context, EditText search, int hint) {
-        super(context); this.search = search; setOrientation(VERTICAL);
+        this(context, search, hint, search);
+    }
+    InspectorSearchGroup(Context context, InspectorFeedHeader header, int hint) {
+        this(context, header.search, hint, header);
+        header.setPadding(0, 0, 0, 0); header.hideActions(); header.setPaused(false);
+    }
+    private InspectorSearchGroup(Context context, EditText search, int hint, android.view.View controls) {
+        super(context); searchControls = controls; setOrientation(VERTICAL);
         setPadding(0, InspectorTheme.dp(context, 20), 0, 0);
         content = new LinearLayout(context); content.setOrientation(VERTICAL);
         int inset = InspectorTheme.dp(context, 16); content.setPadding(inset, inset, inset, inset);
@@ -22,7 +29,7 @@ final class InspectorSearchGroup extends LinearLayout {
         if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         summary = InspectorWidgets.caption(context); summary.setTextSize(12); summary.setPadding(0, 0, 0, 0);
         message = InspectorWidgets.caption(context); message.setPadding(0, 0, 0, 0);
-        content.addView(title, new LayoutParams(-1, -2)); add(summary); add(search); add(message);
+        content.addView(title, new LayoutParams(-1, -2)); add(summary); add(searchControls); add(message);
         addView(content, new LayoutParams(-1, -2));
         InspectorAppearance.style(content, () -> InspectorWidgets.groupedRow(content, true, !hasResults, false));
         InspectorAppearance.style(search, () -> {
@@ -39,7 +46,7 @@ final class InspectorSearchGroup extends LinearLayout {
     void bind(String detail, boolean searchable, String emptyMessage, boolean hasResults) {
         this.hasResults = hasResults; title.setText(R.string.osservio_runtime_breadcrumbs);
         summary.setText(detail); summary.setVisibility(detail == null || detail.isEmpty() ? GONE : VISIBLE);
-        search.setVisibility(searchable ? VISIBLE : GONE);
+        searchControls.setVisibility(searchable ? VISIBLE : GONE);
         message.setText(emptyMessage); message.setVisibility(emptyMessage == null ? GONE : VISIBLE);
         InspectorWidgets.groupedRow(content, true, !hasResults, false);
     }

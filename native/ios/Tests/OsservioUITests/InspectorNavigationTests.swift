@@ -264,13 +264,45 @@ final class InspectorNavigationTests: XCTestCase {
     func testRuntimeKindsDoNotRequireANetworkScope() throws {
         let kind = BreadcrumbKind.appActive
         var applied: InspectorQuery?
-        let filters = InspectorFilterViewController(query: InspectorQuery(), groups: [InspectorFilterGroup(.kind, values: [kind.rawValue])]) { applied = $0 }
+        let filters = InspectorFilterViewController(query: InspectorQuery(), groups: [InspectorFilterGroup(.breadcrumbKind, values: [kind.rawValue])]) { applied = $0 }
         filters.loadViewIfNeeded()
-        try selectFilter(filters, title: InspectorLocalization.text("ui_kind"))
-        try selectFilter(filters, title: InspectorFilterOptions.label(.kind, kind.rawValue))
+        try selectFilter(filters, title: InspectorLocalization.text("ui_breadcrumb_kind"))
+        try selectFilter(filters, title: InspectorFilterOptions.label(.breadcrumbKind, kind.rawValue))
         let save = try XCTUnwrap(filters.navigationItem.rightBarButtonItem)
         _ = (save.target as? NSObject)?.perform(try XCTUnwrap(save.action))
-        XCTAssertEqual(applied?.values[.kind], [kind.rawValue]); XCTAssertNil(applied?.transport)
+        XCTAssertEqual(applied?.values[.breadcrumbKind], [kind.rawValue]); XCTAssertNil(applied?.transport)
+    }
+
+    @MainActor
+    func testUndoStaysAtTheViewportBottomAndCannotRestoreOverANewerQuery() throws {
+        let host = UITableViewController(), table = InspectorTableView(frame: .zero, style: .plain)
+        let header = InspectorFeedHeader(compact: true)
+        host.tableView = table; table.tableHeaderView = header; header.feedbackTable = table
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 840))
+        window.rootViewController = host; window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        var query = InspectorQuery(); query.select(.record, value: "manual")
+        header.onQueryChange = { query = $0; header.relabel(paused: false, query: query) }
+        header.relabel(paused: false, query: query); table.layoutIfNeeded()
+        let close = try XCTUnwrap(descendants(header).compactMap { $0 as? UIButton }.first {
+            $0.accessibilityLabel?.hasPrefix(InspectorLocalization.text("ui_remove_filter")) == true
+        })
+        try activate(close, event: .touchUpInside); table.layoutIfNeeded()
+        XCTAssertEqual(query.activeCount, 0)
+        let notice = try XCTUnwrap(table.filterFeedback)
+        XCTAssertGreaterThan(notice.frame.minY, table.bounds.midY)
+        XCTAssertLessThanOrEqual(notice.frame.maxY, table.bounds.maxY - table.adjustedContentInset.bottom)
+        let undo = try XCTUnwrap(descendants(notice).compactMap { $0 as? UIButton }.first)
+        try activate(undo, event: .touchUpInside)
+        XCTAssertEqual(query.values[.record], ["manual"]); XCTAssertNil(table.filterFeedback)
+        let removeAgain = try XCTUnwrap(descendants(header).compactMap { $0 as? UIButton }.first {
+            $0.accessibilityLabel?.hasPrefix(InspectorLocalization.text("ui_remove_filter")) == true
+        })
+        try activate(removeAgain, event: .touchUpInside)
+        query.text = "new search"; header.relabel(paused: false, query: query)
+        XCTAssertNil(table.filterFeedback)
+        try activate(undo, event: .touchUpInside)
+        XCTAssertEqual(query.text, "new search"); XCTAssertEqual(query.activeCount, 0)
     }
 
     @MainActor

@@ -7,7 +7,6 @@ import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -24,7 +23,9 @@ import java.util.Locale;
 @SuppressLint("ViewConstructor")
 final class IncidentSnapshotView extends LinearLayout implements InspectorScreen.Content {
     private final IncidentSnapshot snapshot;
-    private final EditText search;
+    private final InspectorFeedHeader filters;
+    private InspectorQuery query = new InspectorQuery();
+    private final InspectorRecentFilters recentFilters = new InspectorRecentFilters("saved-breadcrumbs");
     private final TextView status;
     private final InspectorSearchGroup searchGroup;
     private final ImageButton back, copy;
@@ -48,8 +49,10 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL); header.setPadding(0, dp(8), 0, 0);
         status = caption(() -> ""); status.setVisibility(GONE); status.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
         header.addView(status, new LayoutParams(-1, -2));
-        search = InspectorWidgets.search(context, R.string.osservio_ui_search_breadcrumbs, "", ignored -> filter());
-        search.setVisibility(snapshot.breadcrumbs == null ? GONE : VISIBLE);
+        filters = new InspectorFeedHeader(context, R.string.osservio_ui_search_breadcrumbs, "",
+            value -> { query.text = value; filter(); }, () -> { }, this::filters, () -> { }, true);
+        filters.historicalTime = true;
+        filters.onQueryChange = value -> { query = value; filter(); };
         if (exporter != null) {
             share = InspectorWidgets.icon(context, R.drawable.osservio_share, R.string.osservio_incident_share, () -> { }); controls.addView(share);
             sharing = new IncidentSharePresentation(this, share, exporter, snapshot, message -> status(message == 0 ? "" : context.getString(message)));
@@ -81,15 +84,20 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
             snapshot.webSockets == null ? 0 : snapshot.webSockets.omittedEventCount, snapshot.webSockets == null ? 0 : snapshot.webSockets.sourceEvictedEvents,
             () -> open(R.string.osservio_ws_title, new IncidentEvidenceView(context, snapshot.webSockets, () -> { })));
         list.addHeaderView(header, null, false);
-        searchGroup = new InspectorSearchGroup(context, search, R.string.osservio_ui_search_breadcrumbs);
+        searchGroup = new InspectorSearchGroup(context, filters, R.string.osservio_ui_search_breadcrumbs);
         list.addHeaderView(searchGroup, null, false);
         controls.addView(delete);
         list.setAdapter(rows);
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            return index >= 0 && index < events.size() && filters.recordMenu(view, InspectorQuery.Field.BREADCRUMB_KIND,
+                events.get(index).kind.name(), recentFilters);
+        });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
             if (index >= 0 && index < events.size() && detail == null) show(BreadcrumbDetailDialog.create(context, events.get(index)));
         });
-        addView(list, new LayoutParams(-1, 0, 1)); InspectorAppearance.content(this, this::filter); filter();
+        addView(filters.viewport(list), new LayoutParams(-1, 0, 1)); InspectorAppearance.content(this, this::filter); filter();
     }
     @Override public void bindScreen(InspectorScreen screen) {
         screen.title(R.string.osservio_ui_problem_details);
@@ -132,20 +140,27 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         InspectorWidgets.hideKeyboard(this); detail = screen;
         screen.setOnDismissListener(ignored -> { if (detail == screen) detail = null; }); screen.show();
     }
+    private List<BreadcrumbEvent> sourceEvents() { return snapshot.breadcrumbs == null ? java.util.Collections.emptyList() : snapshot.breadcrumbs.events; }
+    private List<InspectorFilterSheet.Group> filterGroups() { return InspectorFilterOptions.breadcrumbs(getContext(), sourceEvents()); }
+    private void filters(InspectorFilterSheet.Target target) {
+        if (detail != null) return;
+        detail = InspectorFilterSheet.show(getContext(), query, filterGroups(), R.string.osservio_ui_saved_time, false, target,
+            recentFilters, value -> { query = value; filter(); });
+        detail.setOnDismissListener(ignored -> detail = null);
+    }
     private void filter() {
         if (searchGroup == null) return;
-        events.clear(); String query = search.getText().toString().toLowerCase(Locale.ROOT);
-        if (snapshot.breadcrumbs != null) for (int i = snapshot.breadcrumbs.events.size() - 1; i >= 0; i--) {
-            BreadcrumbEvent event = snapshot.breadcrumbs.events.get(i);
-            if (query.isEmpty() || event.label.toLowerCase(Locale.ROOT).contains(query)
-                || RuntimePresentation.kind(getContext(), event.kind).toLowerCase(Locale.ROOT).contains(query)
-                || (event.message != null && event.message.toLowerCase(Locale.ROOT).contains(query))) events.add(event);
+        events.clear();
+        List<BreadcrumbEvent> source = sourceEvents();
+        for (int i = source.size() - 1; i >= 0; i--) {
+            BreadcrumbEvent event = source.get(i);
+            if (query.matches(event, snapshot.timestampMillis, RuntimePresentation.kind(getContext(), event.kind))) events.add(event);
         }
-        String emptyMessage = snapshot.breadcrumbs == null ? getContext().getString(R.string.osservio_incident_not_attached)
-            : !events.isEmpty() ? null : getContext().getString(snapshot.breadcrumbs.events.isEmpty()
-                ? R.string.osservio_ui_saved_breadcrumbs_empty : R.string.osservio_ws_no_matches);
-        searchGroup.bind(snapshot.breadcrumbs == null ? null : IncidentPresentation.breadcrumbSummary(getContext(), snapshot.breadcrumbs),
-            snapshot.breadcrumbs != null, emptyMessage, !events.isEmpty()); rows.notifyDataSetChanged();
+        filters.setQuery(query, this::filterGroups, events.size(), source.size());
+        filters.emptyMessage(source.isEmpty() ? R.string.osservio_ui_saved_breadcrumbs_empty : R.string.osservio_ui_filtered_empty);
+        searchGroup.bind(snapshot.breadcrumbs != null && (snapshot.breadcrumbs.omittedEventCount > 0 || snapshot.breadcrumbs.sourceEvictedCount > 0)
+                ? IncidentPresentation.breadcrumbSummary(getContext(), snapshot.breadcrumbs) : null,
+            snapshot.breadcrumbs != null, snapshot.breadcrumbs == null ? getContext().getString(R.string.osservio_incident_not_attached) : null, !events.isEmpty()); rows.notifyDataSetChanged();
     }
     private void showText(int title, String value) {
         InspectorContentReader content = new InspectorContentReader(getContext()); content.display(new InspectorReadContent(value, "", false).withContext(() -> IncidentPresentation.title(getContext(), snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind) + " · " + InspectorValuePresentation.eventTime(snapshot.timestampMillis, true)), false); open(title, content);

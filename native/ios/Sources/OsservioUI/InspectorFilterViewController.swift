@@ -98,6 +98,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         }
     }
     private func text(_ key: String) -> String { InspectorLocalization.text(key) }
+    private var historicalTime: Bool { timeLabel == "ui_saved_time" || timeLabel == "ui_run_time" }
     private var transport: String? { draft.transport ?? (hasHTTP && !hasSockets ? "http" : hasSockets && !hasHTTP ? "webSocket" : nil) }
     private func applicable(_ group: InspectorFilterGroup) -> Bool {
         if !network { return group.field != .transport }
@@ -112,7 +113,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         return group.field != .transport
     }
     private func advanced(_ group: InspectorFilterGroup) -> Bool {
-        if [.searchScope, .content, .source, .connection, .outcome, .closeCode, .excludedCategory, .excludedHost].contains(group.field) { return true }
+        if [.searchScope, .content, .source, .connection, .outcome, .closeCode, .excludedCategory, .excludedHost, .excludedRecord, .excludedBreadcrumbKind].contains(group.field) { return true }
         if group.field == .kind && network { return true }
         return [.host, .category].contains(group.field) && group.options.count == 1
     }
@@ -137,7 +138,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         if group.field == .status, term.count == 3, term.allSatisfy({ $0.isASCII && $0.isNumber }), let code = Int(term), (100...599).contains(code), !options.contains(where: { $0.value == term }) {
             options.append((term, term))
         }
-        return (term.isEmpty ? [.option(index, nil, text([.excludedCategory, .excludedHost].contains(group.field) ? "ui_no_exclusions" : "ui_all"))] : []) + options.filter {
+        return (term.isEmpty ? [.option(index, nil, text([.excludedCategory, .excludedHost, .excludedRecord, .excludedBreadcrumbKind].contains(group.field) ? "ui_no_exclusions" : "ui_all"))] : []) + options.filter {
             term.isEmpty || $0.label.localizedCaseInsensitiveContains(term) || $0.value.localizedCaseInsensitiveContains(term)
         }.map { .option(index, $0.value, $0.label) }
     }
@@ -152,7 +153,8 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             network && (InspectorQuery.httpFields.contains(groups[index].field) || InspectorQuery.socketFields.contains(groups[index].field))
         }
         let time: [Row] = [.time] + (timeExpanded ? times.map(Row.timeOption) : [])
-        cards.append(time + rows(for: summaries.filter { !protocolField($0) }))
+        let identity = summaries.filter { [.record, .breadcrumbKind].contains(groups[$0].field) }
+        cards.append(rows(for: identity) + time + rows(for: summaries.filter { !protocolField($0) && !identity.contains($0) }))
         var specific = rows(for: summaries.filter(protocolField))
         if payload && transport == "http" {
             specific.append(.duration)
@@ -295,12 +297,16 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             .map { $0.title + ": " + compact(summary($0)) }
         if !draft.excludedText.isEmpty { details.append(text("ui_exclude") + ": " + compact(draft.excludedText)) }
         if !draft.fieldPath.isEmpty { details.append(text("ui_json_field") + ": " + compact(InspectorFilterOptions.jsonCondition(path: draft.fieldPath, value: draft.fieldValue))) }
-        return details.isEmpty ? text("ui_filter_refine_hint") : details.prefix(3).joined(separator: " · ")
+        return details.isEmpty ? text(payload ? "ui_filter_refine_hint" : "ui_filter_exclusions_hint") : details.prefix(3).joined(separator: " · ")
             + (details.count > 3 ? " · +\(details.count - 3)" : "")
     }
     private func compact(_ value: String) -> String { String(value.prefix(80)) + (value.count > 80 ? "…" : "") }
     private func summary(_ group: InspectorFilterGroup) -> String {
-        InspectorFilterOptions.selectionSummary(draft.values[group.field] ?? []) { value in
+        let selected = draft.values[group.field] ?? []
+        if selected.isEmpty && [.excludedCategory, .excludedHost, .excludedRecord, .excludedBreadcrumbKind].contains(group.field) {
+            return text("ui_no_exclusions")
+        }
+        return InspectorFilterOptions.selectionSummary(selected) { value in
             group.options.first { $0.value == value }?.label ?? InspectorFilterOptions.label(group.field, value)
         }
     }
@@ -318,7 +324,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         case .group(let i):
             let group = groups[i], nested = group.options.count > 6 || group.field == .status
             return summaryCell(group.title, summary(group), direction: nested ? .forward : chevron(expanded.contains(group.field)))
-        case .time: return summaryCell(text(timeLabel), text(draft.recentMinutes == 0 ? "ui_time_all" : "ui_time_\(draft.recentMinutes)"), direction: chevron(timeExpanded))
+        case .time: return summaryCell(text(timeLabel), InspectorFilterOptions.time(draft.recentMinutes, historical: historicalTime), direction: chevron(timeExpanded))
         case .duration: return summaryCell(text("ui_http_timing"), draft.minimumDurationMillis == 0 ? text("ui_all") : "≥ \(draft.minimumDurationMillis) ms", direction: chevron(durationExpanded))
         case .recentToggle: return summaryCell(text("ui_recent_filters"), "", direction: chevron(showsRecent))
         case .refine: return summaryCell(text("ui_filter_refine"), refineSummary(), direction: chevron(refined), stacked: true)
@@ -350,7 +356,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         }
         switch row {
         case .recent(let index):
-            let item = recentItems[index], label = InspectorFilterOptions.summary(item)
+            let item = recentItems[index], label = InspectorFilterOptions.summary(item, historical: historicalTime)
             cell.textLabel?.text = label; cell.detailTextLabel?.text = text("ui_restore_filter")
             let remove = InspectorFilterToken { [weak self] in
                 guard let self else { return }
@@ -374,7 +380,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             cell.textLabel?.text = label
             if picker == nil && !direct(groups[index]) { cell.indentationLevel = 1; cell.indentationWidth = 12 }
             let values = draft.values[groups[index].field] ?? []; selected(value.map(values.contains) ?? values.isEmpty)
-        case .timeOption(let value): cell.textLabel?.text = text(value == 0 ? "ui_time_all" : "ui_time_\(value)"); cell.indentationLevel = 1; cell.indentationWidth = 12; selected(value == draft.recentMinutes)
+        case .timeOption(let value): cell.textLabel?.text = InspectorFilterOptions.time(value, historical: historicalTime); cell.indentationLevel = 1; cell.indentationWidth = 12; selected(value == draft.recentMinutes)
         case .durationInput: if let field = conditions?.duration { embed(field) }
         default: break
         }

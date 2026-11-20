@@ -20,6 +20,20 @@ enum InspectorFilterOptions {
         return [InspectorFilterGroup(.level, values: LogLevel.allCases.map(\.rawValue)),
          InspectorFilterGroup(.category, values: categories), InspectorFilterGroup(.excludedCategory, values: categories)]
     }
+    static func breadcrumbs(_ events: [BreadcrumbEvent]) -> [InspectorFilterGroup] {
+        let kinds = Set(events.map { $0.kind.rawValue }).sorted()
+        return [InspectorFilterGroup(.breadcrumbKind, values: kinds), InspectorFilterGroup(.excludedBreadcrumbKind, values: kinds)]
+    }
+    static func incidents(_ incidents: [IncidentSummary]) -> [InspectorFilterGroup] {
+        let kinds = incidents.map { $0.diagnosticKind?.rawValue ?? "manual" }.sorted()
+        let evidence = Set(incidents.flatMap { InspectorQuery.evidence($0) })
+        return [InspectorFilterGroup(.record, values: kinds),
+                InspectorFilterGroup(.evidence, values: ["environment", "breadcrumbs", "logs", "http", "webSocket"].filter(evidence.contains)),
+                InspectorFilterGroup(.excludedRecord, values: kinds)]
+    }
+    static func time(_ minutes: Int, historical: Bool = false) -> String {
+        InspectorLocalization.text(minutes == 0 ? "ui_time_all" : "ui_\(historical ? "before" : "time")_\(minutes)")
+    }
     static func network(_ events: [HTTPEvent], sockets: [WebSocketEvent], query: InspectorQuery,
                         includeHTTP: Bool = true, includeSockets: Bool = true) -> [InspectorFilterGroup] {
         let hosts = Set((events.map(\.url) + sockets.map(\.url)).map(InspectorQuery.host)).sorted()
@@ -59,9 +73,7 @@ enum InspectorFilterOptions {
         case .state:
             if let state = HTTPState(rawValue: value) { return HTTPPresentation.state(state) }
             return InspectorLocalization.text("ws_kind_" + value)
-        case .kind:
-            if WebSocketKind(rawValue: value) != nil { return InspectorLocalization.text("ws_kind_" + value) }
-            return InspectorLocalization.text("crumb_kind_" + value)
+        case .kind: return InspectorLocalization.text("ws_kind_" + value)
         case .status: return value == "none" ? InspectorLocalization.text("ui_no_status") : value.hasSuffix("xx") ? InspectorLocalization.text("ui_status_" + value) : value
         case .activity: return InspectorLocalization.text("ui_activity_" + value)
         case .outcome: return InspectorLocalization.text("ws_outcome_" + value)
@@ -73,7 +85,9 @@ enum InspectorFilterOptions {
             if value == "urlSession" { return "URLSession" }
             return InspectorLocalization.text("ui_" + value)
         case .connection: return InspectorRecordPresentation.connection(value)
-        case .record: return value == "manual" ? InspectorLocalization.text("ui_manual") : InspectorLocalization.text("diagnostic_kind_" + value)
+        case .breadcrumbKind, .excludedBreadcrumbKind: return InspectorLocalization.text("crumb_kind_" + value)
+        case .evidence: return InspectorLocalization.text("ui_evidence_" + value)
+        case .record, .excludedRecord: return value == "manual" ? InspectorLocalization.text("ui_manual") : InspectorLocalization.text("diagnostic_kind_" + value)
         default: return value
         }
     }
@@ -98,13 +112,13 @@ enum InspectorFilterOptions {
         let shown = values.sorted().prefix(6)
         return shown.map(label).joined(separator: ", ") + (values.count > shown.count ? " +\(values.count - shown.count)" : "")
     }
-    static func summary(_ query: InspectorQuery) -> String {
+    static func summary(_ query: InspectorQuery, historical: Bool = false) -> String {
         var parts = InspectorQuery.fieldOrder.compactMap { field -> String? in
             guard let values = query.values[field], !values.isEmpty else { return nil }
             let labels = values.sorted().prefix(2).map { String(label(field, $0).prefix(48)) }
             return title(field, transport: query.transport) + ": " + labels.joined(separator: ", ") + (values.count > 2 ? " +\(values.count - 2)" : "")
         }
-        if query.recentMinutes > 0 { parts.append(InspectorLocalization.text("ui_time_\(query.recentMinutes)")) }
+        if query.recentMinutes > 0 { parts.append(time(query.recentMinutes, historical: historical)) }
         if !query.excludedText.isEmpty { parts.append(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText) }
         if !query.fieldPath.isEmpty { parts.append(InspectorFilterOptions.jsonCondition(path: query.fieldPath, value: query.fieldValue)) }
         if query.minimumDurationMillis > 0 { parts.append("HTTP ≥ \(query.minimumDurationMillis) ms") }

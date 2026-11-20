@@ -7,8 +7,11 @@ import UIKit
 final class IncidentSnapshotViewController: UITableViewController {
     private let snapshot: IncidentSnapshot
     private var events: [BreadcrumbEvent]
-    private let search = UISearchTextField()
-    private lazy var searchGroup = InspectorSearchGroupCell(search: search)
+    private let filters = InspectorFeedHeader(compact: true)
+    private var search: UISearchTextField { filters.search }
+    private var query = InspectorQuery()
+    private let recentFilters = InspectorRecentFilters("saved-breadcrumbs")
+    private lazy var searchGroup = InspectorSearchGroupCell(search: search, controls: filters)
     private let header = UIStackView()
     private let exportStatus = UILabel()
     private var sharing: IncidentSharePresentation?
@@ -40,13 +43,17 @@ final class IncidentSnapshotViewController: UITableViewController {
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
         search.autocorrectionType = .no; search.autocapitalizationType = .none; search.returnKeyType = .done
         search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
+        filters.historicalTime = true
+        filters.onSearch = { [weak self] value in self?.query.text = value; self?.searchChanged() }
+        filters.onQueryChange = { [weak self] value in self?.query = value; self?.searchChanged() }
+        filters.onFilters = { [weak self] in self?.showFilters($0) }
         search.addTarget(self, action: #selector(endSearch), for: .editingDidEndOnExit)
         header.axis = .vertical; header.spacing = 10; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 20, bottom: 8, trailing: 20)
         header.addArrangedSubview(exportStatus); exportStatus.isHidden = true
 
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
+        filters.feedbackTable = tableView as? InspectorTableView
         inspectorActions = (deletion.map { [$0.button] } ?? []) + (sharing.map { [$0.button] } ?? []) + [copyButton]
         exportStatus.font = .preferredFont(forTextStyle: .footnote); exportStatus.adjustsFontForContentSizeCategory = true
         exportStatus.numberOfLines = 0; exportStatus.textColor = .secondaryLabel
@@ -68,12 +75,8 @@ final class IncidentSnapshotViewController: UITableViewController {
     @objc private func copySummary() { UIPasteboard.general.string = IncidentPresentation.summary(snapshot) }
     @objc private func searchChanged() {
         guard search.markedTextRange == nil else { return }
-        let query = String((search.text ?? "").prefix(512)); if search.text != query { search.text = query }
         let previousCount = events.count
-        events = (snapshot.breadcrumbs?.events ?? []).reversed().filter {
-            query.isEmpty || $0.label.localizedCaseInsensitiveContains(query) || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query)
-                || ($0.message?.localizedCaseInsensitiveContains(query) ?? false)
-        }
+        events = (snapshot.breadcrumbs?.events ?? []).reversed().filter { query.matches($0, now: snapshot.timestampMillis) }
         updateSearchGroup()
         // Keep the first row and its active editor attached while results change.
         UIView.performWithoutAnimation {
@@ -98,14 +101,29 @@ final class IncidentSnapshotViewController: UITableViewController {
         if section == 2 { return RuntimePresentation.text("incident_evidence_title") }
         return nil
     }
+    private func showFilters(_ target: InspectorQuery.Target?) {
+        let editor = InspectorFilterViewController(query: query, focus: target, recent: recentFilters,
+            groups: InspectorFilterOptions.breadcrumbs(snapshot.breadcrumbs?.events ?? []), timeLabel: "ui_saved_time") { [weak self] in
+            self?.query = $0; self?.searchChanged()
+        }
+        view.endEditing(true); inspectorPresent(editor)
+    }
+    override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        guard indexPath.section == 3, indexPath.row > 0, events.indices.contains(indexPath.row - 1) else { return nil }
+        return filters.recordMenu(field: .breadcrumbKind, value: events[indexPath.row - 1].kind.rawValue, recent: recentFilters)
+    }
     private func updateSearchGroup() {
+        filters.relabel(paused: false, query: query)
+        filters.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, (snapshot.breadcrumbs?.events ?? []).count)
+
         let message: String?
         if snapshot.breadcrumbs == nil { message = RuntimePresentation.text("incident_not_attached") }
-        else if events.isEmpty { message = RuntimePresentation.text(snapshot.breadcrumbs?.events.isEmpty == true ? "ui_saved_breadcrumbs_empty" : "ws_no_matches") }
+        else if events.isEmpty { message = RuntimePresentation.text(snapshot.breadcrumbs?.events.isEmpty == true ? "ui_saved_breadcrumbs_empty" : "ui_filtered_empty") }
         else { message = nil }
         searchGroup.configure(title: RuntimePresentation.text("runtime_breadcrumbs"),
-            summary: snapshot.breadcrumbs == nil ? nil : IncidentPresentation.breadcrumbSummary(snapshot.breadcrumbs),
-            searchable: snapshot.breadcrumbs != nil, message: message)
+            summary: snapshot.breadcrumbs.flatMap { $0.omittedEventCount > 0 || $0.sourceEvictedCount > 0 ? IncidentPresentation.breadcrumbSummary($0) : nil },
+            searchable: snapshot.breadcrumbs != nil, message: message,
+            filteredEmpty: snapshot.breadcrumbs?.events.isEmpty == false && events.isEmpty && query.activeCount > 0)
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if section == 0 { return IncidentPresentation.hint(snapshot) }

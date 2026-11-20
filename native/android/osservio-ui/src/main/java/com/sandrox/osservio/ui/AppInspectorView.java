@@ -17,7 +17,7 @@ import com.sandrox.osservio.core.WebSocketRecorder;
 // Dependencies require programmatic construction.
 @SuppressLint("ViewConstructor")
 final class AppInspectorView extends InspectorScroll.Page {
-    static final class State { int scrollY; }
+    static final class State { int scrollY; final BreadcrumbInspectorView.State breadcrumbs = new BreadcrumbInspectorView.State(); }
     private final State state;
     private final LinearLayout content;
     private LinearLayout group;
@@ -36,7 +36,7 @@ final class AppInspectorView extends InspectorScroll.Page {
         row(R.drawable.osservio_device, R.string.osservio_ui_environment, environment == null ? context.getString(R.string.osservio_ui_not_configured) : "",
             environment == null ? null : () -> open(R.string.osservio_runtime_environment, new EnvironmentInspectorView(context, environment)));
         row(R.drawable.osservio_clock, R.string.osservio_ui_current_timeline, history == null ? context.getString(R.string.osservio_ui_not_configured) : "",
-            history == null || recorder == null ? null : () -> open(R.string.osservio_ui_current_timeline, new BreadcrumbInspectorView(context, recorder, history)));
+            history == null || recorder == null ? null : () -> open(R.string.osservio_ui_current_timeline, new BreadcrumbInspectorView(context, recorder, history, state.breadcrumbs)));
         row(R.drawable.osservio_archive, R.string.osservio_ui_saved_runs, archive == null ? context.getString(R.string.osservio_ui_not_configured) : "",
             archive == null ? null : () -> open(R.string.osservio_ui_saved_runs, new BreadcrumbArchiveView(context, archive)));
         section(R.string.osservio_ui_inspector);

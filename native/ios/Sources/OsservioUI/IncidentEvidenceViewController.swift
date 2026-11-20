@@ -11,6 +11,7 @@ final class IncidentEvidenceViewController: UITableViewController {
     private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true)
     private var query = InspectorQuery()
+    private let recentFilters = InspectorRecentFilters("saved-evidence")
     private var indices: [Int] = []
     private var availableCount = 0
     private var result: InspectorRecordSearch.Result?
@@ -38,7 +39,7 @@ final class IncidentEvidenceViewController: UITableViewController {
     required init?(coder: NSCoder) { return nil }
     override func loadView() { super.loadView(); tableView = table }
     override func viewDidLoad() {
-        super.viewDidLoad(); table.tableHeaderView = header
+        super.viewDidLoad(); table.tableHeaderView = header; header.feedbackTable = table; header.historicalTime = true
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
         header.pause.isHidden = true; header.actions.isHidden = true
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
@@ -110,7 +111,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         case .webSockets(let value): groups = InspectorFilterOptions.network([], sockets: value.events.filter { connectionID == nil || $0.connectionID == connectionID }, query: query, includeHTTP: false)
             .filter { connectionID == nil || $0.field != .connection }
         }
-        let filters = InspectorFilterViewController(query: query, focus: target, groups: groups, payload: true) { [weak self] value in self?.query = value; self?.render() }
+        let filters = InspectorFilterViewController(query: query, focus: target, recent: recentFilters, groups: groups, timeLabel: "ui_saved_time", payload: true) { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
     }
     private func inScope(_ index: Int) -> Bool {
@@ -140,7 +141,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         return cell
     }
     override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
-        header.recordMenu(records[indices[indexPath.row]])
+        header.recordMenu(records[indices[indexPath.row]], recent: recentFilters)
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)

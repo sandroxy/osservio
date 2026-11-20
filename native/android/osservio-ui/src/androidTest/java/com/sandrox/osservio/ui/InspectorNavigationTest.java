@@ -332,7 +332,7 @@ public final class InspectorNavigationTest {
             MemoryHTTPStore requests = new MemoryHTTPStore();
             InspectorView inspector = new InspectorView(context, new LogRecorder(logs, capture), logs, new HTTPRecorder(requests, capture, new HTTPPrivacyPolicy()), requests);
             layout(inspector, 390, 844);
-            InspectorFilterSheet.Group kinds = new InspectorFilterSheet.Group(InspectorQuery.Field.KIND, context.getString(R.string.osservio_ui_kind))
+            InspectorFilterSheet.Group kinds = new InspectorFilterSheet.Group(InspectorQuery.Field.BREADCRUMB_KIND, context.getString(R.string.osservio_ui_breadcrumb_kind))
                 .option("APP_ACTIVE", "Active");
             InspectorQuery[] applied = {null};
             InspectorScreen filters = InspectorFilterSheet.show(inspector.getContext(), new InspectorQuery(), java.util.Collections.singletonList(kinds), value -> applied[0] = value);
@@ -352,8 +352,8 @@ public final class InspectorNavigationTest {
             List<Button> buttons = new ArrayList<>(); collect(filters.view, Button.class, buttons);
             Button apply = null; for (Button button : buttons) if (button.getText().toString().equals(button.getContext().getString(R.string.osservio_ui_apply))) apply = button;
             assertNotNull(apply); apply.performClick();
-            assertNotNull(applied[0]); assertTrue(applied[0].allows(InspectorQuery.Field.KIND, "APP_ACTIVE"));
-            assertEquals(java.util.Collections.singleton("APP_ACTIVE"), applied[0].values.get(InspectorQuery.Field.KIND));
+            assertNotNull(applied[0]); assertTrue(applied[0].allows(InspectorQuery.Field.BREADCRUMB_KIND, "APP_ACTIVE"));
+            assertEquals(java.util.Collections.singleton("APP_ACTIVE"), applied[0].values.get(InspectorQuery.Field.BREADCRUMB_KIND));
             assertNull(applied[0].transport()); inspector.disposePresentation(); capture.stopAll();
         });
     }

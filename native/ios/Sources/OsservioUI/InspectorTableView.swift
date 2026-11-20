@@ -48,6 +48,13 @@ final class InspectorTableView: UITableView {
             else { reloadRows(at: positions, with: .none) }
         }
     }
+    var filterFeedback: UIView? {
+        didSet {
+            if oldValue !== filterFeedback { oldValue?.removeFromSuperview() }
+            if let filterFeedback { addSubview(filterFeedback) }
+            setNeedsLayout()
+        }
+    }
     var followLatestButton: UIButton? {
         didSet {
             oldValue?.removeFromSuperview()
@@ -104,13 +111,25 @@ final class InspectorTableView: UITableView {
             let top = CGPoint(x: contentOffset.x, y: -adjustedContentInset.top)
             if abs(contentOffset.y - top.y) > 0.5 { setContentOffset(top, animated: false) }
         }
+        var floatingBottom = bounds.maxY - adjustedContentInset.bottom - 16
+        if let feedback = filterFeedback {
+            let available = max(0, bounds.width - safeAreaInsets.left - safeAreaInsets.right - 32)
+            let fitted = feedback.systemLayoutSizeFitting(CGSize(width: available, height: UIView.layoutFittingCompressedSize.height),
+                withHorizontalFittingPriority: .fittingSizeLevel, verticalFittingPriority: .fittingSizeLevel)
+            let width = min(available, fitted.width)
+            let height = max(48, feedback.systemLayoutSizeFitting(CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+                withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height)
+            feedback.frame = CGRect(x: bounds.midX - width / 2,
+                y: max(bounds.minY + adjustedContentInset.top, floatingBottom - height), width: width, height: height)
+            bringSubviewToFront(feedback); floatingBottom = feedback.frame.minY - 8
+        }
         if let button = followLatestButton {
             let available = max(0, bounds.width - safeAreaInsets.left - safeAreaInsets.right - 32)
             let fitted = button.sizeThatFits(CGSize(width: available, height: 100))
             let size = CGSize(width: min(available, max(44, fitted.width)), height: max(44, fitted.height))
             UIView.performWithoutAnimation {
                 button.frame = CGRect(x: bounds.midX - size.width / 2,
-                    y: max(bounds.minY + adjustedContentInset.top, bounds.maxY - adjustedContentInset.bottom - size.height - 16),
+                    y: max(bounds.minY + adjustedContentInset.top, floatingBottom - size.height),
                     width: size.width, height: size.height)
                 button.layoutIfNeeded()
             }

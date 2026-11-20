@@ -11,6 +11,33 @@ import static org.junit.Assert.*;
 public final class InspectorQueryTest {
     private static final String ID = "00000000-0000-0000-0000-000000000001";
 
+    @Test public void breadcrumbKindsStayIndependentOfSocketsAndUseTheSuppliedTimeAnchor() {
+        BreadcrumbEvent event = BreadcrumbEvent.restore(ID, ID, 1, 500000, 100L, BreadcrumbEvent.Kind.HOST_MARKER,
+            "checkout.ready", "Order ready", false, false, null, BreadcrumbEvent.Retention.RESTART_RELEVANT);
+        InspectorQuery query = new InspectorQuery(); query.recentMinutes = 5; query.text = "ORDER";
+        query.select(InspectorQuery.Field.BREADCRUMB_KIND, "HOST_MARKER");
+        assertNull(query.transport()); assertFalse(query.hasTransportConditions());
+        assertTrue(query.matches(event, 600000, "Host marker"));
+        assertFalse(query.matches(event, 900001, "Host marker"));
+        query.filterRecord(InspectorQuery.Field.BREADCRUMB_KIND, "HOST_MARKER", true);
+        assertFalse(query.matches(event, 600000, "Host marker"));
+        query.filterRecord(InspectorQuery.Field.BREADCRUMB_KIND, "HOST_MARKER", false);
+        assertTrue(query.matches(event, 600000, "Host marker")); assertEquals("ORDER", query.text);
+        assertNull(query.transport());
+    }
+    @Test public void incidentEvidenceRequiresKnownNonemptyRecords() {
+        InspectorQuery query = new InspectorQuery(); query.select(InspectorQuery.Field.EVIDENCE, "logs");
+        for (Integer count : new Integer[] {null, 0, 1}) {
+            IncidentSummary incident = new IncidentSummary(ID, 500000, null, false, null, count, null, null);
+            assertEquals(count != null && count > 0, query.matches(incident, 600000));
+        }
+        IncidentSummary incident = new IncidentSummary(ID, 500000, null, false, null, 1, null, null);
+        query.filterRecord(InspectorQuery.Field.RECORD, "manual", true);
+        assertFalse(query.matches(incident, 600000));
+        query.filterRecord(InspectorQuery.Field.RECORD, "manual", false);
+        assertTrue(query.matches(incident, 600000));
+        assertEquals(Collections.singleton("logs"), query.values.get(InspectorQuery.Field.EVIDENCE));
+    }
     @Test public void fieldUnionAndIntersectionWithText() {
         InspectorQuery query = new InspectorQuery();
         query.values.put(InspectorQuery.Field.LEVEL, new HashSet<>(Arrays.asList("WARNING", "ERROR")));

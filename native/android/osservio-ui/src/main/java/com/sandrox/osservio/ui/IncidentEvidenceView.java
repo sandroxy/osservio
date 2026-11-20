@@ -25,6 +25,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private final IncidentHTTP http;
     private final IncidentWebSockets sockets;
     private InspectorQuery query = new InspectorQuery();
+    private final InspectorRecentFilters recentFilters = new InspectorRecentFilters("saved-evidence");
     private final InspectorFeedHeader header;
     private final android.widget.ImageButton goBack;
     private final TextView footer;
@@ -49,9 +50,9 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         else for (WebSocketEvent event : sockets.events) records.add(new InspectorRecordSearch.Record(event));
         goBack = InspectorWidgets.icon(context, R.drawable.osservio_back, R.string.osservio_ui_back, back); addView(goBack);
         header = new InspectorFeedHeader(context, R.string.osservio_ui_search_saved, "", value -> { query.text = value; filter(); }, () -> { }, target -> {
-            detail = InspectorFilterSheet.show(context, query, groups(), R.string.osservio_ui_time, true, target, value -> { query = value; filter(); });
+            detail = InspectorFilterSheet.show(context, query, groups(), R.string.osservio_ui_saved_time, true, target, recentFilters, value -> { query = value; filter(); });
             detail.setOnDismissListener(ignored -> detail = null);
-        }, () -> { }, true); header.hideActions();
+        }, () -> { }, true); header.hideActions(); header.historicalTime = true;
         header.onQueryChange = value -> { query = value; filter(); };
         ListView list = new InspectorScroll.List(context); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
@@ -60,12 +61,12 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         list.setAdapter(rows);
         list.setOnItemLongClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
-            return index >= 0 && index < indices.size() && header.recordMenu(view, records.get(indices.get(index)), null);
+            return index >= 0 && index < indices.size() && header.recordMenu(view, records.get(indices.get(index)), recentFilters);
         });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < indices.size()) show(indices.get(index));
         });
-        addView(list, new LayoutParams(-1, 0, 1));
+        addView(header.viewport(list), new LayoutParams(-1, 0, 1));
         InspectorAppearance.content(this, () -> {
             list.setDivider(null);
             filter();

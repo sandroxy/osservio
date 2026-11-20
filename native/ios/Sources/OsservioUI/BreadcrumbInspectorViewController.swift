@@ -8,6 +8,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     private let history: any BreadcrumbHistory
     private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
     private let header = InspectorFeedHeader(compact: true, actionLabel: "crumb_clear")
+    private let recentFilters: InspectorRecentFilters
     private var query = InspectorQuery()
     private var paused = false { didSet { table.followsLatest = !paused } }
     private var anchor: Int64 = 0
@@ -18,14 +19,15 @@ final class BreadcrumbInspectorViewController: UITableViewController {
     private var dirty = true
     private var attemptedRead = false
     private var stale = false
-    init(recorder: BreadcrumbRecorder, history: any BreadcrumbHistory) {
+    init(recorder: BreadcrumbRecorder, history: any BreadcrumbHistory, recent: InspectorRecentFilters? = nil) {
+        recentFilters = recent ?? InspectorRecentFilters("breadcrumbs")
         self.recorder = recorder; self.history = history; super.init(style: .plain)
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     override func loadView() { super.loadView(); tableView = table }
     override func viewDidLoad() {
-        super.viewDidLoad(); table.tableHeaderView = header
+        super.viewDidLoad(); table.tableHeaderView = header; header.feedbackTable = table
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102; table.keyboardDismissMode = .onDrag
         header.onQueryChange = { [weak self] value in self?.query = value; self?.render() }
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
@@ -54,10 +56,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         if dirty || query.recentMinutes > 0 { render() } else { updateStatus() }
     }
     private func render() {
-        events = (latest?.events ?? []).reversed().filter { event in
-            query.allows(.kind, event.kind.rawValue) && query.includesTime(event.timestampMillis, now: anchor)
-                && query.contains(event.label, event.message ?? "", RuntimePresentation.kind(event))
-        }
+        events = (latest?.events ?? []).reversed().filter { query.matches($0, now: anchor) }
         table.reloadData(); dirty = false
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
         table.setFeedEmpty(events.isEmpty ? (latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty" : "crumb_empty") : nil, header: header, query: query)
@@ -75,9 +74,17 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         table.showLatest()
     }
     private func showFilters(_ target: InspectorQuery.Target?) {
-        let group = InspectorFilterGroup(.kind, values: (latest?.events ?? []).map { $0.kind.rawValue })
-        let filters = InspectorFilterViewController(query: query, focus: target, groups: [group]) { [weak self] value in self?.query = value; self?.render() }
+        let filters = InspectorFilterViewController(query: query, focus: target, recent: recentFilters,
+            groups: InspectorFilterOptions.breadcrumbs(latest?.events ?? [])) { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
+    }
+    func resetOwnerQuery() {
+        query = InspectorQuery(); dirty = true
+        if isViewLoaded { header.search.text = ""; header.expireUndo(); render() }
+    }
+    override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        guard events.indices.contains(indexPath.row) else { return nil }
+        return header.recordMenu(field: .breadcrumbKind, value: events[indexPath.row].kind.rawValue, recent: recentFilters)
     }
     @objc private func showActions() {
         inspectorConfirm(InspectorLocalization.text("crumb_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in

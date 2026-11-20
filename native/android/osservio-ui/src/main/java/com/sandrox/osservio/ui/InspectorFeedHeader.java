@@ -32,9 +32,12 @@ final class InspectorFeedHeader extends LinearLayout {
     private String displayedStyle;
     private final InspectorFilterSheet.Edit editFilter;
     private final Button undo, adjustFilters;
+    private final LinearLayout undoNotice;
     private InspectorQuery beforeRemoval, afterRemoval;
+    private final android.os.Handler undoCallbacks = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable expireUndo = this::finishUndo;
     InspectorFilterSheet.Applied onQueryChange;
+    boolean historicalTime;
     InspectorFeedHeader(Context context, int searchHint, String text, InspectorWidgets.TextChange changed,
                         Runnable togglePause, InspectorFilterSheet.Edit showFilters, Runnable actions) {
         this(context, searchHint, text, changed, togglePause, showFilters, actions, false);
@@ -81,12 +84,26 @@ final class InspectorFeedHeader extends LinearLayout {
             finishUndo();
             if (current && onQueryChange != null) onQueryChange.apply(original);
         });
-        undo.setVisibility(GONE);
+        undo.setAllCaps(false); InspectorTheme.typography(undo, 14, true);
+        undo.setMinWidth(InspectorTheme.dp(context, 48)); undo.setMinimumWidth(0);
+        undo.setMinHeight(InspectorTheme.dp(context, 44)); undo.setPadding(dp(10), 0, dp(10), 0);
+        undo.setStateListAnimator(null); undo.setBackgroundTintList(null);
+        undoNotice = new LinearLayout(context); undoNotice.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        undoNotice.setPadding(dp(16), dp(4), dp(6), dp(4)); undoNotice.setVisibility(GONE);
+        TextView notice = InspectorTheme.text(context, 14, false);
+        InspectorAppearance.text(notice, R.string.osservio_ui_filter_undo_notice);
+        undoNotice.addView(notice, new LayoutParams(-2, -2, 1)); undoNotice.addView(undo);
+        undoNotice.setElevation(dp(4));
+        InspectorAppearance.style(undoNotice, () -> {
+            undoNotice.setBackground(InspectorTheme.shape(context, InspectorTheme.surface(context), 22, false));
+            undo.setTextColor(InspectorTheme.accent(context)); InspectorTheme.feedback(undo, 18);
+            undo.setText(R.string.osservio_ui_undo_filter);
+        });
         if (compact) {
             LinearLayout countRow = new LinearLayout(context); countRow.setGravity(android.view.Gravity.CENTER_VERTICAL); countRow.setBaselineAligned(false);
             countRow.addView(results, new LayoutParams(0, -2, 1));
             LayoutParams progress = new LayoutParams(InspectorTheme.dp(context, 20), InspectorTheme.dp(context, 20)); progress.leftMargin = InspectorTheme.dp(context, 8);
-            countRow.addView(activity, progress); countRow.addView(undo); summary.addView(countRow);
+            countRow.addView(activity, progress); summary.addView(countRow);
             results.setPadding(0, 0, 0, 0); status.setPadding(0, 0, 0, 0);
         }
         summary.addView(status);
@@ -99,7 +116,10 @@ final class InspectorFeedHeader extends LinearLayout {
             if (right - left == oldRight - oldLeft) return;
             for (int index = 0; index < tokens.getChildCount(); index++) fitToken((LinearLayout) tokens.getChildAt(index), right - left);
         });
-        if (compact) addView(tokenScroll, new LayoutParams(-1, -2));
+        if (compact) {
+            LayoutParams selected = new LayoutParams(-1, -2); selected.topMargin = InspectorTheme.dp(context, 10);
+            addView(tokenScroll, selected);
+        }
         addView(bar, new LayoutParams(-1, -2));
         criteria = InspectorWidgets.caption(context); criteria.setMaxLines(3); criteria.setEllipsize(android.text.TextUtils.TruncateAt.END);
         addView(criteria, new LayoutParams(-1, -2));
@@ -122,7 +142,7 @@ final class InspectorFeedHeader extends LinearLayout {
             if (android.os.Build.VERSION.SDK_INT >= 30) filters.setStateDescription(getContext().getString(R.string.osservio_ui_filter_count, query.activeCount()));
             filters.setSelected(query.activeCount() > 0);
             List<InspectorFilterSheet.Group> choices = query.activeCount() == 0 ? java.util.Collections.emptyList() : groups.get();
-            criteria.setText(InspectorFilterOptions.summary(getContext(), query, choices));
+            criteria.setText(InspectorFilterOptions.summary(getContext(), query, choices, historicalTime));
             criteria.setVisibility(compact || query.activeCount() == 0 ? GONE : VISIBLE);
             if (compact) updateTokens(query, choices);
         }
@@ -142,6 +162,11 @@ final class InspectorFeedHeader extends LinearLayout {
         int inset = InspectorTheme.dp(getContext(), 16); floating.setMargins(inset, inset, inset, inset);
         viewport.addView(latest, floating);
         latest.setTag(R.id.osservio_floating_margin, inset);
+        android.widget.FrameLayout.LayoutParams notice = new android.widget.FrameLayout.LayoutParams(-2, -2,
+            android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+        notice.setMargins(inset, inset, inset, inset); viewport.addView(undoNotice, notice);
+        undoNotice.setTag(R.id.osservio_floating_margin, inset);
+        undoNotice.addOnLayoutChangeListener((v, l, t, r, b, oldL, oldT, oldR, oldB) -> positionLatest());
         return viewport;
     }
     void emptyMessage(int reason) {
@@ -172,7 +197,7 @@ final class InspectorFeedHeader extends LinearLayout {
                 group.field == InspectorQuery.Field.TRANSPORT && query.hasTransportConditions() ? null : changed);
         }
         if (query.recentMinutes > 0) { InspectorQuery changed = query.copy(); changed.recentMinutes = 0;
-            token(getContext().getString(query.recentMinutes == 5 ? R.string.osservio_ui_time_5 : query.recentMinutes == 30 ? R.string.osservio_ui_time_30 : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440), InspectorFilterSheet.Target.TIME, changed); }
+            token(InspectorFilterOptions.time(getContext(), query.recentMinutes, historicalTime), InspectorFilterSheet.Target.TIME, changed); }
         if (!query.excludedText.isEmpty()) { InspectorQuery changed = query.copy(); changed.excludedText = ""; token(getContext().getString(R.string.osservio_ui_exclude) + ": " + query.excludedText, InspectorFilterSheet.Target.EXCLUDED_TEXT, changed); }
         if (!query.fieldPath.isEmpty()) { InspectorQuery changed = query.copy(); changed.fieldPath = ""; changed.fieldValue = ""; token(InspectorFilterOptions.jsonCondition(getContext(), query.fieldPath, query.fieldValue), InspectorFilterSheet.Target.JSON, changed); }
         if (query.minimumDurationMillis > 0) { InspectorQuery changed = query.copy(); changed.minimumDurationMillis = 0; token("HTTP ≥ " + query.minimumDurationMillis + " ms", InspectorFilterSheet.Target.DURATION, changed); }
@@ -186,7 +211,10 @@ final class InspectorFeedHeader extends LinearLayout {
         edit.setContentDescription(label + ", " + context.getString(R.string.osservio_ui_edit_filter));
         group.addView(edit);
         if (changed != null) {
-            Button close = tokenAction("×", () -> replaceWithUndo(changed));
+            ImageButton close = new ImageButton(context);
+            close.setImageDrawable(InspectorWidgets.symbol(context, R.drawable.osservio_close, 24, InspectorTheme.accent(context)));
+            close.setPadding(dp(12), dp(12), dp(12), dp(12)); close.setBackgroundTintList(null);
+            InspectorTheme.feedback(close, 0); close.setOnClickListener(v -> replaceWithUndo(changed));
             close.setContentDescription(context.getString(R.string.osservio_ui_remove_filter) + ", " + label);
             group.addView(close, new LayoutParams(InspectorTheme.dp(context, 48), -1));
         }
@@ -216,13 +244,23 @@ final class InspectorFeedHeader extends LinearLayout {
     boolean recordMenu(View anchor, InspectorRecordSearch.Record record, InspectorRecentFilters recent) {
         final boolean category = record.log != null;
         final String value = category ? record.log.category : InspectorQuery.host(record.http != null ? record.http.url : record.socket.url);
-        if (value.isEmpty()) return false;
+        return recordMenu(anchor, category ? InspectorQuery.Field.CATEGORY : InspectorQuery.Field.HOST, value, recent);
+    }
+    boolean recordMenu(View anchor, InspectorQuery.Field field, String value, InspectorRecentFilters recent) {
+        if (value.isEmpty() || displayedQuery == null) return false;
+        int only, exclude;
+        switch (field) {
+            case RECORD: only = R.string.osservio_ui_only_record; exclude = R.string.osservio_ui_exclude_record; break;
+            case BREADCRUMB_KIND: only = R.string.osservio_ui_only_breadcrumb_kind; exclude = R.string.osservio_ui_exclude_breadcrumb_kind; break;
+            case CATEGORY: only = R.string.osservio_ui_only_category; exclude = R.string.osservio_ui_exclude_category; break;
+            default: only = R.string.osservio_ui_only_host; exclude = R.string.osservio_ui_exclude_host; break;
+        }
         android.widget.PopupMenu menu = new android.widget.PopupMenu(getContext(), anchor);
-        menu.getMenu().add(0, 1, 0, category ? R.string.osservio_ui_only_category : R.string.osservio_ui_only_host);
-        menu.getMenu().add(0, 2, 1, category ? R.string.osservio_ui_exclude_category : R.string.osservio_ui_exclude_host);
+        menu.getMenu().add(0, 1, 0, only);
+        menu.getMenu().add(0, 2, 1, exclude);
         menu.setOnMenuItemClickListener(item -> {
             InspectorQuery changed = displayedQuery.copy();
-            changed.filterRecord(category ? InspectorQuery.Field.CATEGORY : InspectorQuery.Field.HOST, value, item.getItemId() == 2);
+            changed.filterRecord(field, value, item.getItemId() == 2);
             if (!changed.sameAs(displayedQuery)) {
                 if (recent != null) recent.update(changed, false);
                 replaceWithUndo(changed);
@@ -233,17 +271,37 @@ final class InspectorFeedHeader extends LinearLayout {
     }
     private void replaceWithUndo(InspectorQuery changed) {
         if (onQueryChange == null) return;
-        removeCallbacks(expireUndo);
-        beforeRemoval = displayedQuery.copy(); afterRemoval = changed.copy(); undo.setVisibility(VISIBLE);
+        undoCallbacks.removeCallbacks(expireUndo);
+        beforeRemoval = displayedQuery.copy(); afterRemoval = changed.copy(); undoNotice.setVisibility(VISIBLE); positionLatest();
         int timeout = 6000;
         if (android.os.Build.VERSION.SDK_INT >= 29) {
             android.view.accessibility.AccessibilityManager manager = getContext().getSystemService(android.view.accessibility.AccessibilityManager.class);
             if (manager != null) timeout = manager.getRecommendedTimeoutMillis(timeout, android.view.accessibility.AccessibilityManager.FLAG_CONTENT_CONTROLS);
         }
-        postDelayed(expireUndo, timeout);
+        // A record menu can change filters while this scrolling header is detached.
+        undoCallbacks.postDelayed(expireUndo, timeout);
         onQueryChange.apply(changed);
     }
+    private int dp(int value) { return InspectorTheme.dp(getContext(), value); }
+    private void positionLatest() {
+        if (!(latest.getLayoutParams() instanceof android.widget.FrameLayout.LayoutParams)) return;
+        android.widget.FrameLayout.LayoutParams params = (android.widget.FrameLayout.LayoutParams) latest.getLayoutParams();
+        int base = dp(16) + (undoNotice.getVisibility() == VISIBLE ? undoNotice.getHeight() + dp(8) : 0);
+        Object old = latest.getTag(R.id.osservio_floating_margin);
+        if (old instanceof Integer && ((Integer) old) == base) return;
+        params.bottomMargin += base - (old instanceof Integer ? (Integer) old : dp(16));
+        latest.setTag(R.id.osservio_floating_margin, base); latest.setLayoutParams(params);
+    }
+    @Override protected void onDetachedFromWindow() { finishUndo(); super.onDetachedFromWindow(); }
+    @Override protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (undoNotice != null && !isShown()) finishUndo();
+    }
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (undoNotice != null && visibility != VISIBLE) finishUndo();
+    }
     void finishUndo() {
-        removeCallbacks(expireUndo); beforeRemoval = null; afterRemoval = null; undo.setVisibility(GONE);
+        undoCallbacks.removeCallbacks(expireUndo); beforeRemoval = null; afterRemoval = null; undoNotice.setVisibility(GONE); positionLatest();
     }
 }

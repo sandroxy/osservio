@@ -13,8 +13,21 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     let count = InspectorTheme.label(.caption1, secondary: true)
     let activity = UIActivityIndicatorView(style: .medium)
     let extra = UIStackView()
+    var historicalTime = false
     var onFilters: ((InspectorQuery.Target?) -> Void)?
     private let undo = UIButton(type: .system)
+    weak var feedbackTable: InspectorTableView?
+    private lazy var undoNotice: UIStackView = {
+        let label = InspectorTheme.label(.subheadline)
+        label.text = InspectorLocalization.text("ui_filter_undo_notice")
+        let panel = UIStackView(arrangedSubviews: [label, undo])
+        panel.spacing = 12; panel.alignment = .center; panel.isLayoutMarginsRelativeArrangement = true
+        panel.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 12)
+        panel.backgroundColor = InspectorTheme.surface; panel.layer.cornerRadius = 22
+        panel.layer.shadowColor = UIColor.black.cgColor; panel.layer.shadowOpacity = 0.12
+        panel.layer.shadowRadius = 8; panel.layer.shadowOffset = CGSize(width: 0, height: 3)
+        return panel
+    }()
     private var removed: (before: InspectorQuery, after: InspectorQuery)?
     var onSearch: ((String) -> Void)?
     var onQueryChange: ((InspectorQuery) -> Void)?
@@ -52,8 +65,10 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             button.setContentCompressionResistancePriority(.required, for: .horizontal)
         }
         filters.addTarget(self, action: #selector(openFilters), for: .touchUpInside)
-        undo.isHidden = true
+        undo.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
+        undo.titleLabel?.adjustsFontForContentSizeCategory = true
         undo.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        undo.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         undo.addTarget(self, action: #selector(undoRemoval), for: .touchUpInside)
         let searchRow = UIStackView(arrangedSubviews: [search, filters]); searchRow.spacing = 8
         let activitySlot = UIView(); activitySlot.translatesAutoresizingMaskIntoConstraints = false
@@ -61,7 +76,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         NSLayoutConstraint.activate([activitySlot.widthAnchor.constraint(equalToConstant: 20),
             activitySlot.heightAnchor.constraint(equalToConstant: 20), activity.centerXAnchor.constraint(equalTo: activitySlot.centerXAnchor),
             activity.centerYAnchor.constraint(equalTo: activitySlot.centerYAnchor)])
-        let countRow = UIStackView(arrangedSubviews: [count, activitySlot, undo]); countRow.spacing = 8; countRow.alignment = .center
+        let countRow = UIStackView(arrangedSubviews: [count, activitySlot]); countRow.spacing = 8; countRow.alignment = .center
         let summary = UIStackView(arrangedSubviews: compact ? [countRow, status] : [status]); summary.axis = .vertical; summary.spacing = 4
         let controls = UIStackView(arrangedSubviews: compact ? [summary] : [summary, pause, actions]); controls.spacing = 8; controls.alignment = .center
         status.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -93,6 +108,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         let statusChanged = compact && status.isHidden != hidesStatus
         if compact { status.isHidden = hidesStatus }
         guard displayedQuery != query || displayedPaused != paused || displayedStyle != style else { return statusChanged }
+        if displayedStyle != style { expireUndo() }
         displayedQuery = query; displayedPaused = paused; displayedStyle = style
         if compact {
             let style = InspectorLocalization.text("ui_follow_latest") + InspectorPreferences.shared.appearance.rawValue
@@ -114,8 +130,8 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         configure(filters, symbol: "line.3.horizontal.decrease", selected: query.activeCount > 0,
                   title: query.activeCount > 0 ? String(query.activeCount) : nil)
         filters.accessibilityLabel = InspectorLocalization.text("ui_filters")
-        filters.accessibilityValue = query.activeCount > 0 ? InspectorFilterOptions.summary(query) : nil
-        criteria.text = InspectorFilterOptions.summary(query)
+        filters.accessibilityValue = query.activeCount > 0 ? InspectorFilterOptions.summary(query, historical: historicalTime) : nil
+        criteria.text = InspectorFilterOptions.summary(query, historical: historicalTime)
         criteria.isHidden = query.activeCount == 0
         if compact { updateTokens(query); status.isHidden = status.text?.isEmpty != false }
         return true
@@ -151,7 +167,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             if field == .transport { changed.select(.transport, value: nil) } else { changed.values[field] = nil }
             add(InspectorFilterOptions.title(field, transport: query.transport) + ": " + InspectorFilterOptions.selectionSummary(values) { InspectorFilterOptions.label(field, $0) }, target: .field(field), changed: field == .transport && query.hasTransportConditions ? nil : changed)
         }
-        if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorLocalization.text("ui_time_\(query.recentMinutes)"), target: .time, changed: changed) }
+        if query.recentMinutes > 0 { var changed = query; changed.recentMinutes = 0; add(InspectorFilterOptions.time(query.recentMinutes, historical: historicalTime), target: .time, changed: changed) }
         if !query.excludedText.isEmpty { var changed = query; changed.excludedText = ""; add(InspectorLocalization.text("ui_exclude") + ": " + query.excludedText, target: .excludedText, changed: changed) }
         if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(InspectorFilterOptions.jsonCondition(path: query.fieldPath, value: query.fieldValue), target: .json, changed: changed) }
         if query.minimumDurationMillis > 0 { var changed = query; changed.minimumDurationMillis = 0; add("HTTP ≥ \(query.minimumDurationMillis) ms", target: .duration, changed: changed) }
@@ -183,6 +199,9 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         case .http(let event): field = .host; value = InspectorQuery.host(event.url)
         case .socket(let event): field = .host; value = InspectorQuery.host(event.url)
         }
+        return recordMenu(field: field, value: value, recent: recent)
+    }
+    func recordMenu(field: InspectorQuery.Field, value: String, recent: InspectorRecentFilters? = nil) -> UIContextMenuConfiguration? {
         guard !value.isEmpty else { return nil }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
             let actions = [false, true].map { excluding in
@@ -193,13 +212,16 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
                     if query != original { recent?.update(query); self.replace(original, with: query) }
                 }
             }
-            return UIMenu(title: value, children: actions)
+            return UIMenu(title: InspectorFilterOptions.label(field, value), children: actions)
         }
     }
     private func replace(_ original: InspectorQuery, with changed: InspectorQuery) {
         guard displayedQuery == original else { return }
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(expireUndo), object: nil)
-        removed = (original, changed); undo.isHidden = false
+        removed = (original, changed)
+        undoNotice.backgroundColor = InspectorTheme.surface
+        (undoNotice.arrangedSubviews.first as? UILabel)?.text = InspectorLocalization.text("ui_filter_undo_notice")
+        feedbackTable?.filterFeedback = undoNotice
         perform(#selector(expireUndo), with: nil, afterDelay: UIAccessibility.isVoiceOverRunning ? 15 : 6)
         onQueryChange?(changed)
     }
@@ -207,7 +229,16 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         guard let removed, displayedQuery == removed.after else { expireUndo(); return }
         expireUndo(); onQueryChange?(removed.before)
     }
-    @objc func expireUndo() { removed = nil; undo.isHidden = true; superview?.setNeedsLayout() }
+    @objc func expireUndo() {
+        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(expireUndo), object: nil)
+        guard removed != nil else { return }
+        removed = nil
+        if feedbackTable?.filterFeedback === undoNotice { feedbackTable?.filterFeedback = nil }
+    }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil { expireUndo() }
+    }
     private func configure(_ button: UIButton, symbol: String, selected: Bool = false, title: String? = nil) {
         guard #available(iOS 15, *) else {
             button.setImage(UIImage(systemName: symbol), for: .normal); button.setTitle(title, for: .normal)

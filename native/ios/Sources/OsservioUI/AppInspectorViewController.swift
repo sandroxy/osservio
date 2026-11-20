@@ -4,6 +4,7 @@ import UIKit
 
 @MainActor
 final class AppInspectorViewController: UITableViewController {
+    private let recentBreadcrumbs = InspectorRecentFilters("breadcrumbs")
     private let environment: (any EnvironmentProvider)?
     private let breadcrumbs: (recorder: BreadcrumbRecorder, history: any BreadcrumbHistory)?
     private let archive: (any BreadcrumbArchive)?
@@ -19,6 +20,13 @@ final class AppInspectorViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad(); tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 62
         style.changed()
+    }
+    func setRecentFilterOwner(_ owner: UUID?) {
+        guard recentBreadcrumbs.owner != owner else { return }
+        recentBreadcrumbs.owner = owner
+        for page in navigationController?.viewControllers ?? [] {
+            (page as? BreadcrumbInspectorViewController)?.resetOwnerQuery()
+        }
     }
     private func relabel() { InspectorTheme.apply(self); title = InspectorLocalization.text("ui_app"); tableView.reloadData() }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }
@@ -61,7 +69,7 @@ final class AppInspectorViewController: UITableViewController {
         if indexPath.section == 0 {
             switch indexPath.row {
             case 0: if let environment { inspectorPush(EnvironmentInspectorViewController(provider: environment)) }
-            case 1: if let breadcrumbs { inspectorPush(BreadcrumbInspectorViewController(recorder: breadcrumbs.recorder, history: breadcrumbs.history)) }
+            case 1: if let breadcrumbs { inspectorPush(BreadcrumbInspectorViewController(recorder: breadcrumbs.recorder, history: breadcrumbs.history, recent: recentBreadcrumbs)) }
             default: if let archive { inspectorPush(BreadcrumbArchiveViewController(archive: archive)) }
             }
         } else if indexPath.section == 1 {

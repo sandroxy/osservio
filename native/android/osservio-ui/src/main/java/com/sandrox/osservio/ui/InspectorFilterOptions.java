@@ -2,6 +2,8 @@ package com.sandrox.osservio.ui;
 
 import android.content.Context;
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.BreadcrumbEvent;
+import com.sandrox.osservio.core.IncidentSummary;
 import com.sandrox.osservio.core.LogEvent;
 import com.sandrox.osservio.core.LogLevel;
 import com.sandrox.osservio.core.WebSocketEvent;
@@ -24,6 +26,44 @@ final class InspectorFilterOptions {
         groups.add(strings(context, InspectorQuery.Field.CATEGORY, R.string.osservio_ui_category, categories));
         groups.add(strings(context, InspectorQuery.Field.EXCLUDED_CATEGORY, R.string.osservio_ui_excluded_category, categories));
         return groups;
+    }
+    static List<InspectorFilterSheet.Group> breadcrumbs(Context context, List<BreadcrumbEvent> events) {
+        InspectorFilterSheet.Group kinds = group(context, InspectorQuery.Field.BREADCRUMB_KIND, R.string.osservio_ui_breadcrumb_kind);
+        InspectorFilterSheet.Group excluded = group(context, InspectorQuery.Field.EXCLUDED_BREADCRUMB_KIND, R.string.osservio_ui_excluded_breadcrumb_kind);
+        Set<String> values = new TreeSet<>();
+        for (BreadcrumbEvent event : events) values.add(event.kind.name());
+        for (String value : values) {
+            String title = label(context, InspectorQuery.Field.BREADCRUMB_KIND, value);
+            kinds.option(value, title); excluded.option(value, title);
+        }
+        return java.util.Arrays.asList(kinds, excluded);
+    }
+    static List<InspectorFilterSheet.Group> incidents(Context context, List<IncidentSummary> incidents) {
+        InspectorFilterSheet.Group kinds = group(context, InspectorQuery.Field.RECORD, R.string.osservio_ui_record);
+        InspectorFilterSheet.Group excluded = group(context, InspectorQuery.Field.EXCLUDED_RECORD, R.string.osservio_ui_excluded_record);
+        InspectorFilterSheet.Group evidence = group(context, InspectorQuery.Field.EVIDENCE, R.string.osservio_ui_evidence);
+        Set<String> types = new TreeSet<>(), contents = new TreeSet<>();
+        for (IncidentSummary incident : incidents) {
+            types.add(incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name());
+            contents.addAll(InspectorQuery.evidence(incident));
+        }
+        for (String value : types) {
+            String title = label(context, InspectorQuery.Field.RECORD, value);
+            kinds.option(value, title); excluded.option(value, title);
+        }
+        for (String value : new String[] {"environment", "breadcrumbs", "logs", "http", "webSocket"}) {
+            if (contents.contains(value)) evidence.option(value, label(context, InspectorQuery.Field.EVIDENCE, value));
+        }
+        return java.util.Arrays.asList(kinds, evidence, excluded);
+    }
+    static String time(Context context, int minutes, boolean historical) {
+        if (minutes == 0) return context.getString(R.string.osservio_ui_time_all);
+        int[] values = {5, 30, 60, 1440};
+        int[] labels = historical
+            ? new int[] {R.string.osservio_ui_before_5, R.string.osservio_ui_before_30, R.string.osservio_ui_before_60, R.string.osservio_ui_before_1440}
+            : new int[] {R.string.osservio_ui_time_5, R.string.osservio_ui_time_30, R.string.osservio_ui_time_60, R.string.osservio_ui_time_1440};
+        for (int i = 0; i < values.length; i++) if (minutes == values[i]) return context.getString(labels[i]);
+        return context.getString(R.string.osservio_ui_time_all);
     }
     static List<InspectorFilterSheet.Group> network(Context context, List<HTTPEvent> http, List<WebSocketEvent> sockets, InspectorQuery query) {
         return network(context, http, sockets, query, true, true);
@@ -127,9 +167,20 @@ final class InspectorFilterOptions {
                 return value;
             case KIND:
                 for (WebSocketEvent.Kind kind : WebSocketEvent.Kind.values()) if (kind.name().equals(value)) return WebSocketPresentation.kind(context, kind);
-                for (com.sandrox.osservio.core.BreadcrumbEvent.Kind kind : com.sandrox.osservio.core.BreadcrumbEvent.Kind.values()) if (kind.name().equals(value)) return RuntimePresentation.kind(context, kind);
                 return value;
-            case RECORD:
+            case BREADCRUMB_KIND: case EXCLUDED_BREADCRUMB_KIND:
+                for (BreadcrumbEvent.Kind kind : BreadcrumbEvent.Kind.values()) if (kind.name().equals(value)) return RuntimePresentation.kind(context, kind);
+                return value;
+            case EVIDENCE:
+                switch (value) {
+                    case "environment": return context.getString(R.string.osservio_ui_evidence_environment);
+                    case "breadcrumbs": return context.getString(R.string.osservio_ui_evidence_breadcrumbs);
+                    case "logs": return context.getString(R.string.osservio_ui_evidence_logs);
+                    case "http": return context.getString(R.string.osservio_ui_evidence_http);
+                    case "webSocket": return context.getString(R.string.osservio_ui_evidence_webSocket);
+                    default: return value;
+                }
+            case RECORD: case EXCLUDED_RECORD:
                 if (value.equals("manual")) return context.getString(R.string.osservio_ui_manual);
                 for (com.sandrox.osservio.core.SystemDiagnostic.Kind kind : com.sandrox.osservio.core.SystemDiagnostic.Kind.values()) {
                     if (kind.name().equals(value)) return SystemDiagnosticPresentation.kind(context, kind);
@@ -177,6 +228,9 @@ final class InspectorFilterOptions {
         return android.text.TextUtils.join(", ", labels) + (values.size() > labels.size() ? " +" + (values.size() - labels.size()) : "");
     }
     static String summary(Context context, InspectorQuery query, List<InspectorFilterSheet.Group> groups) {
+        return summary(context, query, groups, false);
+    }
+    static String summary(Context context, InspectorQuery query, List<InspectorFilterSheet.Group> groups, boolean historical) {
         List<String> parts = new ArrayList<>();
         for (InspectorFilterSheet.Group group : displayGroups(context, query, groups)) {
             Set<String> selected = query.values.get(group.field);
@@ -190,9 +244,7 @@ final class InspectorFilterOptions {
             parts.add(group.title + ": " + android.text.TextUtils.join(", ", labels) + (selected.size() > 2 ? " +" + (selected.size() - 2) : ""));
         }
         if (query.recentMinutes > 0) {
-            int label = query.recentMinutes == 5 ? R.string.osservio_ui_time_5 : query.recentMinutes == 30 ? R.string.osservio_ui_time_30
-                : query.recentMinutes == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440;
-            parts.add(context.getString(label));
+            parts.add(time(context, query.recentMinutes, historical));
         }
         if (!query.excludedText.isEmpty()) parts.add(context.getString(R.string.osservio_ui_exclude) + ": " + query.excludedText);
         if (!query.fieldPath.isEmpty()) parts.add(InspectorFilterOptions.jsonCondition(context, query.fieldPath, query.fieldValue));

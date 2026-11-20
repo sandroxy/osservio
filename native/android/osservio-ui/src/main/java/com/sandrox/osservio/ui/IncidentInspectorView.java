@@ -45,6 +45,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
     }
 
     static final class State {
+        final InspectorRecentFilters recentFilters = new InspectorRecentFilters("incidents");
         InspectorQuery query = new InspectorQuery();
         List<IncidentSummary> snapshots = Collections.emptyList();
         IncidentSnapshot selected;
@@ -120,27 +121,30 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         list = new InspectorScroll.List(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
         list.setAdapter(rows);
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            if (reading || index < 0 || index >= visible.size()) return false;
+            IncidentSummary incident = visible.get(index);
+            return header.recordMenu(view, InspectorQuery.Field.RECORD,
+                incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name(), state.recentFilters);
+        });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (!reading && index >= 0 && index < visible.size()) open(visible.get(index).id);
         });
-        listing.addView(list, new LinearLayout.LayoutParams(-1, -1)); render();
+        listing.addView(header.viewport(list), new LinearLayout.LayoutParams(-1, -1)); render();
         list.setSelectionFromTop(state.position, state.offset);
         if (state.selected != null) showSnapshot(state.selected);
     }
     private List<InspectorFilterSheet.Group> filterGroups() {
-        List<InspectorFilterSheet.Group> groups = new ArrayList<>();
-        InspectorFilterSheet.Group types = InspectorFilterOptions.group(getContext(), InspectorQuery.Field.RECORD, R.string.osservio_ui_record);
-        for (IncidentSummary snapshot : snapshots) {
-            if (snapshot.diagnosticKind == null) types.option("manual", getContext().getString(R.string.osservio_ui_manual));
-            else types.option(snapshot.diagnosticKind.name(), SystemDiagnosticPresentation.kind(getContext(), snapshot.diagnosticKind));
-        }
-        groups.add(types);
-        return groups;
+        return InspectorFilterOptions.incidents(getContext(), snapshots);
     }
     private void filters(InspectorFilterSheet.Target target) {
-        confirmation = InspectorFilterSheet.show(getContext(), state.query, filterGroups(), R.string.osservio_ui_record_time, false, target,
+        confirmation = InspectorFilterSheet.show(getContext(), state.query, filterGroups(), R.string.osservio_ui_record_time, false, target, state.recentFilters,
             query -> { state.query = query; render(); });
         confirmation.setOnDismissListener(ignored -> confirmation = null);
+    }
+    void resetOwnerQuery() {
+        state.query = new InspectorQuery(); header.search.setText(""); render();
     }
     void saveReadingPosition() {
         state.position = list.getFirstVisiblePosition(); View first = list.getChildAt(0); state.offset = first == null ? 0 : first.getTop();

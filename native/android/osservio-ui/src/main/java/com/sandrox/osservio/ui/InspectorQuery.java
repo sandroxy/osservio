@@ -1,6 +1,7 @@
 package com.sandrox.osservio.ui;
 
 import com.sandrox.osservio.core.HTTPEvent;
+import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.LogEvent;
 import com.sandrox.osservio.core.WebSocketEvent;
 import com.sandrox.osservio.core.IncidentSummary;
@@ -18,8 +19,8 @@ import java.util.HashSet;
 
 /** View-only criteria: OR within one field, AND between independent fields. */
 final class InspectorQuery {
-    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION, ACTIVITY, OUTCOME, CLOSE_CODE, SEARCH_SCOPE, EXCLUDED_HOST, EXCLUDED_CATEGORY }
-    static final Field[] FIELD_ORDER = {Field.TRANSPORT, Field.LEVEL, Field.RECORD, Field.HOST, Field.EXCLUDED_HOST, Field.CATEGORY, Field.EXCLUDED_CATEGORY,
+    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION, ACTIVITY, OUTCOME, CLOSE_CODE, SEARCH_SCOPE, EXCLUDED_HOST, EXCLUDED_CATEGORY, BREADCRUMB_KIND, EXCLUDED_BREADCRUMB_KIND, EXCLUDED_RECORD, EVIDENCE }
+    static final Field[] FIELD_ORDER = {Field.TRANSPORT, Field.LEVEL, Field.RECORD, Field.EVIDENCE, Field.BREADCRUMB_KIND, Field.EXCLUDED_RECORD, Field.EXCLUDED_BREADCRUMB_KIND, Field.HOST, Field.EXCLUDED_HOST, Field.CATEGORY, Field.EXCLUDED_CATEGORY,
         Field.METHOD, Field.STATUS, Field.STATE, Field.ACTIVITY, Field.DIRECTION, Field.KIND, Field.OUTCOME,
         Field.CLOSE_CODE, Field.CONNECTION, Field.CONTENT, Field.SOURCE, Field.SEARCH_SCOPE};
     String text = "";
@@ -101,6 +102,10 @@ final class InspectorQuery {
     }
     private static Field opposite(Field field) {
         switch (field) {
+            case RECORD: return Field.EXCLUDED_RECORD;
+            case EXCLUDED_RECORD: return Field.RECORD;
+            case BREADCRUMB_KIND: return Field.EXCLUDED_BREADCRUMB_KIND;
+            case EXCLUDED_BREADCRUMB_KIND: return Field.BREADCRUMB_KIND;
             case CATEGORY: return Field.EXCLUDED_CATEGORY;
             case EXCLUDED_CATEGORY: return Field.CATEGORY;
             case HOST: return Field.EXCLUDED_HOST;
@@ -116,7 +121,7 @@ final class InspectorQuery {
         }
     }
     void filterRecord(Field field, String value, boolean excluding) {
-        if (field != Field.HOST && field != Field.CATEGORY) return;
+        if (field != Field.HOST && field != Field.CATEGORY && field != Field.RECORD && field != Field.BREADCRUMB_KIND) return;
         Field excluded = opposite(field);
         removeValue(excluding ? field : excluded, value);
         if (excluding) {
@@ -215,9 +220,24 @@ final class InspectorQuery {
             && allows(Field.SOURCE, connection.latest.source.name()) && includesTime(connection.latest.timestampMillis, now)
             && contains(connection.latest.url, connection.latest.connectionId);
     }
+    boolean matches(BreadcrumbEvent event, long now, String visibleKind) {
+        return allows(Field.BREADCRUMB_KIND, event.kind.name()) && !hidden(Field.EXCLUDED_BREADCRUMB_KIND, event.kind.name())
+            && includesTime(event.timestampMillis, now)
+            && contains(event.label, event.isPrivate ? null : event.message, event.id, visibleKind);
+    }
+    static Set<String> evidence(IncidentSummary incident) {
+        Set<String> available = new HashSet<>();
+        if (incident.hasEnvironment) available.add("environment");
+        String[] names = {"breadcrumbs", "logs", "http", "webSocket"};
+        Integer[] counts = {incident.breadcrumbCount, incident.logCount, incident.httpCount, incident.webSocketCount};
+        for (int i = 0; i < names.length; i++) if (counts[i] != null && counts[i] > 0) available.add(names[i]);
+        return available;
+    }
     boolean matches(IncidentSummary incident, long now) { return matches(incident, now, ""); }
     boolean matches(IncidentSummary incident, long now, String visibleKind) {
         return allows(Field.RECORD, incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name())
+            && !hidden(Field.EXCLUDED_RECORD, incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name())
+            && (!selected(Field.EVIDENCE) || !Collections.disjoint(values.get(Field.EVIDENCE), evidence(incident)))
             && includesTime(incident.timestampMillis, now)
             && contains(incident.id, incident.note == null || incident.note.isPrivate ? null : incident.note.text, visibleKind,
                 incident.diagnosticKind == null ? "manual" : incident.diagnosticKind.name());

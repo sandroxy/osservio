@@ -44,7 +44,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func attach(to owner: UIViewController) {
         self.owner = owner; table.dataSource = self; table.delegate = self
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 106
-        table.keyboardDismissMode = .onDrag; table.tableHeaderView = header
+        table.keyboardDismissMode = .onDrag; table.tableHeaderView = header; header.feedbackTable = table
         if connectionID != nil { header.extra.addArrangedSubview(InspectorTheme.label(.caption1, secondary: true)); header.actions.isHidden = true }
         header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }
         header.onQueryChange = { [weak self] in self?.apply($0) }

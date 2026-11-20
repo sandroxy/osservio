@@ -37,7 +37,7 @@ public final class LogInspectorViewController: UITableViewController {
     required init?(coder: NSCoder) { return nil }
     public override func loadView() { super.loadView(); tableView = table }
     public override func viewDidLoad() {
-        super.viewDidLoad(); table.tableHeaderView = header
+        super.viewDidLoad(); table.tableHeaderView = header; header.feedbackTable = table
         table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 100
         table.keyboardDismissMode = .onDrag
         header.onSearch = { [weak self] value in guard let self else { return }; var query = self.query; query.text = value; self.apply(query) }

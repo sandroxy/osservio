@@ -174,7 +174,8 @@ final class InspectorFilterSheet {
             return group.field != InspectorQuery.Field.TRANSPORT;
         }
         boolean advanced(Group group) {
-            if (group.field == InspectorQuery.Field.EXCLUDED_HOST || group.field == InspectorQuery.Field.EXCLUDED_CATEGORY) return true;
+            if (group.field == InspectorQuery.Field.EXCLUDED_HOST || group.field == InspectorQuery.Field.EXCLUDED_CATEGORY
+                || group.field == InspectorQuery.Field.EXCLUDED_RECORD || group.field == InspectorQuery.Field.EXCLUDED_BREADCRUMB_KIND) return true;
             switch (group.field) {
                 case SEARCH_SCOPE: case CONTENT: case SOURCE: case CONNECTION: case OUTCOME: case CLOSE_CODE: return true;
                 case KIND: return network;
@@ -191,7 +192,8 @@ final class InspectorFilterSheet {
         }
         void addChoices(Group group, String term) {
             int start = rows.size();
-            if (term.isEmpty()) rows.add(new Row(Type.OPTION, group, ALL, text(group.field == InspectorQuery.Field.EXCLUDED_CATEGORY || group.field == InspectorQuery.Field.EXCLUDED_HOST ? R.string.osservio_ui_no_exclusions : R.string.osservio_ui_all)));
+            if (term.isEmpty()) rows.add(new Row(Type.OPTION, group, ALL, text(group.field == InspectorQuery.Field.EXCLUDED_CATEGORY || group.field == InspectorQuery.Field.EXCLUDED_HOST
+                || group.field == InspectorQuery.Field.EXCLUDED_RECORD || group.field == InspectorQuery.Field.EXCLUDED_BREADCRUMB_KIND ? R.string.osservio_ui_no_exclusions : R.string.osservio_ui_all)));
             for (Map.Entry<String, String> entry : group.options.entrySet()) {
                 if (network && group.field == InspectorQuery.Field.KIND && !draft.allows(InspectorQuery.Field.ACTIVITY, entry.getKey().equals("MESSAGE") || entry.getKey().equals("MESSAGE_RESULT") ? "messages" : "connections")) continue;
                 if (group.field == InspectorQuery.Field.SEARCH_SCOPE && (("http".equals(transport()) && entry.getKey().equals("message")) || ("webSocket".equals(transport()) && (entry.getKey().equals("request") || entry.getKey().equals("response"))))) continue;
@@ -229,9 +231,10 @@ final class InspectorFilterSheet {
                     } else if (protocolField(group)) specific.add(group);
                     else shared.add(group);
                 }
+                for (Group group : shared) if (group.field == InspectorQuery.Field.RECORD || group.field == InspectorQuery.Field.BREADCRUMB_KIND) addGroup(group);
                 rows.add(new Row(Type.TIME, text(timeLabel)));
                 if (timeExpanded) for (int value : times) rows.add(new Row(Type.TIME_OPTION, null, Integer.toString(value), timeText(value)));
-                for (Group group : shared) addGroup(group);
+                for (Group group : shared) if (group.field != InspectorQuery.Field.RECORD && group.field != InspectorQuery.Field.BREADCRUMB_KIND) addGroup(group);
                 if (!specific.isEmpty() || (payload && "http".equals(transport()))) rows.add(new Row(Type.GAP, ""));
                 for (Group group : specific) addGroup(group);
                 if (payload && "http".equals(transport())) { rows.add(new Row(Type.DURATION, text(R.string.osservio_ui_http_timing))); if (durationExpanded) rows.add(new Row(Type.INPUT, "")); }
@@ -239,7 +242,8 @@ final class InspectorFilterSheet {
                     rows.add(new Row(Type.GAP, "")); rows.add(new Row(Type.RECENT_TOGGLE, text(R.string.osservio_ui_recent_filters)));
                     if (showsRecent) for (int i = 0; i < recentItems.size(); i++) {
                         InspectorQuery item = recentItems.get(i);
-                        rows.add(new Row(Type.RECENT, null, Integer.toString(i), InspectorFilterOptions.summary(context, item, candidates)));
+                        rows.add(new Row(Type.RECENT, null, Integer.toString(i), InspectorFilterOptions.summary(context, item, candidates,
+                            timeLabel == R.string.osservio_ui_saved_time || timeLabel == R.string.osservio_ui_run_time)));
                     }
                 }
                 boolean precise = payload; for (Group group : groups) if (applicable(group) && advanced(group)) { precise = true; break; }
@@ -267,11 +271,15 @@ final class InspectorFilterSheet {
             for (Group group : groups) if (applicable(group) && advanced(group) && draft.values.containsKey(group.field) && !draft.values.get(group.field).isEmpty()) details.add(group.title + ": " + compact(summary(group)));
             if (!draft.excludedText.isEmpty()) details.add(text(R.string.osservio_ui_exclude) + ": " + compact(draft.excludedText));
             if (!draft.fieldPath.isEmpty()) details.add(text(R.string.osservio_ui_json_field) + ": " + compact(InspectorFilterOptions.jsonCondition(context, draft.fieldPath, draft.fieldValue)));
-            return details.isEmpty() ? text(R.string.osservio_ui_filter_refine_hint) : android.text.TextUtils.join(" · ", details.subList(0, Math.min(3, details.size()))) + (details.size() > 3 ? " · +" + (details.size() - 3) : "");
+            return details.isEmpty() ? text(payload ? R.string.osservio_ui_filter_refine_hint : R.string.osservio_ui_filter_exclusions_hint) : android.text.TextUtils.join(" · ", details.subList(0, Math.min(3, details.size()))) + (details.size() > 3 ? " · +" + (details.size() - 3) : "");
         }
         String compact(String value) { return value.codePointCount(0, value.length()) > 80 ? value.substring(0, value.offsetByCodePoints(0, 80)) + "…" : value; }
-        String timeText(int value) { return text(value == 0 ? R.string.osservio_ui_time_all : value == 5 ? R.string.osservio_ui_time_5 : value == 30 ? R.string.osservio_ui_time_30 : value == 60 ? R.string.osservio_ui_time_60 : R.string.osservio_ui_time_1440); }
+        String timeText(int value) { return InspectorFilterOptions.time(context, value, timeLabel == R.string.osservio_ui_saved_time || timeLabel == R.string.osservio_ui_run_time); }
         String summary(Group group) {
+            Set<String> selected = draft.values.get(group.field);
+            if ((selected == null || selected.isEmpty()) && (group.field == InspectorQuery.Field.EXCLUDED_CATEGORY
+                || group.field == InspectorQuery.Field.EXCLUDED_HOST || group.field == InspectorQuery.Field.EXCLUDED_RECORD
+                || group.field == InspectorQuery.Field.EXCLUDED_BREADCRUMB_KIND)) return text(R.string.osservio_ui_no_exclusions);
             return InspectorFilterOptions.selectionSummary(context, group, draft.values.get(group.field));
         }
         boolean outsideCard(int position) {

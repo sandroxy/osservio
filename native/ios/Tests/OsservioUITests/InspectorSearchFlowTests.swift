@@ -8,6 +8,8 @@ import XCTest
 final class InspectorSearchFlowTests: XCTestCase {
     @MainActor func testChipEditingRemovingAndUndoUseIndependentActions() throws {
         let header = InspectorFeedHeader(compact: true)
+        let table = InspectorTableView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), style: .insetGrouped)
+        table.tableHeaderView = header; header.feedbackTable = table
         var active = InspectorQuery(), target: InspectorQuery.Target?
         active.select(.level, value: "error"); active.text = "checkout"
         let original = active
@@ -38,7 +40,7 @@ final class InspectorSearchFlowTests: XCTestCase {
         XCTAssertFalse(close.isHighlighted); edit.isHighlighted = false
         tap(close)
         XCTAssertTrue(active.values[.level]?.isEmpty ?? true); XCTAssertEqual(active.text, "checkout")
-        let undo = try XCTUnwrap(buttons(header).first { $0.currentTitle == InspectorLocalization.text("ui_undo_filter") })
+        let undo = try XCTUnwrap(buttons(table).first { $0.currentTitle == InspectorLocalization.text("ui_undo_filter") })
         XCTAssertFalse(undo.isHidden); tap(undo)
         XCTAssertEqual(active, original)
     }

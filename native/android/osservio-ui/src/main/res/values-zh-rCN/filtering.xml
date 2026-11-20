@@ -35,4 +35,25 @@
     <string name="osservio_ui_status_5xx">服务端错误（5xx）</string>
     <string name="osservio_ui_search_scope_hint">限定文字搜索与排除文本的范围。JSON 字段条件检查已保留的正文。</string>
     <string name="osservio_ui_filter_options_empty">没有匹配的选项。</string>
+    <string name="osservio_ui_breadcrumb_kind">事件类型</string>
+    <string name="osservio_ui_excluded_breadcrumb_kind">排除事件类型</string>
+    <string name="osservio_ui_excluded_record">排除记录类型</string>
+    <string name="osservio_ui_evidence">包含的证据</string>
+    <string name="osservio_ui_evidence_environment">环境信息</string>
+    <string name="osservio_ui_evidence_breadcrumbs">运行线索记录</string>
+    <string name="osservio_ui_evidence_logs">日志记录</string>
+    <string name="osservio_ui_evidence_http">HTTP 记录</string>
+    <string name="osservio_ui_evidence_webSocket">WebSocket 记录</string>
+    <string name="osservio_ui_only_breadcrumb_kind">只看此类事件</string>
+    <string name="osservio_ui_exclude_breadcrumb_kind">排除此类事件</string>
+    <string name="osservio_ui_only_record">只看此类记录</string>
+    <string name="osservio_ui_exclude_record">排除此类记录</string>
+    <string name="osservio_ui_saved_time">快照前的时间范围</string>
+    <string name="osservio_ui_run_time">最后记录前的时间范围</string>
+    <string name="osservio_ui_before_5">此前 5 分钟</string>
+    <string name="osservio_ui_before_30">此前 30 分钟</string>
+    <string name="osservio_ui_before_60">此前 1 小时</string>
+    <string name="osservio_ui_before_1440">此前 24 小时</string>
+    <string name="osservio_ui_filter_exclusions_hint">按类型排除不需要的记录</string>
+    <string name="osservio_ui_filter_undo_notice">筛选已修改</string>
 </resources>

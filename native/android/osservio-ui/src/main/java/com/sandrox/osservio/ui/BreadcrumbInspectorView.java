@@ -28,13 +28,17 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
     private final ListView list;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
-    private InspectorQuery query = new InspectorQuery();
+    static final class State {
+        InspectorQuery query = new InspectorQuery();
+        final InspectorRecentFilters recentFilters = new InspectorRecentFilters("breadcrumbs");
+        boolean dirty = true;
+    }
+    private final State state;
     private BreadcrumbSnapshot latest;
     private long timeAnchor;
     private boolean paused;
     private boolean stale;
     private boolean attached;
-    private boolean dirty = true;
     private InspectorScreen detail;
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
@@ -43,14 +47,22 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         }
     };
     BreadcrumbInspectorView(Context host, BreadcrumbRecorder recorder, BreadcrumbHistory history) {
-        super(InspectorTheme.context(host)); Context context = getContext(); this.recorder = recorder; this.history = history;
+        this(host, recorder, history, new State());
+    }
+    BreadcrumbInspectorView(Context host, BreadcrumbRecorder recorder, BreadcrumbHistory history, State state) {
+        super(InspectorTheme.context(host)); this.state = state; Context context = getContext(); this.recorder = recorder; this.history = history;
         setOrientation(VERTICAL); setBackgroundColor(InspectorTheme.canvas(context));
-        header = new InspectorFeedHeader(context, R.string.osservio_crumb_search, "", value -> { query.text = value; dirty = true; refreshView(); },
+        header = new InspectorFeedHeader(context, R.string.osservio_crumb_search, "", value -> { state.query.text = value; state.dirty = true; refreshView(); },
             () -> setPaused(false), this::filters, this::actions, true, R.string.osservio_crumb_clear);
-        header.onQueryChange = value -> { query = value; dirty = true; refreshView(); };
+        header.onQueryChange = value -> { state.query = value; state.dirty = true; refreshView(); };
         list = new InspectorScroll.List(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setDivider(null);
         list.setDividerHeight(0);
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            return index >= 0 && index < events.size() && header.recordMenu(view, InspectorQuery.Field.BREADCRUMB_KIND,
+                events.get(index).kind.name(), state.recentFilters);
+        });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < events.size()) showDetail(events.get(index));
         });
@@ -66,20 +78,18 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         InspectorAppearance.content(this, () -> {
             header.search.setHint(R.string.osservio_crumb_search);
             list.setDivider(null);
-            dirty = true; if (detail == null) refreshView();
+            state.dirty = true; if (detail == null) refreshView();
         });
     }
     private List<InspectorFilterSheet.Group> groups() {
-        InspectorFilterSheet.Group kinds = InspectorFilterOptions.group(getContext(), InspectorQuery.Field.KIND, R.string.osservio_ui_kind);
-        if (latest != null) for (BreadcrumbEvent event : latest.events) kinds.option(event.kind.name(), RuntimePresentation.kind(getContext(), event.kind));
-        return Collections.singletonList(kinds);
+        return InspectorFilterOptions.breadcrumbs(getContext(), latest == null ? Collections.emptyList() : latest.events);
     }
     private void filters(InspectorFilterSheet.Target target) {
-        detail = InspectorFilterSheet.show(getContext(), query, groups(), R.string.osservio_ui_time, false, target, value -> { query = value; dirty = true; refreshView(); }); watchDialog();
+        detail = InspectorFilterSheet.show(getContext(), state.query, groups(), R.string.osservio_ui_time, false, target, state.recentFilters, value -> { state.query = value; state.dirty = true; refreshView(); }); watchDialog();
     }
     private void actions() {
         detail = InspectorDialogs.confirm(getContext(), R.string.osservio_crumb_clear, R.string.osservio_ui_clear_hint, R.string.osservio_crumb_clear, (ignored, value) -> {
-            history.clear(); latest = history.snapshot(); dirty = true; refreshView();
+            history.clear(); latest = history.snapshot(); state.dirty = true; refreshView();
         }); watchDialog();
     }
     @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
@@ -98,20 +108,20 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
     }
     private void refreshView() {
         if (list == null) return;
+        if (!header.search.getText().toString().equals(state.query.text)) header.search.setText(state.query.text);
         if (!paused) {
             BreadcrumbSnapshot snapshot = history.snapshot(); timeAnchor = System.currentTimeMillis(); stale = snapshot == null;
-            if (snapshot != null) { dirty |= latest == null || latest.revision != snapshot.revision || query.recentMinutes > 0; latest = snapshot; }
+            if (snapshot != null) { state.dirty |= latest == null || latest.revision != snapshot.revision || state.query.recentMinutes > 0; latest = snapshot; }
         }
-        if (dirty) {
+        if (state.dirty) {
             events.clear();
             if (latest != null) for (int i = latest.events.size() - 1; i >= 0; i--) {
                 BreadcrumbEvent event = latest.events.get(i);
-                if (query.allows(InspectorQuery.Field.KIND, event.kind.name()) && query.includesTime(event.timestampMillis, timeAnchor)
-                    && query.contains(event.label, RuntimePresentation.kind(getContext(), event.kind), event.message)) events.add(event);
+                if (state.query.matches(event, timeAnchor, RuntimePresentation.kind(getContext(), event.kind))) events.add(event);
             }
-            header.setQuery(query, groups(), events.size(), latest == null ? 0 : latest.events.size());
+            header.setQuery(state.query, groups(), events.size(), latest == null ? 0 : latest.events.size());
             header.emptyMessage(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_crumb_empty : R.string.osservio_ui_filtered_empty);
-            rows.notifyDataSetChanged(); dirty = false;
+            rows.notifyDataSetChanged(); state.dirty = false;
             if (!paused) list.setSelectionFromTop(0, 0);
         }
         String notice = stale ? getContext().getString(latest == null ? R.string.osservio_busy : R.string.osservio_ui_previous_window) : "";

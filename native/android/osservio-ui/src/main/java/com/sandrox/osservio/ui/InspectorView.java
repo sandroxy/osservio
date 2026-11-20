@@ -152,6 +152,13 @@ public final class InspectorView extends FrameLayout {
     void disposePresentation() { materials.dispose(); navigation.dispose(); appearanceListener = null; onClose = null; }
     /** Use a stable host-owned account identifier to remember applied criteria across launches. */
     public void setRecentFilterOwner(java.util.UUID owner) {
+        if (incidentState.recentFilters.owner(getContext(), owner)) {
+            if (pages[2] instanceof IncidentInspectorView) ((IncidentInspectorView) pages[2]).resetOwnerQuery();
+            else incidentState.query = new InspectorQuery();
+        }
+        if (appState.breadcrumbs.recentFilters.owner(getContext(), owner)) {
+            appState.breadcrumbs.query = new InspectorQuery(); appState.breadcrumbs.dirty = true;
+        }
         if (logState.recentFilters.owner(getContext(), owner)) {
             if (pages[0] instanceof LogInspectorView) ((LogInspectorView) pages[0]).resetOwnerQuery();
             else logState.query = new InspectorQuery();

@@ -18,6 +18,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var snapshots: [IncidentSummary] = []
     private var filtered: [IncidentSummary] = []
+    let recentFilters = InspectorRecentFilters("incidents")
     private var query = InspectorQuery()
     private var reading = false
     private var generation = 0
@@ -37,7 +38,7 @@ public final class IncidentInspectorViewController: UITableViewController {
     public override func loadView() { super.loadView(); tableView = table }
     public override func viewDidLoad() {
         super.viewDidLoad(); table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 102
-        table.keyboardDismissMode = .onDrag; table.tableHeaderView = header; header.pause.isHidden = true
+        table.keyboardDismissMode = .onDrag; table.tableHeaderView = header; header.feedbackTable = table; header.pause.isHidden = true
         header.extra.addArrangedSubview(markButton); header.extra.addArrangedSubview(retryButton)
         markButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         retryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
@@ -103,10 +104,19 @@ public final class IncidentInspectorViewController: UITableViewController {
     @objc private func markPressed() { if !reading { mark() } }
     @objc private func refreshPressed() { read() }
     private func showFilters(_ target: InspectorQuery.Target?) {
-        let kinds = snapshots.map { $0.diagnosticKind?.rawValue ?? "manual" }.sorted()
-        let groups = [InspectorFilterGroup(.record, values: kinds)]
-        let filters = InspectorFilterViewController(query: query, focus: target, groups: groups, timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
+        let filters = InspectorFilterViewController(query: query, focus: target, recent: recentFilters,
+            groups: InspectorFilterOptions.incidents(snapshots), timeLabel: "ui_record_time") { [weak self] value in self?.query = value; self?.render() }
         view.endEditing(true); inspectorPresent(filters)
+    }
+    func setRecentFilterOwner(_ owner: UUID?) {
+        guard recentFilters.owner != owner else { return }
+        recentFilters.owner = owner; query = InspectorQuery()
+        if isViewLoaded { header.search.text = ""; header.expireUndo(); render() }
+    }
+    override public func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        guard !reading, filtered.indices.contains(indexPath.row) else { return nil }
+        let kind = filtered[indexPath.row].diagnosticKind?.rawValue ?? "manual"
+        return header.recordMenu(field: .record, value: kind, recent: recentFilters)
     }
     @objc private func showActions() { confirmDeletion(id: nil) }
     @objc private func foreground() {

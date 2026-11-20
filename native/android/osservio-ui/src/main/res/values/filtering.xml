@@ -35,4 +35,25 @@
     <string name="osservio_ui_status_5xx">Server error (5xx)</string>
     <string name="osservio_ui_search_scope_hint">Limits text search and excluded text. JSON field conditions inspect retained bodies.</string>
     <string name="osservio_ui_filter_options_empty">No matching options.</string>
+    <string name="osservio_ui_breadcrumb_kind">Event type</string>
+    <string name="osservio_ui_excluded_breadcrumb_kind">Excluded event types</string>
+    <string name="osservio_ui_excluded_record">Excluded record types</string>
+    <string name="osservio_ui_evidence">Evidence present</string>
+    <string name="osservio_ui_evidence_environment">Environment information</string>
+    <string name="osservio_ui_evidence_breadcrumbs">Breadcrumb records</string>
+    <string name="osservio_ui_evidence_logs">Log records</string>
+    <string name="osservio_ui_evidence_http">HTTP records</string>
+    <string name="osservio_ui_evidence_webSocket">WebSocket records</string>
+    <string name="osservio_ui_only_breadcrumb_kind">Show only this event type</string>
+    <string name="osservio_ui_exclude_breadcrumb_kind">Exclude this event type</string>
+    <string name="osservio_ui_only_record">Show only this record type</string>
+    <string name="osservio_ui_exclude_record">Exclude this record type</string>
+    <string name="osservio_ui_saved_time">Time before snapshot</string>
+    <string name="osservio_ui_run_time">Time before last recorded event</string>
+    <string name="osservio_ui_before_5">Preceding 5 minutes</string>
+    <string name="osservio_ui_before_30">Preceding 30 minutes</string>
+    <string name="osservio_ui_before_60">Preceding hour</string>
+    <string name="osservio_ui_before_1440">Preceding 24 hours</string>
+    <string name="osservio_ui_filter_exclusions_hint">Exclude records by type</string>
+    <string name="osservio_ui_filter_undo_notice">Filter changed</string>
 </resources>

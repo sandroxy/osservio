@@ -7,8 +7,8 @@ struct InspectorQuery: Equatable, Codable, Sendable {
     enum Target: Equatable {
         case field(Field), time, duration, excludedText, json
     }
-    enum Field: String, Codable, Sendable { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope", excludedHost = "excluded_host", excludedCategory = "excluded_category" }
-    static let fieldOrder: [Field] = [.transport, .level, .record, .host, .excludedHost, .category, .excludedCategory, .method, .status, .state,
+    enum Field: String, Codable, Sendable { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case breadcrumbKind = "breadcrumb_kind", excludedBreadcrumbKind = "excluded_breadcrumb_kind", excludedRecord = "excluded_record", evidence; case closeCode = "close_code", searchScope = "search_scope", excludedHost = "excluded_host", excludedCategory = "excluded_category" }
+    static let fieldOrder: [Field] = [.transport, .level, .record, .evidence, .breadcrumbKind, .excludedRecord, .excludedBreadcrumbKind, .host, .excludedHost, .category, .excludedCategory, .method, .status, .state,
         .activity, .direction, .kind, .outcome, .closeCode, .connection, .content, .source, .searchScope]
     var text = ""
     var excludedText = ""
@@ -64,6 +64,10 @@ struct InspectorQuery: Equatable, Codable, Sendable {
     }
     private static func opposite(_ field: Field) -> Field? {
         switch field {
+        case .record: return .excludedRecord
+        case .excludedRecord: return .record
+        case .breadcrumbKind: return .excludedBreadcrumbKind
+        case .excludedBreadcrumbKind: return .breadcrumbKind
         case .category: return .excludedCategory
         case .excludedCategory: return .category
         case .host: return .excludedHost
@@ -72,7 +76,7 @@ struct InspectorQuery: Equatable, Codable, Sendable {
         }
     }
     mutating func filterRecord(_ field: Field, value: String, excluding: Bool) {
-        guard let excluded = Self.opposite(field), field == .host || field == .category else { return }
+        guard let excluded = Self.opposite(field), [.host, .category, .record, .breadcrumbKind].contains(field) else { return }
         if excluding {
             values[field]?.remove(value); values[excluded, default: []].insert(value)
         } else {
@@ -164,8 +168,25 @@ struct InspectorQuery: Equatable, Codable, Sendable {
     static func contains(_ query: String, in text: String) -> Bool {
         text.range(of: query, options: [.caseInsensitive, .literal], locale: Locale(identifier: "en_US_POSIX")) != nil
     }
+    func matches(_ event: BreadcrumbEvent, now: Int64) -> Bool {
+        allows(.breadcrumbKind, event.kind.rawValue)
+            && values[.excludedBreadcrumbKind]?.contains(event.kind.rawValue) != true
+            && includesTime(event.timestampMillis, now: now)
+            && contains(event.label, event.isPrivate ? "" : event.message ?? "", event.id, InspectorFilterOptions.label(.breadcrumbKind, event.kind.rawValue))
+    }
+    static func evidence(_ incident: IncidentSummary) -> Set<String> {
+        var available = Set<String>()
+        if incident.hasEnvironment { available.insert("environment") }
+        for (key, count) in [("breadcrumbs", incident.breadcrumbCount), ("logs", incident.logCount),
+                             ("http", incident.httpCount), ("webSocket", incident.webSocketCount)] {
+            if let count, count > 0 { available.insert(key) }
+        }
+        return available
+    }
     func matches(_ incident: IncidentSummary, now: Int64) -> Bool {
         allows(.record, incident.diagnosticKind?.rawValue ?? "manual")
+            && values[.excludedRecord]?.contains(incident.diagnosticKind?.rawValue ?? "manual") != true
+            && (values[.evidence]?.isEmpty != false || !Self.evidence(incident).isDisjoint(with: values[.evidence] ?? []))
             && includesTime(incident.timestampMillis, now: now)
             && contains(incident.id, incident.note?.isPrivate == false ? incident.note?.text ?? "" : "", incident.diagnosticKind?.rawValue ?? "manual", InspectorFilterOptions.label(.record, incident.diagnosticKind?.rawValue ?? "manual"))
     }

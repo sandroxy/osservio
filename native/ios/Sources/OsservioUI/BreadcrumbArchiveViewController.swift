@@ -147,8 +147,11 @@ final class BreadcrumbArchiveViewController: UITableViewController {
 final class RetainedBreadcrumbViewController: UITableViewController {
     private let history: RetainedBreadcrumbs
     private var events: [BreadcrumbEvent]
-    private let search = UISearchTextField()
-    private lazy var searchGroup = InspectorSearchGroupCell(search: search)
+    private let filters = InspectorFeedHeader(compact: true)
+    private var search: UISearchTextField { filters.search }
+    private var query = InspectorQuery()
+    private let recentFilters = InspectorRecentFilters("saved-breadcrumbs")
+    private lazy var searchGroup = InspectorSearchGroupCell(search: search, controls: filters)
     private let status = InspectorTheme.label(.footnote, secondary: true)
     private var deletion: InspectorRecordDeletion?
     private lazy var copy = inspectorCopyItem(target: self, action: #selector(copySummary), label: "archive_copy_summary")
@@ -169,12 +172,16 @@ final class RetainedBreadcrumbViewController: UITableViewController {
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
         search.autocorrectionType = .no; search.autocapitalizationType = .none; search.returnKeyType = .done
         search.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-        search.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
+        filters.historicalTime = true
+        filters.onSearch = { [weak self] value in self?.query.text = value; self?.searchChanged() }
+        filters.onQueryChange = { [weak self] value in self?.query = value; self?.searchChanged() }
+        filters.onFilters = { [weak self] in self?.showFilters($0) }
         search.addTarget(self, action: #selector(endSearch), for: .editingDidEndOnExit)
         status.isHidden = true
         let header = UIStackView(arrangedSubviews: [status]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
+        filters.feedbackTable = tableView as? InspectorTableView
         inspectorActions = (deletion.map { [$0.button] } ?? []) + [copy]
     }
     override func viewWillAppear(_ animated: Bool) {
@@ -190,10 +197,8 @@ final class RetainedBreadcrumbViewController: UITableViewController {
     @objc private func copySummary() { UIPasteboard.general.string = PersistencePresentation.run(history.run) }
     @objc private func searchChanged() {
         guard search.markedTextRange == nil else { return }
-        let query = String((search.text ?? "").prefix(512)); if query != search.text { search.text = query }
         let previousCount = events.count
-        events = history.events.reversed().filter { query.isEmpty || $0.label.localizedCaseInsensitiveContains(query)
-            || RuntimePresentation.kind($0).localizedCaseInsensitiveContains(query) || ($0.message?.localizedCaseInsensitiveContains(query) ?? false) }
+        events = (history.events).reversed().filter { query.matches($0, now: history.run.lastRecordedAtMillis) }
         updateSearchGroup()
         UIView.performWithoutAnimation {
             tableView.performBatchUpdates {
@@ -205,10 +210,25 @@ final class RetainedBreadcrumbViewController: UITableViewController {
     override func numberOfSections(in tableView: UITableView) -> Int { 2 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : 1 + events.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { section == 0 ? RuntimePresentation.text("ui_run_details") : nil }
+    private func showFilters(_ target: InspectorQuery.Target?) {
+        let editor = InspectorFilterViewController(query: query, focus: target, recent: recentFilters,
+            groups: InspectorFilterOptions.breadcrumbs(history.events), timeLabel: "ui_run_time") { [weak self] in
+            self?.query = $0; self?.searchChanged()
+        }
+        view.endEditing(true); inspectorPresent(editor)
+    }
+    override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        guard indexPath.section == 1, indexPath.row > 0, events.indices.contains(indexPath.row - 1) else { return nil }
+        return filters.recordMenu(field: .breadcrumbKind, value: events[indexPath.row - 1].kind.rawValue, recent: recentFilters)
+    }
     private func updateSearchGroup() {
+        filters.relabel(paused: false, query: query)
+        filters.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, (history.events).count)
+
         searchGroup.configure(title: RuntimePresentation.text("runtime_breadcrumbs"),
-            summary: String(format: RuntimePresentation.text("ui_record_count"), history.events.count),
-            message: events.isEmpty ? RuntimePresentation.text(history.events.isEmpty ? "ui_saved_breadcrumbs_empty" : "ws_no_matches") : nil)
+            summary: nil,
+            message: events.isEmpty ? RuntimePresentation.text(history.events.isEmpty ? "ui_saved_breadcrumbs_empty" : "ui_filtered_empty") : nil,
+            filteredEmpty: !history.events.isEmpty && events.isEmpty && query.activeCount > 0)
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         section == 0 ? RuntimePresentation.text("archive_snapshot") : nil

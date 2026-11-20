@@ -4,6 +4,35 @@ import OsservioCore
 import XCTest
 
 final class InspectorQueryTests: XCTestCase {
+    func testBreadcrumbCriteriaKeepTheirOwnTypesAndUseTheSuppliedTimeAnchor() throws {
+        let event = try BreadcrumbEvent.restore(id: id, sessionID: id, sequence: 1, timestampMillis: 500_000,
+            sessionElapsedMillis: 100, kind: .hostMarker, label: "checkout.ready", message: "Order ready",
+            isPrivate: false, isTruncated: false, value: nil, retention: .restartRelevant)
+        var query = InspectorQuery(); query.recentMinutes = 5; query.text = "ORDER"
+        query.select(.breadcrumbKind, value: "hostMarker")
+        XCTAssertNil(query.transport); XCTAssertFalse(query.hasTransportConditions)
+        XCTAssertTrue(query.matches(event, now: 600_000))
+        XCTAssertFalse(query.matches(event, now: 900_001))
+        query.filterRecord(.breadcrumbKind, value: "hostMarker", excluding: true)
+        XCTAssertFalse(query.matches(event, now: 600_000))
+        query.filterRecord(.breadcrumbKind, value: "hostMarker", excluding: false)
+        XCTAssertTrue(query.matches(event, now: 600_000)); XCTAssertEqual(query.text, "ORDER")
+        XCTAssertNil(query.transport)
+    }
+    func testIncidentEvidenceMatchesKnownRecordsAndKeepsTypeExclusionsIndependent() {
+        func incident(_ logs: Int?) -> IncidentSummary {
+            IncidentSummary(id: id, timestampMillis: 500_000, note: nil, hasEnvironment: false, breadcrumbCount: nil, logCount: logs)
+        }
+        var query = InspectorQuery(); query.select(.evidence, value: "logs")
+        XCTAssertFalse(query.matches(incident(nil), now: 600_000))
+        XCTAssertFalse(query.matches(incident(0), now: 600_000))
+        XCTAssertTrue(query.matches(incident(1), now: 600_000))
+        query.filterRecord(.record, value: "manual", excluding: true)
+        XCTAssertFalse(query.matches(incident(1), now: 600_000))
+        query.filterRecord(.record, value: "manual", excluding: false)
+        XCTAssertTrue(query.matches(incident(1), now: 600_000))
+        XCTAssertEqual(query.values[.evidence], ["logs"])
+    }
     func testAppliedHTTPConditionsUseTheSameNamesAsTheirEditors() throws {
         var query = InspectorQuery()
         query.select(.method, value: "POST")
