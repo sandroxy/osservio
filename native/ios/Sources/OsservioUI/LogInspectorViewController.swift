@@ -5,6 +5,7 @@ import UIKit
 /// A bounded live log feed. Reading, navigation and presentation never change capture.
 @MainActor
 public final class LogInspectorViewController: UITableViewController {
+    let recentFilters = InspectorRecentFilters("logs")
     private let recorder: LogRecorder
     private let history: any LogHistory
     private let table = InspectorTableView(frame: .zero, style: .insetGrouped)
@@ -71,6 +72,12 @@ public final class LogInspectorViewController: UITableViewController {
         updateStatus()
     }
     private func cancelSearch() { generation &+= 1; task?.cancel(); task = nil; dirty = true }
+    func setRecentFilterOwner(_ owner: UUID?) {
+        guard recentFilters.owner != owner else { return }
+        recentFilters.owner = owner
+        header.expireUndo(); header.search.text = ""
+        if query != InspectorQuery() { apply(InspectorQuery()) }
+    }
     private func apply(_ query: InspectorQuery) {
         cancelSearch(); self.query = query; result = nil; events = []
         nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.2; display(); refresh()
@@ -126,7 +133,7 @@ public final class LogInspectorViewController: UITableViewController {
     }
     private func showFilters(_ target: InspectorQuery.Target?) {
         view.endEditing(true)
-        inspectorPresent(InspectorFilterViewController(query: query, focus: target, groups: InspectorFilterOptions.logs(latest?.events ?? []), payload: true) { [weak self] in self?.apply($0) })
+        inspectorPresent(InspectorFilterViewController(query: query, focus: target, recent: recentFilters, groups: InspectorFilterOptions.logs(latest?.events ?? []), payload: true) { [weak self] in self?.apply($0) })
     }
     @objc private func clear() {
         inspectorConfirm(InspectorLocalization.text("clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
@@ -152,7 +159,7 @@ public final class LogInspectorViewController: UITableViewController {
         return cell
     }
     public override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
-        header.recordMenu(.log(events[indexPath.row]))
+        header.recordMenu(.log(events[indexPath.row]), recent: recentFilters)
     }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)

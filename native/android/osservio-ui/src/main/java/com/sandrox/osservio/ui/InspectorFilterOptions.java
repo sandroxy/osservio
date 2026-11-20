@@ -39,10 +39,11 @@ final class InspectorFilterOptions {
         for (WebSocketEvent event : sockets) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); connections.add(event.connectionId); kinds.add(event.kind); }
         groups.add(strings(context, InspectorQuery.Field.HOST, R.string.osservio_ui_host, hosts));
         groups.add(strings(context, InspectorQuery.Field.EXCLUDED_HOST, R.string.osservio_ui_excluded_host, hosts));
-        if (sources.size() > 1 || (query.values.containsKey(InspectorQuery.Field.SOURCE) && !query.values.get(InspectorQuery.Field.SOURCE).isEmpty())) {
-            InspectorFilterSheet.Group source = group(context, InspectorQuery.Field.SOURCE, R.string.osservio_ui_source);
-            for (String key : sources) source.option(key, source(context, key)); groups.add(source);
+        InspectorFilterSheet.Group source = group(context, InspectorQuery.Field.SOURCE, R.string.osservio_ui_source);
+        if (sources.size() > 1 || query.values.containsKey(InspectorQuery.Field.SOURCE)) {
+            for (String key : sources) source.option(key, source(context, key));
         }
+        groups.add(source);
         if (includeHTTP) {
             groups.add(strings(context, InspectorQuery.Field.METHOD, R.string.osservio_ui_http_method, methods));
             InspectorFilterSheet.Group codes = group(context, InspectorQuery.Field.STATUS, R.string.osservio_ui_http_status);
@@ -121,15 +122,22 @@ final class InspectorFilterOptions {
                 String[] kinds = InspectorHTTPContent.CATEGORIES;
                 int[] labels = {R.string.osservio_ui_content_json, R.string.osservio_ui_content_text, R.string.osservio_ui_content_image, R.string.osservio_ui_content_media, R.string.osservio_ui_content_other, R.string.osservio_ui_content_unknown};
                 for (int i = 0; i < kinds.length; i++) if (kinds[i].equals(value)) return context.getString(labels[i]); return value;
-            case STATE: return HTTPPresentation.state(context, HTTPEvent.State.valueOf(value));
+            case STATE:
+                for (HTTPEvent.State state : HTTPEvent.State.values()) if (state.name().equals(value)) return HTTPPresentation.state(context, state);
+                return value;
             case KIND:
                 for (WebSocketEvent.Kind kind : WebSocketEvent.Kind.values()) if (kind.name().equals(value)) return WebSocketPresentation.kind(context, kind);
                 for (com.sandrox.osservio.core.BreadcrumbEvent.Kind kind : com.sandrox.osservio.core.BreadcrumbEvent.Kind.values()) if (kind.name().equals(value)) return RuntimePresentation.kind(context, kind);
                 return value;
             case RECORD:
                 if (value.equals("manual")) return context.getString(R.string.osservio_ui_manual);
-                return SystemDiagnosticPresentation.kind(context, com.sandrox.osservio.core.SystemDiagnostic.Kind.valueOf(value));
-            case OUTCOME: return WebSocketPresentation.outcome(context, WebSocketEvent.Outcome.valueOf(value));
+                for (com.sandrox.osservio.core.SystemDiagnostic.Kind kind : com.sandrox.osservio.core.SystemDiagnostic.Kind.values()) {
+                    if (kind.name().equals(value)) return SystemDiagnosticPresentation.kind(context, kind);
+                }
+                return value;
+            case OUTCOME:
+                for (WebSocketEvent.Outcome outcome : WebSocketEvent.Outcome.values()) if (outcome.name().equals(value)) return WebSocketPresentation.outcome(context, outcome);
+                return value;
             case DIRECTION: return context.getString(value.equals("none") ? R.string.osservio_ui_no_direction : value.equals("INCOMING") ? R.string.osservio_ws_incoming : R.string.osservio_ws_outgoing);
             default: return value;
         }

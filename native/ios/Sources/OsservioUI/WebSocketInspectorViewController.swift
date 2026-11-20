@@ -91,7 +91,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
     }
     private func headerRow(_ header: HTTPHeader) -> Row {
         Row(header.name, InspectorRecordPresentation.compact(header.value, limit: 180), action: { [weak self] in
-            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }), source: "ui_search_handshake_headers")
+            self?.readHeader(name: header.name, value: header.value, source: "ui_search_handshake_headers")
         })
     }
     private func payloadContent() -> InspectorReadContent {

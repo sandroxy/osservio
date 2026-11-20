@@ -159,6 +159,9 @@
 "ui_exclude_category" = "排除此分类";
 "ui_no_exclusions" = "不排除";
 "ui_adjust_filters" = "调整筛选";
+"ui_recent_filters" = "最近筛选";
+"ui_restore_filter" = "载入草稿";
+"ui_forget_filter" = "从最近筛选中移除";
 "ui_edit_filter" = "编辑此条件";
 "ui_undo_filter" = "撤销";
 "ui_remove_filter" = "移除此条件";

@@ -31,6 +31,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
     }
 
     static final class State {
+        final InspectorRecentFilters recentFilters = new InspectorRecentFilters("logs");
         InspectorQuery query = new InspectorQuery();
         LogSnapshot snapshot;
         boolean paused;
@@ -75,7 +76,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setOnItemLongClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
-            return index >= 0 && index < events.size() && header.recordMenu(view, new InspectorRecordSearch.Record(events.get(index)));
+            return index >= 0 && index < events.size() && header.recordMenu(view, new InspectorRecordSearch.Record(events.get(index)), state.recentFilters);
         });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
@@ -104,6 +105,11 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
     }
     private List<LogEvent> retained() { return state.snapshot == null ? Collections.emptyList() : state.snapshot.events; }
     private void cancelSearch() { generation++; if (task != null) task.cancel(); task = null; dirty = true; }
+    void resetOwnerQuery() {
+        header.finishUndo();
+        if (header.search.length() > 0) header.search.setText("");
+        if (!state.query.sameAs(new InspectorQuery())) apply(new InspectorQuery());
+    }
     private void apply(InspectorQuery query) {
         cancelSearch(); state.query = query; result = null; events.clear(); nextSearchAt = android.os.SystemClock.uptimeMillis() + 200;
         if (list != null) { display(); schedule(); }
@@ -172,7 +178,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             if (!state.paused) list.setSelectionFromTop(0, 0);
         } finally { InspectorPerformance.end(tracing); }
     }
-    private void filters(InspectorFilterSheet.Target target) { dialog = InspectorFilterSheet.show(getContext(), state.query, InspectorFilterOptions.logs(getContext(), retained()), R.string.osservio_ui_time, true, target, this::apply); watchDialog(); }
+    private void filters(InspectorFilterSheet.Target target) { dialog = InspectorFilterSheet.show(getContext(), state.query, InspectorFilterOptions.logs(getContext(), retained()), R.string.osservio_ui_time, true, target, state.recentFilters, this::apply); watchDialog(); }
     private void confirmClear() {
         dialog = InspectorDialogs.confirm(getContext(), R.string.osservio_clear, R.string.osservio_ui_clear_hint, R.string.osservio_clear, (ignored, which) -> {
                 cancelSearch(); history.clear(); state.snapshot = history.snapshot(); result = null; events.clear(); nextSearchAt = 0; search();

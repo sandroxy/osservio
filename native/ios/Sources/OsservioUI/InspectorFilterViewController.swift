@@ -8,6 +8,10 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private var scopes = InspectorQuery.ScopeDraft()
     private var focusTarget: InspectorQuery.Target?
     private var groups: [InspectorFilterGroup]
+    private let recent: InspectorRecentFilters?
+    private var recentItems: [InspectorQuery] = []
+    private var showsRecent = false
+    private let candidates: [InspectorFilterGroup]
     private let apply: (InspectorQuery) -> Void
     private let search = UISearchTextField(), footer = UIStackView()
     private let timeLabel: String
@@ -18,15 +22,15 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
     private var picker: Int?
     private var overviewOffset = CGPoint.zero
     private let times = [0, 5, 30, 60, 1440]
-    private enum Row { case scope, groupHeading(Int), group(Int), option(Int, String?, String), time, timeOption(Int), duration, durationInput, refine }
+    private enum Row { case scope, groupHeading(Int), group(Int), option(Int, String?, String), time, timeOption(Int), duration, durationInput, refine, recentToggle, recent(Int) }
     private struct Section { let title: String?; let rows: [Row] }
     private var sections: [Section] = []
     private var scope: InspectorScopeControl?
     private lazy var resetAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(resetDraft))
     private lazy var backAction = UIBarButtonItem(title: nil, style: .plain, target: self, action: #selector(backToFilters))
 
-    init(query: InspectorQuery, focus: InspectorQuery.Target? = nil, groups: [InspectorFilterGroup], timeLabel: String = "ui_time", payload: Bool = false, apply: @escaping (InspectorQuery) -> Void) {
-        draft = query; focusTarget = focus; self.groups = groups; self.apply = apply; self.timeLabel = timeLabel; self.payload = payload
+    init(query: InspectorQuery, focus: InspectorQuery.Target? = nil, recent: InspectorRecentFilters? = nil, groups: [InspectorFilterGroup], timeLabel: String = "ui_time", payload: Bool = false, apply: @escaping (InspectorQuery) -> Void) {
+        self.recent = recent; draft = query; focusTarget = focus; self.groups = groups; self.apply = apply; self.timeLabel = timeLabel; self.payload = payload
         hasHTTP = groups.contains { $0.field == .method || $0.field == .transport && $0.options.contains(where: { $0.value == "http" }) }
         hasSockets = groups.contains { $0.field == .direction || $0.field == .transport && $0.options.contains(where: { $0.value == "webSocket" }) }
         network = hasHTTP || hasSockets
@@ -36,16 +40,22 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             else { scopes.insert("message", at: 0) }
             self.groups.append(InspectorFilterGroup(.searchScope, values: scopes))
         }
-        for index in self.groups.indices {
-            let field = self.groups[index].field, existing = Set(self.groups[index].options.map(\.value))
-            for value in (query.values[field] ?? []).subtracting(existing).sorted() {
-                self.groups[index].options.append((value, InspectorFilterOptions.label(field, value)))
-            }
-        }
-        self.groups.removeAll { $0.options.isEmpty }
-        self.groups.sort { InspectorQuery.fieldOrder.firstIndex(of: $0.field)! < InspectorQuery.fieldOrder.firstIndex(of: $1.field)! }
+        candidates = self.groups
+        self.groups = Self.available(candidates, query: query)
         super.init(style: .insetGrouped)
         rebuild()
+    }
+    private static func available(_ candidates: [InspectorFilterGroup], query: InspectorQuery) -> [InspectorFilterGroup] {
+        var result = candidates
+        for index in result.indices {
+            let field = result[index].field, existing = Set(result[index].options.map(\.value))
+            for value in (query.values[field] ?? []).subtracting(existing).sorted() {
+                result[index].options.append((value, InspectorFilterOptions.label(field, value)))
+            }
+        }
+        return result.filter { !$0.options.isEmpty }.sorted {
+            InspectorQuery.fieldOrder.firstIndex(of: $0.field)! < InspectorQuery.fieldOrder.firstIndex(of: $1.field)!
+        }
     }
     @available(*, unavailable) required init?(coder: NSCoder) { return nil }
     override func loadView() { super.loadView(); tableView = InspectorTableView(frame: .zero, style: .insetGrouped) }
@@ -69,6 +79,13 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         tableView.keyboardDismissMode = .onDrag
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 58
         rebuild()
+        recent?.ownerChanged = { [weak self] in self?.dismiss(animated: false) }
+        recent?.load { [weak self] items in
+            guard let self, !items.isEmpty else { return }
+            self.recentItems = items
+            // Do not reload an active picker or text editor when disk data arrives.
+            if self.picker == nil && !self.refined && !self.durationExpanded { self.rebuild() }
+        }
     }
     private func text(_ key: String) -> String { InspectorLocalization.text(key) }
     private var transport: String? { draft.transport ?? (hasHTTP && !hasSockets ? "http" : hasSockets && !hasHTTP ? "webSocket" : nil) }
@@ -125,6 +142,9 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             if payload && transport == "http" { common.append(.duration); if durationExpanded { common.append(.durationInput) } }
             sections = (hasHTTP && hasSockets ? [Section(title: text("ui_filter_scope"), rows: [.scope])] : [])
                 + [Section(title: text("ui_filter_common"), rows: common)]
+            if !recentItems.isEmpty {
+                sections.append(Section(title: nil, rows: [.recentToggle] + (showsRecent ? recentItems.indices.map(Row.recent) : [])))
+            }
             let precise = groups.indices.filter { applicable(groups[$0]) && advanced(groups[$0]) }
             if payload || !precise.isEmpty { sections.append(Section(title: nil, rows: [.refine] + (refined ? rows(for: precise) : []))) }
         }
@@ -215,7 +235,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             }
         }
         if !(hasHTTP && hasSockets) { draft.values[.transport] = nil }
-        apply(draft); dismiss(animated: true)
+        recent?.update(draft); apply(draft); dismiss(animated: true)
     }
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
     override func numberOfSections(in tableView: UITableView) -> Int { sections.count }
@@ -274,6 +294,18 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
             cell.textLabel?.text = String(format: text(group.field == .activity ? "ui_filter_single_title" : "ui_filter_multiple_title"), group.title)
             cell.textLabel?.font = .preferredFont(forTextStyle: .subheadline); cell.textLabel?.textColor = InspectorTheme.secondary
             cell.accessibilityTraits = .header; cell.selectionStyle = .none
+        case .recentToggle:
+            cell.textLabel?.text = text("ui_recent_filters"); disclosure(showsRecent)
+        case .recent(let index):
+            let item = recentItems[index], label = InspectorFilterOptions.summary(item)
+            cell.textLabel?.text = label; cell.detailTextLabel?.text = text("ui_restore_filter")
+            let remove = InspectorFilterToken { [weak self] in
+                guard let self else { return }
+                self.recent?.update(item, removing: true); self.recentItems.removeAll { $0 == item }; self.rebuild()
+            }
+            remove.setImage(UIImage(systemName: "xmark"), for: .normal)
+            remove.frame.size = CGSize(width: 44, height: 44)
+            remove.accessibilityLabel = text("ui_forget_filter") + ", " + label; cell.accessoryView = remove
         case .scope:
             if scope == nil {
                 let control = InspectorScopeControl(titles: [text("ui_all"), "HTTP", "WebSocket"])
@@ -305,6 +337,13 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         let wasPicker = picker != nil
         switch sections[path.section].rows[path.row] {
         case .scope, .groupHeading, .durationInput: return
+        case .recentToggle: showsRecent.toggle()
+        case .recent(let index):
+            let term = draft.text
+            draft = recentItems[index]; draft.text = term
+            scopes = InspectorQuery.ScopeDraft(); showsRecent = false
+            groups = Self.available(candidates, query: draft); conditions?.sync(draft)
+            rebuild(); tableView.setContentOffset(CGPoint(x: 0, y: -tableView.adjustedContentInset.top), animated: false); return
         case .group(let index):
             view.endEditing(true)
             if groups[index].options.count > 6 || groups[index].field == .status { overviewOffset = tableView.contentOffset; picker = index; search.text = "" }

@@ -150,6 +150,17 @@ public final class InspectorView extends FrameLayout {
     }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); updateDebugPolling(); }
     void disposePresentation() { materials.dispose(); navigation.dispose(); appearanceListener = null; onClose = null; }
+    /** Use a stable host-owned account identifier to remember applied criteria across launches. */
+    public void setRecentFilterOwner(java.util.UUID owner) {
+        if (logState.recentFilters.owner(getContext(), owner)) {
+            if (pages[0] instanceof LogInspectorView) ((LogInspectorView) pages[0]).resetOwnerQuery();
+            else logState.query = new InspectorQuery();
+        }
+        if (networkState.recentFilters.owner(getContext(), owner)) {
+            if (pages[1] instanceof NetworkInspectorView) ((NetworkInspectorView) pages[1]).resetOwnerQuery();
+            else networkState.query = new InspectorQuery();
+        }
+    }
     /** Controls inspector navigation and action materials when the device admits them. Main thread only. */
     public void setEnhancedMaterialsEnabled(boolean enabled) {
         materials.setEnabled(enabled);

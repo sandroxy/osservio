@@ -33,6 +33,11 @@ final class InspectorQuery {
         for (Map.Entry<Field, Set<String>> entry : values.entrySet()) result.values.put(entry.getKey(), new HashSet<>(entry.getValue()));
         return result;
     }
+    void replaceFilters(InspectorQuery source) {
+        resetFilters(); recentMinutes = source.recentMinutes; minimumDurationMillis = source.minimumDurationMillis;
+        excludedText = source.excludedText; fieldPath = source.fieldPath; fieldValue = source.fieldValue;
+        for (Map.Entry<Field, Set<String>> group : source.values.entrySet()) values.put(group.getKey(), new HashSet<>(group.getValue()));
+    }
     boolean sameAs(InspectorQuery other) {
         return other != null && text.equals(other.text) && excludedText.equals(other.excludedText)
             && fieldPath.equals(other.fieldPath) && fieldValue.equals(other.fieldValue)

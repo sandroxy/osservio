@@ -134,9 +134,9 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             edit.setTitle(title, for: .normal)
             edit.accessibilityLabel = title; edit.accessibilityHint = InspectorLocalization.text("ui_edit_filter")
             edit.titleLabel?.lineBreakMode = .byTruncatingTail
+            group.addArrangedSubview(edit); tokens.addArrangedSubview(group)
             let readableWidth = edit.widthAnchor.constraint(lessThanOrEqualTo: tokenScroll.frameLayoutGuide.widthAnchor, constant: -52)
             readableWidth.priority = .defaultHigh; readableWidth.isActive = true
-            group.addArrangedSubview(edit)
             if let changed {
                 let close = InspectorFilterToken { [weak self] in self?.replace(query, with: changed) }
                 close.setImage(UIImage(systemName: "xmark"), for: .normal)
@@ -144,7 +144,6 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
                 close.accessibilityLabel = InspectorLocalization.text("ui_remove_filter") + ", " + title
                 group.addArrangedSubview(close)
             }
-            tokens.addArrangedSubview(group)
         }
         for field in InspectorQuery.fieldOrder {
             guard let values = query.values[field], !values.isEmpty else { continue }
@@ -164,7 +163,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         return button
     }()
     @objc private func openFilters() { onFilters?(nil) }
-    func recordMenu(_ record: InspectorSearchRecord) -> UIContextMenuConfiguration? {
+    func recordMenu(_ record: InspectorSearchRecord, recent: InspectorRecentFilters? = nil) -> UIContextMenuConfiguration? {
         let field: InspectorQuery.Field, value: String
         switch record {
         case .log(let event): field = .category; value = event.category
@@ -178,7 +177,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
                 return UIAction(title: InspectorLocalization.text(key)) { [weak self] _ in
                     guard let self, let original = self.displayedQuery else { return }
                     var query = original; query.filterRecord(field, value: value, excluding: excluding)
-                    if query != original { self.replace(original, with: query) }
+                    if query != original { recent?.update(query); self.replace(original, with: query) }
                 }
             }
             return UIMenu(title: value, children: actions)
@@ -195,7 +194,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         guard let removed, displayedQuery == removed.after else { expireUndo(); return }
         expireUndo(); onQueryChange?(removed.before)
     }
-    @objc private func expireUndo() { removed = nil; undo.isHidden = true; superview?.setNeedsLayout() }
+    @objc func expireUndo() { removed = nil; undo.isHidden = true; superview?.setNeedsLayout() }
     private func configure(_ button: UIButton, symbol: String, selected: Bool = false, title: String? = nil) {
         guard #available(iOS 15, *) else {
             button.setImage(UIImage(systemName: symbol), for: .normal); button.setTitle(title, for: .normal)
@@ -251,7 +250,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
 }
 
 @MainActor
-private final class InspectorFilterToken: UIButton {
+final class InspectorFilterToken: UIButton {
     private let operation: () -> Void
     init(operation: @escaping () -> Void) {
         self.operation = operation; super.init(frame: .zero)

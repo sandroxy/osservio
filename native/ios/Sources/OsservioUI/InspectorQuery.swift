@@ -3,11 +3,11 @@ import OsservioCore
 
 /// View-only criteria. Each value set is a union; independent fields intersect.
 /// The caller supplies a fixed time anchor while reading a paused snapshot.
-struct InspectorQuery: Equatable {
+struct InspectorQuery: Equatable, Codable, Sendable {
     enum Target: Equatable {
         case field(Field), time, duration, excludedText, json
     }
-    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope", excludedHost = "excluded_host", excludedCategory = "excluded_category" }
+    enum Field: String, Codable, Sendable { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope", excludedHost = "excluded_host", excludedCategory = "excluded_category" }
     static let fieldOrder: [Field] = [.transport, .level, .record, .host, .excludedHost, .category, .excludedCategory, .method, .status, .state,
         .activity, .direction, .kind, .outcome, .closeCode, .connection, .content, .source, .searchScope]
     var text = ""

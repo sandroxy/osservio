@@ -137,6 +137,9 @@
     <string name="osservio_ui_exclude_category">排除此分类</string>
     <string name="osservio_ui_no_exclusions">不排除</string>
     <string name="osservio_ui_adjust_filters">调整筛选</string>
+    <string name="osservio_ui_recent_filters">最近筛选</string>
+    <string name="osservio_ui_restore_filter">载入草稿</string>
+    <string name="osservio_ui_forget_filter">从最近筛选中移除</string>
     <string name="osservio_ui_edit_filter">编辑此条件</string>
     <string name="osservio_ui_undo_filter">撤销</string>
     <string name="osservio_ui_remove_filter">移除此条件</string>

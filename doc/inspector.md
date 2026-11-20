@@ -114,6 +114,14 @@ theme preserves the applied query and reading position. Reset clears filter
 conditions while retaining the main search text. Closing the sheet discards its
 draft; Apply commits the entire draft, including choices made in a nested picker.
 
+Log and network filter sheets each keep up to ten recently applied combinations.
+Restoring a combination edits the open draft and preserves the current search
+text. Search terms are never included in these combinations. History is local to
+the viewer by default. Hosts can assign a stable account UUID to
+`InspectorViewController.recentFilterOwner` or `InspectorView.setRecentFilterOwner`
+to restore that account's combinations across launches. Use a distinct UUID for
+each account. Removing a combination changes only this history.
+
 Short, stable choices for log levels, Socket activity and message direction are
 directly visible above the other common conditions. They keep the query's
 selection rules: levels and directions allow multiple values, activity is

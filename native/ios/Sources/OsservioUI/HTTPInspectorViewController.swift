@@ -92,7 +92,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     }
     private func headerRow(_ header: HTTPHeader) -> Row {
         Row(header.name, InspectorRecordPresentation.compact(header.value, limit: 180), action: { [weak self] in
-            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }), source: self?.selection.selectedIndex == 1 ? "ui_search_request_headers" : "ui_search_response_headers")
+            self?.readHeader(name: header.name, value: header.value, source: self?.selection.selectedIndex == 1 ? "ui_search_request_headers" : "ui_search_response_headers")
         })
     }
     private func openAddress() {

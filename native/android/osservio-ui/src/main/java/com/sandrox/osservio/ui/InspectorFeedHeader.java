@@ -205,7 +205,7 @@ final class InspectorFeedHeader extends LinearLayout {
         button.setTextColor(InspectorTheme.accent(context)); button.setOnClickListener(v -> action.run());
         return button;
     }
-    boolean recordMenu(View anchor, InspectorRecordSearch.Record record) {
+    boolean recordMenu(View anchor, InspectorRecordSearch.Record record, InspectorRecentFilters recent) {
         final boolean category = record.log != null;
         final String value = category ? record.log.category : InspectorQuery.host(record.http != null ? record.http.url : record.socket.url);
         if (value.isEmpty()) return false;
@@ -215,7 +215,10 @@ final class InspectorFeedHeader extends LinearLayout {
         menu.setOnMenuItemClickListener(item -> {
             InspectorQuery changed = displayedQuery.copy();
             changed.filterRecord(category ? InspectorQuery.Field.CATEGORY : InspectorQuery.Field.HOST, value, item.getItemId() == 2);
-            if (!changed.sameAs(displayedQuery)) replaceWithUndo(changed);
+            if (!changed.sameAs(displayedQuery)) {
+                if (recent != null) recent.update(changed, false);
+                replaceWithUndo(changed);
+            }
             return true;
         });
         menu.show(); return true;
@@ -232,7 +235,7 @@ final class InspectorFeedHeader extends LinearLayout {
         postDelayed(expireUndo, timeout);
         onQueryChange.apply(changed);
     }
-    private void finishUndo() {
+    void finishUndo() {
         removeCallbacks(expireUndo); beforeRemoval = null; afterRemoval = null; undo.setVisibility(GONE);
     }
 }

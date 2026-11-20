@@ -7,9 +7,11 @@ protocols. This is a viewer contract, independent of the exported event revision
 ## Criteria
 
 Values within a dimension match any selection; independent dimensions intersect.
-HTTP and WebSocket share one query. Selecting an HTTP-only condition selects HTTP
-and removes Socket-only conditions; the reverse also applies. Selecting All
-removes protocol-specific conditions while keeping text, host and time criteria.
+HTTP and WebSocket share one query. The open filter sheet remembers each
+protocol's draft while switching scope. Apply commits the visible protocol and
+its criteria together with shared text, host and time criteria. Applying All
+retains only shared criteria. Category and host exclusions compare entire
+values. Selecting a value for inclusion clears its exclusion and vice versa.
 Reset preserves the main search text and clears filter conditions.
 
 Time means the observation time for individual records. A connection's recent

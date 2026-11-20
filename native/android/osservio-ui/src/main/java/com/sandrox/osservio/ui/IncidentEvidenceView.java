@@ -60,7 +60,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         list.setAdapter(rows);
         list.setOnItemLongClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
-            return index >= 0 && index < indices.size() && header.recordMenu(view, records.get(indices.get(index)));
+            return index >= 0 && index < indices.size() && header.recordMenu(view, records.get(indices.get(index)), null);
         });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < indices.size()) show(indices.get(index));

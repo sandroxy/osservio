@@ -33,10 +33,12 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private var dirty = true, attemptedRead = false
     private var staleHTTP = false, staleSockets = false
     private var available = 0
+    let recentFilters: InspectorRecentFilters
     private(set) var query = InspectorQuery()
     private(set) var paused = false { didSet { table.followsLatest = !paused } }
 
     init(http: HTTP? = nil, sockets: Socket? = nil, connectionID: String? = nil) {
+        recentFilters = InspectorRecentFilters(http == nil ? "socket" : sockets == nil ? "http" : "network")
         self.http = http; self.sockets = sockets; self.connectionID = connectionID; super.init()
     }
     func attach(to owner: UIViewController) {
@@ -62,6 +64,12 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         display()
     }
     private func cancelSearch() { previewTask?.cancel(); previewTask = nil; generation &+= 1; task?.cancel(); task = nil; dirty = true }
+    func setRecentFilterOwner(_ owner: UUID?) {
+        guard recentFilters.owner != owner else { return }
+        recentFilters.owner = owner
+        header.expireUndo(); header.search.text = ""
+        if query != InspectorQuery() { apply(InspectorQuery()) }
+    }
     private func apply(_ query: InspectorQuery) {
         cancelSearch(); self.query = query; result = nil; rows = []
         nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.2; display(); refresh()
@@ -194,7 +202,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     }
     private func showFilters(_ target: InspectorQuery.Target?) {
         table.endEditing(true)
-        let filters = InspectorFilterViewController(query: query, focus: target,
+        let filters = InspectorFilterViewController(query: query, focus: target, recent: connectionID == nil ? recentFilters : nil,
             groups: InspectorFilterOptions.network(latestHTTP?.events ?? [], sockets: (latestSockets?.events ?? []).filter { connectionID == nil || $0.connectionID == connectionID }, query: query,
                 includeHTTP: http != nil, includeSockets: sockets != nil).filter { connectionID == nil || $0.field != .connection }, payload: true) { [weak self] in self?.apply($0) }
         owner?.inspectorPresent(filters)
@@ -230,7 +238,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         return cell
     }
     func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
-        header.recordMenu(rows[indexPath.row])
+        header.recordMenu(rows[indexPath.row], recent: connectionID == nil ? recentFilters : nil)
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)

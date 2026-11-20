@@ -26,7 +26,7 @@ enum InspectorFilterOptions {
         var result = [InspectorFilterGroup(.transport, values: (includeHTTP ? ["http"] : []) + (includeSockets ? ["webSocket"] : [])),
             InspectorFilterGroup(.host, values: hosts), InspectorFilterGroup(.excludedHost, values: hosts)]
         let sources = Set(events.map { $0.source.rawValue } + sockets.map { $0.source.rawValue })
-        if sources.count > 1 || !(query.values[.source]?.isEmpty ?? true) { result.append(InspectorFilterGroup(.source, values: sources.sorted())) }
+        result.append(InspectorFilterGroup(.source, values: sources.count > 1 || !(query.values[.source]?.isEmpty ?? true) ? sources.sorted() : []))
         result += [InspectorFilterGroup(.method, title: InspectorLocalization.text("ui_http_method"), values: events.map(\.method).sorted()),
             InspectorFilterGroup(.status, title: InspectorLocalization.text("ui_http_status"), values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"] + events.compactMap { $0.statusCode }.sorted().map(String.init)),
             InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_http_state"), values: [HTTPState.pending, .receiving, .completed, .failed, .cancelled, .closedEarly, .captureEnded].map(\.rawValue)),

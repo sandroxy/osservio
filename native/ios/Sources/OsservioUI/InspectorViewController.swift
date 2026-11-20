@@ -9,6 +9,16 @@ public final class InspectorViewController: UITabBarController, UITabBarControll
     public var enhancedMaterialsEnabled = true {
         didSet { if isViewLoaded { relabel() } }
     }
+    /// Set a stable, host-owned account namespace to retain recent log and network criteria across launches.
+    /// With no owner, history is confined to this inspector's lifetime.
+    public var recentFilterOwner: UUID? {
+        didSet {
+            for (controller, _, _) in sections {
+                (controller as? LogInspectorViewController)?.setRecentFilterOwner(recentFilterOwner)
+                (controller as? NetworkInspectorViewController)?.content.setRecentFilterOwner(recentFilterOwner)
+            }
+        }
+    }
     private let debugControl: InspectorDebugControl
     private lazy var debugLoop = InspectorRefreshLoop { [weak self] in self?.debugControl.refresh() }
     private var sections: [(UIViewController, String, String)] = []

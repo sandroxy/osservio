@@ -77,6 +77,11 @@ class InspectorDetailViewController: UITableViewController {
         }
     }
     var searchHit: InspectorRecordSearch.Hit?
+    func readHeader(name: String, value: String, source: String) {
+        let term = searchHit?.term(in: source) ?? ""
+        let matched = !term.isEmpty && InspectorQuery.contains(term, in: value)
+        read(titleKey: "ui_header_value", content: InspectorReadContent(text: value, context: { name }), source: matched ? source : nil)
+    }
     func read(titleKey: String, content: InspectorReadContent, source: String? = nil) {
         let reader = InspectorContentViewController(titleKey: titleKey, value: content)
         if let source, content.isAvailable { reader.initialSearch = searchHit?.term(in: source) ?? "" }

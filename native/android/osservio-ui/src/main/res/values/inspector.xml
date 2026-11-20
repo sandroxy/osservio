@@ -138,6 +138,9 @@
     <string name="osservio_ui_exclude_category">Exclude this category</string>
     <string name="osservio_ui_no_exclusions">None excluded</string>
     <string name="osservio_ui_adjust_filters">Adjust filters</string>
+    <string name="osservio_ui_recent_filters">Recent filters</string>
+    <string name="osservio_ui_restore_filter">Load into the draft</string>
+    <string name="osservio_ui_forget_filter">Remove from recent filters</string>
     <string name="osservio_ui_edit_filter">Edit this condition</string>
     <string name="osservio_ui_undo_filter">Undo</string>
     <string name="osservio_ui_remove_filter">Remove this condition</string>
