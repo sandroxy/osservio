@@ -60,7 +60,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         int inset = InspectorTheme.dp(context, 16), gap = InspectorTheme.dp(context, 8); setPadding(inset, gap, inset, 0);
         LinearLayout header = new LinearLayout(context); header.setOrientation(VERTICAL);
         controls = new InspectorScroll.Page(context); controls.addView(header); addView(controls, new LayoutParams(-1, -2));
-        mode = (RadioGroup) InspectorWidgets.segments(context, new int[] {R.string.osservio_json_structure, R.string.osservio_json_raw}, 0,
+        mode = InspectorWidgets.segments(this, controls, new int[] {R.string.osservio_json_structure, R.string.osservio_json_raw}, 0,
             selected -> { structured = selected == 0; searchContent(); });
         LayoutParams modeLayout = new LayoutParams(-1, -2); modeLayout.bottomMargin = gap;
         mode.setVisibility(GONE); header.addView(mode, modeLayout);

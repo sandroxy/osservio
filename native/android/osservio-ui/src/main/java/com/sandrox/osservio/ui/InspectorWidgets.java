@@ -6,6 +6,7 @@ import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -272,15 +273,17 @@ final class InspectorWidgets {
         }
         control.setTrackDrawable(track); InspectorTheme.surface(control, true, 20);
     }
-    static View segments(Context context, int[] labels, int selected, Selection changed) {
+    static InspectorSegmentControl segments(ViewGroup owner, View viewport, int[] labels, int selected, Selection changed) {
+        Context context = owner.getContext();
         String[] text = new String[labels.length];
         for (int i = 0; i < labels.length; i++) text[i] = context.getString(labels[i]);
-        android.widget.RadioGroup bar = (android.widget.RadioGroup) segments(context, text, selected, changed);
+        InspectorSegmentControl bar = segments(owner, viewport, text, selected, changed);
         for (int i = 0; i < labels.length; i++) InspectorAppearance.text((TextView) bar.getChildAt(i), labels[i]);
         return bar;
     }
-    static View segments(Context context, String[] labels, int selected, Selection changed) {
-        android.widget.RadioGroup bar = new InspectorSegmentControl(context, labels.length);
+    static InspectorSegmentControl segments(ViewGroup owner, View viewport, String[] labels, int selected, Selection changed) {
+        Context context = owner.getContext();
+        InspectorSegmentControl bar = new InspectorSegmentControl(owner, viewport, labels.length);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         int inset = InspectorTheme.dp(context, 4); bar.setPadding(inset, inset, inset, inset);
         InspectorAppearance.style(bar, () -> bar.setBackground(InspectorTheme.shape(context, InspectorTheme.color(context, R.color.osservio_tint), 20, false)));

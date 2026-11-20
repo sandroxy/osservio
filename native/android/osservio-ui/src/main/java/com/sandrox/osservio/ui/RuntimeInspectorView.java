@@ -27,7 +27,7 @@ public final class RuntimeInspectorView extends LinearLayout {
         String[] labels = archive == null ? new String[] {context.getString(R.string.osservio_runtime_environment), context.getString(R.string.osservio_runtime_breadcrumbs)}
             : new String[] {context.getString(R.string.osservio_runtime_environment), context.getString(R.string.osservio_runtime_breadcrumbs), context.getString(R.string.osservio_archive_title)};
         LinearLayout navigation = new LinearLayout(context); navigation.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        navigation.addView(InspectorWidgets.segments(context, labels, 0, selected -> {
+        navigation.addView(InspectorWidgets.segments(navigation, navigation, labels, 0, selected -> {
             View focused = findFocus(); if (focused != null) focused.clearFocus();
             android.view.inputmethod.InputMethodManager keyboard = context.getSystemService(android.view.inputmethod.InputMethodManager.class);
             if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);

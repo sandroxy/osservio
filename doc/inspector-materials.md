@@ -144,9 +144,11 @@ Within an inspector, network scope, HTTP/WebSocket detail sections,
 structured/source readers and runtime sections share the navigation lens and
 motion implementation. Their
 opaque backing does not need the bottom bar's two full-width optical chains;
-the moving lens still samples the separately colored native labels with the
-same refraction, dispersion and spring recipe. Lens expansion respects the actual
-drawing viewport in clipped reader headers without changing text-scroll clipping.
+the track moves with the press and the lens samples the separately colored native
+labels. The measured navigation lens sets the edge travel on wide text choices.
+During motion, a page overlay draws just the part of the same display list outside
+the native row, clipped to the page and its scrolling viewport. The overlay has
+no touch or accessibility nodes. The selector shadow stays inside the rounded track.
 The original RadioButtons own
 selection, keyboard and accessibility. A horizontal drag from the selected lens
 previews a destination; release commits the nearest choice once. Vertical motion

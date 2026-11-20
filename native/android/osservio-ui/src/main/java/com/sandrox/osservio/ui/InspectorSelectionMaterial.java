@@ -16,13 +16,18 @@ import android.view.ViewConfiguration;
 
 /** Shared optical selection and gesture state; native children own commands and accessibility. */
 final class InspectorSelectionMaterial implements InspectorGlassSession.Surface, Choreographer.FrameCallback {
-    interface Renderer { void draw(Canvas canvas, InspectorSelectionMaterial bar); void release(); }
+    interface Renderer {
+        void draw(Canvas canvas, InspectorSelectionMaterial bar);
+        default void drawOverflow(Canvas canvas) { }
+        void release();
+    }
     interface Content {
         boolean ready();
         void observe(Runnable invalidated);
         void drawBackdrop(Canvas canvas);
         void drawLabel(Canvas canvas, int index);
         default boolean moved() { return false; }
+        default float navigationLensAspect() { return 0; }
     }
     private final ViewGroup view;
     private final Content content;
@@ -36,7 +41,8 @@ final class InspectorSelectionMaterial implements InspectorGlassSession.Surface,
     private final PathInterpolator easeOut = new PathInterpolator(0, 0, .58f, 1);
     private final int[] location = new int[2];
     private final Rect visibleWindow = new Rect();
-    private final Rect drawingClip = new Rect();
+    InspectorSegmentOverflow overflow;
+    int marginX, marginY;
     private int x, y, width, height;
     private long sourceVersion, inkVersion, frameTime;
     private boolean materialVisible = true, registered, capturing, ready, posted, initialized, opticalElevation;
@@ -120,7 +126,6 @@ final class InspectorSelectionMaterial implements InspectorGlassSession.Surface,
 
     boolean draw(Canvas canvas) {
         boolean rendered = false;
-        canvas.getClipBounds(drawingClip);
         if (eligible(canvas)) {
             int save = canvas.save();
             try {
@@ -137,10 +142,23 @@ final class InspectorSelectionMaterial implements InspectorGlassSession.Surface,
         else drawFocus(canvas);
         return rendered;
     }
+    void drawOverflow(Canvas canvas) {
+        if (!ready || renderer == null) return;
+        try { renderer.drawOverflow(canvas); }
+        catch (RuntimeException | LinkageError | OutOfMemoryError unavailable) { session.fail(); }
+    }
     private boolean eligible(Canvas canvas) {
         if (!registered || session == null || !session.allowed() || Build.VERSION.SDK_INT < 33 || !canvas.isHardwareAccelerated()) return false;
         if (!content.ready()) return false;
-        return InspectorTabGeometry.reserve(session.budget, this, view.getWidth(), view.getHeight(), density, view.getChildCount(), scrollable);
+        int w = view.getWidth(), h = view.getHeight(), count = view.getChildCount();
+        marginX = marginY = 0;
+        if (overflow != null && (motion.held() || motion.running()) && count > 0 && w > dp(8) && h > dp(8)) {
+            float growth = dp(8) * motion.progress();
+            float slot = tabWidth(), scale = lensScaleX(), left = lensX() - (scale - 1) * slot / 2;
+            marginX = 1 + (int) Math.ceil(Math.max(Math.abs(panelOffset()) + growth, Math.max(-left, left + scale * slot - w)));
+            marginY = 1 + (int) Math.ceil(Math.max(growth * h / w, (lensScaleY() * (h - dp(8)) - h) / 2));
+        }
+        return InspectorTabGeometry.reserve(session.budget, this, w, h, density, count, scrollable, marginX, marginY);
     }
     void drawSource(Canvas canvas) { content.drawBackdrop(canvas); }
     void drawLabels(Canvas canvas, float width, float height, boolean colored, float scale) {
@@ -178,24 +196,18 @@ final class InspectorSelectionMaterial implements InspectorGlassSession.Surface,
         float desired = dp(4) + visualPosition() * tabWidth() + panelOffset();
         if (visibleWindow.isEmpty()) return desired;
         float left = visibleWindow.left - x + dp(1), right = visibleWindow.right - x - dp(1);
-        if (scrollable && !drawingClip.isEmpty()) {
-            left = Math.max(left, drawingClip.left + dp(1)); right = Math.min(right, drawingClip.right - dp(1));
-        }
         return InspectorTabGeometry.constrainLens(desired, tabWidth(), lensScaleX(),
             left, right);
     }
     float lensScaleX() {
         float scale = (float) motion.scaleX.value / (1 - Math.max(-.2f, Math.min(.2f, (float) motion.speed.value / 10 * .75f)));
-        return scrollable && !drawingClip.isEmpty() ? Math.min(scale, Math.max(1, (drawingClip.width() - dp(2)) / tabWidth())) : scale;
+        float aspect = content.navigationLensAspect();
+        if (aspect <= 0) return scale;
+        // Preserve the navigation lens's physical edge travel on wider text choices.
+        return 1 + (scale - 1) * aspect * (getHeight() - dp(8)) / tabWidth();
     }
     float lensScaleY() {
-        float scale = (float) motion.scaleY.value * (1 - Math.max(-.2f, Math.min(.2f, (float) motion.speed.value / 10 * .25f)));
-        if (!scrollable || drawingClip.isEmpty()) return scale;
-        // Readers can put a selector inside a clipped scrolling header. Respect
-        // that real viewport instead of cutting off the enlarged lens or unclipping text.
-        float center = view.getHeight() / 2f;
-        float available = 2 * Math.min(center - drawingClip.top, drawingClip.bottom - center) - dp(2);
-        return Math.min(scale, Math.max(1, available / (view.getHeight() - dp(8))));
+        return (float) motion.scaleY.value * (1 - Math.max(-.2f, Math.min(.2f, (float) motion.speed.value / 10 * .25f)));
     }
     long sourceVersion() { return sourceVersion; }
     long inkVersion() { return inkVersion; }
@@ -315,6 +327,7 @@ final class InspectorSelectionMaterial implements InspectorGlassSession.Surface,
     @Override public void release() {
         if (motion == null) return;
         ready = false; stopMotion(); updateElevation(false);
+        if (overflow != null) overflow.clear();
         Renderer previous = renderer; renderer = null; if (session != null) session.budget.release(this);
         try { if (previous != null) previous.release(); }
         catch (RuntimeException | LinkageError | OutOfMemoryError unavailable) { session.fail(); }
@@ -327,5 +340,8 @@ final class InspectorSelectionMaterial implements InspectorGlassSession.Surface,
         if (!focused && motion.held()) cancelGesture();
         updateRegistration(); invalidate();
     }
-    @Override public void invalidate() { view.invalidate(); }
+    @Override public void invalidate() {
+        view.invalidate();
+        if (overflow != null) overflow.invalidateSelf();
+    }
 }

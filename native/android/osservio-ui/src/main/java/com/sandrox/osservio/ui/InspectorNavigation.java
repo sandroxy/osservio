@@ -20,6 +20,7 @@ final class InspectorNavigation extends FrameLayout {
     private int selection;
     private boolean disposing;
     private int bottomInset;
+    float navigationLensAspect;
     private Runnable materialInvalidation;
     void setMaterialInvalidation(Runnable callback) { materialInvalidation = callback; }
     @Override public void onDescendantInvalidated(View child, View target) {

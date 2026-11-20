@@ -30,7 +30,7 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint erase = new Paint(Paint.ANTI_ALIAS_FLAG), plus = new Paint();
     private final Path clip = new Path();
-    private RenderNode source, ink;
+    private RenderNode source, ink, movingChoice;
     private Surface base, selectedInk, lens;
     private long sourceVersion = Long.MIN_VALUE, inkVersion = Long.MIN_VALUE;
     private float inkPress = -1, inkOffset, inkPosition, inkGlow;
@@ -42,14 +42,38 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
         RenderNode result = new RenderNode(name); result.setClipToBounds(false); nodes.add(result); return result;
     }
     @Override public void draw(Canvas canvas, InspectorSelectionMaterial bar) {
+        if (bar.overflow == null || (!bar.motion.running() && !bar.motion.held())) {
+            if (bar.overflow != null) {
+                bar.overflow.clear();
+                if (movingChoice != null && movingChoice.hasDisplayList()) movingChoice.discardDisplayList();
+            }
+            drawLayers(canvas, bar);
+            return;
+        }
+        // Replay one display list in two disjoint clips. No extra backdrop, bitmap
+        // or compositing layer is allocated for the part outside the native hit box.
+        int width = bar.getWidth(), height = bar.getHeight();
+        int mx = bar.marginX, my = bar.marginY;
+        if (movingChoice == null) movingChoice = node("Moving choice");
+        movingChoice.setPosition(-mx, -my, width + mx, height + my);
+        Canvas frame = movingChoice.beginRecording(width + 2 * mx, height + 2 * my);
+        try { frame.translate(mx, my); drawLayers(frame, bar); }
+        finally { movingChoice.endRecording(); }
+        int save = canvas.save();
+        canvas.clipRect(0, 0, width, height); canvas.drawRenderNode(movingChoice); canvas.restoreToCount(save);
+        bar.overflow.update(mx, my);
+    }
+    @Override public void drawOverflow(Canvas canvas) {
+        if (movingChoice != null && movingChoice.hasDisplayList()) canvas.drawRenderNode(movingChoice);
+    }
+    private void drawLayers(Canvas canvas, InspectorSelectionMaterial bar) {
         float width = bar.getWidth(), height = bar.getHeight(), density = bar.density;
         float inkHeight = height - bar.dp(8), progress = bar.motion.progress();
-        if (source == null) {
-            source = node("Navigation source"); ink = node("Navigation selected labels");
-            // Rasterize background text at a stable scale before optical transforms.
-            // Its display list is still re-recorded whenever the page content or geometry changes.
-            source.setUseCompositingLayer(true, null);
+        if (lens == null) {
+            ink = node("Navigation selected labels");
             if (!bar.segmented()) {
+                // Rasterize page text at a stable scale before optical transforms.
+                source = node("Navigation source"); source.setUseCompositingLayer(true, null);
                 base = new Surface("Navigation base", false);
                 selectedInk = new Surface("Navigation labels", false);
             }
@@ -62,16 +86,18 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
         boolean sourceChanged = sourceVersion != bar.sourceVersion() || sourceWidth != widthWithOverflow || sourceHeight != heightWithOverflow;
         if (sourceChanged) {
             sourceWidth = widthWithOverflow; sourceHeight = heightWithOverflow;
-            int margin = InspectorTabGeometry.SOURCE_MARGIN;
-            source.setPosition(-overflowX - margin, -overflowY - margin,
-                sourceWidth - overflowX + margin, sourceHeight - overflowY + margin);
-            Canvas content = source.beginRecording(sourceWidth + 2 * margin, sourceHeight + 2 * margin);
-            try { content.translate(overflowX + margin, overflowY + margin); bar.drawSource(content); }
-            finally { source.endRecording(); }
+            if (source != null) {
+                int margin = InspectorTabGeometry.SOURCE_MARGIN;
+                source.setPosition(-overflowX - margin, -overflowY - margin,
+                    sourceWidth - overflowX + margin, sourceHeight - overflowY + margin);
+                Canvas content = source.beginRecording(sourceWidth + 2 * margin, sourceHeight + 2 * margin);
+                try { content.translate(overflowX + margin, overflowY + margin); bar.drawSource(content); }
+                finally { source.endRecording(); }
+            }
             sourceVersion = bar.sourceVersion();
         }
         float offset = bar.panelOffset(), baseScale = 1 + bar.dp(16) / width * progress;
-        if (bar.segmented()) drawSegmentBase(canvas, bar, width, height, false, 1);
+        if (bar.segmented()) drawSegmentBase(canvas, bar, offset, 0, width, height, baseScale, false);
         else base.draw(canvas, bar, offset, 0, width, height, baseScale, baseScale,
                 8 * density, 24 * density, 24 * density, 1, 1, 0, false, false);
         if (sourceChanged || inkVersion != bar.inkVersion() || inkPress != progress || inkOffset != offset
@@ -81,7 +107,7 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
             try {
                 content.translate(overflowX, overflowY);
                 if (bar.segmented()) {
-                    content.translate(0, bar.dp(4)); drawSegmentBase(content, bar, width, inkHeight, true, 1 + .2f * progress);
+                    drawSegmentBase(content, bar, offset, bar.dp(4), width, inkHeight, 1, true);
                 } else selectedInk.draw(content, bar, offset, bar.dp(4), width, inkHeight, 1, 1,
                     8 * density, 24 * density * progress, 24 * density * progress, progress, 1, 0, true, false);
             } finally { ink.endRecording(); }
@@ -92,13 +118,22 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
             bar.lensScaleX(), bar.lensScaleY(), 0, 10 * density * progress, 14 * density * progress,
             progress, progress, 8 * density * progress, false, true);
     }
-    private void drawSegmentBase(Canvas canvas, InspectorSelectionMaterial bar, float width, float height, boolean colored, float scale) {
+    private void drawSegmentBase(Canvas canvas, InspectorSelectionMaterial bar, float x, float y,
+                                 float width, float height, float scale, boolean colored) {
         // These controls sit on opaque reading surfaces. Recording that known solid base
         // avoids two redundant optical/shadow chains while keeping the same moving lens.
+        int save = canvas.save();
+        canvas.translate(x, y); canvas.scale(scale, scale, width / 2, height / 2);
         paint.setShader(null); paint.setBlendMode(BlendMode.SRC_OVER); paint.setStyle(Paint.Style.FILL);
         paint.setColor(bar.dark() ? 0xFF1D2330 : 0xFFFFFFFF);
         canvas.drawRoundRect(0, 0, width, height, height / 2, height / 2, paint);
-        bar.drawLabels(canvas, width, height, colored, scale);
+        if (bar.motion.glow.value > 0) {
+            int light = canvas.save();
+            roundClip(canvas, width, height); lens.drawGlow(canvas, bar, width, height);
+            canvas.restoreToCount(light);
+        }
+        bar.drawLabels(canvas, width, height, colored, colored ? 1 + .2f * bar.motion.progress() : 1);
+        canvas.restoreToCount(save);
     }
     private void roundClip(Canvas canvas, float width, float height) {
         clip.reset(); clip.addRoundRect(0, 0, width, height, height / 2, height / 2, Path.Direction.CW); canvas.clipPath(clip);
@@ -149,7 +184,9 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
             try {
                 recorded.translate(padding, padding); recorded.scale(1 / scaleX, 1 / scaleY);
                 recorded.translate(-(x + (1 - scaleX) * width / 2), -(y + (1 - scaleY) * height / 2));
-                recorded.drawRenderNode(source); if (selector) recorded.drawRenderNode(ink);
+                if (source != null) recorded.drawRenderNode(source);
+                else bar.drawSource(recorded); // The inline page backdrop is one opaque color.
+                if (selector) recorded.drawRenderNode(ink);
             } finally { image.endRecording(); }
             int shadow = target.save();
             // Embedded selectors have a rounded track inside clipped reading containers.
@@ -235,6 +272,6 @@ final class InspectorTabRenderer implements InspectorSelectionMaterial.Renderer 
     }
     @Override public void release() {
         for (RenderNode node : nodes) { node.setRenderEffect(null); node.setUseCompositingLayer(false, null); node.discardDisplayList(); }
-        nodes.clear(); source = null; ink = null; base = null; selectedInk = null; lens = null;
+        nodes.clear(); source = null; ink = null; movingChoice = null; base = null; selectedInk = null; lens = null;
     }
 }

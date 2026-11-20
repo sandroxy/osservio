@@ -48,6 +48,10 @@ public final class InspectorGlassBudgetTest {
         for (int i = 0; i < 4; i++) assertTrue(budget.reserve(new Object(), 132, 132));
         assertTrue(budget.pixels() < InspectorGlassBudget.MAX_SESSION_PIXELS);
         long previous = budget.pixels();
+        assertTrue(InspectorTabGeometry.reserve(budget, choices, 992, 143, 2.75f, 3, true, 44, 21));
+        assertEquals(previous, budget.pixels());
+        assertFalse(InspectorTabGeometry.reserve(budget, choices, 992, 143, 2.75f, 3, true, Integer.MAX_VALUE, 21));
+        assertEquals(previous, budget.pixels());
         assertFalse(InspectorTabGeometry.reserve(budget, new Object(), 992, 143, 2.75f, 3, true));
         assertEquals(previous, budget.pixels());
         budget.release(navigation); budget.release(choices);

@@ -17,12 +17,20 @@ final class InspectorTabGeometry {
         return reserve(budget, owner, width, height, density, count, false);
     }
     static boolean reserve(InspectorGlassBudget budget, Object owner, int width, int height, float density, int count, boolean segmented) {
+        return reserve(budget, owner, width, height, density, count, segmented, 0, 0);
+    }
+    static boolean reserve(InspectorGlassBudget budget, Object owner, int width, int height, float density, int count,
+                           boolean segmented, int marginX, int marginY) {
         if (width <= 0 || height <= 0 || Float.isNaN(density) || Float.isInfinite(density) || density <= 0 || count <= 0
             || width > MAX_EDGE || height > MAX_EDGE || height <= 8 * density || width <= 8 * density) return false;
         double inkHeight = height - 8 * density, tabWidth = (width - 8 * density) / count;
         // The strip includes the held control's overflow, then the fixed source margin.
         long sourceWidth = (long) Math.ceil(width + 24 * density) + 2 * SOURCE_MARGIN;
         long sourceHeight = (long) Math.ceil(height + 28 * density) + 2 * SOURCE_MARGIN;
+        // The inline recipe draws its solid backdrop directly. Its moving display list
+        // can reuse the reserved source area, including any visible overshoot.
+        sourceWidth = Math.max(sourceWidth, width + 2L * marginX);
+        sourceHeight = Math.max(sourceHeight, height + 2L * marginY);
         long shadowMargin = (long) Math.ceil(48 * density);
         long edgeWidth = Math.max(sourceWidth, width + 2 * shadowMargin);
         long edgeHeight = Math.max(sourceHeight, (long) Math.ceil(height + 4 * density) + 2 * shadowMargin);

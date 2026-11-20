@@ -291,6 +291,8 @@ public final class InspectorView extends FrameLayout {
     @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
         if (tabBar == null) return;
+        float lensHeight = tabBar.getHeight() - tabBar.material.dp(8);
+        navigation.navigationLensAspect = lensHeight > 0 ? tabBar.tabWidth() / lensHeight : 0;
         int inset = tabBar.getHeight() + InspectorTheme.dp(themed, 18);
         navigation.setBottomInset(inset);
         int shadeHeight = inset + InspectorTheme.dp(themed, 24);

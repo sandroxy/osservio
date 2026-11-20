@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -12,18 +13,20 @@ import android.widget.TextView;
 @android.annotation.SuppressLint("ViewConstructor")
 final class InspectorSegmentControl extends RadioGroup {
     final InspectorSelectionMaterial material;
-    InspectorSegmentControl(Context context, int count) {
-        super(context);
-        InspectorNavigation navigation = InspectorNavigation.from(context);
+    InspectorSegmentControl(ViewGroup owner, View viewport, int count) {
+        super(owner.getContext());
+        InspectorNavigation navigation = InspectorNavigation.from(getContext());
         material = new InspectorSelectionMaterial(this, navigation == null ? null : navigation.materials, count, true,
             new InspectorSelectionMaterial.Content() {
                 @Override public boolean ready() {
                     return getOrientation() == HORIZONTAL && navigation != null && navigation.materialVisible(InspectorSegmentControl.this);
                 }
                 @Override public void observe(Runnable changed) { }
+                @Override public float navigationLensAspect() { return navigation == null ? 0 : navigation.navigationLensAspect; }
                 @Override public void drawBackdrop(Canvas canvas) { canvas.drawColor(InspectorTheme.canvas(getContext())); }
                 @Override public void drawLabel(Canvas canvas, int index) { ((Choice) getChildAt(index)).drawLabel(canvas); }
             });
+        if (navigation != null) material.overflow = new InspectorSegmentOverflow(this, owner, viewport);
         setClipChildren(false); setClipToPadding(false);
         InspectorAppearance.content(this, material::refreshAppearance);
     }

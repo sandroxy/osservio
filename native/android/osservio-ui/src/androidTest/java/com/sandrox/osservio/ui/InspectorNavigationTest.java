@@ -210,7 +210,8 @@ public final class InspectorNavigationTest {
             Configuration config = new Configuration(base.getResources().getConfiguration()); config.fontScale = 2;
             Context context = InspectorTheme.context(base.createConfigurationContext(config));
             int[] calls = {0};
-            android.widget.RadioGroup choices = (android.widget.RadioGroup) InspectorWidgets.segments(context,
+            android.widget.FrameLayout owner = new android.widget.FrameLayout(context);
+            android.widget.RadioGroup choices = InspectorWidgets.segments(owner, owner,
                 new String[] {"All", "HTTP", "WebSocket"}, 2, index -> calls[0]++);
             layout(choices, 300, 600);
             assertEquals(android.widget.LinearLayout.VERTICAL, choices.getOrientation());

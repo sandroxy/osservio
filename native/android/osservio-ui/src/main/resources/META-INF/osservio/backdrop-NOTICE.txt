@@ -14,4 +14,6 @@ a bounded stable-scale compositing layer, blur chains are reused, and the final
 lens outline is constrained to the visible window. Compose and
 upstream control wrappers are not distributed. Native segmented choices share
 the lens and motion; their opaque backing omits redundant full-width optical
-and shadow chains and preserves native scroll/selection ownership.
+and shadow chains and preserves native scroll/selection ownership. Wide choices
+use the navigation lens proportions for edge travel and replay the moving edges
+inside their enclosing page.

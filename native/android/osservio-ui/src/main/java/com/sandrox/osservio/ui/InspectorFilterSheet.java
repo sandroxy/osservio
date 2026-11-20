@@ -55,7 +55,7 @@ final class InspectorFilterSheet {
     private static final class Editor {
         final Context context; final InspectorQuery draft; final List<Group> groups; final Applied applied;
         final boolean payload, hasHTTP, hasSockets, network; final int timeLabel;
-        final InspectorScreen screen; final ListView list; final LinearLayout header, footer;
+        final InspectorScreen screen; final ListView list; final LinearLayout content, header, footer;
         final EditText search; final Button leading; final InspectorFilterConditions conditions;
         final List<Row> rows = new ArrayList<>(); final Set<InspectorQuery.Field> expanded = new HashSet<>();
         final int[] times = {0, 5, 30, 60, 1440};
@@ -80,7 +80,7 @@ final class InspectorFilterSheet {
                 Group source = null; for (Group candidate : sources) if (candidate.field == group.field) { source = candidate; break; }
                 for (String key : new ArrayList<>(group.options.keySet())) if (source == null || !source.options.containsKey(key)) group.options.put(key, InspectorFilterOptions.label(context, group.field, key));
             }
-            LinearLayout content = column(); int inset = dp(16); content.setPadding(inset, 0, inset, 0);
+            content = column(); int inset = dp(16); content.setPadding(inset, 0, inset, 0);
             list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0); list.setSelector(android.R.color.transparent);
             list.setVerticalScrollBarEnabled(false); list.setPadding(0, 0, 0, inset); list.setClipToPadding(false); list.setItemsCanFocus(true);
             header = column(); search = InspectorWidgets.search(context, R.string.osservio_ui_filter_options, "", value -> filterChoices());
@@ -228,7 +228,7 @@ final class InspectorFilterSheet {
                 }
                 LinearLayout region = column();
                 region.setClipChildren(false); region.setClipToPadding(false);
-                region.addView(InspectorWidgets.segments(context, new int[] {R.string.osservio_ui_all, R.string.osservio_ui_http, R.string.osservio_ws_title}, selected, this::scopeSelected));
+                region.addView(InspectorWidgets.segments(content, list, new int[] {R.string.osservio_ui_all, R.string.osservio_ui_http, R.string.osservio_ws_title}, selected, this::scopeSelected));
                 TextView hint = InspectorWidgets.caption(context); hint.setPadding(dp(16), dp(8), dp(16), 0); hint.setText(R.string.osservio_ui_filter_switch); region.addView(hint); return region;
             }
             boolean first = position == 0 || rows.get(position - 1).type == Type.HEADING;
