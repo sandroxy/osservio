@@ -139,7 +139,11 @@ never expand or collapse a draft's groups.
 | Problems | Record/recovery time, observed record kind | None; note and identifier lookup use the main search |
 | Runtime timeline | Observation time and observed kind | None |
 
-Values within a field are alternatives; fields intersect. Categories, hosts,
+Long-press a log or network record to focus or exclude its exact category or host.
+The same values can be edited in the sheet. Adding an inclusion removes a
+contradictory exclusion for that value. Shared text, levels and time stay intact.
+HTTP lifecycle states and Socket message outcomes are available before an event
+arrives. Values within a field are alternatives; fields intersect. Categories, hosts,
 connections and observed record kinds come from retained records; selected values
 remain editable even after their examples disappear. Groups without any candidate
 or selected value are omitted. A singleton category or host stays available under
@@ -153,7 +157,9 @@ Search text defaults to all retained searchable content. Refine filters can limi
 literal inclusion and exclusion to addresses, headers, request/response bodies,
 messages, identifiers or record information. An independent JSON field condition
 still examines retained bodies. Result excerpts name the matching source. Opening
-an HTTP header/body result selects its request or response section. A metadata
+an HTTP header/body result selects its request or response section. Literal
+body matches show the excerpt in details and carry the term into the reader.
+Negative and JSON-only matches do not invent a highlighted term. A metadata
 match does not replace a log's message with its category or identifier. Search and
 its coverage limits are specified in [Inspector queries](inspector-query.md).
 

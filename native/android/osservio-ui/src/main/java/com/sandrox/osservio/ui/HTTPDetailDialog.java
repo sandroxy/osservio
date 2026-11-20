@@ -18,6 +18,7 @@ final class HTTPDetailDialog {
     private final HTTPHistory history;
     private final Map<String, IncidentPayload> savedPayloads;
     private final HTTPEvent event;
+    private final InspectorRecordSearch.Hit hit;
     private int section;
     private final FrameLayout body;
     final InspectorScreen dialog;
@@ -28,10 +29,12 @@ final class HTTPDetailDialog {
     HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads) {
         this(context, event, null, savedPayloads, null);
     }
-    HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, String searchSource) { this(context, event, history, null, searchSource); }
-    HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads, String searchSource) { this(context, event, null, savedPayloads, searchSource); }
-    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, Map<String, IncidentPayload> savedPayloads, String searchSource) {
+    HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, InspectorRecordSearch.Hit hit) { this(context, event, history, null, hit); }
+    HTTPDetailDialog(Context context, HTTPEvent event, Map<String, IncidentPayload> savedPayloads, InspectorRecordSearch.Hit hit) { this(context, event, null, savedPayloads, hit); }
+    private HTTPDetailDialog(Context context, HTTPEvent event, HTTPHistory history, Map<String, IncidentPayload> savedPayloads, InspectorRecordSearch.Hit hit) {
         this.context = context; this.event = event; this.history = history; this.savedPayloads = savedPayloads;
+        this.hit = hit;
+        String searchSource = hit == null ? null : hit.source;
         if ("request".equals(searchSource) || "requestHeaders".equals(searchSource)) section = 1;
         if ("response".equals(searchSource) || "responseHeaders".equals(searchSource)) section = 2;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
@@ -81,13 +84,13 @@ final class HTTPDetailDialog {
         } else {
             InspectorReadContent content = bodyContent();
             page.section(R.string.osservio_ui_body);
-            page.value(() -> content.available ? content.text.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : InspectorRecordPresentation.compact(content.text, 600) : content.notice(),
+            page.value(() -> content.available ? content.text.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : InspectorRecordSearch.Hit.preview(hit, section == 1 ? "request" : "response", content.text, 600) : content.notice(),
                 content.available ? () -> page.read(section == 1 ? R.string.osservio_http_request_body : R.string.osservio_http_response_body, bodyContent()) : null, content.available ? R.string.osservio_ui_open_reader : 0);
             if (content.available) page.note(content::notice);
             page.section(section == 1 ? R.string.osservio_http_request_headers : R.string.osservio_http_response_headers);
             List<HTTPHeader> headers = section == 1 ? event.requestHeaders : event.responseHeaders;
             if (headers.isEmpty()) page.value(() -> context.getString(R.string.osservio_ui_headers_empty));
-            for (HTTPHeader header : headers) page.header(header);
+            for (HTTPHeader header : headers) page.header(header, hit, section == 1 ? "requestHeaders" : "responseHeaders");
             if (event.headersLimited) page.note(R.string.osservio_http_headers_limited);
         }
         body.addView(page, new FrameLayout.LayoutParams(-1, -1));
@@ -96,7 +99,7 @@ final class HTTPDetailDialog {
         HTTPEvent.BodyReference reference = section == 1 ? event.requestBody : event.responseBody;
         InspectorReadContent content = savedPayloads != null ? HTTPPresentation.body(context, reference, savedPayloads) : HTTPPresentation.body(context, reference, history);
         content.isForm = InspectorHTTPContent.isForm(section == 1 ? event.requestHeaders : event.responseHeaders);
-        return content.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail))
+        return content.withSearch(hit, section == 1 ? "request" : "response").withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail))
             .withContext(() -> InspectorRecordPresentation.context(context, event));
     }
 

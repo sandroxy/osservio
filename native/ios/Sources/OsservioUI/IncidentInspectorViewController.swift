@@ -91,7 +91,7 @@ public final class IncidentInspectorViewController: UITableViewController {
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
         updateReadingState(); retryButton.isHidden = !retryNeeded
         table.reloadData()
-        table.setEmptyState(filtered.isEmpty ? InspectorTheme.empty(reading ? "archive_reading" : snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil)
+        table.setFeedEmpty(filtered.isEmpty ? (reading ? "archive_reading" : snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil, header: header, query: query)
     }
     private func updateReadingState() {
         markButton.isEnabled = !reading; retryButton.isEnabled = !reading

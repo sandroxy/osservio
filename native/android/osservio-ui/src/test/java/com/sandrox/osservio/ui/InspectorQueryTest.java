@@ -45,6 +45,19 @@ public final class InspectorQueryTest {
         assertTrue(query.matchesFacets(event, 1));
         query.select(InspectorQuery.Field.TRANSPORT, "webSocket"); assertFalse(query.values.containsKey(InspectorQuery.Field.STATUS));
     }
+    @Test public void exactCategoryExclusionDoesNotConsumeTheInclusiveLevelOrPrefixMatches() {
+        InspectorQuery query = new InspectorQuery();
+        query.select(InspectorQuery.Field.LEVEL, "WARNING");
+        query.filterRecord(InspectorQuery.Field.CATEGORY, "heartbeat", true);
+        assertFalse(query.matchesFacets(log(LogLevel.WARNING, "heartbeat", "keep"), 1));
+        assertTrue(query.matchesFacets(log(LogLevel.WARNING, "heartbeat.checkout", "keep"), 1));
+        assertFalse(query.matchesFacets(log(LogLevel.INFO, "checkout", "keep"), 1));
+        query.filterRecord(InspectorQuery.Field.CATEGORY, "heartbeat", false);
+        assertTrue(query.matchesFacets(log(LogLevel.WARNING, "heartbeat", "keep"), 1));
+        assertFalse(query.matchesFacets(log(LogLevel.WARNING, "other", "keep"), 1));
+        query.select(InspectorQuery.Field.EXCLUDED_CATEGORY, "heartbeat");
+        assertFalse(query.matchesFacets(log(LogLevel.WARNING, "heartbeat", "keep"), 1));
+    }
     @Test public void scopeDraftRestoresProtocolChoicesWithoutApplyingHiddenConditions() {
         InspectorQuery query = new InspectorQuery();
         InspectorQuery.ScopeDraft scopes = new InspectorQuery.ScopeDraft();

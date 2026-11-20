@@ -47,9 +47,10 @@ final class InspectorDetailPage extends InspectorScroll.Page {
         InspectorWidgets.addGrouped(group, row);
     }
     void field(int title, InspectorAppearance.Value<?> value) { field(() -> getContext().getString(title), value); }
-    void header(com.sandrox.osservio.core.HTTPHeader header) {
+    void header(com.sandrox.osservio.core.HTTPHeader header) { header(header, null, ""); }
+    void header(com.sandrox.osservio.core.HTTPHeader header, InspectorRecordSearch.Hit hit, String source) {
         field(() -> header.name, () -> InspectorRecordPresentation.compact(header.value, 180), () ->
-            read(R.string.osservio_ui_header_value, new InspectorReadContent(header.value, "", false).withContext(() -> header.name)));
+            read(R.string.osservio_ui_header_value, new InspectorReadContent(header.value, "", false).withSearch(InspectorQuery.hasText(header.value, InspectorRecordSearch.Hit.term(hit, source)) ? hit : null, source).withContext(() -> header.name)));
     }
     void field(String title, Object value) { field(() -> title, () -> value); }
     void field(InspectorAppearance.Value<String> title, InspectorAppearance.Value<?> value) { field(title, value, null); }

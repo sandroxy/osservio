@@ -7,8 +7,8 @@ struct InspectorQuery: Equatable {
     enum Target: Equatable {
         case field(Field), time, duration, excludedText, json
     }
-    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope" }
-    static let fieldOrder: [Field] = [.transport, .level, .record, .host, .category, .method, .status, .state,
+    enum Field: String { case level, category, method, state, status, host, source, direction, kind, record, content, transport, connection, activity, outcome; case closeCode = "close_code", searchScope = "search_scope", excludedHost = "excluded_host", excludedCategory = "excluded_category" }
+    static let fieldOrder: [Field] = [.transport, .level, .record, .host, .excludedHost, .category, .excludedCategory, .method, .status, .state,
         .activity, .direction, .kind, .outcome, .closeCode, .connection, .content, .source, .searchScope]
     var text = ""
     var excludedText = ""
@@ -55,8 +55,34 @@ struct InspectorQuery: Equatable {
         }
         guard let value else { values[field] = nil; return }
         var selection = values[field] ?? []
-        if selection.contains(value) { selection.remove(value) } else { selection.insert(value) }
+        if selection.contains(value) { selection.remove(value) }
+        else {
+            selection.insert(value)
+            if let opposite = Self.opposite(field) { values[opposite]?.remove(value) }
+        }
         values[field] = selection
+    }
+    private static func opposite(_ field: Field) -> Field? {
+        switch field {
+        case .category: return .excludedCategory
+        case .excludedCategory: return .category
+        case .host: return .excludedHost
+        case .excludedHost: return .host
+        default: return nil
+        }
+    }
+    mutating func filterRecord(_ field: Field, value: String, excluding: Bool) {
+        guard let excluded = Self.opposite(field), field == .host || field == .category else { return }
+        if excluding {
+            values[field]?.remove(value); values[excluded, default: []].insert(value)
+        } else {
+            values[excluded]?.remove(value); values[field] = [value]
+        }
+    }
+    private func allowsHost(_ url: String) -> Bool {
+        guard !(values[.host]?.isEmpty ?? true) || !(values[.excludedHost]?.isEmpty ?? true) else { return true }
+        let host = Self.host(url)
+        return allows(.host, host) && values[.excludedHost]?.contains(host) != true
     }
     var hasTransportConditions: Bool {
         minimumDurationMillis > 0 || Self.httpFields.union(Self.socketFields).contains { !(values[$0]?.isEmpty ?? true) }
@@ -103,7 +129,7 @@ struct InspectorQuery: Equatable {
             && (excludedText.isEmpty || !Self.contains(excludedText, in: event.message) && !Self.contains(excludedText, in: event.category))
     }
     func matchesFacets(_ event: LogEvent, now: Int64) -> Bool {
-        allows(.level, event.level.rawValue) && allows(.category, event.category) && includesTime(event.timestampMillis, now: now)
+        allows(.level, event.level.rawValue) && allows(.category, event.category) && values[.excludedCategory]?.contains(event.category) != true && includesTime(event.timestampMillis, now: now)
     }
     func matches(_ event: HTTPEvent, now: Int64) -> Bool {
         matchesFacets(event, now: now) && contains(event.url, event.responseURL ?? "", event.method, event.statusCode.map(String.init) ?? "")
@@ -111,7 +137,7 @@ struct InspectorQuery: Equatable {
     func matchesFacets(_ event: HTTPEvent, now: Int64) -> Bool {
         allows(.transport, "http") && allows(.method, event.method) && allows(.state, event.state.rawValue)
             && allowsStatus(event.statusCode)
-            && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
+            && allowsHost(event.url) && allows(.source, event.source.rawValue)
             && allows(.content, InspectorHTTPContent.category(event.responseHeaders))
             && (minimumDurationMillis == 0 || event.durationMillis.map { $0 >= minimumDurationMillis } == true)
             && Self.socketFields.allSatisfy { values[$0]?.isEmpty ?? true }
@@ -125,12 +151,12 @@ struct InspectorQuery: Equatable {
             && allows(.activity, event.kind == .message || event.kind == .messageResult ? "messages" : "connections")
             && allows(.direction, event.direction?.rawValue ?? "none") && allows(.kind, event.kind.rawValue)
             && allows(.outcome, event.outcome?.rawValue ?? "none") && allows(.closeCode, event.closeCode.map(String.init) ?? "none")
-            && allows(.host, Self.host(event.url)) && allows(.source, event.source.rawValue)
+            && allowsHost(event.url) && allows(.source, event.source.rawValue)
             && Self.httpFields.allSatisfy { values[$0]?.isEmpty ?? true } && minimumDurationMillis == 0
             && includesTime(event.timestampMillis, now: now)
     }
     func matches(_ connection: InspectorConnection, now: Int64) -> Bool {
-        allows(.state, connection.state) && allows(.host, Self.host(connection.latest.url))
+        allows(.state, connection.state) && allowsHost(connection.latest.url)
             && allows(.source, connection.latest.source.rawValue)
             && includesTime(connection.latest.timestampMillis, now: now)
             && contains(connection.latest.url, connection.latest.connectionID)

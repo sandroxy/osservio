@@ -276,6 +276,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         long now = updatedAt == null ? System.currentTimeMillis() : updatedAt;
         for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now, IncidentPresentation.title(getContext(), snapshot.diagnosticKind))) visible.add(snapshot);
         header.setQuery(state.query, filterGroups(), visible.size(), snapshots.size()); header.setPaused(false);
+        header.showAdjustment(!reading && visible.isEmpty() && !snapshots.isEmpty());
         list.setEnabled(!reading);
         empty.setVisibility(visible.isEmpty() ? VISIBLE : GONE);
         empty.setText(reading ? R.string.osservio_archive_reading : snapshots.isEmpty() ? R.string.osservio_incident_empty : R.string.osservio_ui_filtered_empty);

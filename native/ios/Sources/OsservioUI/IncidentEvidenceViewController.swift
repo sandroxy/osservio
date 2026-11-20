@@ -100,7 +100,7 @@ final class IncidentEvidenceViewController: UITableViewController {
         header.relabel(paused: false, query: query)
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), indices.count, availableCount)
         table.refreshFeed(rowCount: indices.count, preservingPosition: result != nil)
-        table.setEmptyState(indices.isEmpty ? InspectorTheme.empty(query.searchesPayload && result == nil ? searchBusy ? "busy" : "ui_searching" : records.isEmpty ? "incident_evidence_empty" : "ui_filtered_empty") : nil)
+        table.setFeedEmpty(indices.isEmpty ? (query.searchesPayload && result == nil ? searchBusy ? "busy" : "ui_searching" : records.isEmpty ? "incident_evidence_empty" : "ui_filtered_empty") : nil, header: header, query: query)
     }
     private func showFilters(_ target: InspectorQuery.Target?) {
         let groups: [InspectorFilterGroup]
@@ -139,16 +139,22 @@ final class IncidentEvidenceViewController: UITableViewController {
         }
         return cell
     }
+    override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        header.recordMenu(records[indices[indexPath.row]])
+    }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
         let index = indices[indexPath.row], controller: UIViewController
         switch evidence {
-        case .logs(let value): controller = LogDetailViewController(event: value.events[index], saved: value.payloads)
+        case .logs(let value):
+            let detail = LogDetailViewController(event: value.events[index], saved: value.payloads)
+            detail.searchHit = result?.hit(records[index], term: query.text); controller = detail
         case .http(let value):
             let detail = HTTPDetailViewController(event: value.events[index], savedPayloads: value.payloads)
-            detail.searchSource = result?.previewSources[records[index].key]; controller = detail
+            detail.searchHit = result?.hit(records[index], term: query.text); controller = detail
         case .webSockets(let value):
             let detail = WebSocketDetailViewController(event: value.events[index], savedPayloads: value.payloads)
+            detail.searchHit = result?.hit(records[index], term: query.text)
             detail.showConnection = { [weak detail] in detail?.inspectorPush(IncidentEvidenceViewController(.webSockets(value), connectionID: value.events[index].connectionID)) }; controller = detail
         }
         inspectorPush(controller)

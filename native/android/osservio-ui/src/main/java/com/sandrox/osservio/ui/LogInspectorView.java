@@ -73,11 +73,17 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         header.onQueryChange = this::apply;
         list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            return index >= 0 && index < events.size() && header.recordMenu(view, new InspectorRecordSearch.Record(events.get(index)));
+        });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount();
             if (index < 0 || index >= events.size()) return;
             InspectorWidgets.hideKeyboard(this);
-            dialog = LogDetailDialog.create(context, events.get(index), history instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) history : null, null); watchDialog(); dialog.show();
+            LogEvent event = events.get(index);
+            InspectorRecordSearch.Hit hit = InspectorRecordSearch.Hit.from(result, new InspectorRecordSearch.Record(event).key(), state.query.text);
+            dialog = LogDetailDialog.create(context, event, history instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) history : null, null, hit); watchDialog(); dialog.show();
         });
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override public void onScrollStateChanged(AbsListView view, int scrollState) {
@@ -160,7 +166,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         try {
             header.setQuery(state.query, () -> InspectorFilterOptions.logs(getContext(), retained()), events.size(), retained().size());
             LogRecorder.Status status = recorder.status();
-            header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
+            header.emptyMessage(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : !retained().isEmpty() ? R.string.osservio_ui_filtered_empty
                 : stale || status == null ? R.string.osservio_busy : status.isRecording ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
             rows.notifyDataSetChanged(); status();
             if (!state.paused) list.setSelectionFromTop(0, 0);

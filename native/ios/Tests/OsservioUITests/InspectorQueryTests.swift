@@ -4,6 +4,18 @@ import OsservioCore
 import XCTest
 
 final class InspectorQueryTests: XCTestCase {
+    func testRecordFilteringKeepsExactValuesAndTheOtherDimensions() {
+        var query = InspectorQuery()
+        query.select(.level, value: "warning"); query.select(.host, value: "api.example")
+        query.filterRecord(.host, value: "api.example", excluding: true)
+        XCTAssertTrue(query.values[.host]?.isEmpty ?? true)
+        XCTAssertEqual(query.values[.excludedHost], ["api.example"])
+        XCTAssertFalse(query.values[.excludedHost]!.contains("test.api.example"))
+        query.filterRecord(.host, value: "api.example", excluding: false)
+        XCTAssertEqual(query.values[.host], ["api.example"])
+        XCTAssertTrue(query.values[.excludedHost]?.isEmpty ?? true)
+        XCTAssertEqual(query.values[.level], ["warning"])
+    }
     func testSwitchingScopePreservesOnlyVisibleConditionsInTheAppliedDraft() {
         var query = InspectorQuery(), scopes = InspectorQuery.ScopeDraft()
         query.select(.status, value: "5xx"); query.minimumDurationMillis = 800

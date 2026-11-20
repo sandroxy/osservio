@@ -40,6 +40,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         inspectorActions = [copyButton]
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
+        if searchHit?.source == "ui_search_message" && event.payload != nil { selection.selectedIndex = 1 }
         tableView.tableHeaderView = header; selection.onSelect = { [weak self] _ in self?.render() }; render()
     }
     override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); render() }
@@ -63,7 +64,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
             if event.kind == .message {
                 let content = payloadContent()
                 sections.append(Section(title: InspectorLocalization.text("ws_payload"), rows: [
-                    Row(content.isAvailable ? content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600)) : content.notice,
+                    Row(content.isAvailable ? searchHit?.excerpt(in: "ui_search_message") ?? (content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600))) : content.notice,
                         action: content.isAvailable ? { [weak self] in self?.openPayload() } : nil)
                 ], footer: content.isAvailable ? content.notice : nil))
             }
@@ -83,14 +84,14 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         } else {
             let content = payloadContent()
             sections = [Section(title: InspectorLocalization.text("ws_payload"), rows: [
-                Row(content.isAvailable ? content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600)) : content.notice,
+                Row(content.isAvailable ? searchHit?.excerpt(in: "ui_search_message") ?? (content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600))) : content.notice,
                     action: content.isAvailable ? { [weak self] in self?.openPayload() } : nil)
             ], footer: content.isAvailable ? content.notice : nil)]
         }
     }
     private func headerRow(_ header: HTTPHeader) -> Row {
         Row(header.name, InspectorRecordPresentation.compact(header.value, limit: 180), action: { [weak self] in
-            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }))
+            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }), source: "ui_search_handshake_headers")
         })
     }
     private func payloadContent() -> InspectorReadContent {
@@ -102,7 +103,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         content.context = { [event] in InspectorRecordPresentation.context(event) }
         return content
     }
-    private func openPayload() { read(titleKey: "ws_payload", content: payloadContent()) }
+    private func openPayload() { read(titleKey: "ws_payload", content: payloadContent(), source: "ui_search_message") }
     @objc private func copyMetadata() { UIPasteboard.general.string = WebSocketPresentation.overview(event) }
 }
 #endif

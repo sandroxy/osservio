@@ -10,6 +10,11 @@ final class InspectorReadContent {
     final boolean allowsJson;
     final boolean available;
     boolean isForm;
+    String initialSearch = "";
+    InspectorReadContent withSearch(InspectorRecordSearch.Hit hit, String source) {
+        if (available) initialSearch = InspectorRecordSearch.Hit.term(hit, source);
+        return this;
+    }
     private InspectorAppearance.Value<String> context = () -> "";
     InspectorReadContent(String text, String notice, boolean allowsJson) { this(text, () -> notice, allowsJson); }
     InspectorReadContent(String text, InspectorAppearance.Value<String> notice, boolean allowsJson) {
@@ -25,7 +30,7 @@ final class InspectorReadContent {
         InspectorReadContent copy = new InspectorReadContent(text, () -> {
             String heading = prefix.get(); return (heading.isEmpty() ? "" : heading + "\n") + notice();
         }, allowsJson, available).withContext(context);
-        copy.isForm = isForm; return copy;
+        copy.isForm = isForm; copy.initialSearch = initialSearch; return copy;
     }
     static InspectorReadContent unavailable(String notice) { return new InspectorReadContent("", () -> notice, false, false); }
     static InspectorReadContent unavailable(InspectorAppearance.Value<String> notice) { return new InspectorReadContent("", notice, false, false); }

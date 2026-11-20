@@ -85,7 +85,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         return group.field != .transport
     }
     private func advanced(_ group: InspectorFilterGroup) -> Bool {
-        if [.searchScope, .content, .source, .connection, .outcome, .closeCode].contains(group.field) { return true }
+        if [.searchScope, .content, .source, .connection, .outcome, .closeCode, .excludedCategory, .excludedHost].contains(group.field) { return true }
         if group.field == .kind && network { return true }
         return [.host, .category].contains(group.field) && group.options.count == 1
     }
@@ -110,7 +110,7 @@ final class InspectorFilterViewController: UITableViewController, UITextFieldDel
         if group.field == .status, term.count == 3, term.allSatisfy({ $0.isASCII && $0.isNumber }), let code = Int(term), (100...599).contains(code), !options.contains(where: { $0.value == term }) {
             options.append((term, term))
         }
-        return (term.isEmpty ? [.option(index, nil, text("ui_all"))] : []) + options.filter {
+        return (term.isEmpty ? [.option(index, nil, text([.excludedCategory, .excludedHost].contains(group.field) ? "ui_no_exclusions" : "ui_all"))] : []) + options.filter {
             term.isEmpty || $0.label.localizedCaseInsensitiveContains(term) || $0.value.localizedCaseInsensitiveContains(term)
         }.map { .option(index, $0.value, $0.label) }
     }

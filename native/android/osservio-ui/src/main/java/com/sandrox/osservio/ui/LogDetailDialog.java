@@ -14,10 +14,13 @@ final class LogDetailDialog {
         return create(context, event, null, null);
     }
     static InspectorScreen create(Context context, LogEvent event, LogDetailsHistory history, Map<String, IncidentPayload> saved) {
+        return create(context, event, history, saved, null);
+    }
+    static InspectorScreen create(Context context, LogEvent event, LogDetailsHistory history, Map<String, IncidentPayload> saved, InspectorRecordSearch.Hit hit) {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_read_content);
-        InspectorWidgets.ValueRow reader = page.value(() -> RuntimePresentation.message(context, event.message.length() > 600 ? event.message.substring(0, 600) + "…" : event.message, event.isPrivate),
-            event.isPrivate ? null : () -> page.read(R.string.osservio_ui_log_content, new InspectorReadContent(event.message, () -> event.isTruncated ? context.getString(R.string.osservio_truncated) : "", !event.isTruncated && !event.isPrivate).withContext(() -> InspectorRecordPresentation.context(context, event))));
+        InspectorWidgets.ValueRow reader = page.value(() -> RuntimePresentation.message(context, InspectorRecordSearch.Hit.preview(hit, "log", event.message, 600), event.isPrivate),
+            event.isPrivate ? null : () -> page.read(R.string.osservio_ui_log_content, new InspectorReadContent(event.message, () -> event.isTruncated ? context.getString(R.string.osservio_truncated) : "", !event.isTruncated && !event.isPrivate).withSearch(hit, "log").withContext(() -> InspectorRecordPresentation.context(context, event))));
         Runnable label = () -> reader.setContentDescription(context.getString(R.string.osservio_ui_open_reader));
         if (!event.isPrivate) { InspectorAppearance.content(page, label); label.run(); }
         if (event.isPrivate) page.note(R.string.osservio_crumb_private);
@@ -26,7 +29,7 @@ final class LogDetailDialog {
             page.section(R.string.osservio_ui_log_context);
             page.value(() -> context.getString(InspectorLogDetails.label(event.details.state)),
                 event.details.state == LogDetailsReference.State.AVAILABLE ? () -> page.read(R.string.osservio_ui_log_context,
-                    InspectorLogDetails.content(context, event, history, saved)) : null);
+                    InspectorLogDetails.content(context, event, history, saved).withSearch(hit, "logDetails")) : null);
         }
         page.section(R.string.osservio_ui_overview);
         page.field(R.string.osservio_ui_level, event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name());

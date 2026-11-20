@@ -16,23 +16,25 @@ enum InspectorFilterOptions {
     static let socketKinds: [WebSocketKind] = [.connecting, .attached, .opened, .message, .messageResult, .closeRequested,
         .closing, .closed, .failed, .cancelled, .cancelRequested, .observationEnded, .observationLimited]
     static func logs(_ events: [LogEvent]) -> [InspectorFilterGroup] {
-        [InspectorFilterGroup(.level, values: LogLevel.allCases.map(\.rawValue)),
-         InspectorFilterGroup(.category, values: events.map(\.category).sorted())]
+        let categories = Set(events.map(\.category)).sorted()
+        return [InspectorFilterGroup(.level, values: LogLevel.allCases.map(\.rawValue)),
+         InspectorFilterGroup(.category, values: categories), InspectorFilterGroup(.excludedCategory, values: categories)]
     }
     static func network(_ events: [HTTPEvent], sockets: [WebSocketEvent], query: InspectorQuery,
                         includeHTTP: Bool = true, includeSockets: Bool = true) -> [InspectorFilterGroup] {
+        let hosts = Set((events.map(\.url) + sockets.map(\.url)).map(InspectorQuery.host)).sorted()
         var result = [InspectorFilterGroup(.transport, values: (includeHTTP ? ["http"] : []) + (includeSockets ? ["webSocket"] : [])),
-            InspectorFilterGroup(.host, values: (events.map(\.url) + sockets.map(\.url)).map(InspectorQuery.host).sorted())]
+            InspectorFilterGroup(.host, values: hosts), InspectorFilterGroup(.excludedHost, values: hosts)]
         let sources = Set(events.map { $0.source.rawValue } + sockets.map { $0.source.rawValue })
         if sources.count > 1 || !(query.values[.source]?.isEmpty ?? true) { result.append(InspectorFilterGroup(.source, values: sources.sorted())) }
         result += [InspectorFilterGroup(.method, title: InspectorLocalization.text("ui_http_method"), values: events.map(\.method).sorted()),
             InspectorFilterGroup(.status, title: InspectorLocalization.text("ui_http_status"), values: ["1xx", "2xx", "3xx", "4xx", "5xx", "none"] + events.compactMap { $0.statusCode }.sorted().map(String.init)),
-            InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_http_state"), values: events.map { $0.state.rawValue }.sorted()),
+            InspectorFilterGroup(.state, title: InspectorLocalization.text("ui_http_state"), values: [HTTPState.pending, .receiving, .completed, .failed, .cancelled, .closedEarly, .captureEnded].map(\.rawValue)),
             InspectorFilterGroup(.content, title: InspectorLocalization.text("ui_http_content"), values: events.map { InspectorHTTPContent.category($0.responseHeaders) }.sorted()),
             InspectorFilterGroup(.activity, values: ["messages", "connections"]),
             InspectorFilterGroup(.direction, title: InspectorLocalization.text("ui_socket_direction"), values: ["incoming", "outgoing"]),
             InspectorFilterGroup(.kind, title: InspectorLocalization.text("ui_socket_kind"), values: sockets.map { $0.kind.rawValue }.sorted()),
-            InspectorFilterGroup(.outcome, values: sockets.compactMap { $0.outcome?.rawValue }.sorted()),
+            InspectorFilterGroup(.outcome, values: [WebSocketMessageOutcome.received, .submitted, .queued, .sent, .rejected, .failed, .unobserved].map(\.rawValue)),
             InspectorFilterGroup(.closeCode, values: sockets.compactMap { $0.closeCode }.sorted().map(String.init)),
             InspectorFilterGroup(.connection, values: sockets.map(\.connectionID).sorted())]
         if let index = result.firstIndex(where: { $0.field == .connection }) {

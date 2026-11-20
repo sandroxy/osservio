@@ -31,7 +31,7 @@ final class InspectorFeedHeader extends LinearLayout {
     private InspectorQuery displayedQuery;
     private String displayedStyle;
     private final InspectorFilterSheet.Edit editFilter;
-    private final Button undo;
+    private final Button undo, adjustFilters;
     private InspectorQuery beforeRemoval, afterRemoval;
     private final Runnable expireUndo = this::finishUndo;
     InspectorFilterSheet.Applied onQueryChange;
@@ -75,7 +75,7 @@ final class InspectorFeedHeader extends LinearLayout {
         activity.setContentDescription(context.getString(R.string.osservio_archive_reading));
         InspectorAppearance.style(activity, () -> activity.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(InspectorTheme.accent(context))));
         LinearLayout summary = new LinearLayout(context); summary.setOrientation(VERTICAL);
-        undo = InspectorWidgets.button(context, R.string.osservio_ui_undo_remove, () -> {
+        undo = InspectorWidgets.button(context, R.string.osservio_ui_undo_filter, () -> {
             InspectorQuery original = beforeRemoval;
             boolean current = afterRemoval != null && afterRemoval.sameAs(displayedQuery);
             finishUndo();
@@ -102,6 +102,8 @@ final class InspectorFeedHeader extends LinearLayout {
         if (!compact) addView(results, new LayoutParams(-1, -2));
         empty = InspectorWidgets.caption(context); empty.setTextSize(15); empty.setGravity(android.view.Gravity.CENTER);
         empty.setPadding(inset, inset * 2, inset, inset * 2); addView(empty, new LayoutParams(-1, -2));
+        adjustFilters = InspectorWidgets.button(context, R.string.osservio_ui_adjust_filters, () -> editFilter.open(null));
+        adjustFilters.setVisibility(GONE); addView(adjustFilters, new LayoutParams(-1, -2));
     }
     void setQuery(InspectorQuery query, List<InspectorFilterSheet.Group> groups, int visible, int total) {
         setQuery(query, () -> groups, visible, total);
@@ -137,6 +139,13 @@ final class InspectorFeedHeader extends LinearLayout {
         viewport.addView(latest, floating);
         latest.setTag(R.id.osservio_floating_margin, inset);
         return viewport;
+    }
+    void emptyMessage(int reason) {
+        empty.setText(reason);
+        showAdjustment(reason == R.string.osservio_ui_filtered_empty && empty.getVisibility() == VISIBLE);
+    }
+    void showAdjustment(boolean filteredEmpty) {
+        adjustFilters.setVisibility(filteredEmpty && displayedQuery != null && displayedQuery.activeCount() > 0 ? VISIBLE : GONE);
     }
     void hideActions() { actions.setVisibility(GONE); }
     void setReading(boolean reading) { activity.setVisibility(reading ? VISIBLE : INVISIBLE); }
@@ -177,7 +186,7 @@ final class InspectorFeedHeader extends LinearLayout {
         edit.setMaxWidth(Math.max(InspectorTheme.dp(context, 48), available - InspectorTheme.dp(context, 54)));
         group.addView(edit);
         if (changed != null) {
-            Button close = tokenAction("×", () -> removeCondition(changed));
+            Button close = tokenAction("×", () -> replaceWithUndo(changed));
             close.setContentDescription(context.getString(R.string.osservio_ui_remove_filter) + ", " + label);
             group.addView(close, new LayoutParams(InspectorTheme.dp(context, 48), -2));
         }
@@ -196,7 +205,22 @@ final class InspectorFeedHeader extends LinearLayout {
         button.setTextColor(InspectorTheme.accent(context)); button.setOnClickListener(v -> action.run());
         return button;
     }
-    private void removeCondition(InspectorQuery changed) {
+    boolean recordMenu(View anchor, InspectorRecordSearch.Record record) {
+        final boolean category = record.log != null;
+        final String value = category ? record.log.category : InspectorQuery.host(record.http != null ? record.http.url : record.socket.url);
+        if (value.isEmpty()) return false;
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(getContext(), anchor);
+        menu.getMenu().add(0, 1, 0, category ? R.string.osservio_ui_only_category : R.string.osservio_ui_only_host);
+        menu.getMenu().add(0, 2, 1, category ? R.string.osservio_ui_exclude_category : R.string.osservio_ui_exclude_host);
+        menu.setOnMenuItemClickListener(item -> {
+            InspectorQuery changed = displayedQuery.copy();
+            changed.filterRecord(category ? InspectorQuery.Field.CATEGORY : InspectorQuery.Field.HOST, value, item.getItemId() == 2);
+            if (!changed.sameAs(displayedQuery)) replaceWithUndo(changed);
+            return true;
+        });
+        menu.show(); return true;
+    }
+    private void replaceWithUndo(InspectorQuery changed) {
         if (onQueryChange == null) return;
         removeCallbacks(expireUndo);
         beforeRemoval = displayedQuery.copy(); afterRemoval = changed.copy(); undo.setVisibility(VISIBLE);

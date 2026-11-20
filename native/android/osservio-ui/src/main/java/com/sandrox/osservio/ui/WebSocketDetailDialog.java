@@ -16,17 +16,19 @@ final class WebSocketDetailDialog {
     private final WebSocketEvent event;
     private Runnable connection;
     void showConnection(Runnable action) { connection = action; render(); }
+    private final InspectorRecordSearch.Hit hit;
     private int section;
     private final FrameLayout body;
     final InspectorScreen dialog;
-    WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history) { this(context, event, history, null); }
-    WebSocketDetailDialog(Context context, WebSocketEvent event, Map<String, IncidentPayload> payloads) { this(context, event, null, payloads); }
-    private WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history, Map<String, IncidentPayload> payloads) {
+    WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history) { this(context, event, history, null, null); }
+    WebSocketDetailDialog(Context context, WebSocketEvent event, Map<String, IncidentPayload> payloads) { this(context, event, null, payloads, null); }
+    WebSocketDetailDialog(Context context, WebSocketEvent event, WebSocketHistory history, Map<String, IncidentPayload> payloads, InspectorRecordSearch.Hit hit) {
+        this.hit = hit; section = hit != null && hit.source.equals("message") && event.payload != null ? 1 : 0;
         this.context = context; this.event = event; this.history = history; this.savedPayloads = payloads;
         LinearLayout content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams tabs = new LinearLayout.LayoutParams(-1, -2);
         int inset = InspectorTheme.dp(context, 16); tabs.setMargins(inset, InspectorTheme.dp(context, 8), inset, 0);
-        if (event.payload != null) content.addView(InspectorWidgets.segments(content, content, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, 0, index -> { section = index; render(); }), tabs);
+        if (event.payload != null) content.addView(InspectorWidgets.segments(content, content, new int[] {R.string.osservio_ui_overview, R.string.osservio_ws_payload}, section, index -> { section = index; render(); }), tabs);
         body = new FrameLayout(context); content.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
         dialog = InspectorDialogs.screen(context, "WebSocket", content);
         dialog.title(event.kind == WebSocketEvent.Kind.MESSAGE || event.kind == WebSocketEvent.Kind.MESSAGE_RESULT ? R.string.osservio_ui_message_details : R.string.osservio_ui_connection_event);
@@ -59,7 +61,7 @@ final class WebSocketDetailDialog {
             page.note(R.string.osservio_ws_evidence_note);
             if (!event.headers.isEmpty() || event.headersLimited) {
                 page.section(R.string.osservio_ws_headers);
-                for (com.sandrox.osservio.core.HTTPHeader header : event.headers) page.header(header);
+                for (com.sandrox.osservio.core.HTTPHeader header : event.headers) page.header(header, hit, "handshakeHeaders");
                 if (event.headersLimited) page.note(R.string.osservio_http_headers_limited);
             }
         } else payloadSection(page);
@@ -67,13 +69,13 @@ final class WebSocketDetailDialog {
     }
     private InspectorReadContent payloadContent() {
         InspectorReadContent text = savedPayloads != null ? WebSocketPresentation.payload(context, event.payload, savedPayloads) : WebSocketPresentation.payload(context, event.payload, history);
-        return text.withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail))
+        return text.withSearch(hit, "message").withNoticePrefix(() -> savedPayloads == null ? "" : context.getString(R.string.osservio_incident_frozen_detail))
             .withContext(() -> InspectorRecordPresentation.context(context, event));
     }
     private void payloadSection(InspectorDetailPage page) {
         InspectorReadContent content = payloadContent();
         page.section(R.string.osservio_ws_payload);
-        page.value(() -> content.available ? content.text.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : InspectorRecordPresentation.compact(content.text, 600) : content.notice(),
+        page.value(() -> content.available ? content.text.isEmpty() ? context.getString(R.string.osservio_ui_content_empty) : InspectorRecordSearch.Hit.preview(hit, "message", content.text, 600) : content.notice(),
             content.available ? () -> page.read(R.string.osservio_ws_payload, payloadContent()) : null, content.available ? R.string.osservio_ui_open_reader : 0);
         if (content.available) page.note(content::notice);
     }

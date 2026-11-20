@@ -3,6 +3,7 @@ import UIKit
 
 @MainActor
 class InspectorContentViewController: UIViewController, UITextFieldDelegate {
+    var initialSearch = ""
     private let value: InspectorReadContent
     private var content: String { value.text }
     private let code: Bool
@@ -61,6 +62,8 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         nextButton.setTitle(InspectorLocalization.text("ui_next_match"), for: .normal)
         previous.addTarget(self, action: #selector(previousMatch), for: .touchUpInside)
         nextButton.addTarget(self, action: #selector(nextMatch), for: .touchUpInside)
+        search.text = initialSearch
+        if value.isForm && !initialSearch.isEmpty { mode.selectedIndex = 1 }
         mode.isHidden = true; mode.onSelect = { [weak self] _ in self?.applySearch() }
         form.open = { [weak self] field in
             self?.inspectorPush(InspectorContentViewController(titleKey: "form_field", value: InspectorReadContent(text: field.value,
@@ -104,6 +107,12 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(suspendParsing), name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(resumeParsing), name: UIApplication.didBecomeActiveNotification, object: nil)
         render()
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if !initialSearch.isEmpty {
+            initialSearch = ""; view.layoutIfNeeded(); render(reveal: true)
+        }
     }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated); active = false; view.endEditing(true); work?.cancel(); suspendParsing()

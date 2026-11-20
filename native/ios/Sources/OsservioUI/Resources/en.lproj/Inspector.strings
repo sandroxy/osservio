@@ -151,8 +151,16 @@
 
 "ui_retention_loss" = "Some history was discarded by retention or rate limits";
 
+"ui_excluded_host" = "Excluded hosts";
+"ui_excluded_category" = "Excluded categories";
+"ui_only_host" = "Show only this host";
+"ui_only_category" = "Show only this category";
+"ui_exclude_host" = "Exclude this host";
+"ui_exclude_category" = "Exclude this category";
+"ui_no_exclusions" = "None excluded";
+"ui_adjust_filters" = "Adjust filters";
 "ui_edit_filter" = "Edit this condition";
-"ui_undo_remove" = "Undo removal";
+"ui_undo_filter" = "Undo";
 "ui_remove_filter" = "Remove this condition";
 
 "ui_connection_context" = "View records for this connection";

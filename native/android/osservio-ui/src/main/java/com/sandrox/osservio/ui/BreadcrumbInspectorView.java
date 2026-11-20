@@ -110,7 +110,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
                     && query.contains(event.label, RuntimePresentation.kind(getContext(), event.kind), event.message)) events.add(event);
             }
             header.setQuery(query, groups(), events.size(), latest == null ? 0 : latest.events.size());
-            header.empty.setText(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_crumb_empty : R.string.osservio_ui_filtered_empty);
+            header.emptyMessage(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_crumb_empty : R.string.osservio_ui_filtered_empty);
             rows.notifyDataSetChanged(); dirty = false;
             if (!paused) list.setSelectionFromTop(0, 0);
         }

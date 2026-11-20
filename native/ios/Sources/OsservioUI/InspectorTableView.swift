@@ -56,10 +56,20 @@ final class InspectorTableView: UITableView {
         }
     }
 
-    func setEmptyState(_ label: UILabel?) {
+    func setFeedEmpty(_ reason: String?, header: InspectorFeedHeader, query: InspectorQuery) {
+        var action: UIButton?
+        if reason == "ui_filtered_empty" && query.activeCount > 0 {
+            action = header.adjustFiltersButton
+            action?.setTitle(InspectorLocalization.text("ui_adjust_filters"), for: .normal)
+            action?.tintColor = InspectorTheme.accent
+        }
+        setEmptyState(reason.map(InspectorTheme.empty), action: action)
+    }
+    func setEmptyState(_ label: UILabel?, action: UIButton? = nil) {
         if label == nil && emptyFooter == nil { return }
         emptyFooter = label.map {
             let footer = UIStackView(arrangedSubviews: [$0])
+            if let action { footer.addArrangedSubview(action) }
             footer.axis = .vertical; footer.isLayoutMarginsRelativeArrangement = true
             footer.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
             return footer

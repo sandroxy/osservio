@@ -151,8 +151,16 @@
 
 "ui_retention_loss" = "部分历史已因容量或限流被丢弃";
 
+"ui_excluded_host" = "排除主机";
+"ui_excluded_category" = "排除分类";
+"ui_only_host" = "只看此主机";
+"ui_only_category" = "只看此分类";
+"ui_exclude_host" = "排除此主机";
+"ui_exclude_category" = "排除此分类";
+"ui_no_exclusions" = "不排除";
+"ui_adjust_filters" = "调整筛选";
 "ui_edit_filter" = "编辑此条件";
-"ui_undo_remove" = "撤销移除";
+"ui_undo_filter" = "撤销";
 "ui_remove_filter" = "移除此条件";
 
 "ui_connection_context" = "查看此连接的记录";

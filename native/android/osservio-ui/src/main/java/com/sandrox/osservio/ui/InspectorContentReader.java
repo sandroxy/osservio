@@ -123,10 +123,14 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         cancelParsing(); handler.removeCallbacks(searchContent); content = value.text; this.value = value;
         parsed = false; parserNotice = 0; structured = true; tree.clear(); form.display(null); mode.setVisibility(GONE);
         ((android.widget.RadioButton) mode.getChildAt(0)).setText(getContext().getString(value.isForm ? R.string.osservio_form_fields : R.string.osservio_json_structure));
-        ((android.widget.RadioButton) mode.getChildAt(0)).setChecked(true);
+        structured = !value.isForm || value.initialSearch.isEmpty();
+        ((android.widget.RadioButton) mode.getChildAt(structured ? 0 : 1)).setChecked(true);
+        if (!value.initialSearch.isEmpty()) {
+            search.setText(value.initialSearch); handler.removeCallbacks(searchContent); searchDirty = false;
+        }
         text.setTypeface(code ? Typeface.MONOSPACE : Typeface.DEFAULT);
         matches = new InspectorTextSearch(content, searching.getVisibility() == VISIBLE ? search.getText().toString() : "");
-        selection = 0; highlight(false); scroll.scrollTo(0, 0);
+        selection = 0; scroll.scrollTo(0, 0); highlight(!value.initialSearch.isEmpty());
         if (isAttachedToWindow()) startParsing();
     }
     private void move(int direction) {

@@ -23,7 +23,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     private let event: HTTPEvent
     private let history: (any HTTPHistory)?
     private let savedPayloads: [String: IncidentPayload]?
-    var searchSource: String?
+    private var bodySource: String { selection.selectedIndex == 1 ? "ui_search_request_body" : "ui_search_response_body" }
     private let selection = InspectorScopeControl(titles: ["", "", ""])
     private var noticeKey: String?
     private lazy var copyButton = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyMetadata))
@@ -40,8 +40,8 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         inspectorActions = [copyButton]
-        if ["ui_search_request_body", "ui_search_request_headers"].contains(searchSource ?? "") { selection.selectedIndex = 1 }
-        if ["ui_search_response_body", "ui_search_response_headers"].contains(searchSource ?? "") { selection.selectedIndex = 2 }
+        if ["ui_search_request_body", "ui_search_request_headers"].contains(searchHit?.source ?? "") { selection.selectedIndex = 1 }
+        if ["ui_search_response_body", "ui_search_response_headers"].contains(searchHit?.source ?? "") { selection.selectedIndex = 2 }
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         tableView.tableHeaderView = header
@@ -81,7 +81,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         } else {
             let headers = selection.selectedIndex == 1 ? event.requestHeaders : event.responseHeaders
             let content = bodyContent()
-            let preview = content.isAvailable ? content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600)) : content.notice
+            let preview = content.isAvailable ? searchHit?.excerpt(in: bodySource) ?? (content.text.isEmpty ? InspectorLocalization.text("ui_content_empty") : String(content.text.prefix(600))) : content.notice
             sections = [Section(title: InspectorLocalization.text("ui_body"), rows: [
                 Row(preview, action: content.isAvailable ? { [weak self] in self?.openBody() } : nil)
             ], footer: content.isAvailable ? content.notice : nil),
@@ -92,7 +92,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     }
     private func headerRow(_ header: HTTPHeader) -> Row {
         Row(header.name, InspectorRecordPresentation.compact(header.value, limit: 180), action: { [weak self] in
-            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }))
+            self?.read(titleKey: "ui_header_value", content: InspectorReadContent(text: header.value, context: { header.name }), source: self?.selection.selectedIndex == 1 ? "ui_search_request_headers" : "ui_search_response_headers")
         })
     }
     private func openAddress() {
@@ -110,7 +110,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         return content
     }
     private func openBody() {
-        read(titleKey: selection.selectedIndex == 1 ? "http_request_body" : "http_response_body", content: bodyContent())
+        read(titleKey: selection.selectedIndex == 1 ? "http_request_body" : "http_response_body", content: bodyContent(), source: bodySource)
     }
     @objc private func copyMetadata() { UIPasteboard.general.string = HTTPPresentation.overview(event) }
 }

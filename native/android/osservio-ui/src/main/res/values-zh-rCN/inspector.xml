@@ -129,8 +129,16 @@
     <string name="osservio_ui_search_progress">正在检索：已检查 %1$d / %2$d 条</string>
     <string name="osservio_ui_search_paused">检索已暂停：已检查 %1$d / %2$d 条</string>
     <string name="osservio_ui_retention_loss">部分历史已因容量或限流被丢弃</string>
+    <string name="osservio_ui_excluded_host">排除主机</string>
+    <string name="osservio_ui_excluded_category">排除分类</string>
+    <string name="osservio_ui_only_host">只看此主机</string>
+    <string name="osservio_ui_only_category">只看此分类</string>
+    <string name="osservio_ui_exclude_host">排除此主机</string>
+    <string name="osservio_ui_exclude_category">排除此分类</string>
+    <string name="osservio_ui_no_exclusions">不排除</string>
+    <string name="osservio_ui_adjust_filters">调整筛选</string>
     <string name="osservio_ui_edit_filter">编辑此条件</string>
-    <string name="osservio_ui_undo_remove">撤销移除</string>
+    <string name="osservio_ui_undo_filter">撤销</string>
     <string name="osservio_ui_remove_filter">移除此条件</string>
     <string name="osservio_ui_connection_context">查看此连接的记录</string>
     <string name="osservio_ui_socket_kind">Socket 记录类型</string>

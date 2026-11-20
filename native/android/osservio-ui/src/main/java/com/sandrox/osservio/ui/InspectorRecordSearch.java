@@ -79,6 +79,18 @@ final class InspectorRecordSearch {
         final String source, text;
         Match(String source, String text) { this.source = source; this.text = text; }
     }
+    static final class Hit {
+        final String source, term, excerpt;
+        Hit(String source, String term, String excerpt) { this.source = source; this.term = term; this.excerpt = excerpt; }
+        static Hit from(Result result, String key, String term) {
+            if (result == null || !result.previewSources.containsKey(key)) return null;
+            return new Hit(result.previewSources.get(key), term, result.previews.get(key));
+        }
+        static String term(Hit hit, String source) { return hit != null && source.equals(hit.source) ? hit.term : ""; }
+        static String preview(Hit hit, String source, String content, int limit) {
+            return !term(hit, source).isEmpty() ? hit.excerpt : InspectorRecordPresentation.compact(content, limit);
+        }
+    }
     static final class Result {
         final Set<String> keys = new HashSet<>();
         final List<Integer> positions = new ArrayList<>();

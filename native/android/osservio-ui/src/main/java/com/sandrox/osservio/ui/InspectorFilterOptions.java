@@ -22,6 +22,7 @@ final class InspectorFilterOptions {
         groups.add(levels);
         Set<String> categories = new TreeSet<>(); for (LogEvent event : events) categories.add(event.category);
         groups.add(strings(context, InspectorQuery.Field.CATEGORY, R.string.osservio_ui_category, categories));
+        groups.add(strings(context, InspectorQuery.Field.EXCLUDED_CATEGORY, R.string.osservio_ui_excluded_category, categories));
         return groups;
     }
     static List<InspectorFilterSheet.Group> network(Context context, List<HTTPEvent> http, List<WebSocketEvent> sockets, InspectorQuery query) {
@@ -33,10 +34,11 @@ final class InspectorFilterOptions {
         InspectorFilterSheet.Group transport = group(context, InspectorQuery.Field.TRANSPORT, R.string.osservio_ui_transport);
         if (includeHTTP) transport.option("http", "HTTP"); if (includeSockets) transport.option("webSocket", "WebSocket"); groups.add(transport);
         Set<String> hosts = new TreeSet<>(), sources = new TreeSet<>(), methods = new TreeSet<>(), connections = new TreeSet<>();
-        Set<HTTPEvent.State> states = new TreeSet<>(); Set<WebSocketEvent.Kind> kinds = new TreeSet<>(); Set<String> contents = new TreeSet<>();
-        for (HTTPEvent event : http) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); methods.add(event.method); states.add(event.state); contents.add(InspectorHTTPContent.category(event.responseHeaders)); }
+        Set<WebSocketEvent.Kind> kinds = new TreeSet<>(); Set<String> contents = new TreeSet<>();
+        for (HTTPEvent event : http) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); methods.add(event.method); contents.add(InspectorHTTPContent.category(event.responseHeaders)); }
         for (WebSocketEvent event : sockets) { hosts.add(InspectorQuery.host(event.url)); sources.add(event.source.name()); connections.add(event.connectionId); kinds.add(event.kind); }
         groups.add(strings(context, InspectorQuery.Field.HOST, R.string.osservio_ui_host, hosts));
+        groups.add(strings(context, InspectorQuery.Field.EXCLUDED_HOST, R.string.osservio_ui_excluded_host, hosts));
         if (sources.size() > 1 || (query.values.containsKey(InspectorQuery.Field.SOURCE) && !query.values.get(InspectorQuery.Field.SOURCE).isEmpty())) {
             InspectorFilterSheet.Group source = group(context, InspectorQuery.Field.SOURCE, R.string.osservio_ui_source);
             for (String key : sources) source.option(key, source(context, key)); groups.add(source);
@@ -50,7 +52,7 @@ final class InspectorFilterOptions {
             for (Integer code : exactCodes) codes.option(code.toString(), code.toString());
             groups.add(codes);
             InspectorFilterSheet.Group state = group(context, InspectorQuery.Field.STATE, R.string.osservio_ui_http_state);
-            for (HTTPEvent.State entry : states) state.option(entry.name(), HTTPPresentation.state(context, entry)); groups.add(state);
+            for (HTTPEvent.State entry : HTTPEvent.State.values()) state.option(entry.name(), HTTPPresentation.state(context, entry)); groups.add(state);
             InspectorFilterSheet.Group content = group(context, InspectorQuery.Field.CONTENT, R.string.osservio_ui_http_content);
             int[] labels = {R.string.osservio_ui_content_json, R.string.osservio_ui_content_text, R.string.osservio_ui_content_image,
                 R.string.osservio_ui_content_media, R.string.osservio_ui_content_other, R.string.osservio_ui_content_unknown};
@@ -65,10 +67,10 @@ final class InspectorFilterOptions {
                 );
             InspectorFilterSheet.Group kind = group(context, InspectorQuery.Field.KIND, R.string.osservio_ui_socket_kind);
             for (WebSocketEvent.Kind entry : kinds) kind.option(entry.name(), WebSocketPresentation.kind(context, entry)); groups.add(kind);
-            Set<String> outcomes = new TreeSet<>(), closeCodes = new TreeSet<>();
-            for (WebSocketEvent event : sockets) { if (event.outcome != null) outcomes.add(event.outcome.name()); if (event.closeCode != null) closeCodes.add(event.closeCode.toString()); }
+            Set<String> closeCodes = new TreeSet<>();
+            for (WebSocketEvent event : sockets) { if (event.closeCode != null) closeCodes.add(event.closeCode.toString()); }
             InspectorFilterSheet.Group outcome = group(context, InspectorQuery.Field.OUTCOME, R.string.osservio_ui_outcome);
-            for (String value : outcomes) outcome.option(value, label(context, InspectorQuery.Field.OUTCOME, value)); groups.add(outcome);
+            for (WebSocketEvent.Outcome value : WebSocketEvent.Outcome.values()) outcome.option(value.name(), WebSocketPresentation.outcome(context, value)); groups.add(outcome);
             groups.add(strings(context, InspectorQuery.Field.CLOSE_CODE, R.string.osservio_ui_close_code, closeCodes));
             InspectorFilterSheet.Group connection = group(context, InspectorQuery.Field.CONNECTION, R.string.osservio_ui_connection);
             for (InspectorQuery.Connection entry : InspectorQuery.connections(sockets)) connection.option(entry.first.connectionId,

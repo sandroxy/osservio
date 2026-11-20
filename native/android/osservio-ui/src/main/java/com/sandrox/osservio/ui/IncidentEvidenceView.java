@@ -57,7 +57,12 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         list.setDivider(null); list.setDividerHeight(0);
         InspectorAppearance.style(header.status, () -> header.status.setTextColor(InspectorTheme.secondary(context)));
         list.addHeaderView(header, null, false); footer = caption(""); footer.setPadding(dp(16), dp(8), dp(16), dp(16)); list.addFooterView(footer, null, false);
-        list.setAdapter(rows); list.setOnItemClickListener((parent, view, position, id) -> {
+        list.setAdapter(rows);
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            return index >= 0 && index < indices.size() && header.recordMenu(view, records.get(indices.get(index)));
+        });
+        list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < indices.size()) show(indices.get(index));
         });
         addView(list, new LayoutParams(-1, 0, 1));
@@ -123,6 +128,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         header.setQuery(query, this::groups, indices.size(), scopeCount()); header.empty.setVisibility(GONE);
         footer.setText(query.searchesPayload() && result == null ? searchBusy ? R.string.osservio_busy : R.string.osservio_ui_searching : count() == 0 ? R.string.osservio_incident_evidence_empty : R.string.osservio_ui_filtered_empty);
         footer.setVisibility(indices.isEmpty() ? VISIBLE : GONE);
+        header.showAdjustment(indices.isEmpty() && scopeCount() > 0 && !(query.searchesPayload() && result == null));
         long time = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
         String note = getContext().getString(R.string.osservio_ui_evidence_saved) + " · " + InspectorValuePresentation.eventTime(time, true);
         boolean loss = logs != null ? logs.omittedEventCount > 0 || logs.sourceEvictedCount > 0 || logs.sourceEvictedDetails > 0
@@ -137,10 +143,11 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private void show(int index) {
         if (detail != null) return;
         InspectorWidgets.hideKeyboard(this);
-        if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index), null, logs.payloads);
-        else if (http != null) detail = new HTTPDetailDialog(getContext(), http.events.get(index), http.payloads, result == null ? null : result.previewSources.get(records.get(index).key())).dialog;
+        InspectorRecordSearch.Hit hit = InspectorRecordSearch.Hit.from(result, records.get(index).key(), query.text);
+        if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index), null, logs.payloads, hit);
+        else if (http != null) detail = new HTTPDetailDialog(getContext(), http.events.get(index), http.payloads, hit).dialog;
         else {
-            WebSocketDetailDialog message = new WebSocketDetailDialog(getContext(), sockets.events.get(index), sockets.payloads);
+            WebSocketDetailDialog message = new WebSocketDetailDialog(getContext(), sockets.events.get(index), null, sockets.payloads, hit);
             message.showConnection(() -> {
                 IncidentEvidenceView connection = new IncidentEvidenceView(getContext(), sockets, () -> { }); connection.scopeConnection(sockets.events.get(index).connectionId);
                 InspectorDialogs.screen(getContext(), R.string.osservio_ui_connection_records, connection).show();

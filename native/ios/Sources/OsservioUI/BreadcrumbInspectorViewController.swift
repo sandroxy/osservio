@@ -60,7 +60,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         }
         table.reloadData(); dirty = false
         header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
-        table.setEmptyState(events.isEmpty ? InspectorTheme.empty(latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty" : "crumb_empty") : nil)
+        table.setFeedEmpty(events.isEmpty ? (latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty" : "crumb_empty") : nil, header: header, query: query)
         updateStatus()
     }
     private func updateStatus() {

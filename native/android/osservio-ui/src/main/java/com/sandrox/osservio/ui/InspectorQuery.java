@@ -18,8 +18,8 @@ import java.util.HashSet;
 
 /** View-only criteria: OR within one field, AND between independent fields. */
 final class InspectorQuery {
-    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION, ACTIVITY, OUTCOME, CLOSE_CODE, SEARCH_SCOPE }
-    static final Field[] FIELD_ORDER = {Field.TRANSPORT, Field.LEVEL, Field.RECORD, Field.HOST, Field.CATEGORY,
+    enum Field { LEVEL, CATEGORY, METHOD, STATE, STATUS, HOST, SOURCE, DIRECTION, KIND, RECORD, CONTENT, TRANSPORT, CONNECTION, ACTIVITY, OUTCOME, CLOSE_CODE, SEARCH_SCOPE, EXCLUDED_HOST, EXCLUDED_CATEGORY }
+    static final Field[] FIELD_ORDER = {Field.TRANSPORT, Field.LEVEL, Field.RECORD, Field.HOST, Field.EXCLUDED_HOST, Field.CATEGORY, Field.EXCLUDED_CATEGORY,
         Field.METHOD, Field.STATUS, Field.STATE, Field.ACTIVITY, Field.DIRECTION, Field.KIND, Field.OUTCOME,
         Field.CLOSE_CODE, Field.CONNECTION, Field.CONTENT, Field.SOURCE, Field.SEARCH_SCOPE};
     String text = "";
@@ -88,7 +88,44 @@ final class InspectorQuery {
         if (value == null) { values.remove(field); return; }
         Set<String> selected = values.get(field);
         if (selected == null) { selected = new HashSet<>(); values.put(field, selected); }
-        if (!selected.remove(value)) selected.add(value);
+        if (!selected.remove(value)) {
+            selected.add(value);
+            Field opposite = opposite(field);
+            if (opposite != null) removeValue(opposite, value);
+        }
+    }
+    private static Field opposite(Field field) {
+        switch (field) {
+            case CATEGORY: return Field.EXCLUDED_CATEGORY;
+            case EXCLUDED_CATEGORY: return Field.CATEGORY;
+            case HOST: return Field.EXCLUDED_HOST;
+            case EXCLUDED_HOST: return Field.HOST;
+            default: return null;
+        }
+    }
+    private void removeValue(Field field, String value) {
+        Set<String> existing = values.get(field);
+        if (existing != null && existing.contains(value)) {
+            Set<String> remaining = new HashSet<>(existing); remaining.remove(value);
+            if (remaining.isEmpty()) values.remove(field); else values.put(field, remaining);
+        }
+    }
+    void filterRecord(Field field, String value, boolean excluding) {
+        if (field != Field.HOST && field != Field.CATEGORY) return;
+        Field excluded = opposite(field);
+        removeValue(excluding ? field : excluded, value);
+        if (excluding) {
+            Set<String> hidden = values.containsKey(excluded) ? new HashSet<>(values.get(excluded)) : new HashSet<>();
+            hidden.add(value); values.put(excluded, hidden);
+        } else values.put(field, new HashSet<>(Collections.singleton(value)));
+    }
+    private boolean hidden(Field field, String value) {
+        Set<String> items = values.get(field); return items != null && items.contains(value);
+    }
+    private boolean allowsHost(String url) {
+        if (!selected(Field.HOST) && !selected(Field.EXCLUDED_HOST)) return true;
+        String value = host(url);
+        return allows(Field.HOST, value) && !hidden(Field.EXCLUDED_HOST, value);
     }
     boolean hasTransportConditions() {
         return !empty(HTTP_FIELDS) || !empty(SOCKET_FIELDS) || minimumDurationMillis > 0 || protocolScope(searchScope());
@@ -143,7 +180,7 @@ final class InspectorQuery {
             && (excludedText.isEmpty() || !hasText(event.message, excludedText) && !hasText(event.category, excludedText));
     }
     boolean matchesFacets(LogEvent event, long now) {
-        return allows(Field.LEVEL, event.level.name()) && allows(Field.CATEGORY, event.category) && includesTime(event.timestampMillis, now);
+        return allows(Field.LEVEL, event.level.name()) && allows(Field.CATEGORY, event.category) && !hidden(Field.EXCLUDED_CATEGORY, event.category) && includesTime(event.timestampMillis, now);
     }
     boolean matches(HTTPEvent event, long now) {
         return matchesFacets(event, now) && contains(event.url, event.responseURL, event.method, event.statusCode == null ? null : event.statusCode.toString());
@@ -151,7 +188,7 @@ final class InspectorQuery {
     boolean matchesFacets(HTTPEvent event, long now) {
         return allows(Field.TRANSPORT, "http") && allows(Field.METHOD, event.method) && allows(Field.STATE, event.state.name())
             && allowsStatus(event.statusCode)
-            && (!selected(Field.HOST) || allows(Field.HOST, host(event.url))) && allows(Field.SOURCE, event.source.name())
+            && allowsHost(event.url) && allows(Field.SOURCE, event.source.name())
             && (!selected(Field.CONTENT) || allows(Field.CONTENT, InspectorHTTPContent.category(event.responseHeaders)))
             && (minimumDurationMillis == 0 || event.durationMillis != null && event.durationMillis >= minimumDurationMillis)
             && empty(SOCKET_FIELDS) && includesTime(event.timestampMillis, now);
@@ -165,11 +202,11 @@ final class InspectorQuery {
             && allows(Field.DIRECTION, event.direction == null ? "none" : event.direction.name())
             && allows(Field.OUTCOME, event.outcome == null ? "none" : event.outcome.name())
             && allows(Field.CLOSE_CODE, event.closeCode == null ? "none" : event.closeCode.toString())
-            && allows(Field.KIND, event.kind.name()) && (!selected(Field.HOST) || allows(Field.HOST, host(event.url)))
+            && allows(Field.KIND, event.kind.name()) && allowsHost(event.url)
             && allows(Field.SOURCE, event.source.name()) && empty(HTTP_FIELDS) && minimumDurationMillis == 0 && includesTime(event.timestampMillis, now);
     }
     boolean matches(Connection connection, long now) {
-        return allows(Field.STATE, connection.state()) && allows(Field.HOST, host(connection.latest.url))
+        return allows(Field.STATE, connection.state()) && allowsHost(connection.latest.url)
             && allows(Field.SOURCE, connection.latest.source.name()) && includesTime(connection.latest.timestampMillis, now)
             && contains(connection.latest.url, connection.latest.connectionId);
     }

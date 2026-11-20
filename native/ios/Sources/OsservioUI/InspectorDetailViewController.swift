@@ -76,8 +76,11 @@ class InspectorDetailViewController: UITableViewController {
             UIMenu(children: [UIAction(title: InspectorLocalization.text("ui_copy_value"), image: UIImage(systemName: "doc.on.doc")) { _ in UIPasteboard.general.string = value }])
         }
     }
-    func read(titleKey: String, content: InspectorReadContent) {
-        inspectorPush(InspectorContentViewController(titleKey: titleKey, value: content))
+    var searchHit: InspectorRecordSearch.Hit?
+    func read(titleKey: String, content: InspectorReadContent, source: String? = nil) {
+        let reader = InspectorContentViewController(titleKey: titleKey, value: content)
+        if let source, content.isAvailable { reader.initialSearch = searchHit?.term(in: source) ?? "" }
+        inspectorPush(reader)
     }
     func read(titleKey: String, content: String, code: Bool = true) {
         inspectorPush(InspectorContentViewController(titleKey: titleKey, content: content, code: code))

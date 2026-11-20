@@ -146,6 +146,7 @@ final class InspectorFilterSheet {
             return group.field != InspectorQuery.Field.TRANSPORT;
         }
         boolean advanced(Group group) {
+            if (group.field == InspectorQuery.Field.EXCLUDED_HOST || group.field == InspectorQuery.Field.EXCLUDED_CATEGORY) return true;
             switch (group.field) {
                 case SEARCH_SCOPE: case CONTENT: case SOURCE: case CONNECTION: case OUTCOME: case CLOSE_CODE: return true;
                 case KIND: return network;
@@ -162,7 +163,7 @@ final class InspectorFilterSheet {
         }
         void addChoices(Group group, String term) {
             int start = rows.size();
-            if (term.isEmpty()) rows.add(new Row(Type.OPTION, group, ALL, text(R.string.osservio_ui_all)));
+            if (term.isEmpty()) rows.add(new Row(Type.OPTION, group, ALL, text(group.field == InspectorQuery.Field.EXCLUDED_CATEGORY || group.field == InspectorQuery.Field.EXCLUDED_HOST ? R.string.osservio_ui_no_exclusions : R.string.osservio_ui_all)));
             for (Map.Entry<String, String> entry : group.options.entrySet()) {
                 if (network && group.field == InspectorQuery.Field.KIND && !draft.allows(InspectorQuery.Field.ACTIVITY, entry.getKey().equals("MESSAGE") || entry.getKey().equals("MESSAGE_RESULT") ? "messages" : "connections")) continue;
                 if (group.field == InspectorQuery.Field.SEARCH_SCOPE && (("http".equals(transport()) && entry.getKey().equals("message")) || ("webSocket".equals(transport()) && (entry.getKey().equals("request") || entry.getKey().equals("response"))))) continue;

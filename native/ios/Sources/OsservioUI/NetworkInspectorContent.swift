@@ -140,7 +140,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         let active = http?.recorder.captureController.status()?.debugEnabled == true || sockets?.recorder.captureController.status()?.debugEnabled == true
         let key = dirty && query.searchesPayload ? "ui_searching" : available > 0 ? "ui_filtered_empty" : !attemptedRead ? "ui_reading"
             : staleHTTP || staleSockets ? "busy" : active ? "ui_waiting" : "ui_inactive_empty"
-        table.setEmptyState(rows.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()
+        table.setFeedEmpty(rows.isEmpty ? key : nil, header: header, query: query); updateStatus()
         DispatchQueue.main.async { [weak self] in self?.requestPreviews() }
     }
     // Only visible message rows are read. Cache text is capped at 64 × 180 UTF-16 units.
@@ -229,13 +229,17 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         }
         return cell
     }
+    func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        header.recordMenu(rows[indexPath.row])
+    }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
         switch rows[indexPath.row] {
-        case .http(let event): if let http { let detail = HTTPDetailViewController(event: event, history: http.history); detail.searchSource = result?.previewSources[InspectorSearchRecord.http(event).key]; owner?.inspectorPush(detail) }
+        case .http(let event): if let http { let detail = HTTPDetailViewController(event: event, history: http.history); detail.searchHit = result?.hit(.http(event), term: query.text); owner?.inspectorPush(detail) }
         case .socket(let event):
             if let sockets {
                 let detail = WebSocketDetailViewController(event: event, history: sockets.history)
+                detail.searchHit = result?.hit(.socket(event), term: query.text)
                 detail.showConnection = { [weak detail] in detail?.inspectorPush(NetworkInspectorViewController(content: NetworkInspectorContent(sockets: sockets, connectionID: event.connectionID))) }
                 owner?.inspectorPush(detail)
             }

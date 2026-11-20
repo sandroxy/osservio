@@ -120,7 +120,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
     }
     private func updateTokens(_ query: InspectorQuery) {
         if let removed, removed.after != query { expireUndo() }
-        undo.setTitle(InspectorLocalization.text("ui_undo_remove"), for: .normal)
+        undo.setTitle(InspectorLocalization.text("ui_undo_filter"), for: .normal)
         undo.tintColor = InspectorTheme.accent
         tokenScroll.isHidden = query.activeCount == 0
         let style = InspectorLocalization.text("ui_remove_filter") + InspectorPreferences.shared.appearance.rawValue + InspectorPreferences.shared.palette.rawValue
@@ -138,7 +138,7 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
             readableWidth.priority = .defaultHigh; readableWidth.isActive = true
             group.addArrangedSubview(edit)
             if let changed {
-                let close = InspectorFilterToken { [weak self] in self?.remove(query, replacingWith: changed) }
+                let close = InspectorFilterToken { [weak self] in self?.replace(query, with: changed) }
                 close.setImage(UIImage(systemName: "xmark"), for: .normal)
                 close.widthAnchor.constraint(equalToConstant: 44).isActive = true
                 close.accessibilityLabel = InspectorLocalization.text("ui_remove_filter") + ", " + title
@@ -157,8 +157,34 @@ final class InspectorFeedHeader: UIStackView, UITextFieldDelegate {
         if !query.fieldPath.isEmpty { var changed = query; changed.fieldPath = ""; changed.fieldValue = ""; add(query.fieldPath + " = " + query.fieldValue, target: .json, changed: changed) }
         if query.minimumDurationMillis > 0 { var changed = query; changed.minimumDurationMillis = 0; add("HTTP ≥ \(query.minimumDurationMillis) ms", target: .duration, changed: changed) }
     }
+    lazy var adjustFiltersButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.addTarget(self, action: #selector(openFilters), for: .touchUpInside)
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        return button
+    }()
     @objc private func openFilters() { onFilters?(nil) }
-    private func remove(_ original: InspectorQuery, replacingWith changed: InspectorQuery) {
+    func recordMenu(_ record: InspectorSearchRecord) -> UIContextMenuConfiguration? {
+        let field: InspectorQuery.Field, value: String
+        switch record {
+        case .log(let event): field = .category; value = event.category
+        case .http(let event): field = .host; value = InspectorQuery.host(event.url)
+        case .socket(let event): field = .host; value = InspectorQuery.host(event.url)
+        }
+        guard !value.isEmpty else { return nil }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+            let actions = [false, true].map { excluding in
+                let key = "ui_" + (excluding ? "exclude_" : "only_") + field.rawValue
+                return UIAction(title: InspectorLocalization.text(key)) { [weak self] _ in
+                    guard let self, let original = self.displayedQuery else { return }
+                    var query = original; query.filterRecord(field, value: value, excluding: excluding)
+                    if query != original { self.replace(original, with: query) }
+                }
+            }
+            return UIMenu(title: value, children: actions)
+        }
+    }
+    private func replace(_ original: InspectorQuery, with changed: InspectorQuery) {
         guard displayedQuery == original else { return }
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(expireUndo), object: nil)
         removed = (original, changed); undo.isHidden = false

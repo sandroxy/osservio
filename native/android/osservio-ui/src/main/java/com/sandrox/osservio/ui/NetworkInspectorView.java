@@ -69,6 +69,10 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         }
         list = new InspectorScroll.List(context); list.setDivider(null); list.setDividerHeight(0);
         list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            int index = position - list.getHeaderViewsCount();
+            return index >= 0 && index < items.size() && header.recordMenu(view, items.get(index));
+        });
         list.setOnItemClickListener((parent, view, position, id) -> {
             int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < items.size()) open(items.get(index));
         });
@@ -171,7 +175,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         boolean tracing = InspectorPerformance.begin(InspectorPerformance.Point.NETWORK_APPLY);
         try {
             header.setQuery(state.query, this::groups, items.size(), available);
-            header.empty.setText(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
+            header.emptyMessage(dirty && state.query.searchesPayload() ? R.string.osservio_ui_searching : available > 0 ? R.string.osservio_ui_filtered_empty
                 : stale ? R.string.osservio_busy : isDetailed() ? R.string.osservio_ui_waiting : R.string.osservio_ui_inactive_empty);
             rows.notifyDataSetChanged(); status();
             if (!state.paused) list.setSelectionFromTop(0, 0);
@@ -229,9 +233,10 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
     }
     private void open(InspectorRecordSearch.Record item) {
         if (dialog != null) return; InspectorWidgets.hideKeyboard(this);
-        if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory, result == null ? null : result.previewSources.get(item.key())).dialog;
+        InspectorRecordSearch.Hit hit = InspectorRecordSearch.Hit.from(result, item.key(), state.query.text);
+        if (item.http != null) dialog = new HTTPDetailDialog(getContext(), item.http, httpHistory, hit).dialog;
         else {
-            WebSocketDetailDialog detail = new WebSocketDetailDialog(getContext(), item.socket, socketHistory);
+            WebSocketDetailDialog detail = new WebSocketDetailDialog(getContext(), item.socket, socketHistory, null, hit);
             detail.showConnection(() -> {
                 String id = item.socket.connectionId;
                 NetworkInspectorView timeline = new NetworkInspectorView(getContext(), null, null, socketRecorder, socketHistory, new State(), id);

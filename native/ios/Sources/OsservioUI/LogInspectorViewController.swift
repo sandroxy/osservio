@@ -118,7 +118,7 @@ public final class LogInspectorViewController: UITableViewController {
         if header.count.text != count { header.count.text = count }
         let key = dirty && query.searchesPayload ? "ui_searching" : latest == nil ? attemptedRead ? "busy" : "ui_reading"
             : latest?.events.isEmpty == false ? "ui_filtered_empty" : recorder.status()?.isRecording == true ? "ui_waiting" : "ui_inactive_empty"
-        table.setEmptyState(events.isEmpty ? InspectorTheme.empty(key) : nil); updateStatus()
+        table.setFeedEmpty(events.isEmpty ? key : nil, header: header, query: query); updateStatus()
     }
     @objc private func followLatest() {
         cancelSearch(); nextSearchAt = 0; paused = false; refresh()
@@ -151,8 +151,15 @@ public final class LogInspectorViewController: UITableViewController {
         cell.configure(InspectorRecordPresentation.log(event, preview: result?.previews[InspectorSearchRecord.log(event).key], matchSource: result?.previewSources[InspectorSearchRecord.log(event).key]))
         return cell
     }
+    public override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        header.recordMenu(.log(events[indexPath.row]))
+    }
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        table.deselectRow(at: indexPath, animated: true); inspectorPush(LogDetailViewController(event: events[indexPath.row], history: history as? any LogDetailsHistory))
+        table.deselectRow(at: indexPath, animated: true)
+        let event = events[indexPath.row]
+        let detail = LogDetailViewController(event: event, history: history as? any LogDetailsHistory)
+        detail.searchHit = result?.hit(.log(event), term: query.text)
+        inspectorPush(detail)
     }
 }
 
@@ -170,10 +177,10 @@ final class LogDetailViewController: InspectorDetailViewController {
         super.viewWillAppear(animated); title = InspectorLocalization.text("ui_log_details")
         inspectorPrimaryAction = inspectorCopyItem(target: self, action: #selector(copyMessage), label: "copy")
         sections = [Section(title: InspectorLocalization.text("ui_read_content"), rows: [
-            Row(RuntimePresentation.message(String(event.message.prefix(600)), isPrivate: event.isPrivate), action: event.isPrivate ? nil : { [weak self] in
+            Row(searchHit?.excerpt(in: "ui_search_log_message") ?? RuntimePresentation.message(String(event.message.prefix(600)), isPrivate: event.isPrivate), action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }; self.read(titleKey: "ui_log_content", content: InspectorReadContent(text: self.event.message,
                     notice: { [event = self.event] in event.isTruncated ? InspectorLocalization.text("truncated") : "" }, allowsJSON: !self.event.isTruncated && !self.event.isPrivate,
-                    context: { [event = self.event] in InspectorRecordPresentation.context(event) }))
+                    context: { [event = self.event] in InspectorRecordPresentation.context(event) }), source: "ui_search_log_message")
             })
         ], footer: [event.isPrivate ? InspectorLocalization.text("crumb_private") : "", event.isTruncated ? InspectorLocalization.text("truncated") : ""].filter { !$0.isEmpty }.joined(separator: " · ")),
             Section(title: InspectorLocalization.text("ui_overview"), rows: [
@@ -186,7 +193,7 @@ final class LogDetailViewController: InspectorDetailViewController {
         if let reference = event.details {
             let action: (() -> Void)? = reference.state == .available ? { [weak self] in
                 guard let self else { return }
-                self.read(titleKey: "ui_log_context", content: InspectorLogDetails.content(self.event, history: self.history, saved: self.saved))
+                self.read(titleKey: "ui_log_context", content: InspectorLogDetails.content(self.event, history: self.history, saved: self.saved), source: "ui_search_log_details")
             } : nil
             sections.insert(Section(title: InspectorLocalization.text("ui_log_context"), rows: [
                 Row(InspectorLocalization.text(InspectorLogDetails.label(reference.state)), action: action)

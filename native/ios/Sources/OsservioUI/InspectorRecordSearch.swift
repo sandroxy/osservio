@@ -86,7 +86,18 @@ enum InspectorSearchRecord: Sendable {
 /// On-demand search of sanitized retained evidence, never a host stream. No body index is kept.
 enum InspectorRecordSearch {
     static let maximumUnits = InspectorJSONDocument.maximumUnits
+    struct Hit {
+        let source: String
+        let term: String
+        let excerpt: String
+        func excerpt(in source: String) -> String? { self.source == source && !term.isEmpty ? excerpt : nil }
+        func term(in source: String) -> String { self.source == source ? term : "" }
+    }
     struct Result {
+        func hit(_ record: InspectorSearchRecord, term: String) -> Hit? {
+            guard let source = previewSources[record.key], let excerpt = previews[record.key] else { return nil }
+            return Hit(source: source, term: term, excerpt: excerpt)
+        }
         var keys: Set<String> = []
         var positions: [Int] = []
         var scanned = 0, total = 0
