@@ -156,7 +156,7 @@ public final class InspectorNavigationTest {
         for (int i = 0; i < list.getCount(); i++) {
             View row = list.getAdapter().getView(i, null, list);
             if (row instanceof android.widget.CheckedTextView && ((android.widget.CheckedTextView) row).getText().toString().equals(title)) {
-                assertTrue(list.performItemClick(row, i, list.getAdapter().getItemId(i))); return;
+                assertTrue(row.performClick()); return;
             }
         }
         fail("Missing filter option: " + title);
@@ -346,7 +346,7 @@ public final class InspectorNavigationTest {
             for (int index = 0; index < list.getCount(); index++) {
                 View row = list.getAdapter().getView(index, null, list);
                 if (row instanceof android.widget.CheckedTextView && ((android.widget.CheckedTextView) row).getText().toString().equals("Active")) {
-                    list.performItemClick(row, index, index); break;
+                    assertTrue(row.performClick()); break;
                 }
             }
             List<Button> buttons = new ArrayList<>(); collect(filters.view, Button.class, buttons);

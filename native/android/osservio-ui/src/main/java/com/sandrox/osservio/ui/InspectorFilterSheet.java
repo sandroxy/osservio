@@ -117,7 +117,6 @@ final class InspectorFilterSheet {
                 @Override public View getView(int position, View recycled, ViewGroup parent) { return rowView(position, recycled); }
             };
             list.setAdapter(adapter); content.addView(list, new LinearLayout.LayoutParams(-1, -1));
-            list.setOnItemClickListener((parent, view, position, id) -> { int index = position - list.getHeaderViewsCount(); if (index >= 0 && index < rows.size()) choose(rows.get(index)); });
             screen = InspectorDialogs.panel(context, R.string.osservio_ui_filters, content);
             leading = screen.leadingAction(R.string.osservio_ui_reset, () -> {
                 InspectorWidgets.hideKeyboard(content);
@@ -350,6 +349,8 @@ final class InspectorFilterSheet {
             }
             if (row.type == Type.OPTION || row.type == Type.TIME_OPTION) {
                 CheckedTextView view = recycled instanceof CheckedTextView ? (CheckedTextView) recycled : InspectorWidgets.choice(context); view.setText(row.label);
+                // Keep press and click on this control, not on a ListView position that can change.
+                view.setFocusable(true); view.setOnClickListener(v -> choose(row));
                 view.setPadding(dp(picker == null && (row.group == null || !direct(row.group)) ? 28 : 16), dp(13), dp(16), dp(13));
                 Set<String> values = row.group == null ? null : draft.values.get(row.group.field);
                 view.setChecked(row.type == Type.TIME_OPTION ? row.value.equals(Integer.toString(draft.recentMinutes)) : row.value.equals(ALL) ? values == null || values.isEmpty() : values != null && values.contains(row.value));

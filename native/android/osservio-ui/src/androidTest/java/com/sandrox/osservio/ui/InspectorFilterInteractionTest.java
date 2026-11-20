@@ -112,6 +112,101 @@ public final class InspectorFilterInteractionTest {
         } finally { main(host::finish); }
     }
 
+    @Test public void timeChoiceDoesNotLeaveTheNewRowPressed() throws Exception {
+        InspectorNavigationMaterialActivity host = InspectorWindowTestSupport.start(InspectorNavigationMaterialActivity.class);
+        try {
+            InspectorScreen sheet = sheet(host);
+            tap(sheet, R.string.osservio_ui_http_timing);
+            List<String> unexpected = new ArrayList<>();
+            main(() -> sheet.view.getViewTreeObserver().addOnPreDrawListener(() -> {
+                InspectorFilterRow status = summary(sheet, R.string.osservio_ui_http_status);
+                if (status != null && status.isPressed()) unexpected.add(status.title.getText().toString());
+                return true;
+            }));
+            for (long hold : new long[] {0, 60, 120, 700}) {
+                tap(sheet, R.string.osservio_ui_time);
+                View[] choice = {null};
+                main(() -> choice[0] = choice(sheet, R.string.osservio_ui_time_5));
+                assertNotNull(choice[0]); tap(choice[0], hold);
+                Thread.sleep(300);
+                main(() -> {
+                    assertNull("The time choice did not fold", choice(sheet, R.string.osservio_ui_time_5));
+                    InspectorFilterRow status = summary(sheet, R.string.osservio_ui_http_status);
+                    assertNotNull(status);
+                    assertFalse("Status retained the collapsed time option's press", status.isPressed());
+                    assertFalse("Status unexpectedly gained keyboard focus", status.hasFocus());
+                    for (int state : status.getBackground().getState()) assertNotEquals(android.R.attr.state_pressed, state);
+                    assertTrue("Status flashed after selecting time: " + unexpected, unexpected.isEmpty());
+                });
+            }
+        } finally { main(host::finish); }
+    }
+
+    @Test public void cancellingAChoicePressDoesNotSelectOrFoldIt() throws Exception {
+        InspectorNavigationMaterialActivity host = InspectorWindowTestSupport.start(InspectorNavigationMaterialActivity.class);
+        try {
+            InspectorScreen sheet = sheet(host);
+            tap(sheet, R.string.osservio_ui_time);
+            View[] option = {null}; float[] point = new float[2];
+            main(() -> {
+                option[0] = choice(sheet, R.string.osservio_ui_time_5); assertNotNull(option[0]);
+                android.graphics.Rect rect = new android.graphics.Rect(); assertTrue(option[0].getGlobalVisibleRect(rect));
+                point[0] = rect.exactCenterX(); point[1] = rect.exactCenterY();
+            });
+            long down = SystemClock.uptimeMillis();
+            pointer(down, MotionEvent.ACTION_DOWN, point); Thread.sleep(180);
+            main(() -> {
+                assertTrue("The touched choice must show its own feedback", option[0].isPressed());
+                assertFalse("The list must not own the choice's press", InspectorNavigationMaterialActivity.find(sheet.view, ListView.class).isPressed());
+            });
+            pointer(down, MotionEvent.ACTION_CANCEL, point); Thread.sleep(200);
+            main(() -> {
+                android.widget.CheckedTextView current = choice(sheet, R.string.osservio_ui_time_5);
+                assertNotNull(current); assertFalse(current.isPressed()); assertFalse(current.isChecked());
+            });
+        } finally { main(host::finish); }
+    }
+
+    @SuppressWarnings("deprecation") // Accessibility nodes are pooled on Android versions before API 33.
+    @Test public void choicesKeepKeyboardAndAccessibilityActivation() throws Exception {
+        InspectorNavigationMaterialActivity host = InspectorWindowTestSupport.start(InspectorNavigationMaterialActivity.class);
+        try {
+            InspectorScreen sheet = sheet(host);
+            tap(sheet, R.string.osservio_ui_time);
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_TAB);
+            main(() -> assertTrue(button(sheet, R.string.osservio_ui_reset).requestFocus()));
+            for (int step = 0; step < 20; step++) {
+                boolean[] reached = {false}; main(() -> reached[0] = choice(sheet, R.string.osservio_ui_time_all).hasFocus());
+                if (reached[0]) break;
+                InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_TAB);
+            }
+            main(() -> assertTrue("Tab navigation must reach the choices", choice(sheet, R.string.osservio_ui_time_all).hasFocus()));
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_DOWN);
+            main(() -> {
+                View focused = sheet.view.findFocus();
+                ListView list = InspectorNavigationMaterialActivity.find(sheet.view, ListView.class);
+                assertTrue("Down must focus the next choice; focus=" + (focused instanceof TextView ? ((TextView) focused).getText() : focused)
+                    + " selected=" + list.getSelectedItemPosition() + " window=" + list.hasWindowFocus(), choice(sheet, R.string.osservio_ui_time_5).hasFocus());
+            });
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_ENTER);
+            await(() -> choice(sheet, R.string.osservio_ui_time_5) == null);
+            main(() -> {
+                assertNull(choice(sheet, R.string.osservio_ui_time_5));
+                assertEquals(sheet.view.getContext().getString(R.string.osservio_ui_time_5), summary(sheet, R.string.osservio_ui_time).value.getText().toString());
+            });
+            tap(sheet, R.string.osservio_ui_time);
+            main(() -> {
+                android.widget.CheckedTextView option = choice(sheet, R.string.osservio_ui_time_30);
+                android.view.accessibility.AccessibilityNodeInfo node = option.createAccessibilityNodeInfo();
+                assertTrue(node.isEnabled()); assertTrue(node.isCheckable()); assertTrue(node.isClickable());
+                node.recycle();
+                assertTrue(option.performAccessibilityAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK, null));
+            });
+            await(() -> choice(sheet, R.string.osservio_ui_time_30) == null);
+            main(() -> assertEquals(sheet.view.getContext().getString(R.string.osservio_ui_time_30), summary(sheet, R.string.osservio_ui_time).value.getText().toString()));
+        } finally { main(host::finish); }
+    }
+
     @Test public void recycledSummaryDoesNotStartANewRippleFromItsOldPress() throws Exception {
         InspectorNavigationMaterialActivity host = InspectorWindowTestSupport.start(InspectorNavigationMaterialActivity.class);
         try {
@@ -194,15 +289,29 @@ public final class InspectorFilterInteractionTest {
         }
         return null;
     }
+    private static android.widget.CheckedTextView choice(InspectorScreen sheet, int label) {
+        return choice(sheet.view, sheet.view.getContext().getString(label));
+    }
+    private static android.widget.CheckedTextView choice(View view, String label) {
+        if (view instanceof android.widget.CheckedTextView && label.contentEquals(((TextView) view).getText()) && view.isShown()) return (android.widget.CheckedTextView) view;
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
+            android.widget.CheckedTextView found = choice(((ViewGroup) view).getChildAt(i), label); if (found != null) return found;
+        }
+        return null;
+    }
     private static void tap(InspectorScreen screen, int label) throws Exception {
         View[] target = {null};
         main(() -> {
-            target[0] = label(screen.view, screen.view.getContext().getString(label));
+            target[0] = choice(screen, label);
+            if (target[0] == null) target[0] = label(screen.view, screen.view.getContext().getString(label));
             assertNotNull("Missing " + screen.view.getContext().getString(label), target[0]);
         });
         tap(target[0]);
     }
     private static void tap(View target) throws Exception {
+        tap(target, 120);
+    }
+    private static void tap(View target, long holdMillis) throws Exception {
         float[] point = new float[2];
         main(() -> {
             android.graphics.Rect rect = new android.graphics.Rect(); assertTrue(target.getGlobalVisibleRect(rect));
@@ -210,11 +319,14 @@ public final class InspectorFilterInteractionTest {
         });
         long down = SystemClock.uptimeMillis();
         for (int action : new int[] {MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP}) {
-            MotionEvent event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, point[0], point[1], 0);
-            try { InstrumentationRegistry.getInstrumentation().sendPointerSync(event); } finally { event.recycle(); }
-            if (action == MotionEvent.ACTION_DOWN) Thread.sleep(120);
+            pointer(down, action, point);
+            if (action == MotionEvent.ACTION_DOWN) Thread.sleep(holdMillis);
         }
         Thread.sleep(180);
+    }
+    private static void pointer(long down, int action, float[] point) {
+        MotionEvent event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, point[0], point[1], 0);
+        try { InstrumentationRegistry.getInstrumentation().sendPointerSync(event); } finally { event.recycle(); }
     }
     private static void main(Runnable action) { InstrumentationRegistry.getInstrumentation().runOnMainSync(action); }
     private static void await(Callable<Boolean> condition) throws Exception {
