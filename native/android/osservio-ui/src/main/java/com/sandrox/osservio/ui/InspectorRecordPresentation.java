@@ -15,6 +15,10 @@ final class InspectorRecordPresentation {
         final String badge, title, subtitle; final long time; final int tone;
         Row(String badge, String title, String subtitle, long time, int tone) { this.badge = badge; this.title = title; this.subtitle = subtitle; this.time = time; this.tone = tone; }
         void bind(InspectorWidgets.EventRow row, Context context) {
+            bind(row, context, false);
+        }
+        void bind(InspectorWidgets.EventRow row, Context context, boolean reservePreview) {
+            row.reservePreview(reservePreview);
             row.bind(badge, title, subtitle, time, tone == 2 ? InspectorTheme.color(context, R.color.osservio_error)
                 : tone == 1 ? InspectorTheme.color(context, R.color.osservio_warning) : InspectorTheme.secondary(context));
         }

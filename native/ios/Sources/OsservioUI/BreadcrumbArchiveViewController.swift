@@ -34,14 +34,16 @@ final class BreadcrumbArchiveViewController: UITableViewController {
         archive.readRuns { [weak self] result in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == request else { return }
-                self.reading = false
-                switch result {
-                case .success(let values):
-                    self.runs = values; self.updatedAt = Int64(Date().timeIntervalSince1970 * 1_000)
-                    self.notice = RuntimePresentation.text("archive_loaded") + " · " + RuntimePresentation.date(self.updatedAt!)
-                case .failure(let error): self.failed(error)
+                self.tableView.preservingReadingPosition(section: 1, count: { self.runs.count }, key: { self.runs[$0].id }) {
+                    self.reading = false
+                    switch result {
+                    case .success(let values):
+                        self.runs = values; self.updatedAt = Int64(Date().timeIntervalSince1970 * 1_000)
+                        self.notice = RuntimePresentation.text("archive_loaded") + " · " + RuntimePresentation.date(self.updatedAt!)
+                    case .failure(let error): self.failed(error)
+                    }
+                    self.updateDeleteAction(); self.tableView.reloadData()
                 }
-                self.updateDeleteAction(); self.tableView.reloadData()
             }
         }
     }

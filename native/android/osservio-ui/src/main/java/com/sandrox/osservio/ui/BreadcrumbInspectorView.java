@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.BreadcrumbHistory;
 import com.sandrox.osservio.core.BreadcrumbRecorder;
@@ -25,7 +24,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
     private final BreadcrumbHistory history;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final InspectorFeedHeader header;
-    private final ListView list;
+    private final InspectorScroll.List list;
     private final List<BreadcrumbEvent> events = new ArrayList<>();
     private final Rows rows = new Rows();
     static final class State {
@@ -114,15 +113,17 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
             if (snapshot != null) { state.dirty |= latest == null || latest.revision != snapshot.revision || state.query.recentMinutes > 0; latest = snapshot; }
         }
         if (state.dirty) {
-            events.clear();
-            if (latest != null) for (int i = latest.events.size() - 1; i >= 0; i--) {
-                BreadcrumbEvent event = latest.events.get(i);
-                if (state.query.matches(event, timeAnchor, RuntimePresentation.kind(getContext(), event.kind))) events.add(event);
-            }
-            header.setQuery(state.query, groups(), events.size(), latest == null ? 0 : latest.events.size());
-            header.emptyMessage(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_crumb_empty : R.string.osservio_ui_filtered_empty);
-            rows.notifyDataSetChanged(); state.dirty = false;
-            if (!paused) list.setSelectionFromTop(0, 0);
+            list.preservingReadingPosition(paused, rows, () -> {
+                events.clear();
+                if (latest != null) for (int i = latest.events.size() - 1; i >= 0; i--) {
+                    BreadcrumbEvent event = latest.events.get(i);
+                    if (state.query.matches(event, timeAnchor, RuntimePresentation.kind(getContext(), event.kind))) events.add(event);
+                }
+                header.setQuery(state.query, groups(), events.size(), latest == null ? 0 : latest.events.size());
+                header.emptyMessage(latest == null ? R.string.osservio_busy : latest.events.isEmpty() ? R.string.osservio_crumb_empty : R.string.osservio_ui_filtered_empty);
+                rows.notifyDataSetChanged(); state.dirty = false;
+                if (!paused) list.setSelectionFromTop(0, 0);
+            });
         }
         String notice = stale ? getContext().getString(latest == null ? R.string.osservio_busy : R.string.osservio_ui_previous_window) : "";
         BreadcrumbRecorder.Status status = recorder.status();
@@ -143,7 +144,9 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         watched.setOnDismissListener(ignored -> { if (detail == watched) { detail = null; schedule(); } });
     }
     @Override public void bindScreen(InspectorScreen screen) { screen.addAction(header.navigationAction()); }
-    private final class Rows extends BaseAdapter {
+    private final class Rows extends BaseAdapter implements InspectorScroll.List.Records {
+        @Override public int count() { return getCount(); }
+        @Override public String key(int index) { return events.get(index).id; }
         @Override public int getCount() { return events.size(); }
         @Override public BreadcrumbEvent getItem(int position) { return events.get(position); }
         @Override public long getItemId(int position) { return position; }

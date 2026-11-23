@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbArchive;
 import com.sandrox.osservio.core.PersistenceStatus;
@@ -28,7 +27,7 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     private final TextView empty;
     private final Button refresh;
     private final android.widget.ProgressBar activity;
-    private final ListView list;
+    private final InspectorScroll.List list;
     private final LinearLayout controls;
     private final android.widget.ImageButton actions;
     private final TextView footer;
@@ -102,14 +101,16 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
         WeakReference<BreadcrumbArchiveView> reference = new WeakReference<>(this);
         archive.readRuns((value, error) -> handler.post(() -> {
             BreadcrumbArchiveView view = reference.get(); if (view == null || view.generation != request) return;
-            view.reading = false;
-            if (error != null || value == null) view.failed(error == null ? PersistenceStatus.Error.UNAVAILABLE : error);
-            else {
-                view.runs = value; view.updatedAt = System.currentTimeMillis();
-                view.notice.setText(view.getContext().getString(R.string.osservio_runtime_pair,
-                    view.getContext().getString(R.string.osservio_archive_loaded), RuntimePresentation.date(view.getContext(), view.updatedAt)));
-            }
-            view.render();
+            view.list.preservingReadingPosition(view.rows, () -> {
+                view.reading = false;
+                if (error != null || value == null) view.failed(error == null ? PersistenceStatus.Error.UNAVAILABLE : error);
+                else {
+                    view.runs = value; view.updatedAt = System.currentTimeMillis();
+                    view.notice.setText(view.getContext().getString(R.string.osservio_runtime_pair,
+                        view.getContext().getString(R.string.osservio_archive_loaded), RuntimePresentation.date(view.getContext(), view.updatedAt)));
+                }
+                view.render();
+            });
         }));
     }
     private void open(RetainedRun run) {
@@ -171,7 +172,9 @@ final class BreadcrumbArchiveView extends LinearLayout implements InspectorScree
     private Button button(int label) { return InspectorWidgets.button(getContext(), label, () -> { }); }
     private TextView caption() { return InspectorWidgets.caption(getContext()); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-    private final class Rows extends BaseAdapter {
+    private final class Rows extends BaseAdapter implements InspectorScroll.List.Records {
+        @Override public int count() { return getCount(); }
+        @Override public String key(int index) { return runs.get(index).id; }
         @Override public int getCount() { return runs.size(); }
         @Override public Object getItem(int position) { return runs.get(position); }
         @Override public long getItemId(int position) { return position; }

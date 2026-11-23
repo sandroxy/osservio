@@ -30,6 +30,34 @@ final class InspectorScroll {
     @android.annotation.SuppressLint("ViewConstructor")
     static class List extends ListView {
         List(Context context) { super(context); }
+        interface Records { int count(); String key(int index); }
+        /** Keep visible record identities and their pixel offsets across a bounded data refresh. */
+        void preservingReadingPosition(Records records, Runnable update) {
+            preservingReadingPosition(true, records, update);
+        }
+        void preservingReadingPosition(boolean preserve, Records records, Runnable update) {
+            if (!preserve) { update.run(); return; }
+            java.util.LinkedHashMap<String, Integer> anchors = new java.util.LinkedHashMap<>();
+            for (int child = 0; child < getChildCount(); child++) {
+                int index = getFirstVisiblePosition() + child - getHeaderViewsCount();
+                if (index >= 0 && index < records.count()) anchors.put(records.key(index), getChildAt(child).getTop());
+            }
+            update.run();
+            if (anchors.isEmpty()) return;
+            java.util.HashMap<String, Integer> positions = new java.util.HashMap<>();
+            for (int index = 0; index < records.count(); index++) {
+                String key = records.key(index);
+                if (anchors.containsKey(key)) positions.put(key, index);
+                if (positions.size() == anchors.size()) break;
+            }
+            for (java.util.Map.Entry<String, Integer> anchor : anchors.entrySet()) {
+                Integer index = positions.get(anchor.getKey());
+                if (index != null) {
+                    setSelectionFromTop(index + getHeaderViewsCount(), anchor.getValue() - getPaddingTop());
+                    return;
+                }
+            }
+        }
         @Override public boolean requestChildRectangleOnScreen(View child, Rect rect, boolean immediate) {
             if (!inset(this)) return super.requestChildRectangleOnScreen(child, rect, immediate);
             Rect requested = new Rect(rect);

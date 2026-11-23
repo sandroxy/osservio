@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.Toast;
 import com.sandrox.osservio.core.LogEvent;
 import com.sandrox.osservio.core.LogHistory;
@@ -44,7 +43,7 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
     private final State state;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<LogEvent> events = new ArrayList<>();
-    private final ListView list;
+    private final InspectorScroll.List list;
     private final InspectorFeedHeader header;
     private final Rows rows = new Rows();
     private boolean attached;
@@ -144,11 +143,14 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         List<LogEvent> retained = retained();
         InspectorQuery query = state.query.copy(); long anchor = state.timeAnchor;
         if (!query.searchesPayload()) {
-            events.clear(); boolean filtered = query.activeCount() > 0;
-            for (int i = retained.size() - 1; i >= 0; i--) {
-                LogEvent event = retained.get(i); if (!filtered || query.matchesFacets(event, anchor)) events.add(event);
-            }
-            result = null; dirty = false; display(); return;
+            list.preservingReadingPosition(state.paused, rows, () -> {
+                events.clear(); boolean filtered = query.activeCount() > 0;
+                for (int i = retained.size() - 1; i >= 0; i--) {
+                    LogEvent event = retained.get(i); if (!filtered || query.matchesFacets(event, anchor)) events.add(event);
+                }
+                result = null; dirty = false; display();
+            });
+            return;
         }
         List<InspectorRecordSearch.Record> records = new ArrayList<>(retained.size());
         for (int i = retained.size() - 1; i >= 0; i--) records.add(new InspectorRecordSearch.Record(retained.get(i)));
@@ -161,9 +163,11 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             LogInspectorView view = owner.get(); if (view == null || view.generation != current) return;
             if (!found.complete && !showProgress) return;
             if (found.complete) { view.task = null; view.dirty = false; view.nextSearchAt = android.os.SystemClock.uptimeMillis() + 1000; }
-            view.result = found; view.events.clear();
-            for (int position : found.positions) view.events.add(records.get(position).log);
-            view.display();
+            view.list.preservingReadingPosition(view.state.paused, view.rows, () -> {
+                view.result = found; view.events.clear();
+                for (int position : found.positions) view.events.add(records.get(position).log);
+                view.display();
+            });
         });
         if (task == null) nextSearchAt = android.os.SystemClock.uptimeMillis() + 500;
     }
@@ -214,7 +218,9 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
         if (attached && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
         else { cancelSearch(); if (!InspectorNavigation.owns(getContext()) && (!attached || !isShown() || getWindowVisibility() != VISIBLE) && dialog != null) { dialog.dismiss(); dialog = null; } }
     }
-    private final class Rows extends BaseAdapter {
+    private final class Rows extends BaseAdapter implements InspectorScroll.List.Records {
+        @Override public int count() { return getCount(); }
+        @Override public String key(int index) { return new InspectorRecordSearch.Record(events.get(index)).key(); }
         @Override public int getCount() { return events.size(); }
         @Override public LogEvent getItem(int position) { return events.get(position); }
         @Override public long getItemId(int position) { return position; }

@@ -19,6 +19,7 @@ final class IncidentEvidenceViewController: UITableViewController {
     private var task: InspectorRecordSearchTask?
     private var pending: DispatchWorkItem?
     private var generation = 0
+    private lazy var style = InspectorStyleObserver { [weak self] in self?.render() }
     private lazy var records: [InspectorSearchRecord] = {
         switch evidence {
         case .logs(let value): return value.events.map(InspectorSearchRecord.log)
@@ -45,20 +46,25 @@ final class IncidentEvidenceViewController: UITableViewController {
         header.onSearch = { [weak self] value in self?.query.text = value; self?.render() }
         header.onFilters = { [weak self] in self?.showFilters($0) }
         header.onQueryChange = { [weak self] in self?.query = $0; self?.render() }
-        render()
+        style.changed()
     }
-    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); InspectorTheme.apply(self); render() }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated); InspectorTheme.apply(self)
+        if query.searchesPayload && result?.complete != true { render(preservingResults: true) }
+    }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated); generation += 1; task?.cancel(); task = nil; pending?.cancel()
     }
-    private func render() {
-        generation += 1; task?.cancel(); task = nil; pending?.cancel(); result = nil; searchBusy = false
+    private func render(preservingResults: Bool = false) {
+        generation += 1; task?.cancel(); task = nil; pending?.cancel(); searchBusy = false
+        if !preservingResults { result = nil; indices = [] }
+        let minimumResults = preservingResults ? indices.count : 0
         let records = records, query = query, now = observedAt
         let scopedIndices = records.indices.reversed().filter(inScope)
         availableCount = scopedIndices.count
-        indices = query.searchesPayload ? [] : scopedIndices.filter { records[$0].matchesFacets(query, now: now) }
+        if !query.searchesPayload { indices = scopedIndices.filter { records[$0].matchesFacets(query, now: now) } }
         if query.searchesPayload {
-            indices = []; let current = generation, payloads = payloads
+            let current = generation, payloads = payloads
             let scopedRecords = scopedIndices.map { records[$0] }
             let work = DispatchWorkItem { [weak self] in
                 guard let self, current == self.generation else { return }
@@ -67,20 +73,23 @@ final class IncidentEvidenceViewController: UITableViewController {
                 }, completion: { [weak self] result in
                     guard let self, current == self.generation else { return }
                     if result.complete { self.task = nil }
-                    self.result = result
-                    self.indices = result.positions.map { scopedIndices[$0] }; self.display()
+                    guard result.complete || result.positions.count >= minimumResults else { return }
+                    self.table.preservingReadingPosition(count: { self.indices.count }, key: { self.records[self.indices[$0]].key }) {
+                        self.result = result
+                        self.indices = result.positions.map { scopedIndices[$0] }; self.display()
+                    }
                 })
                 if self.task == nil {
                     self.searchBusy = true; self.display()
                     let retry = DispatchWorkItem { [weak self] in
-                        guard let self, current == self.generation, self.viewIfLoaded?.window != nil else { return }; self.render()
+                        guard let self, current == self.generation, self.viewIfLoaded?.window != nil else { return }; self.render(preservingResults: true)
                     }
                     self.pending = retry; DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: retry)
                 }
             }
             pending = work; DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
         }
-        display()
+        if !preservingResults || indices.isEmpty { display() }
     }
     private func display() {
         switch evidence {

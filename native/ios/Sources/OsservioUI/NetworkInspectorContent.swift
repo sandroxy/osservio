@@ -15,7 +15,7 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private weak var owner: UIViewController?
     private lazy var loop: InspectorRefreshLoop = {
         let loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
-        loop.suspended = { [weak self] in self?.cancelSearch() }; return loop
+        loop.suspended = { [weak self] in self?.cancelSearch(rebuild: false) }; return loop
     }()
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     private var latestHTTP: HTTPSnapshot?
@@ -24,6 +24,8 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private var result: InspectorRecordSearch.Result?
     private var task: InspectorRecordSearchTask?
     private var previewTask: InspectorRecordSearchTask?
+    private var pendingPreview: DispatchWorkItem?
+    private var previewWindow: Range<Int>?
     private var previews: [String: String] = [:]
     private var previewOrder: [String] = []
     private var generation: UInt64 = 0
@@ -63,10 +65,17 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         (header.extra.arrangedSubviews.first as? UILabel)?.text = [InspectorLocalization.text("ws_connection") + ": " + (connectionID ?? ""), InspectorLocalization.text("ui_connection_hint")].joined(separator: "\n")
         display()
     }
-    private func cancelSearch() { previewTask?.cancel(); previewTask = nil; generation &+= 1; task?.cancel(); task = nil; dirty = true }
+    private func cancelSearch(rebuild: Bool = true) {
+        // A completed, paused window does not change when a detail covers it.
+        // Reconfiguring it on return discards UIKit's measured row geometry.
+        dirty = dirty || rebuild || task != nil
+        pendingPreview?.cancel(); pendingPreview = nil; previewWindow = nil
+        previewTask?.cancel(); previewTask = nil; generation &+= 1; task?.cancel(); task = nil
+    }
     func setRecentFilterOwner(_ owner: UUID?) {
         guard recentFilters.owner != owner else { return }
         recentFilters.owner = owner
+        cancelSearch(); previews.removeAll(); previewOrder.removeAll()
         header.expireUndo(); header.search.text = ""
         if query != InspectorQuery() { apply(InspectorQuery()) }
     }
@@ -97,9 +106,12 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     private func search() {
         let query = query, anchor = anchor
         if !query.searchesPayload {
-            let records = records; available = records.count
-            rows = query.activeCount == 0 ? records : records.filter { $0.matchesFacets(query, now: anchor) }
-            result = nil; dirty = false; display(); return
+            table.preservingReadingPosition(count: { rows.count }, key: { rows[$0].key }) {
+                let records = records; available = records.count
+                rows = query.activeCount == 0 ? records : records.filter { $0.matchesFacets(query, now: anchor) }
+                result = nil; dirty = false; display()
+            }
+            return
         }
         let requestHistory = http?.history, socketHistory = sockets?.history, current = generation
         let requests = connectionID == nil ? latestHTTP?.events ?? [] : []
@@ -120,7 +132,9 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             guard let self, self.generation == current else { return }
             guard result.complete || showProgress else { return }
             if result.complete { self.task = nil; self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1 }
-            self.result = result; self.available = result.total; self.rows = result.positions.map(record); self.display()
+            self.table.preservingReadingPosition(count: { self.rows.count }, key: { self.rows[$0].key }) {
+                self.result = result; self.available = result.total; self.rows = result.positions.map(record); self.display()
+            }
         })
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }
@@ -151,14 +165,32 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
         table.setFeedEmpty(rows.isEmpty ? key : nil, header: header, query: query); updateStatus()
         DispatchQueue.main.async { [weak self] in self?.requestPreviews() }
     }
-    // Only visible message rows are read. Cache text is capped at 64 × 180 UTF-16 units.
-    private func requestPreviews() {
-        guard previewTask == nil, task == nil, table.window != nil, !table.isDragging, !table.isDecelerating,
-              owner?.presentedViewController == nil, let history = sockets?.history else { return }
+    // Prioritize visible messages, then a small nearby window. No payloads are retained here.
+    private func hasTextPreview(_ event: WebSocketEvent) -> Bool {
+        event.kind == .message && event.payload?.blobID != nil
+            && (event.payload?.state == .available || event.payload?.state == .truncated)
+    }
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard loop.isActive else { return }
         let positions = table.indexPathsForVisibleRows ?? []
-        let events = positions.prefix(16).compactMap { index -> WebSocketEvent? in
-            guard index.row < rows.count, case .socket(let event) = rows[index.row], event.kind == .message,
-                  event.payload?.blobID != nil, previews[event.id] == nil else { return nil }; return event
+        guard let first = positions.map(\.row).min(), let last = positions.map(\.row).max() else { return }
+        let window = first..<(last + 1)
+        guard window != previewWindow else { return }
+        previewWindow = window; previewTask?.cancel(); previewTask = nil; pendingPreview?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.requestPreviews() }
+        pendingPreview = work; DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
+    }
+    private func requestPreviews() {
+        guard loop.isActive, previewTask == nil, task == nil, table.window != nil,
+              owner?.presentedViewController == nil, let history = sockets?.history else { return }
+        let positions = (table.indexPathsForVisibleRows ?? []).map(\.row).sorted()
+        guard let start = positions.first, let last = positions.last, start < rows.count else { return }
+        let end = min(rows.count, last + 1)
+        let nearby = Array(start..<end) + Array(end..<min(rows.count, end + 8)) + Array(max(0, start - 8)..<start)
+        var events: [WebSocketEvent] = []
+        for index in nearby where events.count < 16 {
+            if case .socket(let event) = rows[index], hasTextPreview(event), previews[event.id] == nil,
+               result?.previews[rows[index].key] == nil { events.append(event) }
         }
         guard !events.isEmpty else { return }
         let current = generation, missing = InspectorLocalization.text("ui_content_missing"), empty = InspectorLocalization.text("ui_content_empty")
@@ -180,19 +212,20 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
             for (key, value) in result.previews {
                 self.previews[key] = value; self.previewOrder.removeAll { $0 == key }; self.previewOrder.append(key)
             }
-            while self.previewOrder.count > 64 { self.previews.removeValue(forKey: self.previewOrder.removeFirst()) }
-            let positions = (self.table.indexPathsForVisibleRows ?? []).filter { index in
-                guard index.row < self.rows.count, case .socket(let event) = self.rows[index.row] else { return false }
-                return result.previews[event.id] != nil
+            let positions = self.table.indexPathsForVisibleRows ?? []
+            let visible = Set(positions.compactMap { index -> String? in
+                guard index.row < self.rows.count, case .socket(let event) = self.rows[index.row] else { return nil }
+                return event.id
+            })
+            while self.previewOrder.count > 64 {
+                let index = self.previewOrder.firstIndex { !visible.contains($0) } ?? 0
+                self.previews.removeValue(forKey: self.previewOrder.remove(at: index))
             }
-            guard !positions.isEmpty else { return }
-            let first = self.table.indexPathsForVisibleRows?.sorted().first
-            let distance = first.map { self.table.contentOffset.y - self.table.rectForRow(at: $0).minY }
-            UIView.performWithoutAnimation {
-                self.table.refreshRows(positions); self.table.layoutIfNeeded()
-                if !self.table.followsLatest, let first, let distance {
-                    self.table.setContentOffset(CGPoint(x: self.table.contentOffset.x, y: self.table.rectForRow(at: first).minY + distance), animated: false)
-                }
+            // Only the primary label changes; the reserved preview geometry stays intact.
+            for index in positions {
+                guard index.row < self.rows.count, case .socket(let event) = self.rows[index.row],
+                      result.previews[event.id] != nil, let cell = self.table.cellForRow(at: index) as? InspectorEventCell else { continue }
+                self.configure(cell, record: self.rows[index.row])
             }
         })
     }
@@ -227,15 +260,21 @@ final class NetworkInspectorContent: NSObject, UITableViewDataSource, UITableVie
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let record = rows[indexPath.row]
         let cell = table.dequeueReusableCell(withIdentifier: "network") as? InspectorEventCell ?? InspectorEventCell(style: .default, reuseIdentifier: "network")
+        configure(cell, record: record)
+        return cell
+    }
+    private func configure(_ cell: InspectorEventCell, record: InspectorSearchRecord) {
         let preview = result?.previews[record.key]
         switch record {
         case .http(let event):
             let source = result?.previewSources[record.key].map(InspectorLocalization.text)
             cell.configure(InspectorRecordPresentation.http(event, preview: preview.map { (source ?? "") + ": " + $0 }))
-        case .socket(let event): cell.configure(InspectorRecordPresentation.socket(event, preview: preview ?? previews[event.id], scoped: connectionID != nil, matchSource: result?.previewSources[record.key]))
+        case .socket(let event):
+            if previews[event.id] != nil { previewOrder.removeAll { $0 == event.id }; previewOrder.append(event.id) }
+            cell.configure(InspectorRecordPresentation.socket(event, preview: preview ?? previews[event.id], scoped: connectionID != nil,
+                matchSource: result?.previewSources[record.key]), reservePreview: hasTextPreview(event))
         case .log: break
         }
-        return cell
     }
     func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
         header.recordMenu(rows[indexPath.row], recent: connectionID == nil ? recentFilters : nil)

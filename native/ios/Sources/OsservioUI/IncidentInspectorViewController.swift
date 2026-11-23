@@ -87,12 +87,14 @@ public final class IncidentInspectorViewController: UITableViewController {
         if let updatedAt { notice += "\n" + RuntimePresentation.text("runtime_previous") + " · " + RuntimePresentation.date(updatedAt) }
     }
     private func render() {
-        filtered = snapshots.filter { query.matches($0, now: updatedAt ?? 0) }
-        header.status.text = notice; header.relabel(paused: false, query: query)
-        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
-        updateReadingState(); retryButton.isHidden = !retryNeeded
-        table.reloadData()
-        table.setFeedEmpty(filtered.isEmpty ? (reading ? "archive_reading" : snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil, header: header, query: query)
+        table.preservingReadingPosition(count: { filtered.count }, key: { filtered[$0].id }) {
+            filtered = snapshots.filter { query.matches($0, now: updatedAt ?? 0) }
+            header.status.text = notice; header.relabel(paused: false, query: query)
+            header.count.text = String(format: InspectorLocalization.text("ui_result_count"), filtered.count, snapshots.count)
+            updateReadingState(); retryButton.isHidden = !retryNeeded
+            table.reloadData()
+            table.setFeedEmpty(filtered.isEmpty ? (reading ? "archive_reading" : snapshots.isEmpty ? "incident_empty" : "ui_filtered_empty") : nil, header: header, query: query)
+        }
     }
     private func updateReadingState() {
         markButton.isEnabled = !reading; retryButton.isEnabled = !reading

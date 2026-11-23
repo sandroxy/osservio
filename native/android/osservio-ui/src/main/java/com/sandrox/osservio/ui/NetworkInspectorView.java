@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import com.sandrox.osservio.core.*;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -35,14 +34,15 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<InspectorRecordSearch.Record> items = new ArrayList<>();
     private final Rows rows = new Rows();
-    private final ListView list;
+    private final InspectorScroll.List list;
     private final InspectorFeedHeader header;
     private boolean attached, stale;
     private boolean dirty = true;
     private InspectorScreen dialog;
     private InspectorRecordSearchTask task, previewTask;
-    private final java.util.LinkedHashMap<String, String> previews = new java.util.LinkedHashMap<>();
-    private boolean scrolling;
+    private final java.util.LinkedHashMap<String, String> previews = new java.util.LinkedHashMap<>(64, .75f, true);
+    private final Runnable preparePreviews = this::requestPreviews;
+    private int previewFirst = -1, previewLast = -1;
     private InspectorRecordSearch.Result result;
     private long generation, nextSearchAt, timeCheck;
     private int available;
@@ -79,7 +79,6 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         });
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override public void onScrollStateChanged(AbsListView view, int scrollState) {
-                scrolling = scrollState != SCROLL_STATE_IDLE;
                 if (scrollState == SCROLL_STATE_IDLE) requestPreviews();
                 if (scrollState == SCROLL_STATE_TOUCH_SCROLL) {
                     state.paused = true;
@@ -88,7 +87,13 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
                 }
                 else if (scrollState == SCROLL_STATE_IDLE && list.getFirstVisiblePosition() == 0 && list.getChildAt(0) != null && list.getChildAt(0).getTop() >= 0) { state.paused = false; refresh(); }
             }
-            @Override public void onScroll(AbsListView view, int first, int visible, int total) { }
+            @Override public void onScroll(AbsListView view, int first, int visible, int total) {
+                if (first == previewFirst && first + visible == previewLast) return;
+                previewFirst = first; previewLast = first + visible;
+                if (previewTask != null) previewTask.cancel(); previewTask = null;
+                handler.removeCallbacks(preparePreviews);
+                handler.postDelayed(preparePreviews, 80);
+            }
         });
         addView(header.viewport(list), new LayoutParams(-1, -1));
         InspectorAppearance.content(this, () -> { previews.clear(); cancelSearch(); list.setDivider(null); display(); });
@@ -104,8 +109,13 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         if (connectionID != null) for (int index = groups.size() - 1; index >= 0; index--) if (groups.get(index).field == InspectorQuery.Field.CONNECTION) groups.remove(index);
         return groups;
     }
-    private void cancelSearch() { if (previewTask != null) previewTask.cancel(); previewTask = null; generation++; if (task != null) task.cancel(); task = null; dirty = true; }
+    private void cancelSearch() {
+        handler.removeCallbacks(preparePreviews);
+        if (previewTask != null) previewTask.cancel(); previewTask = null;
+        generation++; if (task != null) task.cancel(); task = null; dirty = true;
+    }
     void resetOwnerQuery() {
+        cancelSearch(); previews.clear();
         header.finishUndo();
         if (header.search.length() > 0) header.search.setText("");
         if (!state.query.sameAs(new InspectorQuery())) apply(new InspectorQuery());
@@ -142,10 +152,13 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         Collections.sort(records, InspectorRecordSearch::newestFirst); available = records.size();
         InspectorQuery query = state.query.copy(); long anchor = state.timeAnchor;
         if (!query.searchesPayload()) {
-            items.clear();
-            if (query.activeCount() == 0) items.addAll(records);
-            else for (InspectorRecordSearch.Record record : records) if (record.matchesFacets(query, anchor)) items.add(record);
-            result = null; dirty = false; display(); return;
+            list.preservingReadingPosition(state.paused, rows, () -> {
+                items.clear();
+                if (query.activeCount() == 0) items.addAll(records);
+                else for (InspectorRecordSearch.Record record : records) if (record.matchesFacets(query, anchor)) items.add(record);
+                result = null; dirty = false; display();
+            });
+            return;
         }
         HTTPHistory requests = httpHistory; WebSocketHistory socketEvents = socketHistory; long current = generation;
         WeakReference<NetworkInspectorView> owner = new WeakReference<>(this);
@@ -155,9 +168,11 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             NetworkInspectorView view = owner.get(); if (view == null || view.generation != current) return;
             if (!found.complete && !showProgress) return;
             if (found.complete) { view.task = null; view.dirty = false; view.nextSearchAt = android.os.SystemClock.uptimeMillis() + 1000; }
-            view.result = found; view.items.clear();
-            for (int position : found.positions) view.items.add(records.get(position));
-            view.display();
+            view.list.preservingReadingPosition(view.state.paused, view.rows, () -> {
+                view.result = found; view.items.clear();
+                for (int position : found.positions) view.items.add(records.get(position));
+                view.display();
+            });
         });
         if (task == null) nextSearchAt = android.os.SystemClock.uptimeMillis() + 500;
     }
@@ -189,14 +204,14 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         } finally { InspectorPerformance.end(tracing); }
     }
     private void requestPreviews() {
-        if (!attached || !isShown() || scrolling || dialog != null || task != null || previewTask != null || socketHistory == null) return;
+        if (!attached || !isShown() || !hasWindowFocus() || dialog != null || task != null || previewTask != null || socketHistory == null) return;
         List<WebSocketEvent> events = new ArrayList<>();
         int start = Math.max(0, list.getFirstVisiblePosition() - list.getHeaderViewsCount());
-        int end = Math.min(items.size(), Math.min(start + 16, list.getLastVisiblePosition() - list.getHeaderViewsCount() + 1));
-        for (int i = start; i < end; i++) {
-            WebSocketEvent event = items.get(i).socket;
-            if (event != null && event.kind == WebSocketEvent.Kind.MESSAGE && event.payload != null && event.payload.blobId != null && !previews.containsKey(event.id)) events.add(event);
-        }
+        int end = Math.min(items.size(), list.getLastVisiblePosition() - list.getHeaderViewsCount() + 1);
+        if (end <= start) return;
+        collectPreviews(events, start, end);
+        collectPreviews(events, end, Math.min(items.size(), end + 8));
+        collectPreviews(events, Math.max(0, start - 8), start);
         if (events.isEmpty()) return;
         long current = generation; WebSocketHistory history = socketHistory;
         String missing = getContext().getString(R.string.osservio_ui_content_missing), empty = getContext().getString(R.string.osservio_ui_content_empty);
@@ -214,6 +229,13 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             NetworkInspectorView view = owner.get(); if (view == null || view.generation != current) return;
             view.previewTask = null; if (result.previews.isEmpty()) return;
             for (java.util.Map.Entry<String, String> entry : result.previews.entrySet()) { view.previews.remove(entry.getKey()); view.previews.put(entry.getKey(), entry.getValue()); }
+            java.util.Set<String> visible = new java.util.HashSet<>();
+            for (int child = 0; child < view.list.getChildCount(); child++) {
+                int index = view.list.getFirstVisiblePosition() + child - view.list.getHeaderViewsCount();
+                if (index >= 0 && index < view.items.size() && view.items.get(index).socket != null) visible.add(view.items.get(index).socket.id);
+            }
+            java.util.Iterator<String> cached = view.previews.keySet().iterator();
+            while (view.previews.size() > 64 && cached.hasNext()) if (!visible.contains(cached.next())) cached.remove();
             while (view.previews.size() > 64) view.previews.remove(view.previews.keySet().iterator().next());
             // Payload delivery does not change membership. Rebind only affected visible rows.
             for (int child = 0; child < view.list.getChildCount(); child++) {
@@ -223,6 +245,17 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
                 if (event != null && result.previews.containsKey(event.id)) view.rows.getView(index, view.list.getChildAt(child), view.list);
             }
         });
+    }
+    private void collectPreviews(List<WebSocketEvent> events, int start, int end) {
+        for (int i = start; i < end && events.size() < 16; i++) {
+            WebSocketEvent event = items.get(i).socket;
+            if (hasTextPreview(event) && !previews.containsKey(event.id)
+                && (result == null || !result.previews.containsKey(items.get(i).key()))) events.add(event);
+        }
+    }
+    private static boolean hasTextPreview(WebSocketEvent event) {
+        return event != null && event.kind == WebSocketEvent.Kind.MESSAGE && event.payload != null && event.payload.blobId != null
+            && (event.payload.state == WebSocketEvent.PayloadState.AVAILABLE || event.payload.state == WebSocketEvent.PayloadState.TRUNCATED);
     }
     private boolean isDetailed() {
         CaptureController.Status http = httpRecorder == null ? null : httpRecorder.captureController.status();
@@ -278,7 +311,9 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
         if (attached && isShown() && hasWindowFocus() && getWindowVisibility() == VISIBLE && dialog == null) handler.post(tick);
         else { cancelSearch(); if (!InspectorNavigation.owns(getContext()) && dialog != null && (!attached || !isShown() || getWindowVisibility() != VISIBLE)) { dialog.dismiss(); dialog = null; } }
     }
-    private final class Rows extends BaseAdapter {
+    private final class Rows extends BaseAdapter implements InspectorScroll.List.Records {
+        @Override public int count() { return getCount(); }
+        @Override public String key(int index) { return items.get(index).key(); }
         @Override public int getCount() { return items.size(); }
         @Override public Object getItem(int position) { InspectorRecordSearch.Record item = items.get(position); return item.http != null ? item.http : item.socket; }
         @Override public long getItemId(int position) { return position; }
@@ -287,7 +322,7 @@ class NetworkInspectorView extends LinearLayout implements InspectorToolbarActio
             InspectorRecordSearch.Record item = items.get(position); Context context = getContext();
             String preview = result == null ? null : result.previews.get(item.key());
             if (item.http != null) InspectorRecordPresentation.http(context, item.http, InspectorRecordPresentation.matchPreview(context, result, item.key())).bind(row, context);
-            else InspectorRecordPresentation.socket(context, item.socket, preview == null ? previews.get(item.socket.id) : preview, connectionID != null, result == null ? null : result.previewSources.get(item.key())).bind(row, context);
+            else InspectorRecordPresentation.socket(context, item.socket, preview == null ? previews.get(item.socket.id) : preview, connectionID != null, result == null ? null : result.previewSources.get(item.key())).bind(row, context, hasTextPreview(item.socket));
             row.grouped(position == 0, position == getCount() - 1); return row;
         }
     }

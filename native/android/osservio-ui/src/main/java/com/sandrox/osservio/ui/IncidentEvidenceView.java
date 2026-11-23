@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.HTTPEvent;
 import com.sandrox.osservio.core.IncidentPayload;
@@ -31,6 +30,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
     private final TextView footer;
     private final List<Integer> indices = new ArrayList<>();
     private final Rows rows = new Rows();
+    private final InspectorScroll.List list;
     private InspectorScreen detail;
     private InspectorRecordSearchTask task;
     private InspectorRecordSearch.Result result;
@@ -54,7 +54,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
             detail.setOnDismissListener(ignored -> detail = null);
         }, () -> { }, true); header.hideActions(); header.historicalTime = true;
         header.onQueryChange = value -> { query = value; filter(); };
-        ListView list = new InspectorScroll.List(context); list.setItemsCanFocus(true);
+        list = new InspectorScroll.List(context); list.setItemsCanFocus(true);
         list.setDivider(null); list.setDividerHeight(0);
         InspectorAppearance.style(header.status, () -> header.status.setTextColor(InspectorTheme.secondary(context)));
         list.addHeaderView(header, null, false); footer = caption(""); footer.setPadding(dp(16), dp(8), dp(16), dp(16)); list.addFooterView(footer, null, false);
@@ -95,13 +95,19 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         if (connectionID != null) for (int i = groups.size() - 1; i >= 0; i--) if (groups.get(i).field == InspectorQuery.Field.CONNECTION) groups.remove(i);
         return groups;
     }
-    private void filter() {
+    private void filter() { filter(false); }
+    private void filter(boolean preservingResults) {
         if (footer == null) return;
-        cancelSearch(); result = null; searchBusy = false; indices.clear();
+        cancelSearch(); searchBusy = false;
+        if (!preservingResults) { result = null; indices.clear(); }
+        int minimumResults = preservingResults ? indices.size() : 0;
         long now = logs != null ? logs.observedAtMillis : http != null ? http.observedAtMillis : sockets.observedAtMillis;
-        if (!query.searchesPayload()) for (int i = count() - 1; i >= 0; i--) if (inScope(i) && records.get(i).matchesFacets(query, now)) indices.add(i);
+        if (!query.searchesPayload()) {
+            indices.clear();
+            for (int i = count() - 1; i >= 0; i--) if (inScope(i) && records.get(i).matchesFacets(query, now)) indices.add(i);
+        }
         if (query.searchesPayload()) {
-            indices.clear(); long current = generation; InspectorQuery selected = query.copy();
+            long current = generation; InspectorQuery selected = query.copy();
             java.util.Map<String, IncidentPayload> saved = http != null ? http.payloads : sockets != null ? sockets.payloads : logs.payloads;
             List<InspectorRecordSearch.Record> searchRecords = new ArrayList<>();
             List<Integer> scopedIndices = new ArrayList<>();
@@ -112,17 +118,20 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
                 task = InspectorRecordSearchTask.submitProgressive((cancelled, progress) -> InspectorRecordSearch.run(searchRecords, selected, now, null, null, saved, null, InspectorRecordSearch.MAX_UNITS, cancelled, preparation, progress), found -> {
                     if (current != generation) return;
                     if (found.complete) task = null;
-                    result = found; indices.clear();
-                    for (int position : found.positions) indices.add(scopedIndices.get(position));
-                    display();
+                    if (!found.complete && found.positions.size() < minimumResults) return;
+                    list.preservingReadingPosition(rows, () -> {
+                        result = found; indices.clear();
+                        for (int position : found.positions) indices.add(scopedIndices.get(position));
+                        display();
+                    });
                 });
                 if (task == null) {
                     searchBusy = true; display();
-                    handler.postDelayed(() -> { if (current == generation && isAttachedToWindow()) filter(); }, 500);
+                    handler.postDelayed(() -> { if (current == generation && isAttachedToWindow()) filter(true); }, 500);
                 }
             }, 200);
         }
-        display();
+        if (!preservingResults || indices.isEmpty()) display();
     }
     private void cancelSearch() { generation++; handler.removeCallbacksAndMessages(null); if (task != null) task.cancel(); task = null; }
     private void display() {
@@ -157,7 +166,7 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         detail.setOnDismissListener(ignored -> detail = null); detail.show();
     }
     void dismissDialogs() { if (InspectorNavigation.owns(getContext())) return; if (detail != null) detail.dismiss(); }
-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (query.searchesPayload() && (result == null || !result.complete)) filter(); }
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (query.searchesPayload() && (result == null || !result.complete)) filter(true); }
     @Override protected void onDetachedFromWindow() { cancelSearch(); dismissDialogs(); super.onDetachedFromWindow(); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private TextView caption(String value) { return caption(() -> value); }
@@ -165,7 +174,9 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         TextView text = InspectorWidgets.caption(getContext());
         InspectorAppearance.text(text, value); text.setPadding(0, dp(8), 0, dp(8)); return text;
     }
-    private final class Rows extends BaseAdapter {
+    private final class Rows extends BaseAdapter implements InspectorScroll.List.Records {
+        @Override public int count() { return getCount(); }
+        @Override public String key(int index) { return records.get(indices.get(index)).key(); }
         @Override public int getCount() { return indices.size(); }
         @Override public Object getItem(int position) { return indices.get(position); }
         @Override public long getItemId(int position) { return indices.get(position); }

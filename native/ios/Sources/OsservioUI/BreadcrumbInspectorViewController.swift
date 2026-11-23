@@ -53,14 +53,16 @@ final class BreadcrumbInspectorViewController: UITableViewController {
             dirty = dirty || stale != failed; stale = failed
             if let snapshot { dirty = dirty || latest?.revision != snapshot.revision; latest = snapshot }
         }
-        if dirty || query.recentMinutes > 0 { render() } else { updateStatus() }
+        if dirty || !paused && query.recentMinutes > 0 { render() } else { updateStatus() }
     }
     private func render() {
-        events = (latest?.events ?? []).reversed().filter { query.matches($0, now: anchor) }
-        table.reloadData(); dirty = false
-        header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
-        table.setFeedEmpty(events.isEmpty ? (latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty" : "crumb_empty") : nil, header: header, query: query)
-        updateStatus()
+        table.preservingReadingPosition(count: { events.count }, key: { events[$0].id }) {
+            events = (latest?.events ?? []).reversed().filter { query.matches($0, now: anchor) }
+            table.reloadData(); dirty = false
+            header.count.text = String(format: InspectorLocalization.text("ui_result_count"), events.count, latest?.events.count ?? 0)
+            table.setFeedEmpty(events.isEmpty ? (latest == nil ? attemptedRead ? "busy" : "ui_reading" : latest?.events.isEmpty == false ? "ui_filtered_empty" : "crumb_empty") : nil, header: header, query: query)
+            updateStatus()
+        }
     }
     private func updateStatus() {
         var notes: [String] = []

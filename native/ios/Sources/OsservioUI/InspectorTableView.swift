@@ -138,6 +138,38 @@ final class InspectorTableView: UITableView {
     }
 }
 
+@MainActor
+extension UITableView {
+    /// Save only visible identities, not a second copy of the retained window. Call
+    /// before replacing the data source so insertion cannot turn an index into another record.
+    func preservingReadingPosition(section: Int = 0, count: () -> Int, key: (Int) -> String, update: () -> Void) {
+        let visible = (self as? InspectorTableView)?.followsLatest != true && window != nil ? (indexPathsForVisibleRows ?? []).sorted() : []
+        let anchors = visible.filter { $0.section == section && $0.row < count() }.map {
+            (key($0.row), rectForRow(at: $0).minY - contentOffset.y)
+        }
+        update()
+        guard !anchors.isEmpty, count() > 0 else { return }
+        let offsets = Dictionary(anchors, uniquingKeysWith: { first, _ in first })
+        var positions: [String: Int] = [:]
+        for index in 0..<count() {
+            let id = key(index)
+            if offsets[id] != nil { positions[id] = index }
+            if positions.count == offsets.count { break }
+        }
+        guard let anchor = anchors.first(where: { positions[$0.0] != nil }), let row = positions[anchor.0] else { return }
+        UIView.performWithoutAnimation {
+            layoutIfNeeded()
+            let index = IndexPath(row: row, section: section)
+            // Materialize a retained anchor even when insertions moved it outside the viewport.
+            if cellForRow(at: index) == nil { scrollToRow(at: index, at: .top, animated: false); layoutIfNeeded() }
+            let y = rectForRow(at: index).minY - anchor.1
+            let top = -adjustedContentInset.top
+            let bottom = max(top, contentSize.height - bounds.height + adjustedContentInset.bottom)
+            setContentOffset(CGPoint(x: contentOffset.x, y: min(bottom, max(top, y))), animated: false)
+        }
+    }
+}
+
 /// Accessibility sizes use full-width actions instead of three compressed titles.
 @MainActor
 final class InspectorControls: UIStackView {

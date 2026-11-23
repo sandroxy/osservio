@@ -328,13 +328,24 @@ final class InspectorEventCell: UITableViewCell {
     private let timestamp = InspectorTheme.label(.caption2, secondary: true)
     private let primary = InspectorTheme.label(.body)
     private let secondary = InspectorTheme.label(.caption1, secondary: true)
+    private let previewSlot = UIView()
+    private lazy var previewHeight = previewSlot.heightAnchor.constraint(equalToConstant: 0)
+    private lazy var naturalPreviewBottom = primary.bottomAnchor.constraint(equalTo: previewSlot.bottomAnchor)
+    private var measuredPreviewFont: UIFont?
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         primary.numberOfLines = 3; secondary.numberOfLines = 3
         let heading = UIStackView(arrangedSubviews: [badge, timestamp]); heading.spacing = 12
         badge.setContentCompressionResistancePriority(.required, for: .horizontal)
         timestamp.textAlignment = .right
-        let stack = UIStackView(arrangedSubviews: [heading, primary, secondary])
+        primary.translatesAutoresizingMaskIntoConstraints = false; previewSlot.addSubview(primary)
+        NSLayoutConstraint.activate([
+            primary.topAnchor.constraint(equalTo: previewSlot.topAnchor),
+            primary.leadingAnchor.constraint(equalTo: previewSlot.leadingAnchor),
+            primary.trailingAnchor.constraint(equalTo: previewSlot.trailingAnchor),
+            primary.bottomAnchor.constraint(lessThanOrEqualTo: previewSlot.bottomAnchor), naturalPreviewBottom
+        ])
+        let stack = UIStackView(arrangedSubviews: [heading, previewSlot, secondary])
         stack.axis = .vertical; stack.spacing = 6; stack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -349,11 +360,14 @@ final class InspectorEventCell: UITableViewCell {
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
     func setTimestamp(_ value: String) { timestamp.text = value; accessibilityLabel = [badge.text, primary.text, secondary.text, value].compactMap { $0 }.joined(separator: ", ") }
-    func configure(_ row: InspectorRecordPresentation.Row) {
+    func configure(_ row: InspectorRecordPresentation.Row, reservePreview: Bool = false) {
         configure(badge: row.badge, time: row.time, title: row.title, subtitle: row.subtitle,
-            color: row.tone == .error ? .systemRed : row.tone == .warning ? .systemOrange : .secondaryLabel)
+            color: row.tone == .error ? .systemRed : row.tone == .warning ? .systemOrange : .secondaryLabel, reservePreview: reservePreview)
     }
-    func configure(badge: String, time: Int64, title: String, subtitle: String, color: UIColor? = nil) {
+    func configure(badge: String, time: Int64, title: String, subtitle: String, color: UIColor? = nil, reservePreview: Bool = false) {
+        updatePreviewTypography(reservePreview)
+        naturalPreviewBottom.isActive = !reservePreview
+        previewHeight.isActive = reservePreview
         if self.badge.text != badge { self.badge.text = badge }
         self.badge.textColor = color ?? InspectorTheme.accent
         let formatted = InspectorValuePresentation.eventTime(time)
@@ -361,6 +375,24 @@ final class InspectorEventCell: UITableViewCell {
         if primary.text != title { primary.text = title }
         if secondary.text != subtitle { secondary.text = subtitle }
         accessibilityLabel = [badge, title, subtitle, timestamp.text ?? ""].joined(separator: ", ")
+    }
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+            updatePreviewTypography(previewHeight.isActive)
+        }
+    }
+    private func updatePreviewTypography(_ reserve: Bool) {
+        let font = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+        if primary.font != font { primary.font = font }
+        guard reserve, measuredPreviewFont != font else { return }
+        measuredPreviewFont = font
+        // UIFont.lineHeight alone omits the leading used by fallback CJK/emoji glyphs.
+        // Measure a tiny, fixed three-line sample once per font, never the retained body.
+        let sample = UILabel(); sample.font = font; sample.numberOfLines = 3
+        sample.text = "Ag汉🙂\nAg汉🙂\nAg汉🙂"
+        previewHeight.constant = ceil(max(font.lineHeight * 3,
+            sample.sizeThatFits(CGSize(width: 1_000, height: CGFloat.greatestFiniteMagnitude)).height))
     }
 }
 #endif

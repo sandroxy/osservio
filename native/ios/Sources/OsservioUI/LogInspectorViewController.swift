@@ -12,7 +12,7 @@ public final class LogInspectorViewController: UITableViewController {
     private let header = InspectorFeedHeader(compact: true)
     private lazy var refreshLoop: InspectorRefreshLoop = {
         let loop = InspectorRefreshLoop { [weak self] in self?.refresh() }
-        loop.suspended = { [weak self] in self?.cancelSearch() }; return loop
+        loop.suspended = { [weak self] in self?.cancelSearch(rebuild: false) }; return loop
     }()
     private var task: InspectorRecordSearchTask?
     private var result: InspectorRecordSearch.Result?
@@ -71,7 +71,10 @@ public final class LogInspectorViewController: UITableViewController {
         if dirty && task == nil && now >= nextSearchAt { render() }
         updateStatus()
     }
-    private func cancelSearch() { generation &+= 1; task?.cancel(); task = nil; dirty = true }
+    private func cancelSearch(rebuild: Bool = true) {
+        dirty = dirty || rebuild || task != nil
+        generation &+= 1; task?.cancel(); task = nil
+    }
     func setRecentFilterOwner(_ owner: UUID?) {
         guard recentFilters.owner != owner else { return }
         recentFilters.owner = owner
@@ -96,9 +99,12 @@ public final class LogInspectorViewController: UITableViewController {
     private func render() {
         let query = query, anchor = anchor
         if !query.searchesPayload {
-            let retained = (latest?.events ?? []).reversed()
-            events = query.activeCount == 0 ? Array(retained) : retained.filter { query.matchesFacets($0, now: anchor) }
-            result = nil; dirty = false; display(); return
+            table.preservingReadingPosition(count: { events.count }, key: { InspectorSearchRecord.log(events[$0]).key }) {
+                let retained = (latest?.events ?? []).reversed()
+                events = query.activeCount == 0 ? Array(retained) : retained.filter { query.matchesFacets($0, now: anchor) }
+                result = nil; dirty = false; display()
+            }
+            return
         }
         let retained = latest?.events ?? []
         let current = generation, detailsHistory = history as? any LogDetailsHistory
@@ -110,9 +116,11 @@ public final class LogInspectorViewController: UITableViewController {
             guard let self, self.generation == current else { return }
             guard result.complete || showProgress else { return }
             if result.complete { self.task = nil; self.dirty = false; self.nextSearchAt = Date.timeIntervalSinceReferenceDate + 1 }
-            self.result = result
-            self.events = result.positions.map { retained[retained.count - 1 - $0] }
-            self.display()
+            self.table.preservingReadingPosition(count: { self.events.count }, key: { InspectorSearchRecord.log(self.events[$0]).key }) {
+                self.result = result
+                self.events = result.positions.map { retained[retained.count - 1 - $0] }
+                self.display()
+            }
         })
         if task == nil { nextSearchAt = Date.timeIntervalSinceReferenceDate + 0.5 }
     }

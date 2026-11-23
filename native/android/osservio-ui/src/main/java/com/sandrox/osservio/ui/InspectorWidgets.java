@@ -391,6 +391,7 @@ final class InspectorWidgets {
             InspectorAppearance.style(card, () -> groupedRow(card, first, last));
         }
         void timestamp(String value) { if (!value.contentEquals(time.getText())) time.setText(value); }
+        void reservePreview(boolean reserve) { title.setMinLines(reserve ? 3 : 1); }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {
             if (!label.contentEquals(badge.getText())) badge.setText(label);
             if (badge.getCurrentTextColor() != tone) badge.setTextColor(tone);

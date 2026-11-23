@@ -11,7 +11,6 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 import com.sandrox.osservio.core.BreadcrumbHistory;
 import com.sandrox.osservio.core.EnvironmentProvider;
@@ -71,7 +70,7 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
     private final Button retry;
     private final android.widget.ImageButton actions;
     private boolean retryNeeded;
-    private final ListView list;
+    private final InspectorScroll.List list;
     private final Rows rows = new Rows();
     private List<IncidentSummary> snapshots = Collections.emptyList();
     private IncidentSnapshotView selected;
@@ -275,16 +274,18 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
     }
     private void render() {
         if (list == null) return;
-        updateReadingState(); retry.setVisibility(retryNeeded ? VISIBLE : GONE);
-        visible.clear();
-        long now = updatedAt == null ? System.currentTimeMillis() : updatedAt;
-        for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now, IncidentPresentation.title(getContext(), snapshot.diagnosticKind))) visible.add(snapshot);
-        header.setQuery(state.query, filterGroups(), visible.size(), snapshots.size()); header.setPaused(false);
-        header.showAdjustment(!reading && visible.isEmpty() && !snapshots.isEmpty());
-        list.setEnabled(!reading);
-        empty.setVisibility(visible.isEmpty() ? VISIBLE : GONE);
-        empty.setText(reading ? R.string.osservio_archive_reading : snapshots.isEmpty() ? R.string.osservio_incident_empty : R.string.osservio_ui_filtered_empty);
-        if (selected != null) selected.busy(reading); rows.notifyDataSetChanged();
+        list.preservingReadingPosition(true, rows, () -> {
+            updateReadingState(); retry.setVisibility(retryNeeded ? VISIBLE : GONE);
+            visible.clear();
+            long now = updatedAt == null ? System.currentTimeMillis() : updatedAt;
+            for (IncidentSummary snapshot : snapshots) if (state.query.matches(snapshot, now, IncidentPresentation.title(getContext(), snapshot.diagnosticKind))) visible.add(snapshot);
+            header.setQuery(state.query, filterGroups(), visible.size(), snapshots.size()); header.setPaused(false);
+            header.showAdjustment(!reading && visible.isEmpty() && !snapshots.isEmpty());
+            list.setEnabled(!reading);
+            empty.setVisibility(visible.isEmpty() ? VISIBLE : GONE);
+            empty.setText(reading ? R.string.osservio_archive_reading : snapshots.isEmpty() ? R.string.osservio_incident_empty : R.string.osservio_ui_filtered_empty);
+            if (selected != null) selected.busy(reading); rows.notifyDataSetChanged();
+        });
     }
     private void updateReadingState() {
         mark.setEnabled(!reading); retry.setEnabled(!reading); actions.setEnabled(!reading && !snapshots.isEmpty());
@@ -297,7 +298,9 @@ public final class IncidentInspectorView extends FrameLayout implements Inspecto
         if (keyboard != null) keyboard.hideSoftInputFromWindow(getWindowToken(), 0);
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-    private final class Rows extends BaseAdapter {
+    private final class Rows extends BaseAdapter implements InspectorScroll.List.Records {
+        @Override public int count() { return getCount(); }
+        @Override public String key(int index) { return visible.get(index).id; }
         @Override public int getCount() { return visible.size(); }
         @Override public Object getItem(int position) { return visible.get(position); }
         @Override public long getItemId(int position) { return position; }

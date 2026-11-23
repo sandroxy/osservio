@@ -13,6 +13,7 @@ final class InspectorRefreshLoop: NSObject {
     private var presentationSuspended = false
     private var timer: Timer?
     private var generation: UInt64 = 0
+    var isActive: Bool { timer != nil && mayRefresh }
 
     init(refresh: @escaping () -> Void) {
         self.refresh = refresh

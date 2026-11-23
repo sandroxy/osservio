@@ -102,6 +102,9 @@ explicit jump stops any pending Android fling. Ending a scroll at the top also
 resumes updates. There is no separate unbounded queue or unread counter. Bounded stores may still evict
 content while a reader is paused. Hidden lists stop polling and cancel content
 search. Failed metadata reads keep the previous window with an explicit notice.
+Progressive search and archive refreshes retain the first surviving visible
+record and its viewport offset. Returning from details preserves a completed
+paused window; an interrupted saved search keeps its existing matches while it resumes.
 Network details preserve the selected entry-time record, without a refresh action.
 Return to the list and reopen for the latest retained state. Opening any detail
 never resends a request or a Socket message.
@@ -231,12 +234,16 @@ escaped. Hidden paths and queries are labeled instead of displaying encoded
 redaction markers. Opening or copying the exact URL preserves the admitted,
 source after host policy. Display formatting does not change filtering, storage or export.
 
-Visible Socket message rows may load short previews in the background. At most
-16 visible rows are considered per job and 64 previews are cached; each preview
-holds about 180 UTF-16 units. They share the bounded search worker and cancel on
-navigation, scrolling or query changes. No JSON parsing or full-history body
-index is needed for this preview. HTTP bodies are read on demand in details or
-content search rather than prefetched for every list row.
+Live Socket text messages reserve a three-line preview area before their content
+arrives, so loading a preview does not change row height. Known content in other
+lists keeps its natural height. Background preview jobs prioritize visible rows,
+then up to eight nearby rows on either side, with at most 16 reads per job and
+64 cached previews of about 180 UTF-16 units each. Visible previews remain cached
+while being read. Jobs share the bounded search worker; navigation, viewport,
+query and owner changes cancel stale work, and hidden lists stop preview reads.
+No JSON parsing or full-history body index is needed for this preview. HTTP
+bodies are read on demand in details or content search rather than prefetched
+for every list row.
 
 Reading pages share the same information hierarchy on Android and iOS: page
 titles identify the selected evidence, navigation owns Back and copy/share
