@@ -45,6 +45,7 @@ public final class InspectorFilterInteractionTest {
                 await(() -> scope(sheet) != null && scope(sheet).material.renderer != null);
             }
             tap(sheet, R.string.osservio_ui_time);
+            scrollDownTo(sheet, R.string.osservio_ui_filter_refine);
             tap(sheet, R.string.osservio_ui_filter_refine);
             main(() -> {
                 ListView list = InspectorNavigationMaterialActivity.find(sheet.view, ListView.class);
@@ -298,6 +299,25 @@ public final class InspectorFilterInteractionTest {
             android.widget.CheckedTextView found = choice(((ViewGroup) view).getChildAt(i), label); if (found != null) return found;
         }
         return null;
+    }
+    private static void scrollDownTo(InspectorScreen screen, int label) throws Exception {
+        String title = screen.view.getContext().getString(label);
+        for (int attempt = 0; attempt < 20; attempt++) {
+            boolean[] visible = {false};
+            main(() -> {
+                View target = label(screen.view, title);
+                android.graphics.Rect bounds = new android.graphics.Rect();
+                visible[0] = target != null && target.getGlobalVisibleRect(bounds) && bounds.height() == target.getHeight();
+                if (!visible[0]) {
+                    ListView list = InspectorNavigationMaterialActivity.find(screen.view, ListView.class);
+                    assertNotNull(list);
+                    list.scrollListBy(Math.max(1, list.getHeight() / 2));
+                }
+            });
+            if (visible[0]) return;
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        }
+        fail("Could not scroll to " + title);
     }
     private static void tap(InspectorScreen screen, int label) throws Exception {
         View[] target = {null};

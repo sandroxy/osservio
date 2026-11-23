@@ -137,7 +137,15 @@ public final class InspectorLayoutTest {
         }
     }
     private static <T extends View> List<T> hidden(List<T> views) {
-        List<T> result = new ArrayList<>(); for (T view : views) if (view.getVisibility() != View.VISIBLE) result.add(view); return result;
+        List<T> result = new ArrayList<>();
+        for (T view : views) {
+            // These layout fixtures are detached; isShown() would hide the entire tree.
+            for (View current = view; current != null;
+                 current = current.getParent() instanceof View ? (View) current.getParent() : null) {
+                if (current.getVisibility() != View.VISIBLE) { result.add(view); break; }
+            }
+        }
+        return result;
     }
     private static void layout(View view, int width, int height) {
         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));

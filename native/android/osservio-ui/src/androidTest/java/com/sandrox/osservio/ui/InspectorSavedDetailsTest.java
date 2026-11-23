@@ -58,7 +58,7 @@ public final class InspectorSavedDetailsTest {
                 search.setText("no-such-event"); layout(view, width, height);
                 assertEquals(list.getHeaderViewsCount(), list.getCount());
                 assertSame(search, first(view, EditText.class));
-                assertNotNull(text(view, context.getString(R.string.osservio_ws_no_matches)));
+                assertNotNull(text(view, context.getString(R.string.osservio_ui_filtered_empty)));
                 search.setText("visible event"); layout(view, width, height);
                 assertEquals(list.getHeaderViewsCount() + 1, list.getCount());
                 assertSame(search, first(view, EditText.class));
