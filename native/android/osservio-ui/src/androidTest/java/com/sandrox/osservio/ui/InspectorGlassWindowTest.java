@@ -38,8 +38,16 @@ public final class InspectorGlassWindowTest {
             CountingRenderer[] renderer = new CountingRenderer[1];
             main(() -> { renderer[0] = new CountingRenderer(host.entry.material.renderer); host.entry.material.renderer = renderer[0]; host.content.setText("Changed source"); });
             await(() -> renderer[0].draws > 0);
+            // A first draw does not imply that the window's opening/layout work has
+            // finished. Require a bounded quiet interval before checking idle work.
+            int[] previous = {-1}; long[] changedAt = {android.os.SystemClock.uptimeMillis()};
+            await(() -> {
+                long now = android.os.SystemClock.uptimeMillis();
+                if (renderer[0].draws != previous[0]) { previous[0] = renderer[0].draws; changedAt[0] = now; }
+                return now - changedAt[0] >= 200;
+            });
             int[] staticDraws = new int[1]; main(() -> staticDraws[0] = renderer[0].draws);
-            Thread.sleep(200); main(() -> assertEquals("Static content must not redraw itself", staticDraws[0], renderer[0].draws));
+            Thread.sleep(500); main(() -> assertEquals("Static content must not redraw itself", staticDraws[0], renderer[0].draws));
             main(() -> host.entry.setTranslationY(host.entry.getY() - 30));
             await(() -> renderer[0].draws > staticDraws[0]);
             main(() -> {
