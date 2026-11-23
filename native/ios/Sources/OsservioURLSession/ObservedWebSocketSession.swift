@@ -39,14 +39,16 @@ public final class ObservedWebSocketTask: @unchecked Sendable {
     }
     public func suspend() { task.suspend() }
     public func cancel() {
-        task.cancel()
         observe(terminal: true) { self.recorder.lifecycle($0, kind: .cancelRequested) }
+        task.cancel()
     }
     /// Forwards the reason untouched; capture admits only a bounded, host-processed UTF-8 prefix.
     public func cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        task.cancel(with: closeCode, reason: reason)
+        // As with resume/send, finish the bounded request observation before starting
+        // native work. Otherwise a fast terminal callback can collide with this lock.
         observe { self.recorder.lifecycle($0, kind: .closeRequested, closeCode: Self.code(closeCode),
             closeReason: { limit in reason.map { Data($0.prefix(limit)) } }) }
+        task.cancel(with: closeCode, reason: reason)
     }
     public func send(_ message: URLSessionWebSocketTask.Message, completionHandler: @escaping @Sendable (Error?) -> Void) {
         let messageID = UUID()

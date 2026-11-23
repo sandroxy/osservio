@@ -65,7 +65,33 @@ final class ObservedWebSocketSessionTests: XCTestCase {
         wait(for: [closed], timeout: 5)
         XCTAssertTrue(store.snapshot()?.events.contains { $0.kind == .closeRequested } == true)
         XCTAssertEqual(store.snapshot()?.events.first { $0.kind == .closeRequested }?.closeReason?.text, "private close reason")
-        XCTAssertTrue(store.snapshot()?.events.contains { $0.kind == .closed && $0.closeCode == 1000 } == true)
+        let recorded = store.snapshot()?.events.map { "\($0.kind.rawValue):\($0.closeCode ?? -1)" } ?? []
+        XCTAssertTrue(store.snapshot()?.events.contains { $0.kind == .closed && $0.closeCode == 1000 } == true,
+            "Native completion: \(String(describing: delegate.error)); code: \(socket.task.closeCode.rawValue); recorded: \(recorded)")
+    }
+
+    func testCloseRequestCannotRaceTheNativeTerminalObservation() throws {
+        let server = try SocketServer(); defer { server.stop() }
+        let store = try MemoryWebSocketStore(), nativeCompleted = DispatchSemaphore(value: 0)
+        let sink = ClosingSink(store: store, nativeCompleted: nativeCompleted)
+        let capture = CaptureController(debugEnabled: true)
+        let recorder = try WebSocketRecorder(sink: sink, captureController: capture, privacy: WebSocketPrivacyPolicy())
+        let opened = expectation(description: "Opened"), completed = expectation(description: "Completed")
+        let delegate = SocketDelegate(opened: opened, completed: completed)
+        delegate.nativeCompleted = nativeCompleted
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+        let observer = try ObservedWebSocketSession(session: session, recorder: recorder)
+        let socket = observer.webSocketTask(with: URLRequest(url: server.url)); delegate.socket = socket
+        socket.resume(); wait(for: [opened], timeout: 5)
+        socket.cancel(with: .normalClosure, reason: nil)
+        wait(for: [completed], timeout: 5)
+        XCTAssertNil(delegate.error)
+        let events = try XCTUnwrap(store.snapshot()).events
+        XCTAssertTrue(events.contains { $0.kind == .closeRequested })
+        XCTAssertEqual(events.last?.kind, .closed, "A native completion must not overtake its close request")
+        XCTAssertEqual(events.last?.closeCode, 1000)
+        XCTAssertEqual(recorder.status()?.activeConnections, 0)
     }
 
     func testCallbackLimitPreservesHostReceivesAndReleasesBeforeReentry() throws {
@@ -185,6 +211,7 @@ private final class SocketDelegate: NSObject, URLSessionWebSocketDelegate, @unch
     let opened: XCTestExpectation?
     let completed: XCTestExpectation?
     var error: Error?
+    var nativeCompleted: DispatchSemaphore?
     init(opened: XCTestExpectation? = nil, completed: XCTestExpectation? = nil) {
         self.opened = opened; self.completed = completed
     }
@@ -200,6 +227,7 @@ private final class SocketDelegate: NSObject, URLSessionWebSocketDelegate, @unch
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         socket?.didComplete(with: error)
         self.error = error
+        nativeCompleted?.signal()
         completed?.fulfill()
     }
 }
@@ -257,5 +285,20 @@ private final class SocketServer: @unchecked Sendable {
             connections.forEach { $0.cancel() }
             connections.removeAll()
         }
+    }
+}
+
+/// Hold the request's capture path long enough to exercise an independently delivered
+/// native completion. No socket work or unbounded retry is introduced by the SDK.
+private final class ClosingSink: WebSocketSink, @unchecked Sendable {
+    let store: MemoryWebSocketStore
+    let nativeCompleted: DispatchSemaphore
+    init(store: MemoryWebSocketStore, nativeCompleted: DispatchSemaphore) {
+        self.store = store; self.nativeCompleted = nativeCompleted
+    }
+    func append(_ event: WebSocketEvent, payload: WebSocketPayload?) -> WebSocketWriteResult {
+        let result = store.append(event, payload: payload)
+        if event.kind == .closeRequested { _ = nativeCompleted.wait(timeout: .now() + 0.5) }
+        return result
     }
 }
