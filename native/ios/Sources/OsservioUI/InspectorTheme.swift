@@ -73,7 +73,10 @@ final class InspectorStyleObserver: NSObject {
 
 @MainActor
 final class InspectorNavigationController: UINavigationController, UINavigationControllerDelegate {
-    var transientPanel = false
+    var transientPanel = false {
+        didSet { if oldValue != transientPanel, isViewLoaded { updateStyle() } }
+    }
+    private var sheetEdge: InspectorSheetEdge?
     private var discardRequested = false
     func discardPanel() {
         discardRequested = true
@@ -92,6 +95,21 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     }
     private lazy var style = InspectorStyleObserver { [weak self] in self?.updateStyle() }
     override func viewDidLoad() { super.viewDidLoad(); delegate = self; style.changed() }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutSheetEdge()
+    }
+    private func layoutSheetEdge() {
+        guard let edge = sheetEdge, let parent = navigationBar.superview else { return }
+        let siblings = parent.subviews
+        if edge.superview !== parent || siblings.firstIndex(of: edge).map({ $0 + 1 }) != siblings.firstIndex(of: navigationBar) {
+            parent.insertSubview(edge, belowSubview: navigationBar)
+        }
+        let barBottom = navigationBar.convert(navigationBar.bounds, to: view).maxY
+        let height = min(max(InspectorSheetEdge.height, barBottom), view.bounds.height)
+        let frame = parent.convert(CGRect(x: 0, y: 0, width: view.bounds.width, height: height), from: view)
+        if edge.frame != frame { edge.frame = frame }
+    }
     func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
         installSessionAction(on: viewController)
         tintItems(viewController)
@@ -117,6 +135,20 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         InspectorTheme.apply(self)
         let appearance = UINavigationBarAppearance(); appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = InspectorTheme.surface
+        if transientPanel {
+            if sheetEdge == nil {
+                sheetEdge = InspectorSheetEdge()
+            }
+            sheetEdge?.update(appearance: overrideUserInterfaceStyle)
+            layoutSheetEdge()
+            if overrideUserInterfaceStyle == .dark {
+                view.backgroundColor = InspectorTheme.surface
+                appearance.backgroundColor = .clear
+            }
+        } else {
+            sheetEdge?.removeFromSuperview(); sheetEdge = nil
+        }
+        view.setNeedsLayout()
         appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
         // Keep UIKit's indicator and transition mask; system glass can override
         // the tint of its template image even when the Back item has a tint.

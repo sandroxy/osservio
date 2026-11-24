@@ -66,7 +66,11 @@ polling and pending parsing. Temporary panels cover the tab bar. Android bottom
 sheets have rounded top corners and square bottom corners; the surface continues through the navigation
 inset while controls remain within the safe area. More panels dismiss by native
 swipe/backdrop or an accessible dismiss action; Android also provides a draggable
-handle. Filter drafts remain provisional
+handle. Filters and editors use the available height below the top safe area,
+leaving a small backdrop gap rather than reserving the underlying page toolbar.
+Short action panels retain their compact sizing. Dark sheets have a static
+theme-colored upper edge; light sheets keep their plain boundary.
+Filter drafts remain provisional
 until Apply. Copy and Back use icons with contextual
 accessibility labels; Reset, Apply, Cancel and Save retain concise text. The
 problem sheet places Cancel on the left and Save on the right. Android sheet

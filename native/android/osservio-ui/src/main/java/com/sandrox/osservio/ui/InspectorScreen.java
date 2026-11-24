@@ -49,7 +49,7 @@ final class InspectorScreen implements DialogInterface {
                     int bottomInset = getPaddingBottom();
                     int available = View.MeasureSpec.getSize(heightSpec) - getPaddingTop() - bottomInset;
                     FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
-                    params.topMargin = Math.min(InspectorTheme.dp(context, 56), Math.max(0, available / 12));
+                    params.topMargin = Math.min(InspectorTheme.dp(context, 8), Math.max(0, available / 12));
                     // Extend the surface beneath system insets; keep the content above them.
                     params.bottomMargin = -bottomInset;
                     card.setPadding(0, 0, 0, bottomInset);
@@ -67,13 +67,8 @@ final class InspectorScreen implements DialogInterface {
         InspectorAppearance.style(view, () -> view.setBackgroundColor(isTransient() ? 0x44000000 : InspectorTheme.canvas(context)));
         InspectorAppearance.style(card, () -> {
             boolean confirmation = presentation == Presentation.CONFIRMATION;
-            android.graphics.drawable.GradientDrawable background = InspectorTheme.shape(context,
-                confirmation ? InspectorTheme.surface(context) : InspectorTheme.canvas(context), confirmation ? 28 : 0, false);
-            if (presentation == Presentation.SHEET) {
-                float radius = InspectorTheme.dp(context, 24);
-                background.setCornerRadii(new float[] {radius, radius, radius, radius, 0, 0, 0, 0});
-            }
-            card.setBackground(background);
+            card.setBackground(presentation == Presentation.SHEET ? new InspectorSheetBackground(context)
+                : InspectorTheme.shape(context, confirmation ? InspectorTheme.surface(context) : InspectorTheme.canvas(context), confirmation ? 28 : 0, false));
         });
         view.addView(card, new FrameLayout.LayoutParams(-1, -1, presentation == Presentation.CONFIRMATION ? Gravity.CENTER : Gravity.BOTTOM));
         if (isTransient()) { view.setClickable(true); card.setClickable(true); }

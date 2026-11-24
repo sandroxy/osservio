@@ -65,6 +65,7 @@ public final class InspectorSheetTest {
                 ViewGroup card = (ViewGroup) sheet.view.getChildAt(0);
                 assertEquals(sheet.view.getHeight(), card.getBottom());
                 assertTrue(card.getTop() > sheet.view.getPaddingTop());
+                if (!compact) assertTrue(card.getTop() - sheet.view.getPaddingTop() <= dp(context, 12));
                 assertTrue(card.getTop() + content.getBottom() <= sheet.view.getHeight() - sheet.view.getPaddingBottom());
                 Bitmap pixels = Bitmap.createBitmap(card.getWidth(), card.getHeight(), Bitmap.Config.ARGB_8888);
                 card.getBackground().setBounds(0, 0, card.getWidth(), card.getHeight());
@@ -73,6 +74,29 @@ public final class InspectorSheetTest {
                 assertEquals(0, Color.alpha(pixels.getPixel(card.getWidth() - 2, 1)));
                 assertEquals(InspectorTheme.canvas(context), pixels.getPixel(1, card.getHeight() - 2));
                 assertEquals(InspectorTheme.canvas(context), pixels.getPixel(card.getWidth() - 2, card.getHeight() - 2));
+                pixels.recycle();
+            }
+        });
+    }
+
+    @Test public void sheetLightIsDarkOnlyAndLeavesContentAndLowerEdgesOpaque() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            for (boolean dark : new boolean[] {false, true}) {
+                android.content.res.Configuration config = new android.content.res.Configuration(base.getResources().getConfiguration());
+                config.uiMode = (config.uiMode & ~android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    | (dark ? android.content.res.Configuration.UI_MODE_NIGHT_YES : android.content.res.Configuration.UI_MODE_NIGHT_NO);
+                Context context = base.createConfigurationContext(config);
+                InspectorSheetBackground background = new InspectorSheetBackground(context);
+                Bitmap pixels = Bitmap.createBitmap(dp(context, 320), dp(context, 160), Bitmap.Config.ARGB_8888);
+                background.setBounds(0, 0, pixels.getWidth(), pixels.getHeight()); background.draw(new Canvas(pixels));
+                int edge = pixels.getPixel(pixels.getWidth() / 2, dp(context, 4));
+                assertEquals(255, Color.alpha(edge));
+                if (dark) assertNotEquals(InspectorTheme.canvas(context), edge);
+                else assertEquals(InspectorTheme.canvas(context), edge);
+                assertEquals(0, Color.alpha(pixels.getPixel(0, 0)));
+                assertEquals(InspectorTheme.canvas(context), pixels.getPixel(pixels.getWidth() / 2, dp(context, 60)));
+                assertEquals(InspectorTheme.canvas(context), pixels.getPixel(1, pixels.getHeight() - 2));
                 pixels.recycle();
             }
         });

@@ -14,11 +14,19 @@ to be transparent.
 | Top actions | Bounded local optical surface and press feedback over native buttons | System bar controls; existing header treatment |
 | Record problem | Emphasized local optical action | System prominent glass on iOS 26; filled action on older systems |
 | View latest | Existing readable floating pill | Existing readable floating pill |
-| Short menus and confirmations | Existing native surfaces | System surfaces; no added optical layer |
-| Filters and problem composer | Opaque content, top rounded corners; material on header actions | Opaque content in the system sheet; native bar actions |
+| Short menus | Opaque surface with a static upper-edge light in dark appearance | System sheet with the same dark edge treatment |
+| Confirmations | Native confirmation surface | System alert; no added edge or optical layer |
+| Filters and problem composer | Opaque content, top rounded corners; dark edge light and material on header actions | Opaque system sheet, dark edge light and native bar actions |
 | Details, JSON, cards, inputs | Opaque reading surfaces | Opaque reading surfaces |
 | Switches and segments | Native switches; shared moving lens over native segmented choices | System controls, with native segmented material |
 | Floating entry | Bounded frosted circular lens over ordinary Activity content, native fallback otherwise | System Regular glass where supported, native fallback otherwise |
+
+SDK-owned sheets use a static palette-colored falloff along their upper edge in
+dark appearance. Light appearance keeps the plain native boundary. The decoration
+does not sample background content, run a timer or own input; sheet controls and
+gestures retain their existing owners. Its drawing is limited to the upper edge,
+with no glow over reading content. Theme and size changes update it in place.
+System share interfaces and confirmation alerts retain their platform treatment.
 
 The floating entry follows the host's effective light/dark appearance, independently
 of the inspector's appearance preference. Its palette and language remain inspector
