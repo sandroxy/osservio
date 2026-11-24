@@ -49,7 +49,7 @@ final class InspectorScreen implements DialogInterface {
                     int bottomInset = getPaddingBottom();
                     int available = View.MeasureSpec.getSize(heightSpec) - getPaddingTop() - bottomInset;
                     FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
-                    params.topMargin = Math.min(InspectorTheme.dp(context, 8), Math.max(0, available / 12));
+                    params.topMargin = Math.min(InspectorTheme.dp(context, 56), Math.max(0, available / 12));
                     // Extend the surface beneath system insets; keep the content above them.
                     params.bottomMargin = -bottomInset;
                     card.setPadding(0, 0, 0, bottomInset);

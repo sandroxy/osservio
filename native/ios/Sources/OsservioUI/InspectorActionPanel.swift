@@ -31,10 +31,8 @@ final class InspectorActionPanel: UITableViewController {
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        if #available(iOS 15, *), let sheet = navigationController?.sheetPresentationController {
-            sheet.detents = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? [.large()] : [.medium(), .large()]
-            sheet.prefersGrabberVisible = true; sheet.preferredCornerRadius = 28
-        }
+        (navigationController as? InspectorNavigationController)?.configureSheet(
+            compact: !traitCollection.preferredContentSizeCategory.isAccessibilityCategory)
     }
     override func accessibilityPerformEscape() -> Bool { dismiss(animated: true); return true }
     override func numberOfSections(in tableView: UITableView) -> Int { groups.count }

@@ -126,6 +126,20 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         return item
     }
     @objc private func minimize() { session?.collapse() }
+    func configureSheet(compact: Bool = false) {
+        guard #available(iOS 15, *), let sheet = sheetPresentationController else { return }
+        let expanded: UISheetPresentationController.Detent
+        if #available(iOS 16, *) {
+            expanded = .custom(identifier: .init("Osservio.ExpandedSheet")) { context in
+                // Keep the grabber away from system edge gestures without wasting a short viewport.
+                let height = context.maximumDetentValue
+                return height - min(56, height / 12)
+            }
+        } else { expanded = .large() }
+        sheet.detents = compact ? [.medium(), expanded] : [expanded]
+        sheet.prefersGrabberVisible = true; sheet.preferredCornerRadius = 28
+        sheet.prefersEdgeAttachedInCompactHeight = true
+    }
     private func tintItems(_ controller: UIViewController) {
         let items = (controller.navigationItem.leftBarButtonItems ?? []) + (controller.navigationItem.rightBarButtonItems ?? [])
         for item in items { InspectorTheme.apply(item) }
@@ -136,13 +150,15 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         let appearance = UINavigationBarAppearance(); appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = InspectorTheme.surface
         if transientPanel {
+            view.backgroundColor = InspectorTheme.canvas
+            appearance.backgroundColor = InspectorTheme.canvas
+            appearance.shadowColor = .clear
             if sheetEdge == nil {
                 sheetEdge = InspectorSheetEdge()
             }
             sheetEdge?.update(appearance: overrideUserInterfaceStyle)
             layoutSheetEdge()
             if overrideUserInterfaceStyle == .dark {
-                view.backgroundColor = InspectorTheme.surface
                 appearance.backgroundColor = .clear
             }
         } else {
@@ -192,9 +208,7 @@ extension UIViewController {
         navigation.transientPanel = !retainingPage
         navigation.session = inspectorSession
         navigation.modalPresentationStyle = retainingPage ? .fullScreen : .pageSheet
-        if #available(iOS 15, *), !retainingPage, let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]; sheet.prefersGrabberVisible = true; sheet.preferredCornerRadius = 28
-        }
+        if !retainingPage { navigation.configureSheet() }
         present(navigation, animated: true)
     }
     func inspectorMinimalBackTitle() {

@@ -12,7 +12,7 @@ final class InspectorSheetEdge: UIView {
     init() {
         super.init(frame: .zero)
         isOpaque = false; isUserInteractionEnabled = false; accessibilityElementsHidden = true
-        contentMode = .redraw; backgroundColor = InspectorTheme.surface
+        contentMode = .redraw; backgroundColor = InspectorTheme.canvas
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }

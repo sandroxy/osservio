@@ -65,7 +65,11 @@ public final class InspectorSheetTest {
                 ViewGroup card = (ViewGroup) sheet.view.getChildAt(0);
                 assertEquals(sheet.view.getHeight(), card.getBottom());
                 assertTrue(card.getTop() > sheet.view.getPaddingTop());
-                if (!compact) assertTrue(card.getTop() - sheet.view.getPaddingTop() <= dp(context, 12));
+                if (!compact) {
+                    int gap = card.getTop() - sheet.view.getPaddingTop();
+                    assertTrue("Keep the handle below system pull-down gestures", gap >= dp(context, bottom == 24 ? 48 : 24));
+                    assertTrue(gap <= dp(context, 56));
+                }
                 assertTrue(card.getTop() + content.getBottom() <= sheet.view.getHeight() - sheet.view.getPaddingBottom());
                 Bitmap pixels = Bitmap.createBitmap(card.getWidth(), card.getHeight(), Bitmap.Config.ARGB_8888);
                 card.getBackground().setBounds(0, 0, card.getWidth(), card.getHeight());
