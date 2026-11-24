@@ -24,20 +24,24 @@ public final class InspectorListStabilityTest {
     @Test public void previewSlotKeepsGeometryAndResetsForNaturalContent() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
-            for (float scale : new float[] {1, 2}) {
-                Configuration config = new Configuration(base.getResources().getConfiguration()); config.fontScale = scale;
+            for (int density : new int[] {160, 420}) for (float scale : new float[] {1, 2}) for (int width : new int[] {240, 400}) {
+                Configuration config = new Configuration(base.getResources().getConfiguration()); config.fontScale = scale; config.densityDpi = density;
                 Context context = InspectorTheme.context(base.createConfigurationContext(config));
                 InspectorWidgets.EventRow row = new InspectorWidgets.EventRow(context);
-                int reserved = height(row, "文本消息", true);
-                for (String text : new String[] {"", "missing", String.join(" ", Collections.nCopies(30, "long 内容")), String.join(" ", Collections.nCopies(30, "🙂👨‍👩‍👧‍👦汉Å"))}) assertEquals(reserved, height(row, text, true));
-                assertTrue(height(row, "short", false) < reserved);
-                assertTrue(reserved >= height(row, "汉🙂\n汉🙂\n汉🙂", false));
+                int reserved = height(row, "文本消息", true, width);
+                for (String text : new String[] {"", "missing", String.join(" ", Collections.nCopies(30, "long 内容")), String.join(" ", Collections.nCopies(30, "🙂👨‍👩‍👧‍👦汉Å"))}) {
+                    assertEquals("density=" + density + ", scale=" + scale + ", width=" + width + ", text=" + text,
+                        reserved, height(row, text, true, width));
+                }
+                assertTrue(height(row, "short", false, width) < reserved);
+                assertTrue("Three lines of fallback glyphs must fit", reserved >= height(row, "汉🙂\n汉🙂\n汉🙂", false, width));
+                assertEquals("Reusing a natural row must restore the preview slot", reserved, height(row, "missing", true, width));
             }
         });
     }
-    private static int height(InspectorWidgets.EventRow row, String text, boolean reserve) {
+    private static int height(InspectorWidgets.EventRow row, String text, boolean reserve, int width) {
         row.reservePreview(reserve); row.bind("Socket", text, "stream", 1, 0xff555555);
-        row.measure(View.MeasureSpec.makeMeasureSpec(InspectorTheme.dp(row.getContext(), 280), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        row.measure(View.MeasureSpec.makeMeasureSpec(InspectorTheme.dp(row.getContext(), width), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         return row.getMeasuredHeight();
     }
     @Test public void insertionsAndRemovedAnchorKeepTheNextVisibleRecordInPlace() throws Exception {

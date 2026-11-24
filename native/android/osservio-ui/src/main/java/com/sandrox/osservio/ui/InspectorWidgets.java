@@ -358,6 +358,7 @@ final class InspectorWidgets {
         private final TextView time;
         private final TextView title;
         private final TextView metadata;
+        private int previewHeight;
         EventRow(Context context) {
             super(context); setOrientation(VERTICAL);
             int inset = InspectorTheme.dp(context, 16); setPadding(inset, 0, inset, 0);
@@ -391,7 +392,22 @@ final class InspectorWidgets {
             InspectorAppearance.style(card, () -> groupedRow(card, first, last));
         }
         void timestamp(String value) { if (!value.contentEquals(time.getText())) time.setText(value); }
-        void reservePreview(boolean reserve) { title.setMinLines(reserve ? 3 : 1); }
+        void reservePreview(boolean reserve) {
+            if (reserve && previewHeight == 0) {
+                // minLines adds primary-font blank lines to the current text's height;
+                // fallback glyphs can still change that height when a preview arrives.
+                // Measure a fixed sample once per row's typography, never a retained body.
+                TextView sample = new TextView(getContext());
+                InspectorTheme.typography(sample, 17, false);
+                sample.setText("Ag汉🙂\nAg汉🙂\nAg汉🙂");
+                sample.measure(MeasureSpec.makeMeasureSpec(InspectorTheme.dp(getContext(), 1000), MeasureSpec.AT_MOST),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+                previewHeight = sample.getMeasuredHeight() + title.getPaddingTop() + title.getPaddingBottom();
+            }
+            ViewGroup.LayoutParams params = title.getLayoutParams();
+            int height = reserve ? previewHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
+            if (params.height != height) { params.height = height; title.setLayoutParams(params); }
+        }
         void bind(String label, String primary, String secondary, long timestamp, int tone) {
             if (!label.contentEquals(badge.getText())) badge.setText(label);
             if (badge.getCurrentTextColor() != tone) badge.setTextColor(tone);
