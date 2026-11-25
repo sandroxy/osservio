@@ -51,7 +51,7 @@ final class InspectorFilterConditions: UIStackView {
         NSLayoutConstraint.activate([labels.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 16),
             labels.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -(16 + InspectorFilterDisclosure.width + 10)),
             labels.topAnchor.constraint(equalTo: button.topAnchor, constant: 12), labels.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -12)])
-        button.arrow.attach(to: button, beside: labels)
+        button.arrow.attach(to: button)
         editor.axis = .vertical; editor.spacing = 10; editor.isLayoutMarginsRelativeArrangement = true
         editor.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16)
         card.addArrangedSubview(button); card.addArrangedSubview(editor)

@@ -7,7 +7,6 @@ final class InspectorFilterLabels: UIStackView {
     let name = InspectorTheme.label(.body)
     let value: UILabel
     var prefersStacked = false
-    weak var disclosure: InspectorFilterDisclosure?
 
     init(value: UILabel? = nil) {
         self.value = value ?? InspectorTheme.label(.subheadline, secondary: true)
@@ -28,11 +27,10 @@ final class InspectorFilterLabels: UIStackView {
             && value.text?.contains("\n") != true
         let direction: NSLayoutConstraint.Axis = inline ? .horizontal : .vertical
         if axis != direction {
-            axis = direction; alignment = inline ? .firstBaseline : .fill; spacing = inline ? 12 : 3
+            axis = direction; alignment = inline ? .center : .fill; spacing = inline ? 12 : 3
         }
         let trailing: NSTextAlignment = effectiveUserInterfaceLayoutDirection == .rightToLeft ? .left : .right
         value.textAlignment = inline ? trailing : .natural
-        disclosure?.align(with: value, inline: inline && !value.isHidden)
     }
     override func layoutSubviews() { arrange(width: bounds.width); super.layoutSubviews() }
 }
@@ -44,30 +42,14 @@ final class InspectorFilterDisclosure: UIView {
     static let width: CGFloat = 16
     private static let glyph = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
     private let icon = UIImageView(image: glyph)
-    private var rowCenter: NSLayoutConstraint!
-    private var valueCenter: NSLayoutConstraint!
     var direction: Direction = .forward { didSet { if oldValue != direction { setNeedsLayout() } } }
 
-    func attach(to row: UIView, beside labels: InspectorFilterLabels) {
+    func attach(to row: UIView) {
         isUserInteractionEnabled = false; isAccessibilityElement = false
         icon.contentMode = .center; icon.tintColor = InspectorTheme.secondary; addSubview(icon)
         translatesAutoresizingMaskIntoConstraints = false; row.addSubview(self)
-        rowCenter = centerYAnchor.constraint(equalTo: row.centerYAnchor)
-        valueCenter = centerYAnchor.constraint(equalTo: labels.value.firstBaselineAnchor)
         NSLayoutConstraint.activate([widthAnchor.constraint(equalToConstant: Self.width), heightAnchor.constraint(equalTo: widthAnchor),
-            trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16), rowCenter])
-        labels.disclosure = self
-    }
-
-    func align(with value: UILabel, inline: Bool) {
-        if inline {
-            // UIKit aligns the labels by baseline. Center the symbol on the visible text.
-            let offset = -value.font.capHeight / 2
-            if valueCenter.constant != offset { valueCenter.constant = offset }
-        }
-        guard inline != valueCenter.isActive else { return }
-        if inline { rowCenter.isActive = false; valueCenter.isActive = true }
-        else { valueCenter.isActive = false; rowCenter.isActive = true }
+            trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16), centerYAnchor.constraint(equalTo: row.centerYAnchor)])
     }
 
     override func layoutSubviews() {
@@ -92,7 +74,7 @@ final class InspectorFilterSummaryCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = InspectorTheme.surface
         labels.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(labels)
-        arrow.attach(to: contentView, beside: labels)
+        arrow.attach(to: contentView)
         let minimum = contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 46); minimum.priority = .defaultHigh
         NSLayoutConstraint.activate([minimum, labels.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: inset),
             labelsTrailing, labels.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),

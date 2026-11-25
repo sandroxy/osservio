@@ -7,7 +7,7 @@ import XCTest
 
 final class InspectorLayoutTests: XCTestCase {
     @MainActor
-    func testFilterDisclosureAlignsWithInlineValueAndKeepsItsShapeWhenRotated() throws {
+    func testFilterSummaryContentIsCenteredAndDisclosureKeepsItsShapeWhenRotated() throws {
         let cell = InspectorFilterSummaryCell(style: .default, reuseIdentifier: nil)
         cell.overrideUserInterfaceStyle = .light
         cell.frame = CGRect(x: 0, y: 0, width: 340, height: 48)
@@ -15,7 +15,7 @@ final class InspectorLayoutTests: XCTestCase {
         for value in ["全部", "不限时间", "All"] {
             var sizes = [CGSize]()
             for direction in [InspectorFilterDisclosure.Direction.forward, .down, .up] {
-                cell.bind("HTTP", value, direction: direction)
+                cell.bind(value == "All" ? "HTTP" : "时间范围", value, direction: direction)
                 cell.setNeedsLayout(); cell.layoutIfNeeded()
                 cell.contentView.layoutIfNeeded()
                 XCTAssertEqual(cell.labels.axis, .horizontal)
@@ -42,6 +42,11 @@ final class InspectorLayoutTests: XCTestCase {
                 }
                 let valueInk = try inkBounds(from: size.width / 2, to: arrow.frame.minX - 4)
                 let arrowInk = try inkBounds(from: arrow.frame.minX - 2, to: arrow.frame.maxX + 2)
+                let nameInk = try inkBounds(from: 16, to: size.width / 2 - 4)
+                for ink in [nameInk, valueInk, arrowInk] {
+                    XCTAssertEqual(ink.midY / CGFloat(scale), size.height / 2, accuracy: 1,
+                                   "The complete summary must be centered in its row: \(value) · \(direction)")
+                }
                 XCTAssertEqual(arrowInk.midY, valueInk.midY, accuracy: CGFloat(scale), "\(value) · \(direction)")
                 sizes.append(arrowInk.size)
             }
@@ -125,6 +130,16 @@ final class InspectorLayoutTests: XCTestCase {
                                 let required = fullText.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
                                 XCTAssertGreaterThanOrEqual(label.bounds.height + 1, ceil(required.height), title)
                                 XCTAssertLessThanOrEqual(cell.convert(label.bounds, from: label).maxY, cell.bounds.height + 1, title)
+                                if let summary = cell as? InspectorFilterSummaryCell {
+                                    let labels = summary.labels
+                                    let nameFrame = labels.name.convert(labels.name.bounds, to: cell.contentView)
+                                    let valueFrame = labels.value.convert(labels.value.bounds, to: cell.contentView)
+                                    let content = labels.value.isHidden ? nameFrame : nameFrame.union(valueFrame)
+                                    XCTAssertEqual(content.midY, cell.contentView.bounds.midY, accuracy: 0.5, title)
+                                    if labels.axis == .horizontal && !labels.value.isHidden {
+                                        XCTAssertEqual(nameFrame.midY, valueFrame.midY, accuracy: 0.5, title)
+                                    }
+                                }
                                 if title == InspectorFilterOptions.label(.activity, "messages") {
                                     messageRow = (path, label.bounds.size, cell.bounds.height)
                                 }
