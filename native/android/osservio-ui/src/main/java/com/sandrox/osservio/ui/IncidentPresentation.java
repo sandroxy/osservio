@@ -85,12 +85,29 @@ final class IncidentPresentation {
             + context.getString(R.string.osservio_incident_evidence_counts, count, omitted, evicted)
             + (payloadEvicted == null ? "" : "\n" + context.getString(R.string.osservio_incident_evidence_payload_evicted, payloadEvicted));
     }
+    static InspectorRecordSearch.Record focusRecord(IncidentSnapshot snapshot) {
+        if (snapshot.focus == null) return null;
+        if (snapshot.logs != null) for (com.sandrox.osservio.core.LogEvent event : snapshot.logs.events) if (snapshot.focus.matches(event)) return new InspectorRecordSearch.Record(event);
+        if (snapshot.http != null) for (com.sandrox.osservio.core.HTTPEvent event : snapshot.http.events) if (snapshot.focus.matches(event)) return new InspectorRecordSearch.Record(event);
+        if (snapshot.webSockets != null) for (com.sandrox.osservio.core.WebSocketEvent event : snapshot.webSockets.events) if (snapshot.focus.matches(event)) return new InspectorRecordSearch.Record(event);
+        return null;
+    }
+    static String focus(Context context, IncidentSnapshot snapshot) {
+        InspectorRecordSearch.Record record = focusRecord(snapshot);
+        if (record == null) return "";
+        InspectorRecordPresentation.Row row = record.log != null ? InspectorRecordPresentation.log(context, record.log, null)
+            : record.http != null ? InspectorRecordPresentation.http(context, record.http, null) : InspectorRecordPresentation.socket(context, record.socket, null, false);
+        return row.badge + " · " + InspectorValuePresentation.eventTime(row.time, true) + "\n" + row.title;
+    }
     static String summary(Context context, IncidentSnapshot snapshot) {
         SystemDiagnostic.Kind kind = snapshot.systemDiagnostic == null ? null : snapshot.systemDiagnostic.kind;
         StringBuilder value = new StringBuilder(title(context, kind));
         value.append("\n\n").append(timeLabel(context, kind)).append(": ").append(RuntimePresentation.date(context, snapshot.timestampMillis));
         value.append("\n\nID: ").append(snapshot.id).append("\n\n").append(note(context, snapshot.note));
         value.append("\n\n").append(context.getString(R.string.osservio_runtime_breadcrumbs)).append(": ").append(counts(context, snapshot.breadcrumbs));
+        if (snapshot.focus != null) value.append("\n\n").append(context.getString(R.string.osservio_ui_selected_record)).append(": ")
+            .append(focus(context, snapshot)).append("\n").append(snapshot.focus.sessionId).append(" · #").append(snapshot.focus.sequence)
+            .append(snapshot.focus.eventId == null ? "" : " · " + snapshot.focus.eventId);
         if (snapshot.systemDiagnostic != null) value.append("\n\n").append(SystemDiagnosticPresentation.summary(context, snapshot.systemDiagnostic));
         value.append("\n\n").append(snapshot.environment == null
             ? context.getString(R.string.osservio_runtime_environment) + ": " + context.getString(R.string.osservio_incident_not_attached)

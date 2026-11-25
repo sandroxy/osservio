@@ -192,7 +192,8 @@ final class LogDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); title = InspectorLocalization.text("ui_log_details")
-        inspectorPrimaryAction = inspectorCopyItem(target: self, action: #selector(copyMessage), label: "copy")
+        inspectorActions = [inspectorCopyItem(target: self, action: #selector(copyMessage), label: "copy")]
+            + (saved == nil && inspectorIncidentRecording != nil ? [inspectorRecordItem(action: #selector(recordProblem))] : [])
         sections = [Section(title: InspectorLocalization.text("ui_read_content"), rows: [
             Row(searchHit?.excerpt(in: "ui_search_log_message") ?? RuntimePresentation.message(String(event.message.prefix(600)), isPrivate: event.isPrivate), action: event.isPrivate ? nil : { [weak self] in
                 guard let self else { return }; self.read(titleKey: "ui_log_content", content: InspectorReadContent(text: self.event.message,
@@ -223,6 +224,7 @@ final class LogDetailViewController: InspectorDetailViewController {
             })]), at: sections.count - 1)
         }
     }
+    @objc private func recordProblem() { inspectorIncidentRecording?.record(.log(event), from: self) }
     @objc private func copyMessage() { UIPasteboard.general.string = event.message }
 }
 #endif

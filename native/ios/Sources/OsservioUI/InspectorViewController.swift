@@ -77,6 +77,10 @@ public final class InspectorViewController: UITabBarController, UITabBarControll
                     (problems, "incident_title", "flag"), (app, "ui_app", "square.grid.2x2")]
         viewControllers = sections.enumerated().map { index, section in
             let navigation = InspectorNavigationController(rootViewController: section.0)
+            if let incidentArchive, let environment, let breadcrumbs {
+                navigation.incidentRecording = InspectorIncidentRecording(archive: incidentArchive, environment: environment,
+                    breadcrumbs: breadcrumbs.history, logs: logHistory as? any LogDetailsHistory, http: http.history, sockets: sockets?.history)
+            }
             navigation.tabBarItem = UITabBarItem(title: InspectorLocalization.text(section.1), image: UIImage(systemName: section.2), tag: index)
             section.0.navigationItem.leftBarButtonItem = debugControl.item()
             section.0.inspectorMinimalBackTitle()

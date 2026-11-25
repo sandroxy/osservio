@@ -73,6 +73,7 @@ final class InspectorStyleObserver: NSObject {
 
 @MainActor
 final class InspectorNavigationController: UINavigationController, UINavigationControllerDelegate {
+    var incidentRecording: InspectorIncidentRecording?
     var transientPanel = false {
         didSet { if oldValue != transientPanel, isViewLoaded { updateStyle() } }
     }

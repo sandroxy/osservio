@@ -39,7 +39,6 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad()
-        inspectorActions = [copyButton]
         if ["ui_search_request_body", "ui_search_request_headers"].contains(searchHit?.source ?? "") { selection.selectedIndex = 1 }
         if ["ui_search_response_body", "ui_search_response_headers"].contains(searchHit?.source ?? "") { selection.selectedIndex = 2 }
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
@@ -53,6 +52,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
         title = InspectorLocalization.text("ui_request_details")
         selection.setTitles(["ui_overview", "ui_request", "ui_response"].map(InspectorLocalization.text))
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
+        inspectorActions = [copyButton] + (savedPayloads == nil && inspectorIncidentRecording != nil ? [inspectorRecordItem(action: #selector(recordProblem))] : [])
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         if selection.selectedIndex == 0 {
             var overview = [
@@ -112,6 +112,7 @@ final class HTTPDetailViewController: InspectorDetailViewController {
     private func openBody() {
         read(titleKey: selection.selectedIndex == 1 ? "http_request_body" : "http_response_body", content: bodyContent(), source: bodySource)
     }
+    @objc private func recordProblem() { inspectorIncidentRecording?.record(.http(event), from: self) }
     @objc private func copyMetadata() { UIPasteboard.general.string = HTTPPresentation.overview(event) }
 }
 #endif

@@ -48,6 +48,20 @@ Android reports `IllegalArgumentException`. Invalid or oversized output is
 rejected instead of silently dropping attachments. Core's public snapshot and
 restoration constructors enforce the input's typed evidence invariants.
 
+## Selected-record annotation
+
+Revision `10` accepts an optional `incident.focus` annotation on manual snapshots.
+It contains `kind` (`log`, `http`, or `webSocket`), `sessionID`, canonical decimal
+`sequence`, and `eventID` (null for logs, an event UUID for network records).
+The reference must resolve to an attached record of that kind. It does not assert
+causality, change event identity, or imply an atomic snapshot across attachments.
+Missing `focus` means no explicit selected record, including all earlier exports.
+
+This additive annotation stays within revision `10`: existing tolerant readers
+may ignore the unknown optional field while retaining the complete event and
+payload evidence. Current strict writers and readers validate its type and
+referential integrity. No existing required field or event semantics changed.
+
 ## Values and evidence
 
 - UUID strings retain their original spelling. Compare identities without

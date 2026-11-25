@@ -35,7 +35,10 @@ final class WebSocketDetailDialog {
         dialog.iconAction(R.drawable.osservio_copy, R.string.osservio_ui_copy_metadata, () -> {
             android.content.ClipboardManager clipboard = context.getSystemService(android.content.ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Osservio", WebSocketPresentation.overview(context, event)));
-        }); render();
+        });
+        InspectorIncidentRecording recording = InspectorIncidentRecording.from(context);
+        if (savedPayloads == null && recording != null) recording.bind(context, dialog, event);
+        render();
     }
     private void render() {
         body.removeAllViews(); InspectorDetailPage page = new InspectorDetailPage(context);

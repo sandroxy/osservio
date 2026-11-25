@@ -88,7 +88,7 @@ final class IncidentSnapshotViewController: UITableViewController {
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 4 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 { return snapshot.systemDiagnostic == nil ? 3 : 4 }
+        if section == 0 { return snapshot.systemDiagnostic == nil && snapshot.focus == nil ? 3 : 4 }
         if section == 1 { return snapshot.environment == nil ? 0 : 1 }
         if section == 2 { return 3 }
         return 1 + events.count
@@ -136,6 +136,11 @@ final class IncidentSnapshotViewController: UITableViewController {
         PersistencePresentation.style(cell); cell.selectionStyle = .none; cell.accessoryType = .none
         cell.accessibilityTraits = .staticText
         if indexPath.section == 0 {
+            if indexPath.row == 3, let selection = InspectorIncidentSelection.selected(in: snapshot) {
+                cell.textLabel?.text = RuntimePresentation.text("ui_selected_record"); cell.detailTextLabel?.text = selection.summary
+                cell.selectionStyle = .default; cell.accessoryType = .disclosureIndicator; cell.accessibilityTraits = .button
+                return cell
+            }
             if indexPath.row == 3, let diagnostic = snapshot.systemDiagnostic {
                 cell.textLabel?.text = RuntimePresentation.text("diagnostic_title")
                 cell.detailTextLabel?.text = SystemDiagnosticPresentation.kind(diagnostic.kind)
@@ -169,6 +174,9 @@ final class IncidentSnapshotViewController: UITableViewController {
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        if indexPath.section == 0, indexPath.row == 3, let selection = InspectorIncidentSelection.selected(in: snapshot) {
+            selection.openSaved(snapshot, from: self); return
+        }
         if indexPath.section == 0, indexPath.row == 3, let diagnostic = snapshot.systemDiagnostic {
             navigationController?.pushViewController(SystemDiagnosticViewController(diagnostic), animated: true)
         }

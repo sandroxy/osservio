@@ -14,6 +14,7 @@ import com.sandrox.osservio.core.BreadcrumbEvent;
 import com.sandrox.osservio.core.DiagnosticRecoveryReceipt;
 import com.sandrox.osservio.core.EnvironmentSnapshot;
 import com.sandrox.osservio.core.IncidentSnapshot;
+import com.sandrox.osservio.core.IncidentFocus;
 import com.sandrox.osservio.core.IncidentSummary;
 import com.sandrox.osservio.core.SystemDiagnostic;
 import com.sandrox.osservio.core.SystemDiagnosticBatch;
@@ -38,7 +39,7 @@ final class IncidentDatabase implements AutoCloseable {
         this.options = options;
         List<String> schema = new ArrayList<>();
         for (String[] part : new String[][] {SCHEMA, IncidentDetailDatabase.SCHEMA, IncidentDiagnosticDatabase.SCHEMA,
-                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA, TombstoneDatabase.SCHEMA, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA, IncidentDetailDatabase.LOG_DETAILS_SCHEMA, HTTPMetricsDatabase.SCHEMA, IncidentDetailDatabase.NETWORK_DETAILS_SCHEMA}) Collections.addAll(schema, part);
+                                            DiagnosticRecoveryDatabase.SCHEMA, SignalCrashDatabase.SCHEMA, TombstoneDatabase.SCHEMA, IncidentDetailDatabase.CONTENT_POLICY_SCHEMA, IncidentDetailDatabase.LOG_DETAILS_SCHEMA, HTTPMetricsDatabase.SCHEMA, IncidentDetailDatabase.NETWORK_DETAILS_SCHEMA, FOCUS_SCHEMA}) Collections.addAll(schema, part);
         Map<Long, String[]> migrations = new HashMap<>();
         migrations.put(1L, IncidentDetailDatabase.SCHEMA); migrations.put(2L, IncidentDiagnosticDatabase.SCHEMA);
         migrations.put(3L, DiagnosticRecoveryDatabase.SCHEMA);
@@ -49,7 +50,8 @@ final class IncidentDatabase implements AutoCloseable {
         migrations.put(8L, HTTPMetricsDatabase.SCHEMA);
         migrations.put(9L, ENVIRONMENT_BUILD_FIELDS);
         migrations.put(10L, IncidentDetailDatabase.NETWORK_DETAILS_SCHEMA);
-        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 11, schema.toArray(new String[0]), migrations);
+        migrations.put(11L, FOCUS_SCHEMA);
+        database = EvidenceSQLite.open(file, options.databaseByteLimit, 0x4f535649L, 12, schema.toArray(new String[0]), migrations);
         details = new IncidentDetailDatabase(database);
         diagnostics = new IncidentDiagnosticDatabase(database);
         recovery = new DiagnosticRecoveryDatabase(database, options);
@@ -79,6 +81,10 @@ final class IncidentDatabase implements AutoCloseable {
             + "position INTEGER NOT NULL, id TEXT NOT NULL COLLATE NOCASE, session_id TEXT NOT NULL, sequence INTEGER NOT NULL, "
             + "timestamp INTEGER NOT NULL, elapsed TEXT, kind TEXT NOT NULL, label TEXT NOT NULL, message TEXT, private INTEGER NOT NULL, "
             + "truncated INTEGER NOT NULL, value INTEGER, retention TEXT NOT NULL, PRIMARY KEY(incident_id, position), UNIQUE(incident_id, id))"
+    };
+    private static final String[] FOCUS_SCHEMA = {
+        "CREATE TABLE incident_focus (incident_id TEXT PRIMARY KEY REFERENCES incidents(id) ON DELETE CASCADE, "
+            + "kind TEXT NOT NULL, session_id TEXT NOT NULL, sequence INTEGER NOT NULL, event_id TEXT)"
     };
     void save(IncidentSnapshot snapshot, long now) { transaction(() -> insert(snapshot, now)); }
     DiagnosticRecoveryReceipt recover(SystemDiagnosticBatch batch, long now) {
@@ -119,6 +125,8 @@ final class IncidentDatabase implements AutoCloseable {
         }
         details.save(snapshot);
         diagnostics.save(snapshot);
+        if (snapshot.focus != null) database.execSQL("INSERT INTO incident_focus(incident_id, kind, session_id, sequence, event_id) VALUES (?, ?, ?, ?, ?)",
+            new Object[] {snapshot.id, name(snapshot.focus.kind), snapshot.focus.sessionId, snapshot.focus.sequence, snapshot.focus.eventId});
     }
     private void prune(long now, int reserve, boolean diagnostic) {
         if (now >= options.maximumAgeMillis) database.execSQL("DELETE FROM incidents WHERE saved_at<?", new Object[] {now - options.maximumAgeMillis});
@@ -152,10 +160,21 @@ final class IncidentDatabase implements AutoCloseable {
         IncidentSnapshot.Breadcrumbs breadcrumbs = readBreadcrumbs(info);
         IncidentDetailDatabase.Detail attachments = details.read(info.summary.id, info.windows);
         SystemDiagnostic diagnostic = diagnostics.read(info.summary.id, info.summary.diagnosticKind);
-        IncidentSnapshot snapshot = IncidentSnapshot.restore(info.summary.id, info.summary.timestampMillis, info.summary.note, environment, breadcrumbs,
-            attachments.logs, attachments.http, attachments.webSockets, diagnostic);
+        final IncidentSnapshot snapshot;
+        try {
+            snapshot = IncidentSnapshot.restore(info.summary.id, info.summary.timestampMillis, info.summary.note, environment, breadcrumbs,
+                attachments.logs, attachments.http, attachments.webSockets, diagnostic).withFocus(readFocus(info.summary.id));
+        } catch (IllegalArgumentException failure) { throw EvidenceStorageException.invalid(); }
         if (snapshot.textByteCount != info.bytes) throw EvidenceStorageException.invalid();
         return snapshot;
+    }
+    private IncidentFocus readFocus(String id) {
+        try (Cursor row = query("SELECT " + textColumn("kind", 16) + "," + textColumn("session_id", 36)
+            + ",sequence," + textColumn("event_id", 36) + " FROM incident_focus WHERE incident_id=?", id)) {
+            if (!row.moveToFirst()) return null;
+            return IncidentFocus.restore(parse(IncidentFocus.Kind.values(), text(row, 0, 16)), text(row, 1, 36), integer(row, 2),
+                row.isNull(3) ? null : text(row, 3, 36));
+        }
     }
     void delete(String id) {
         if (!validId(id)) throw EvidenceStorageException.invalid();

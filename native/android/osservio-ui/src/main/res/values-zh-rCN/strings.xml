@@ -53,4 +53,10 @@
     <string name="osservio_ui_log_neighbors">前后日志</string>
     <string name="osservio_ui_log_neighbors_hint">同一采集会话中，前后各最多 20 条已留存日志；先后顺序不代表因果关系。</string>
     <string name="osservio_ui_selected_record">所选记录</string>
+    <string name="osservio_incident_include_selected_log">附带所选日志</string>
+    <string name="osservio_incident_include_selected_http">附带所选 HTTP 请求</string>
+    <string name="osservio_incident_include_selected_socket">附带所选 WebSocket 记录</string>
+    <string name="osservio_incident_from_record">从这条记录创建问题</string>
+    <string name="osservio_incident_selection_hint">所选记录必定附带，内容保持当前详情中的状态，不附带其他日志和网络记录。可选的近期运行线索与环境信息各有自己的观察时间，不代表因果关联。点击保存后才会留存。</string>
+    <string name="osservio_incident_selection_failed">这条记录的元数据超过问题快照的 64 KiB 上限，未创建问题，原记录不变。</string>
 </resources>

@@ -27,7 +27,7 @@ class ConformanceTests(unittest.TestCase):
                 Draft202012Validator.check_schema(json.loads(path.read_text(encoding="utf-8")))
 
     def test_shared_native_goldens(self):
-        for name in ("absent", "empty", "complete", "trusted-content", "structured-log", "http-metrics", "network-details", "network-path", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
+        for name in ("absent", "empty", "complete", "focus-log", "focus-http", "focus-webSocket", "trusted-content", "structured-log", "http-metrics", "network-details", "network-path", "diagnostic-android", "diagnostic-crash", "diagnostic-hang", "diagnostic-signal", "diagnostic-tombstone", "diagnostic-tombstone-unavailable"):
             for reader in (False, True):
                 with self.subTest(fixture=name, reader=reader):
                     self.check(fixture(name), True, reader)

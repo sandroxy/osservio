@@ -130,7 +130,7 @@ public final class IncidentDetailDatabaseTest {
                 assertEquals(added.textByteCount, store.read(added.id).textByteCount);
             }
             try (SQLiteDatabase raw = SQLiteDatabase.openDatabase(file(fixture).getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(11, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
+                assertEquals(12, EvidenceSQLite.scalar(raw, "PRAGMA user_version"));
                 assertEquals(100, EvidenceSQLite.scalar(raw, "SELECT saved_at FROM incidents WHERE id=?", LEGACY_ID));
             }
         }

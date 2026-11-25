@@ -13,6 +13,7 @@ public struct IncidentSnapshot: Sendable {
     public let http: IncidentHTTP?
     public let webSockets: IncidentWebSockets?
     public let systemDiagnostic: SystemDiagnostic?
+    public let focus: IncidentFocus?
     /// Sanitized text bytes only; excludes structural, indexing, and object overhead.
     public var textByteCount: Int {
         let environmentBytes = environment?.values.values.reduce(0) { total, value in
@@ -36,12 +37,12 @@ public struct IncidentSnapshot: Sendable {
         let safeNote = try note.map { try IncidentNote.capture($0) }
         let context = try breadcrumbs.map { try IncidentBreadcrumbs.capture($0, count: breadcrumbLimit, bytes: breadcrumbTextByteLimit) }
         return IncidentSnapshot(id: UUID().uuidString, timestampMillis: clock.wallTimeMillis(), note: safeNote,
-                                environment: environment, breadcrumbs: context, logs: logs, http: http, webSockets: webSockets, systemDiagnostic: nil)
+                                environment: environment, breadcrumbs: context, logs: logs, http: http, webSockets: webSockets, systemDiagnostic: nil, focus: nil)
     }
     /// Records the recovery observation time separately from the diagnostic's own time/range. No current context is attached.
     public static func captureDiagnostic(_ diagnostic: SystemDiagnostic, observedAtMillis: Int64) -> IncidentSnapshot {
         IncidentSnapshot(id: UUID().uuidString, timestampMillis: observedAtMillis, note: nil, environment: nil,
-            breadcrumbs: nil, logs: nil, http: nil, webSockets: nil, systemDiagnostic: diagnostic)
+            breadcrumbs: nil, logs: nil, http: nil, webSockets: nil, systemDiagnostic: diagnostic, focus: nil)
     }
     /// Reconstructs validated sanitized evidence without generating a new identity or observation time.
     public static func restore(id: String, timestampMillis: Int64, note: IncidentNote?,
@@ -50,7 +51,13 @@ public struct IncidentSnapshot: Sendable {
                                systemDiagnostic: SystemDiagnostic? = nil) throws -> IncidentSnapshot {
         guard Array(id.utf8.prefix(37)).count == 36, UUID(uuidString: id) != nil else { throw PersistenceError.invalidRecord }
         return IncidentSnapshot(id: id, timestampMillis: timestampMillis, note: note, environment: environment, breadcrumbs: breadcrumbs,
-            logs: logs, http: http, webSockets: webSockets, systemDiagnostic: systemDiagnostic)
+            logs: logs, http: http, webSockets: webSockets, systemDiagnostic: systemDiagnostic, focus: nil)
+    }
+    /// The selected record must be attached, never inferred from a note or current history.
+    public func withFocus(_ focus: IncidentFocus?) throws -> IncidentSnapshot {
+        guard focus == nil || systemDiagnostic == nil && focus?.exists(in: logs, http: http, sockets: webSockets) == true else { throw PersistenceError.invalidRecord }
+        return IncidentSnapshot(id: id, timestampMillis: timestampMillis, note: note, environment: environment, breadcrumbs: breadcrumbs,
+            logs: logs, http: http, webSockets: webSockets, systemDiagnostic: systemDiagnostic, focus: focus)
     }
 }
 

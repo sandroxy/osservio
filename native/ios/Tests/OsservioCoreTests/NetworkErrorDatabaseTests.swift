@@ -64,7 +64,7 @@ final class NetworkErrorDatabaseTests: XCTestCase {
                     store.close()
                 }
                 let check = try SQLiteConnection(url: url); defer { check.close() }
-                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 10 : 11) }
+                try check.statement("PRAGMA user_version") { XCTAssertTrue(try $0.step()); XCTAssertEqual(try $0.integer(0), conflict ? 10 : 12) }
                 if conflict { XCTAssertThrowsError(try check.execute("SELECT error_domain FROM incident_http")) }
             }
         }

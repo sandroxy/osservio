@@ -11,6 +11,7 @@ import java.util.List;
 @android.annotation.SuppressLint("ViewConstructor")
 final class InspectorNavigation extends FrameLayout {
     final InspectorGlassSession materials;
+    InspectorIncidentRecording incidentRecording;
     private final List<List<InspectorScreen>> stacks = new ArrayList<>();
     private final View rootPage;
     private final FrameLayout modalContainer;

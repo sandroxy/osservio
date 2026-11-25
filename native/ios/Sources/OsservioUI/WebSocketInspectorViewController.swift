@@ -37,7 +37,6 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
         super.viewDidLoad()
-        inspectorActions = [copyButton]
         let header = UIStackView(arrangedSubviews: [selection]); header.axis = .vertical; header.isLayoutMarginsRelativeArrangement = true
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16)
         if searchHit?.source == "ui_search_message" && event.payload != nil { selection.selectedIndex = 1 }
@@ -48,6 +47,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         title = InspectorLocalization.text(event.kind == .message || event.kind == .messageResult ? "ui_message_details" : "ui_connection_event")
         selection.setTitles(["ui_overview", "ws_payload"].map(InspectorLocalization.text))
         copyButton.accessibilityLabel = InspectorLocalization.text("ui_copy_metadata")
+        inspectorActions = [copyButton] + (savedPayloads == nil && inspectorIncidentRecording != nil ? [inspectorRecordItem(action: #selector(recordProblem))] : [])
         func field(_ key: String, _ value: String?) -> Row { Row(InspectorLocalization.text(key), value ?? InspectorLocalization.text("http_none")) }
         selection.isHidden = event.payload == nil
         if selection.selectedIndex == 0 {
@@ -104,6 +104,7 @@ final class WebSocketDetailViewController: InspectorDetailViewController {
         return content
     }
     private func openPayload() { read(titleKey: "ws_payload", content: payloadContent(), source: "ui_search_message") }
+    @objc private func recordProblem() { inspectorIncidentRecording?.record(.socket(event), from: self) }
     @objc private func copyMetadata() { UIPasteboard.general.string = WebSocketPresentation.overview(event) }
 }
 #endif

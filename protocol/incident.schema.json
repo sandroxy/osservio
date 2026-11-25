@@ -1653,6 +1653,9 @@
               "type": "null"
             }
           ]
+        },
+        "focus": {
+          "$ref": "#/$defs/focus"
         }
       },
       "required": [
@@ -2476,6 +2479,41 @@
         "text",
         "isLimited",
         "isProcessed"
+      ],
+      "additionalProperties": false
+    },
+    "focus": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "log",
+            "http",
+            "webSocket"
+          ]
+        },
+        "sessionID": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sequence": {
+          "$ref": "#/$defs/positive64"
+        },
+        "eventID": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "sessionID",
+        "sequence",
+        "eventID"
       ],
       "additionalProperties": false
     }

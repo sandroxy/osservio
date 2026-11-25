@@ -6,6 +6,15 @@ enum IncidentDocumentFixture {
     static let session = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
     static let httpID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
     static func make(_ name: String) throws -> IncidentSnapshot {
+        if name.hasPrefix("focus-") {
+            let base = try make("complete")
+            switch name {
+            case "focus-log": return try base.withFocus(.log(base.logs!.events[0]))
+            case "focus-http": return try base.withFocus(.http(base.http!.events[0]))
+            case "focus-webSocket": return try base.withFocus(.webSocket(base.webSockets!.events[0]))
+            default: throw PersistenceError.invalidRecord
+            }
+        }
         if name == "network-path" {
             let crumb = try BreadcrumbEvent.restore(id: "cccccccc-cccc-cccc-cccc-cccccccccccc", sessionID: session,
                 sequence: 1, timestampMillis: 123, sessionElapsedMillis: 0, kind: .networkPath, label: "android.network.path",

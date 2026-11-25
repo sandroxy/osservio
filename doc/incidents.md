@@ -333,7 +333,7 @@ history do not depend on this archive remaining available.
 ## Private database compatibility
 
 The SQLite file is `incidents.sqlite`, with an exclusive `incidents.owner` lease,
-application ID `0x4f535649`, and private schema revision `10`. Product versions
+application ID `0x4f535649`, and private schema revision `12`. Product versions
 are independent of this revision. Normalized tables store snapshot metadata,
 typed environment facts, copied breadcrumbs, and frozen event windows. The
 revision-9 migration adds unavailable Android build facts to historical
@@ -364,7 +364,7 @@ Upgrading from revision `6` to `7` adds body-processing flags with false default
 observed-byte accounting and existing content. Revision `8` adds nullable log
 context references and independent log-payload accounting. Older log entries
 keep their summary and have no invented context; their historical context
-eviction count starts at zero. Revision `9` adds normalized HTTP timing tables and presence/count checks; old HTTP records keep absent metrics. The complete upgrade
+eviction count starts at zero. Revision `9` adds normalized HTTP timing tables and presence/count checks; old HTTP records keep absent metrics. Revision `10` adds Android build facts; revision `11` adds structured network errors and close reasons without inventing values for historical records. Revision `12` adds optional selected-record identities; older snapshots remain without a selection. The complete upgrade
 and revision change share one transaction. Existing identities, save times,
 and evidence remain unchanged; records from revisions 1 and 2 have no system diagnostic. A failed
 upgrade rolls back its added columns and tables without resetting the database.

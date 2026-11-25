@@ -47,7 +47,10 @@ final class HTTPDetailDialog {
         dialog.iconAction(R.drawable.osservio_copy, R.string.osservio_ui_copy_metadata, () -> {
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", HTTPPresentation.overview(context, event)));
-        }); render();
+        });
+        InspectorIncidentRecording recording = InspectorIncidentRecording.from(context);
+        if (savedPayloads == null && recording != null) recording.bind(context, dialog, event);
+        render();
     }
     private void render() {
         body.removeAllViews();

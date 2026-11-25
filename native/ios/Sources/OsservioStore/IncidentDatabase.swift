@@ -9,7 +9,7 @@ final class IncidentDatabase {
     private let diagnostics: IncidentDiagnosticDatabase
     private let recovery: DiagnosticRecoveryDatabase
     private static let applicationID: Int64 = 0x4f535649
-    private static let revision: Int64 = 11
+    private static let revision: Int64 = 12
     // Historical snapshots cannot be filled from the currently installed application.
     private static let environmentBuildFields = ["androidTargetSDK", "androidMinSDK", "androidDebuggable"].map {
         "INSERT INTO environment_facts(incident_id, key, type, text_value, number_value, truncated) SELECT id, '\($0)', 'unavailable', NULL, NULL, 0 FROM incidents WHERE environment_platform IS NOT NULL"
@@ -19,10 +19,10 @@ final class IncidentDatabase {
         self.options = options
         connection = try EvidenceSQLite.open(url: url, byteLimit: options.databaseByteLimit,
             applicationID: Self.applicationID, revision: Self.revision,
-            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema + DiagnosticRecoveryDatabase.schema + SignalCrashDatabase.schema + TombstoneDatabase.schema + IncidentDetailDatabase.contentPolicySchema + IncidentDetailDatabase.logDetailsSchema + HTTPMetricsDatabase.schema + IncidentDetailDatabase.networkDetailsSchema,
+            schema: Self.schema + IncidentDetailDatabase.schema + IncidentDiagnosticDatabase.schema + DiagnosticRecoveryDatabase.schema + SignalCrashDatabase.schema + TombstoneDatabase.schema + IncidentDetailDatabase.contentPolicySchema + IncidentDetailDatabase.logDetailsSchema + HTTPMetricsDatabase.schema + IncidentDetailDatabase.networkDetailsSchema + Self.focusSchema,
             migrations: [1: IncidentDetailDatabase.schema, 2: IncidentDiagnosticDatabase.schema, 3: DiagnosticRecoveryDatabase.schema,
                          4: SignalCrashDatabase.schema, 5: TombstoneDatabase.schema, 6: IncidentDetailDatabase.contentPolicySchema, 7: IncidentDetailDatabase.logDetailsSchema, 8: HTTPMetricsDatabase.schema,
-                         9: Self.environmentBuildFields, 10: IncidentDetailDatabase.networkDetailsSchema])
+                         9: Self.environmentBuildFields, 10: IncidentDetailDatabase.networkDetailsSchema, 11: Self.focusSchema])
         details = IncidentDetailDatabase(connection: connection)
         diagnostics = IncidentDiagnosticDatabase(connection: connection)
         recovery = DiagnosticRecoveryDatabase(connection: connection, options: options)
@@ -65,6 +65,10 @@ final class IncidentDatabase {
     func save(_ snapshot: IncidentSnapshot, now: Int64) throws {
         try connection.transaction { try insert(snapshot, now: now) }
     }
+    private static let focusSchema = ["""
+        CREATE TABLE incident_focus (incident_id TEXT PRIMARY KEY REFERENCES incidents(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL, session_id TEXT NOT NULL, sequence INTEGER NOT NULL, event_id TEXT)
+        """]
     func recover(_ batch: SystemDiagnosticBatch, now: Int64) throws -> DiagnosticRecoveryReceipt {
         try connection.transaction { try recovery.recover(batch, now: now) { try insert($0, now: now) } }
     }
@@ -114,6 +118,10 @@ final class IncidentDatabase {
         }
         try details.save(snapshot)
         try diagnostics.save(snapshot)
+        if let focus = snapshot.focus {
+            try connection.execute("INSERT INTO incident_focus(incident_id, kind, session_id, sequence, event_id) VALUES (?, ?, ?, ?, ?)",
+                [.text(snapshot.id), .text(focus.kind.rawValue), .text(focus.sessionID), .integer(focus.sequence), focus.eventID.map(SQLiteValue.text) ?? .null])
+        }
     }
     private func prune(now: Int64, reserve: Int, diagnostic: Bool = false) throws {
         if now >= options.maximumAgeMillis {
@@ -150,9 +158,17 @@ final class IncidentDatabase {
         let diagnostic = try diagnostics.read(id: info.summary.id, expectedKind: info.summary.diagnosticKind)
         let restored = try IncidentSnapshot.restore(id: info.summary.id, timestampMillis: info.summary.timestampMillis,
             note: info.summary.note, environment: environment, breadcrumbs: breadcrumbs, logs: detail.logs, http: detail.http,
-            webSockets: detail.webSockets, systemDiagnostic: diagnostic)
+            webSockets: detail.webSockets, systemDiagnostic: diagnostic).withFocus(readFocus(id: info.summary.id))
         guard restored.textByteCount == info.bytes else { throw PersistenceError.invalidRecord }
         return restored
+    }
+    private func readFocus(id: String) throws -> IncidentFocus? {
+        try connection.statement("SELECT kind, session_id, sequence, event_id FROM incident_focus WHERE incident_id=?", [.text(id)]) { row in
+            guard try row.step() else { return nil }
+            guard let kind = IncidentFocus.Kind(rawValue: try row.text(0, byteLimit: 16)) else { throw PersistenceError.invalidRecord }
+            return try IncidentFocus.restore(kind: kind, sessionID: row.text(1, byteLimit: 36), sequence: row.integer(2),
+                eventID: row.isNull(3) ? nil : row.text(3, byteLimit: 36))
+        }
     }
     func delete(id: String) throws {
         guard Self.validID(id) else { throw PersistenceError.invalidRecord }

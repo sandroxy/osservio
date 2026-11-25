@@ -52,6 +52,8 @@ public final class IncidentDocuments {
             "breadcrumbs", snapshot.breadcrumbs == null ? null : breadcrumbs(snapshot.breadcrumbs),
             "logs", snapshot.logs == null ? null : logs(snapshot.logs), "http", snapshot.http == null ? null : http(snapshot.http),
             "webSockets", snapshot.webSockets == null ? null : webSockets(snapshot.webSockets));
+        if (snapshot.focus != null) incident.put("focus", object("kind", code(snapshot.focus.kind), "sessionID", snapshot.focus.sessionId,
+            "sequence", Long.toString(snapshot.focus.sequence), "eventID", snapshot.focus.eventId));
         String metadata = new JSONObject(object("format", "osservio.incident", "revision", 10, "payloadFile", "payloads.json", "incident", incident)).toString();
         String payloads = new JSONObject(object("format", "osservio.incident.payloads", "revision", 10, "incidentID", snapshot.id,
             "logs", content(snapshot.logs == null ? null : snapshot.logs.payloads),

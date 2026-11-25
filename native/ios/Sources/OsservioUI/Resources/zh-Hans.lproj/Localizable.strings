@@ -454,3 +454,9 @@
 "network_details_limited" = "部分诊断文字已截断或未能读取。";
 "network_details_processed" = "部分诊断文字已由宿主修改或省略。";
 "crumb_kind_networkPath" = "网络路径变化";
+"incident_include_selected_log" = "附带所选日志";
+"incident_include_selected_http" = "附带所选 HTTP 请求";
+"incident_include_selected_socket" = "附带所选 WebSocket 记录";
+"incident_from_record" = "从这条记录创建问题";
+"incident_selection_hint" = "所选记录必定附带，内容保持当前详情中的状态，不附带其他日志和网络记录。可选的近期运行线索与环境信息各有自己的观察时间，不代表因果关联。点击保存后才会留存。";
+"incident_selection_failed" = "这条记录的元数据超过问题快照的 64 KiB 上限，未创建问题，原记录不变。";

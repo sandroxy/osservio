@@ -47,6 +47,9 @@ final class LogDetailDialog {
         screen.iconAction(R.drawable.osservio_copy, R.string.osservio_copy, () -> {
             android.content.ClipboardManager clipboard = context.getSystemService(android.content.ClipboardManager.class);
             if (clipboard != null) clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Osservio", event.message));
-        }); return screen;
+        });
+        InspectorIncidentRecording recording = InspectorIncidentRecording.from(context);
+        if (saved == null && recording != null) recording.bind(context, screen, event);
+        return screen;
     }
 }

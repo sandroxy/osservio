@@ -82,8 +82,14 @@ final class IncidentComposer {
         LinearLayout metadata = InspectorWidgets.group(context);
         InspectorWidgets.ValueRow time = new InspectorWidgets.ValueRow(context);
         time.bind(context.getString(R.string.osservio_incident_frozen_time), RuntimePresentation.date(context, mark.timestampMillis), false);
-        metadata.addView(time); content.addView(metadata, params());
-        content.addView(label(context.getString(R.string.osservio_incident_mark_hint)), params());
+        metadata.addView(time);
+        if (mark.focus != null) {
+            InspectorWidgets.ValueRow selected = new InspectorWidgets.ValueRow(context);
+            selected.bind(context.getString(R.string.osservio_ui_selected_record), IncidentPresentation.focus(context, mark), false);
+            InspectorWidgets.addGrouped(metadata, selected);
+        }
+        content.addView(metadata, params());
+        content.addView(label(context.getString(mark.focus == null ? R.string.osservio_incident_mark_hint : R.string.osservio_incident_selection_hint)), params());
         notice = label(""); notice.setVisibility(View.GONE); notice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); content.addView(notice, params());
         TextView evidenceTitle = InspectorWidgets.sectionLabel(context); evidenceTitle.setText(R.string.osservio_ui_evidence_available); content.addView(evidenceTitle);
         LinearLayout options = InspectorWidgets.group(context); content.addView(options, params());
@@ -91,15 +97,16 @@ final class IncidentComposer {
         environmentStatus = label(context.getString(R.string.osservio_incident_environment_loading)); addOption(options, includeEnvironment, environmentStatus);
         includeBreadcrumbs = option(R.string.osservio_incident_include_breadcrumbs, true);
         addOption(options, includeBreadcrumbs, label(mark.breadcrumbs == null ? context.getString(R.string.osservio_incident_breadcrumbs_failed) : IncidentPresentation.breadcrumbSummary(context, mark.breadcrumbs)));
-        includeLogs = option(R.string.osservio_incident_include_logs, mark.logs != null);
-        addOption(options, includeLogs, label(mark.logs == null ? context.getString(R.string.osservio_incident_window_unavailable)
+        includeLogs = option(mark.focus == null ? R.string.osservio_incident_include_logs : R.string.osservio_incident_include_selected_log, mark.logs != null);
+        if (mark.focus == null || mark.logs != null) addOption(options, includeLogs, label(mark.logs == null ? context.getString(R.string.osservio_incident_window_unavailable)
             : IncidentPresentation.selectionWindow(context, mark.logs.observedAtMillis, mark.logs.events.size(), mark.logs.omittedEventCount, mark.logs.sourceEvictedCount, null)));
         includeLogDetails = option(R.string.osservio_incident_include_log_details, false);
         logDetailsStatus = label(context.getString(logHistory != null ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none));
         if (mark.logs != null && !mark.logs.payloads.isEmpty()) addOption(options, includeLogDetails, logDetailsStatus);
         TextView httpTitle = InspectorWidgets.sectionLabel(context); httpTitle.setText(R.string.osservio_ui_http); content.addView(httpTitle);
         LinearLayout httpOptions = InspectorWidgets.group(context); content.addView(httpOptions, params());
-        includeHTTP = option(R.string.osservio_incident_include_http, mark.http != null);
+        if (mark.focus != null && mark.http == null) { httpTitle.setVisibility(View.GONE); httpOptions.setVisibility(View.GONE); }
+        includeHTTP = option(mark.focus == null ? R.string.osservio_incident_include_http : R.string.osservio_incident_include_selected_http, mark.http != null);
         String httpDescription = mark.http == null ? context.getString(R.string.osservio_incident_window_unavailable)
             : IncidentPresentation.selectionWindow(context, mark.http.observedAtMillis, mark.http.events.size(), mark.http.omittedEventCount,
                 mark.http.sourceEvictedEvents, mark.http.sourceEvictedBodies);
@@ -110,7 +117,8 @@ final class IncidentComposer {
             ? R.string.osservio_incident_body_choice_hint : R.string.osservio_incident_body_none)); addOption(httpOptions, includeHTTPBodies, httpBodiesStatus);
         TextView socketTitle = InspectorWidgets.sectionLabel(context); socketTitle.setText(R.string.osservio_ws_title); content.addView(socketTitle);
         LinearLayout socketOptions = InspectorWidgets.group(context); content.addView(socketOptions, params());
-        includeWebSockets = option(R.string.osservio_incident_include_websockets, mark.webSockets != null);
+        if (mark.focus != null && mark.webSockets == null) { socketTitle.setVisibility(View.GONE); socketOptions.setVisibility(View.GONE); }
+        includeWebSockets = option(mark.focus == null ? R.string.osservio_incident_include_websockets : R.string.osservio_incident_include_selected_socket, mark.webSockets != null);
         addOption(socketOptions, includeWebSockets, label(mark.webSockets == null ? context.getString(R.string.osservio_incident_window_unavailable)
             : IncidentPresentation.selectionWindow(context, mark.webSockets.observedAtMillis, mark.webSockets.events.size(), mark.webSockets.omittedEventCount, mark.webSockets.sourceEvictedEvents, mark.webSockets.sourceEvictedPayloads)));
         includeWebSocketPayloads = option(R.string.osservio_incident_include_ws_payloads, false);
@@ -240,9 +248,9 @@ final class IncidentComposer {
         cancelButton.setEnabled(!saving);
         dialog.setCancelable(!saving);
         includeEnvironment.setEnabled(!saving); includeBreadcrumbs.setEnabled(!saving); includeNote.setEnabled(!saving); editor.setEnabled(!saving);
-        includeLogs.setEnabled(!saving && mark.logs != null);
+        includeLogs.setEnabled(!saving && mark.logs != null && (mark.focus == null || mark.focus.kind != com.sandrox.osservio.core.IncidentFocus.Kind.LOG));
         includeLogDetails.setEnabled(!saving && includeLogs.isChecked() && logHistory != null && mark.logs != null && !mark.logs.payloads.isEmpty() && !logContentFailed);
-        includeHTTP.setEnabled(!saving && mark.http != null); includeWebSockets.setEnabled(!saving && mark.webSockets != null);
+        includeHTTP.setEnabled(!saving && mark.http != null && (mark.focus == null || mark.focus.kind != com.sandrox.osservio.core.IncidentFocus.Kind.HTTP)); includeWebSockets.setEnabled(!saving && mark.webSockets != null && (mark.focus == null || mark.focus.kind != com.sandrox.osservio.core.IncidentFocus.Kind.WEB_SOCKET));
         includeHTTPBodies.setEnabled(!saving && includeHTTP.isChecked() && httpHistory != null && mark.http != null && !mark.http.payloads.isEmpty() && !httpContentFailed);
         includeWebSocketPayloads.setEnabled(!saving && includeWebSockets.isChecked() && webSocketHistory != null && mark.webSockets != null && !mark.webSockets.payloads.isEmpty() && !socketContentFailed);
     }
@@ -260,7 +268,7 @@ final class IncidentComposer {
             snapshot = IncidentSnapshot.restore(mark.id, mark.timestampMillis, note, includeEnvironment.isChecked() ? environment : null,
                 includeBreadcrumbs.isChecked() ? mark.breadcrumbs : null, includeLogs.isChecked() ? (includeLogDetails.isChecked() ? logsWithDetails : mark.logs) : null,
                 includeHTTP.isChecked() ? (includeHTTPBodies.isChecked() ? httpWithBodies : mark.http) : null,
-                includeWebSockets.isChecked() ? (includeWebSocketPayloads.isChecked() ? socketsWithPayloads : mark.webSockets) : null);
+                includeWebSockets.isChecked() ? (includeWebSocketPayloads.isChecked() ? socketsWithPayloads : mark.webSockets) : null).withFocus(mark.focus);
         } catch (IllegalArgumentException failure) { notice(context.getString(R.string.osservio_incident_mark_failed)); return; }
         saving = true; notice(context.getString(R.string.osservio_incident_saving)); updateControls();
         WeakReference<IncidentComposer> reference = new WeakReference<>(this); Handler handler = main;

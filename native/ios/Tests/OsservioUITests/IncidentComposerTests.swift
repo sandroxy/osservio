@@ -160,6 +160,37 @@ final class IncidentComposerTests: XCTestCase {
     }
 
     @MainActor
+    func testSelectedRequestRemainsRequiredAndFrozenAcrossRetry() async throws {
+        let id = UUID().uuidString, bodyID = id + ".response"
+        let event = try HTTPEvent.restore(id: id, sessionID: id, sequence: 7, revision: 2, timestampMillis: 123, method: "POST", source: .host,
+            url: "https://example.com/older-request", responseURL: nil, requestHeaders: [], responseHeaders: [], headersLimited: false, statusCode: 401,
+            state: .completed, failure: nil, durationMillis: 4, requestBody: .restore(state: .omitted, blobID: nil, observedBytes: 0),
+            responseBody: .restore(state: .available, blobID: bodyID, observedBytes: 3))
+        let mark = try InspectorIncidentSelection.http(event).mark(breadcrumbs: nil)
+        let http = ComposerHTTP(body: try .restore(id: bodyID, text: "abc")), archive = RecordingArchive(failFirstSave: true)
+        let saved = expectation(description: "selected request saved")
+        let composer = IncidentComposerViewController(mark: mark, archive: archive, provider: ControlledEnvironment(), httpHistory: http) { saved.fulfill() }
+        let window = show(composer); defer { window.isHidden = true; window.rootViewController = nil }
+        XCTAssertEqual(composer.numberOfSections(in: composer.tableView), 4)
+        XCTAssertEqual(composer.tableView(composer.tableView, numberOfRowsInSection: 1), 2, "Unselected log family is not an unavailable attachment")
+        let sourceCell = composer.tableView(composer.tableView, cellForRowAt: IndexPath(row: 1, section: 0))
+        XCTAssertTrue(sourceCell.detailTextLabel?.text?.contains("older-request") == true)
+        let environment = try control(composer, row: 0); environment.isOn = false; try sendChange(environment)
+        let selected = try control(composer, row: 3); XCTAssertTrue(selected.isOn); XCTAssertFalse(selected.isEnabled)
+        let bodies = try control(composer, row: 4); XCTAssertFalse(bodies.isOn); XCTAssertEqual(http.reads, 0)
+        bodies.isOn = true; try sendChange(bodies); http.missing = true
+        bodies.isOn = false; try sendChange(bodies); bodies.isOn = true; try sendChange(bodies)
+        let save = try XCTUnwrap(composer.inspectorPrimaryAction); try send(save)
+        try await waitUntil { archive.attempts.count == 1 && save.isEnabled }
+        try send(save); await fulfillment(of: [saved], timeout: 3)
+        let snapshot = try XCTUnwrap(archive.snapshot)
+        XCTAssertTrue(snapshot.focus?.matches(event) == true); XCTAssertEqual(snapshot.http?.events.count, 1)
+        XCTAssertEqual(snapshot.http?.events.first?.revision, 2); XCTAssertEqual(snapshot.http?.events.first?.timestampMillis, 123)
+        XCTAssertEqual(snapshot.http?.payloads[bodyID]?.text, "abc"); XCTAssertEqual(http.reads, 1)
+        XCTAssertNil(snapshot.logs); XCTAssertNil(snapshot.webSockets)
+    }
+
+    @MainActor
     private func show(_ composer: UIViewController) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         window.rootViewController = UINavigationController(rootViewController: composer)

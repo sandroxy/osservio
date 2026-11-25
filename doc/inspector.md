@@ -500,3 +500,23 @@ Saved evidence uses only the saved attachment. Missing or evicted records are no
 reconstructed. Each row opens the ordinary detail reader; returning preserves
 the original list's query and reading position. Structured log context remains
 a separate, explicitly opened payload.
+
+## Recording a problem from a record
+
+With an incident archive configured, live log, HTTP and WebSocket details offer
+**Record a problem from this record** alongside their existing page actions.
+The composer retains exactly the observation shown in that detail, including an
+in-flight request's displayed revision. It never replaces it with a newer record
+or a refreshed response. The selected record is required; other log/network
+records are not implicitly attached. Recent breadcrumbs and environment remain
+optional and keep their independent observation times. Proximity does not imply
+causality. Selected metadata is bounded to 64 KiB; oversized records are rejected
+without truncating or replacing the selection.
+
+Content starts excluded. Opting in copies captured log details or network text
+once within the existing 12 KiB payload budget. Missing, busy and over-budget
+content stays explicit; no replay, new collection or retention pin is performed.
+Cancel leaves the original record and reading state intact. A successful save
+adds **Selected record** to the immutable problem detail, linking directly to
+that saved observation. The identity also survives restart and portable export.
+Saved evidence does not offer another live recording action.

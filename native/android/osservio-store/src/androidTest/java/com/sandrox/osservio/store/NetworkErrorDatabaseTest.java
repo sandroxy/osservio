@@ -66,7 +66,7 @@ public final class NetworkErrorDatabaseTest {
                 }
             }
             try (SQLiteDatabase check = SQLiteDatabase.openDatabase(file.getPath(), null, SQLiteDatabase.OPEN_READONLY)) {
-                assertEquals(conflict ? 10 : 11, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
+                assertEquals(conflict ? 10 : 12, EvidenceSQLite.scalar(check, "PRAGMA user_version"));
                 if (conflict) assertThrows(android.database.sqlite.SQLiteException.class, () -> check.rawQuery("SELECT error_domain FROM incident_http", null).close());
             }
         }

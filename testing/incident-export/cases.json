@@ -921,5 +921,89 @@
         "value": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"
       }
     ]
+  },
+  {
+    "name": "focus-missing-evidence",
+    "base": "focus-http",
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "http"
+        ],
+        "value": null
+      }
+    ],
+    "writerAccepts": false,
+    "readerAccepts": false
+  },
+  {
+    "name": "focus-wrong-sequence",
+    "base": "focus-http",
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "focus",
+          "sequence"
+        ],
+        "value": "999"
+      }
+    ],
+    "writerAccepts": false,
+    "readerAccepts": false
+  },
+  {
+    "name": "focus-missing-network-id",
+    "base": "focus-http",
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "focus",
+          "eventID"
+        ],
+        "value": null
+      }
+    ],
+    "writerAccepts": false,
+    "readerAccepts": false
+  },
+  {
+    "name": "focus-log-with-network-id",
+    "base": "focus-log",
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "focus",
+          "eventID"
+        ],
+        "value": "00000000-0000-0000-0000-000000000001"
+      }
+    ],
+    "writerAccepts": false,
+    "readerAccepts": false
+  },
+  {
+    "name": "focus-unknown-kind",
+    "base": "focus-log",
+    "changes": [
+      {
+        "path": [
+          "metadata",
+          "incident",
+          "focus",
+          "kind"
+        ],
+        "value": "inferred"
+      }
+    ],
+    "writerAccepts": false,
+    "readerAccepts": false
   }
 ]

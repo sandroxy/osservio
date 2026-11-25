@@ -151,6 +151,16 @@ def selections(group, content, references, family):
 def semantics(metadata, payloads):
     incident = metadata["incident"]
     require(incident["id"].lower() == payloads["incidentID"].lower(), "Documents belong to different incidents")
+    if metadata["revision"] >= 10 and "focus" in incident:
+        focus = incident["focus"]
+        require(incident["origin"] == "manual", "Only manual snapshots have selected-record focus")
+        family = {"log": "logs", "http": "http", "webSocket": "webSockets"}[focus["kind"]]
+        require((focus["eventID"] is None) == (family == "logs"), "Selected record identity mismatch")
+        group = incident[family]
+        require(group is not None and any(
+            event["sessionID"].lower() == focus["sessionID"].lower() and event["sequence"] == focus["sequence"]
+            and (family == "logs" or event["id"].lower() == focus["eventID"].lower())
+            for event in group["events"]), "Selected record is not attached")
     total = utf8(incident["note"]["text"]) if incident["note"] is not None else 0
     if metadata["revision"] >= 2:
         diagnostic = incident["systemDiagnostic"]

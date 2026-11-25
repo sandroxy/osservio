@@ -13,7 +13,7 @@ public struct IncidentDocuments: Sendable {
 
     public static func encode(_ snapshot: IncidentSnapshot) throws -> IncidentDocuments {
         guard snapshot.textByteCount <= maximumTextBytes else { throw IncidentDocumentError.tooLarge }
-        let incident: [String: Any] = [
+        var incident: [String: Any] = [
             "id": snapshot.id, "timestampMillis": String(snapshot.timestampMillis),
             "origin": snapshot.systemDiagnostic == nil ? "manual" : "systemDiagnostic",
             "systemDiagnostic": optional(snapshot.systemDiagnostic.map(diagnostic)),
@@ -23,6 +23,10 @@ public struct IncidentDocuments: Sendable {
             "logs": optional(snapshot.logs.map(logs)), "http": optional(snapshot.http.map(http)),
             "webSockets": optional(snapshot.webSockets.map(webSockets))
         ]
+        if let focus = snapshot.focus {
+            incident["focus"] = ["kind": focus.kind.rawValue, "sessionID": focus.sessionID,
+                "sequence": String(focus.sequence), "eventID": optional(focus.eventID)]
+        }
         let metadata: [String: Any] = ["format": "osservio.incident", "revision": 10, "payloadFile": "payloads.json", "incident": incident]
         let payloads: [String: Any] = ["format": "osservio.incident.payloads", "revision": 10, "incidentID": snapshot.id,
             "logs": content(snapshot.logs?.payloads ?? [:]), "http": content(snapshot.http?.payloads ?? [:]), "webSockets": content(snapshot.webSockets?.payloads ?? [:])]

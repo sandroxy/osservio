@@ -23,10 +23,17 @@ public final class IncidentSnapshot {
     public final IncidentHTTP http;
     public final IncidentWebSockets webSockets;
     public final SystemDiagnostic systemDiagnostic;
+    public final IncidentFocus focus;
     /** Sanitized text bytes only; excludes structural, indexing, and object overhead. */
     public final int textByteCount;
     private IncidentSnapshot(String id, long timestampMillis, Note note, EnvironmentSnapshot environment, Breadcrumbs breadcrumbs,
                              IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets, SystemDiagnostic systemDiagnostic) {
+        this(id, timestampMillis, note, environment, breadcrumbs, logs, http, webSockets, systemDiagnostic, null);
+    }
+    private IncidentSnapshot(String id, long timestampMillis, Note note, EnvironmentSnapshot environment, Breadcrumbs breadcrumbs,
+                             IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets, SystemDiagnostic systemDiagnostic, IncidentFocus focus) {
+        if (focus != null && (systemDiagnostic != null || !focus.existsIn(logs, http, webSockets))) throw invalid();
+        this.focus = focus;
         this.id = id; this.timestampMillis = timestampMillis; this.note = note; this.environment = environment; this.breadcrumbs = breadcrumbs;
         this.logs = logs; this.http = http; this.webSockets = webSockets;
         this.systemDiagnostic = systemDiagnostic;
@@ -75,6 +82,10 @@ public final class IncidentSnapshot {
                                            IncidentLogs logs, IncidentHTTP http, IncidentWebSockets webSockets, SystemDiagnostic systemDiagnostic) {
         if (!validId(id)) throw invalid();
         return new IncidentSnapshot(id, timestampMillis, note, environment, breadcrumbs, logs, http, webSockets, systemDiagnostic);
+    }
+    /** The selected record must be attached. It cannot be inferred from a note or current history. */
+    public IncidentSnapshot withFocus(IncidentFocus focus) {
+        return new IncidentSnapshot(id, timestampMillis, note, environment, breadcrumbs, logs, http, webSockets, systemDiagnostic, focus);
     }
     public static final class Note {
         public final String text;

@@ -132,6 +132,8 @@ public final class InspectorView extends FrameLayout {
         rootPage = new LinearLayout(getContext()); rootPage.setOrientation(LinearLayout.VERTICAL);
         navigation = new InspectorNavigation(getContext(), rootPage, this, workspace, materials);
         ((InspectorNavigation.OwnerContext) getContext()).navigation = navigation;
+        if (incidentArchive != null) navigation.incidentRecording = new InspectorIncidentRecording(incidentArchive, environment, breadcrumbHistory,
+            logHistory instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) logHistory : null, httpHistory, socketHistory);
         addView(workspace, new FrameLayout.LayoutParams(-1, -1)); rebuild(null);
         navigation.setChanged(this::updateDebugPolling);
     }

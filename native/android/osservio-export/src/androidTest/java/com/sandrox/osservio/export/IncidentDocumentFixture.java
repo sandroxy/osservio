@@ -15,6 +15,15 @@ final class IncidentDocumentFixture {
     private static final String HTTP_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
     private IncidentDocumentFixture() { }
     static IncidentSnapshot make(String name) {
+        if (name.startsWith("focus-")) {
+            IncidentSnapshot base = make("complete");
+            switch (name) {
+                case "focus-log": return base.withFocus(IncidentFocus.log(base.logs.events.get(0)));
+                case "focus-http": return base.withFocus(IncidentFocus.http(base.http.events.get(0)));
+                case "focus-webSocket": return base.withFocus(IncidentFocus.webSocket(base.webSockets.events.get(0)));
+                default: throw new IllegalArgumentException("Unknown focus fixture");
+            }
+        }
         if (name.equals("network-path")) {
             BreadcrumbEvent crumb = BreadcrumbEvent.restore("cccccccc-cccc-cccc-cccc-cccccccccccc", SESSION,
                 1, 123, 0L, BreadcrumbEvent.Kind.NETWORK_PATH, "android.network.path",

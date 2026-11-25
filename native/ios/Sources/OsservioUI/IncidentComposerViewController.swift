@@ -79,17 +79,17 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         breadcrumbsCell.textLabel?.text = RuntimePresentation.text("incident_include_breadcrumbs"); breadcrumbsCell.accessoryView = includeBreadcrumbs
         breadcrumbsCell.detailTextLabel?.text = mark.breadcrumbs == nil ? RuntimePresentation.text("incident_breadcrumbs_failed") : IncidentPresentation.breadcrumbSummary(mark.breadcrumbs)
         noteToggleCell.textLabel?.text = RuntimePresentation.text("incident_include_note"); noteToggleCell.accessoryView = includeNote
-        configure(logsCell, control: includeLogs, key: "incident_include_logs", selected: mark.logs != nil,
+        configure(logsCell, control: includeLogs, key: mark.focus == nil ? "incident_include_logs" : "incident_include_selected_log", selected: mark.logs != nil,
             detail: mark.logs.map { IncidentPresentation.selectionWindow(time: $0.observedAtMillis, count: $0.events.count, omitted: $0.omittedEventCount, evicted: $0.sourceEvictedCount) })
         configure(logDetailsCell, control: includeLogDetails, key: "incident_include_log_details", selected: false,
             detail: RuntimePresentation.text(logHistory != nil ? "incident_body_choice_hint" : "incident_body_none"))
-        configure(httpCell, control: includeHTTP, key: "incident_include_http", selected: mark.http != nil,
+        configure(httpCell, control: includeHTTP, key: mark.focus == nil ? "incident_include_http" : "incident_include_selected_http", selected: mark.http != nil,
             detail: mark.http.map { window in
                 let summary = IncidentPresentation.selectionWindow(time: window.observedAtMillis, count: window.events.count,
                     omitted: window.omittedEventCount, evicted: window.sourceEvictedEvents, payloadEvicted: window.sourceEvictedBodies)
                 return window.events.isEmpty ? summary : summary + "\n" + RuntimePresentation.text("incident_http_metadata_hint")
             })
-        configure(webSocketsCell, control: includeWebSockets, key: "incident_include_websockets", selected: mark.webSockets != nil,
+        configure(webSocketsCell, control: includeWebSockets, key: mark.focus == nil ? "incident_include_websockets" : "incident_include_selected_socket", selected: mark.webSockets != nil,
             detail: mark.webSockets.map { IncidentPresentation.selectionWindow(time: $0.observedAtMillis, count: $0.events.count, omitted: $0.omittedEventCount, evicted: $0.sourceEvictedEvents, payloadEvicted: $0.sourceEvictedPayloads) })
         configure(httpBodiesCell, control: includeHTTPBodies, key: "incident_include_http_bodies", selected: false,
             detail: RuntimePresentation.text(mark.http?.payloads.isEmpty == false && httpHistory != nil ? "incident_body_choice_hint" : "incident_body_none"))
@@ -175,7 +175,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         }
         updateControls()
         if sender === includeNote {
-            let row = IndexPath(row: 1, section: 4)
+            let row = IndexPath(row: 1, section: visibleSections.count - 1)
             if includeNote.isOn { tableView.insertRows(at: [row], with: .automatic) }
             else { tableView.deleteRows(at: [row], with: .automatic) }
         } else { tableView.beginUpdates(); tableView.endUpdates() }
@@ -188,10 +188,10 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         inspectorPrimaryAction?.isEnabled = !saving && (!includeEnvironment.isOn || !environmentPending)
         navigationItem.leftBarButtonItem?.isEnabled = !saving
         for control in controls { control.isEnabled = !saving }
-        includeLogs.isEnabled = !saving && mark.logs != nil
+        includeLogs.isEnabled = !saving && mark.logs != nil && mark.focus?.kind != .log
         includeLogDetails.isEnabled = !saving && includeLogs.isOn && logHistory != nil && hasLogDetails && !logContentFailed
-        includeHTTP.isEnabled = !saving && mark.http != nil
-        includeWebSockets.isEnabled = !saving && mark.webSockets != nil
+        includeHTTP.isEnabled = !saving && mark.http != nil && mark.focus?.kind != .http
+        includeWebSockets.isEnabled = !saving && mark.webSockets != nil && mark.focus?.kind != .webSocket
         includeHTTPBodies.isEnabled = !saving && includeHTTP.isOn && httpHistory != nil && mark.http?.payloads.isEmpty == false && !httpContentFailed
         includeWebSocketPayloads.isEnabled = !saving && includeWebSockets.isOn && webSocketHistory != nil && mark.webSockets?.payloads.isEmpty == false && !socketContentFailed
         editor.isEditable = !saving; isModalInPresentation = saving
@@ -217,7 +217,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
                 environment: includeEnvironment.isOn ? environment : nil, breadcrumbs: includeBreadcrumbs.isOn ? mark.breadcrumbs : nil,
                 logs: includeLogs.isOn ? (includeLogDetails.isOn ? logsWithDetails : mark.logs) : nil,
                 http: includeHTTP.isOn ? (includeHTTPBodies.isOn ? httpWithBodies : mark.http) : nil,
-                webSockets: includeWebSockets.isOn ? (includeWebSocketPayloads.isOn ? socketsWithPayloads : mark.webSockets) : nil)
+                webSockets: includeWebSockets.isOn ? (includeWebSocketPayloads.isOn ? socketsWithPayloads : mark.webSockets) : nil).withFocus(mark.focus)
         } catch { notice = RuntimePresentation.text("incident_mark_failed"); tableView.reloadData(); return }
         saving = true; notice = RuntimePresentation.text("incident_saving"); view.endEditing(true); updateControls(); tableView.reloadData()
         archive.save(snapshot) { [weak self] result in
@@ -226,7 +226,7 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
                 self.saving = false; self.updateControls()
                 switch result {
                 case .success:
-                    self.editor.text = ""; self.saved(); self.dismiss(animated: true)
+                    self.editor.text = ""; self.dismiss(animated: true, completion: self.saved)
                 case .failure(let error):
                     self.notice = PersistencePresentation.error(error); self.tableView.reloadData()
                 }
@@ -249,26 +249,34 @@ final class IncidentComposerViewController: UITableViewController, UITextViewDel
         tableView.reloadSections(IndexSet(integer: 0), with: .none)
     }
     func textViewDidChange(_ textView: UITextView) { tableView.beginUpdates(); tableView.endUpdates() }
-    override func numberOfSections(in tableView: UITableView) -> Int { 5 }
+    private var visibleSections: [Int] {
+        [0, 1] + (mark.focus == nil || mark.http != nil ? [2] : []) + (mark.focus == nil || mark.webSockets != nil ? [3] : []) + [4]
+    }
+    override func numberOfSections(in tableView: UITableView) -> Int { visibleSections.count }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        switch section { case 0: return 1; case 1: return hasLogDetails ? 4 : 3; case 2, 3: return 2; default: return includeNote.isOn ? 2 : 1 }
+        switch visibleSections[section] { case 0: return mark.focus == nil ? 1 : 2; case 1: return mark.focus != nil && mark.logs == nil ? 2 : hasLogDetails ? 4 : 3; case 2, 3: return 2; default: return includeNote.isOn ? 2 : 1 }
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        if section == 0 { return RuntimePresentation.text("incident_mark_hint") + (notice.isEmpty ? "" : "\n\n" + notice) }
-        if section == 4 { return RuntimePresentation.text("incident_note_hint") + "\n" + RuntimePresentation.text("incident_note_limit") }
+        if visibleSections[section] == 0 { return RuntimePresentation.text(mark.focus == nil ? "incident_mark_hint" : "incident_selection_hint") + (notice.isEmpty ? "" : "\n\n" + notice) }
+        if visibleSections[section] == 4 { return RuntimePresentation.text("incident_note_hint") + "\n" + RuntimePresentation.text("incident_note_limit") }
         return nil
     }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        switch section { case 1: return RuntimePresentation.text("ui_evidence_available"); case 2: return "HTTP"; case 3: return "WebSocket"; case 4: return RuntimePresentation.text("incident_note"); default: return nil }
+        switch visibleSections[section] { case 1: return RuntimePresentation.text("ui_evidence_available"); case 2: return "HTTP"; case 3: return "WebSocket"; case 4: return RuntimePresentation.text("incident_note"); default: return nil }
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        switch indexPath.section {
+        switch visibleSections[indexPath.section] {
         case 1: return [environmentCell, breadcrumbsCell, logsCell, logDetailsCell][indexPath.row]
         case 2: return [httpCell, httpBodiesCell][indexPath.row]
         case 3: return [webSocketsCell, webSocketPayloadsCell][indexPath.row]
         case 4: return indexPath.row == 0 ? noteToggleCell : editorCell
         default:
             let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil); PersistencePresentation.style(cell); cell.selectionStyle = .none
+            if indexPath.row == 1, let selection = InspectorIncidentSelection.selected(in: mark) {
+                cell.textLabel?.text = RuntimePresentation.text("ui_selected_record")
+                cell.detailTextLabel?.text = selection.summary
+                return cell
+            }
             cell.textLabel?.text = RuntimePresentation.text("incident_frozen_time")
             cell.detailTextLabel?.text = InspectorValuePresentation.eventTime(mark.timestampMillis, full: true)
             return cell

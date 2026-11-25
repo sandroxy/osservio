@@ -67,6 +67,8 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         if (snapshot.systemDiagnostic != null) field(metadata, () -> context.getString(R.string.osservio_diagnostic_title),
             () -> SystemDiagnosticPresentation.kind(context, snapshot.systemDiagnostic.kind),
             () -> open(R.string.osservio_diagnostic_title, new SystemDiagnosticView(context, snapshot.systemDiagnostic)));
+        if (snapshot.focus != null) field(metadata, () -> context.getString(R.string.osservio_ui_selected_record),
+            () -> IncidentPresentation.focus(context, snapshot), this::openSelected);
         header.addView(caption(() -> IncidentPresentation.hint(context, snapshot)));
         LinearLayout environment = section(header, () -> context.getString(R.string.osservio_runtime_environment));
         if (snapshot.environment == null) header.addView(caption(() -> context.getString(R.string.osservio_incident_not_attached)));
@@ -134,6 +136,15 @@ final class IncidentSnapshotView extends LinearLayout implements InspectorScreen
         field(group, () -> getContext().getString(title), () -> omitted > 0 || evicted > 0
             ? getContext().getString(R.string.osservio_incident_evidence_counts, count, omitted, evicted)
             : IncidentPresentation.count(getContext(), count), count == null ? null : open);
+    }
+    private void openSelected() {
+        if (detail != null) return;
+        InspectorRecordSearch.Record record = IncidentPresentation.focusRecord(snapshot);
+        if (record == null) return;
+        if (record.log != null) show(LogDetailDialog.create(getContext(), record.log, null, snapshot.logs.payloads, null,
+            InspectorLogContext.select(snapshot.logs.events, record.log)));
+        else if (record.http != null) show(new HTTPDetailDialog(getContext(), record.http, snapshot.http.payloads).dialog);
+        else show(new WebSocketDetailDialog(getContext(), record.socket, snapshot.webSockets.payloads).dialog);
     }
     private void open(int title, View content) { if (detail == null) show(InspectorDialogs.screen(getContext(), title, content)); }
     private void show(InspectorScreen screen) {

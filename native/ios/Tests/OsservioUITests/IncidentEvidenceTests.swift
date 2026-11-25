@@ -33,6 +33,25 @@ final class IncidentEvidenceTests: XCTestCase {
         ((view as? UILabel)?.text.map { [$0] } ?? []) + view.subviews.flatMap(labels)
     }
     @MainActor
+    func testSavedSelectedRecordOpensExactEvidenceWithoutOfferingAnotherMark() async throws {
+        let event = try LogEvent.restore(sessionID: id, sequence: 91, timestampMillis: 123, level: .error, category: "fixture",
+            message: "SELECTED_OLD_RECORD", isPrivate: false, isTruncated: false)
+        let snapshot = try InspectorIncidentSelection.log(event).mark(breadcrumbs: nil)
+        let viewer = IncidentSnapshotViewController(snapshot: snapshot), window = show(viewer)
+        defer { window.isHidden = true; window.rootViewController = nil }
+        XCTAssertEqual(viewer.tableView(viewer.tableView, numberOfRowsInSection: 0), 4)
+        let selected = viewer.tableView(viewer.tableView, cellForRowAt: IndexPath(row: 3, section: 0))
+        XCTAssertTrue(selected.detailTextLabel?.text?.contains("SELECTED_OLD_RECORD") == true)
+        viewer.tableView(viewer.tableView, didSelectRowAt: IndexPath(row: 3, section: 0))
+        try await settled(XCTUnwrap(viewer.navigationController))
+        let detail = try XCTUnwrap(viewer.navigationController?.topViewController as? LogDetailViewController)
+        XCTAssertEqual(detail.sections.first?.rows.first?.label, "SELECTED_OLD_RECORD")
+        XCTAssertFalse(detail.inspectorActions?.contains { $0.accessibilityLabel == InspectorLocalization.text("incident_from_record") } == true)
+        viewer.navigationController?.popViewController(animated: false)
+        XCTAssertTrue(viewer.navigationController?.topViewController === viewer)
+    }
+
+    @MainActor
     func testLiveOverviewDoesNotReadBodiesAndSelectedContentDoesNotRefreshMetadata() async throws {
         let preferences = InspectorPreferences.shared, language = preferences.language
         defer { preferences.language = language }

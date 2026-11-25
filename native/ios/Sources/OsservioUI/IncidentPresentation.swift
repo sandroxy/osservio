@@ -91,6 +91,9 @@ enum IncidentPresentation {
             timeLabel(snapshot.systemDiagnostic?.kind) + ": " + RuntimePresentation.date(snapshot.timestampMillis),
             "ID: " + snapshot.id, note(snapshot.note),
             RuntimePresentation.text("runtime_breadcrumbs") + ": " + counts(snapshot.breadcrumbs)]
+        if let focus = snapshot.focus, let selection = InspectorIncidentSelection.selected(in: snapshot) {
+            lines.append(RuntimePresentation.text("ui_selected_record") + ": " + selection.summary + "\n" + focus.sessionID + " · #\(focus.sequence)" + (focus.eventID.map { " · " + $0 } ?? ""))
+        }
         if let diagnostic = snapshot.systemDiagnostic { lines.append(SystemDiagnosticPresentation.summary(diagnostic)) }
         if let environment = snapshot.environment { lines.append(RuntimePresentation.environment(environment)) }
         else { lines.append(RuntimePresentation.text("runtime_environment") + ": " + RuntimePresentation.text("incident_not_attached")) }

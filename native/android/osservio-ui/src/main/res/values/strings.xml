@@ -55,4 +55,10 @@
     <string name="osservio_ui_log_neighbors">Surrounding logs</string>
     <string name="osservio_ui_log_neighbors_hint">Up to 20 retained logs before and after this record, from the same capture session. Order does not imply causation.</string>
     <string name="osservio_ui_selected_record">Selected record</string>
+    <string name="osservio_incident_include_selected_log">Attach selected log</string>
+    <string name="osservio_incident_include_selected_http">Attach selected HTTP request</string>
+    <string name="osservio_incident_include_selected_socket">Attach selected WebSocket record</string>
+    <string name="osservio_incident_from_record">Record a problem from this record</string>
+    <string name="osservio_incident_selection_hint">The selected record is required and stays as shown in its detail view. Other log and network records are not attached. Optional recent breadcrumbs and environment have their own observation times; they do not establish a causal relationship. Nothing is saved until you choose Save.</string>
+    <string name="osservio_incident_selection_failed">This record could not fit in the problem snapshot. Its metadata exceeds the 64 KiB limit. The original record is unchanged.</string>
 </resources>
