@@ -20,6 +20,15 @@ final class InspectorScroll {
     @android.annotation.SuppressLint("ViewConstructor")
     static class Page extends ScrollView {
         Page(Context context) { super(context); }
+        @Override public boolean canScrollVertically(int direction) {
+            if (getChildCount() == 0) return false;
+            // ScrollView's touch interceptor asks this before taking a drag from
+            // a clickable child. Use the same padded viewport as its scrollTo
+            // bounds; scrollbar metrics use the full height and miss inset-only overflow.
+            int viewport = getHeight() - getPaddingTop() - getPaddingBottom();
+            int range = Math.max(0, getChildAt(0).getHeight() - viewport);
+            return direction < 0 ? getScrollY() > 0 : direction > 0 && getScrollY() < range;
+        }
         @Override protected int computeScrollDeltaToGetChildRectOnScreen(Rect rect) {
             int delta = super.computeScrollDeltaToGetChildRectOnScreen(rect);
             if (!inset(this)) return delta;
@@ -30,6 +39,19 @@ final class InspectorScroll {
     @android.annotation.SuppressLint("ViewConstructor")
     static class List extends ListView {
         List(Context context) { super(context); }
+        @Override protected void onVisibilityChanged(View changedView, int visibility) {
+            super.onVisibilityChanged(changedView, visibility); updateSelectorVisibility(getWindowVisibility());
+        }
+        @Override protected void onWindowVisibilityChanged(int visibility) {
+            super.onWindowVisibilityChanged(visibility); updateSelectorVisibility(visibility);
+        }
+        private void updateSelectorVisibility(int windowVisibility) {
+            // AbsListView owns its selector separately from View's background.
+            // It otherwise remains visible while an ancestor hides this page,
+            // allowing a hardware ripple to resume when navigation returns.
+            android.graphics.drawable.Drawable selector = getSelector();
+            if (selector != null) selector.setVisible(isShown() && windowVisibility == VISIBLE, false);
+        }
         interface Records { int count(); String key(int index); }
         /** Keep visible record identities and their pixel offsets across a bounded data refresh. */
         void preservingReadingPosition(Records records, Runnable update) {
