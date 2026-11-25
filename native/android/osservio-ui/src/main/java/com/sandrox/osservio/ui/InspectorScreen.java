@@ -40,6 +40,7 @@ final class InspectorScreen implements DialogInterface {
     private OnDismissListener dismissed;
     private OnShowListener appeared;
     private OnCancelListener cancelled;
+    int toolbarHeight() { return bar == null ? 0 : bar.getMeasuredHeight(); }
 
     InspectorScreen(Context context, String title, View content, Presentation presentation) {
         this.presentation = presentation; this.content = content; navigation = InspectorNavigation.from(context);
@@ -49,10 +50,18 @@ final class InspectorScreen implements DialogInterface {
                     int bottomInset = getPaddingBottom();
                     int available = View.MeasureSpec.getSize(heightSpec) - getPaddingTop() - bottomInset;
                     FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
-                    params.topMargin = Math.min(InspectorTheme.dp(context, 56), Math.max(0, available / 12));
                     // Extend the surface beneath system insets; keep the content above them.
                     params.bottomMargin = -bottomInset;
                     card.setPadding(0, 0, 0, bottomInset);
+                    int width = Math.max(0, View.MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight());
+                    bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                    // Pages start below the same safe area as this overlay. Their measured
+                    // toolbar bottom is the anchor, including wrapping and configuration changes.
+                    int anchor = navigation == null ? 0 : navigation.sheetToolbarHeight(getContext());
+                    if (anchor <= 0) anchor = toolbarHeight();
+                    int controls = handle.getLayoutParams().height + toolbarHeight();
+                    params.topMargin = Math.min(anchor, Math.max(0, available - controls));
                 } else if (presentation == Presentation.CONFIRMATION) {
                     FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) card.getLayoutParams();
                     int margin = InspectorTheme.dp(context, 24);

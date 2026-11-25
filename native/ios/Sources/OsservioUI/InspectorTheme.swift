@@ -77,6 +77,16 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         didSet { if oldValue != transientPanel, isViewLoaded { updateStyle() } }
     }
     private var sheetEdge: InspectorSheetEdge?
+    private weak var sheetSource: InspectorNavigationController?
+    private weak var anchoredSheet: InspectorNavigationController?
+    private var lastSheetHeight: CGFloat?
+    private struct SheetPlacement {
+        let containerBounds: CGRect
+        let safeArea: UIEdgeInsets
+        let scale: CGFloat
+        let bottomInset: CGFloat
+    }
+    private var sheetPlacement: SheetPlacement?
     private var discardRequested = false
     func discardPanel() {
         discardRequested = true
@@ -88,7 +98,15 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         guard discardRequested, !isBeingPresented, !isBeingDismissed else { return }
         presentingViewController?.dismiss(animated: false)
     }
-    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); finishDiscard() }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if transientPanel {
+            transitionCoordinator?.animate(alongsideTransition: { [weak self] _ in self?.updateSheetAlignment() })
+        }
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated); updateSheetAlignment(); finishDiscard()
+    }
     var visiblePageChanged: (() -> Void)?
     weak var session: InspectorSession? {
         didSet { for controller in viewControllers { installSessionAction(on: controller) } }
@@ -98,6 +116,8 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         layoutSheetEdge()
+        updateSheetAlignment()
+        anchoredSheet?.updateSheetAlignment()
     }
     private func layoutSheetEdge() {
         guard let edge = sheetEdge, let parent = navigationBar.superview else { return }
@@ -126,14 +146,55 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         return item
     }
     @objc private func minimize() { session?.collapse() }
+    func alignSheet(to source: InspectorNavigationController?) {
+        sheetSource = source
+        source?.anchoredSheet = self
+    }
+    private func alignedSheetHeight() -> CGFloat? {
+        guard let source = sheetSource, !source.isNavigationBarHidden,
+              let window = source.viewIfLoaded?.window,
+              let container = presentationController?.containerView ?? source.viewIfLoaded?.window,
+              container.window === window || container === window else { return nil }
+        let bottom = source.navigationBar.convert(source.navigationBar.bounds, to: container).maxY
+        // Native detents exclude the bottom safe area. Keep both edges in the same container.
+        let height: CGFloat
+        if let placement = sheetPlacement, placement.containerBounds == container.bounds, placement.safeArea == container.safeAreaInsets {
+            height = (container.bounds.maxY - placement.bottomInset - bottom) / placement.scale - container.safeAreaInsets.bottom
+        } else {
+            height = container.bounds.maxY - container.safeAreaInsets.bottom - bottom
+        }
+        return height > 0 ? (height * window.screen.scale).rounded() / window.screen.scale : nil
+    }
+    private func updateSheetAlignment() {
+        guard #available(iOS 16, *), transientPanel, viewIfLoaded?.window != nil else { return }
+        if let presentation = presentationController, let container = presentation.containerView {
+            let changed = sheetPlacement?.containerBounds != container.bounds || sheetPlacement?.safeArea != container.safeAreaInsets
+            if changed || isBeingPresented || transitionCoordinator?.isInteractive == false {
+                let native = presentation.frameOfPresentedViewInContainerView
+                let rendered = view.convert(view.bounds, to: container)
+                // UIKit can scale and float the whole sheet. Read its settled geometry,
+                // without treating an interactive pull-down as a new resting position.
+                if view.bounds.height > 0, abs(native.height - view.bounds.height) < 0.5,
+                   abs(rendered.midX - native.midX) < 0.5, rendered.height > 0 {
+                    sheetPlacement = SheetPlacement(containerBounds: container.bounds, safeArea: container.safeAreaInsets,
+                        scale: rendered.height / view.bounds.height, bottomInset: container.bounds.maxY - rendered.maxY)
+                }
+            }
+        }
+        guard let height = alignedSheetHeight(), lastSheetHeight != height else { return }
+        lastSheetHeight = height
+        sheetPresentationController?.invalidateDetents()
+    }
     func configureSheet(compact: Bool = false) {
         guard #available(iOS 15, *), let sheet = sheetPresentationController else { return }
         let expanded: UISheetPresentationController.Detent
         if #available(iOS 16, *) {
-            expanded = .custom(identifier: .init("Osservio.ExpandedSheet")) { context in
-                // Keep the grabber away from system edge gestures without wasting a short viewport.
-                let height = context.maximumDetentValue
-                return height - min(56, height / 12)
+            expanded = .custom(identifier: .init("Osservio.ExpandedSheet")) { [weak self] context in
+                // Regular-width floating sheets retain the system's centered placement.
+                guard context.containerTraitCollection.horizontalSizeClass == .compact
+                    || context.containerTraitCollection.verticalSizeClass == .compact,
+                    let height = self?.alignedSheetHeight() else { return context.maximumDetentValue }
+                return min(height, context.maximumDetentValue)
             }
         } else { expanded = .large() }
         sheet.detents = compact ? [.medium(), expanded] : [expanded]
@@ -147,6 +208,7 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
     }
     private func updateStyle() {
         InspectorTheme.apply(self)
+        view.accessibilityIdentifier = transientPanel ? "Osservio.Sheet" : nil
         let appearance = UINavigationBarAppearance(); appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = InspectorTheme.surface
         if transientPanel {
@@ -208,7 +270,10 @@ extension UIViewController {
         navigation.transientPanel = !retainingPage
         navigation.session = inspectorSession
         navigation.modalPresentationStyle = retainingPage ? .fullScreen : .pageSheet
-        if !retainingPage { navigation.configureSheet() }
+        if !retainingPage {
+            navigation.alignSheet(to: (self as? InspectorNavigationController) ?? (navigationController as? InspectorNavigationController))
+            navigation.configureSheet()
+        }
         present(navigation, animated: true)
     }
     func inspectorMinimalBackTitle() {

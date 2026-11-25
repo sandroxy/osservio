@@ -66,10 +66,12 @@ polling and pending parsing. Temporary panels cover the tab bar. Android bottom
 sheets have rounded top corners and square bottom corners; the surface continues through the navigation
 inset while controls remain within the safe area. More panels dismiss by native
 swipe/backdrop or an accessible dismiss action; Android also provides a draggable
-handle. Filters and editors leave a backdrop gap below the top safe area so the
-grabber stays farther from system pull-down gestures. This gap shrinks in short
-viewports. iOS 16 and later use a native custom detent; older iOS versions retain
-their system-provided sheet heights.
+handle. On phones, expanded filters and editors align their upper edge with the
+underlying page's navigation bar bottom, using its laid-out size rather than a
+fixed gap. Short viewports remain constrained by the available space for controls.
+iOS 16 and later use a native custom detent, accounting for the system's sheet
+scaling and safe areas; older iOS versions and centered tablet sheets retain
+their system-provided heights and placement.
 Short action panels retain their compact sizing. Dark sheets have a static
 theme-colored upper edge; light sheets keep their plain boundary. The sheet's
 header and content share a continuous opaque base without a persistent header rule.

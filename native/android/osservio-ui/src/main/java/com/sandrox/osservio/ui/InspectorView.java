@@ -198,6 +198,7 @@ public final class InspectorView extends FrameLayout {
         metrics.setTo(themed.getResources().getDisplayMetrics());
         navigation.setBackgroundColor(InspectorTheme.canvas(themed));
         InspectorToolbar bar = new InspectorToolbar(themed); rootBar = bar;
+        navigation.setRootToolbar(bar);
         int inset = InspectorTheme.dp(themed, 16);
         debugControl = new InspectorDebugControl(themed, logRecorder.captureController, httpRecorder.captureController,
             socketRecorder == null ? null : socketRecorder.captureController);

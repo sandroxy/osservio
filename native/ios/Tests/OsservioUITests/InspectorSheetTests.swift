@@ -4,22 +4,35 @@ import XCTest
 @testable import OsservioUI
 
 final class InspectorSheetTests: XCTestCase {
-    @MainActor func testNativeSheetDetentsKeepClearanceWhenActionPanelsExpand() throws {
+    @MainActor func testNativeSheetDetentsFollowSourceNavigationAndClampToAvailableHeight() throws {
         guard #available(iOS 16, *) else { throw XCTSkip("Custom native detents require iOS 16") }
+        let source = InspectorNavigationController(rootViewController: UIViewController())
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = source; window.makeKeyAndVisible(); window.layoutIfNeeded()
+        defer { window.isHidden = true; window.rootViewController = nil }
         let filter = InspectorFilterViewController(query: InspectorQuery(), groups: []) { _ in }
         let actions = InspectorActionPanel(title: "Actions", message: nil)
         for page in [filter, actions] {
             let navigation = InspectorNavigationController(rootViewController: page)
             navigation.transientPanel = true; navigation.modalPresentationStyle = .pageSheet
+            navigation.alignSheet(to: source)
             navigation.configureSheet(); page.loadViewIfNeeded(); page.viewWillAppear(false)
             let sheet = try XCTUnwrap(navigation.sheetPresentationController)
             XCTAssertEqual(sheet.detents.count, page === actions ? 2 : 1)
             let expanded = try XCTUnwrap(sheet.detents.last)
-            let tall = try XCTUnwrap(expanded.resolvedValue(in: SheetContext(height: 800)))
+            let context = SheetContext(height: 844)
+            let tall = try XCTUnwrap(expanded.resolvedValue(in: context))
+            let bottom = source.navigationBar.convert(source.navigationBar.bounds, to: window).maxY
+            XCTAssertEqual(tall, window.safeAreaLayoutGuide.layoutFrame.maxY - bottom, accuracy: 0.5)
+            let original = source.navigationBar.frame
+            source.navigationBar.frame = original.offsetBy(dx: 0, dy: 29)
+            XCTAssertEqual(try XCTUnwrap(expanded.resolvedValue(in: context)), tall - 29, accuracy: 0.5,
+                           "The source navigation edge must determine the height, not a stored margin")
+            source.navigationBar.frame = original
             let short = try XCTUnwrap(expanded.resolvedValue(in: SheetContext(height: 240)))
-            XCTAssertGreaterThanOrEqual(800 - tall, 48, "Expanded action panels must use the same reserved space as editors")
-            XCTAssertGreaterThan(tall, 700, "The editor must remain a tall working surface")
-            XCTAssertLessThan(short, 240); XCTAssertGreaterThan(short, 200, "Short viewports must retain usable content height")
+            XCTAssertEqual(short, 240, "Keyboard and compact containers must bound the requested height")
+            XCTAssertEqual(expanded.resolvedValue(in: SheetContext(height: 600, width: .regular)), 600,
+                           "Centered tablet sheets keep the native height")
             XCTAssertTrue(sheet.prefersGrabberVisible); XCTAssertTrue(sheet.prefersEdgeAttachedInCompactHeight)
         }
     }
@@ -107,8 +120,12 @@ final class InspectorSheetTests: XCTestCase {
     @available(iOS 16, *)
     @MainActor private final class SheetContext: NSObject, UISheetPresentationControllerDetentResolutionContext {
         let maximumDetentValue: CGFloat
-        let containerTraitCollection = UITraitCollection(userInterfaceIdiom: .phone)
-        init(height: CGFloat) { maximumDetentValue = height }
+        let containerTraitCollection: UITraitCollection
+        init(height: CGFloat, width: UIUserInterfaceSizeClass = .compact) {
+            maximumDetentValue = height
+            containerTraitCollection = UITraitCollection(traitsFrom: [UITraitCollection(horizontalSizeClass: width),
+                UITraitCollection(verticalSizeClass: .regular)])
+        }
     }
 }
 #endif

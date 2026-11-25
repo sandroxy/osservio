@@ -20,6 +20,44 @@ import static org.junit.Assert.*;
 /** Exercises sheet dismissal and actual surface/inset geometry without consumer data. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorSheetTest {
+    @Test public void sheetsFollowTheUnderlyingToolbarAfterResizingAndNavigation() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InspectorTheme.context(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            FrameLayout container = new FrameLayout(base);
+            android.widget.LinearLayout root = new android.widget.LinearLayout(base); root.setOrientation(android.widget.LinearLayout.VERTICAL);
+            InspectorToolbar toolbar = new InspectorToolbar(base); root.addView(toolbar, new android.widget.LinearLayout.LayoutParams(-1, -2));
+            root.addView(new View(base), new android.widget.LinearLayout.LayoutParams(-1, 0, 1));
+            InspectorNavigation navigation = new InspectorNavigation(base, root, container, root, new InspectorGlassSession(base));
+            navigation.setRootToolbar(toolbar); container.addView(navigation, new FrameLayout.LayoutParams(-1, -1));
+            Context context = new InspectorNavigation.OwnerContext(base, navigation, 0);
+            InspectorScreen sheet = InspectorDialogs.panel(context, R.string.osservio_ui_filters, new View(context));
+            sheet.show();
+            try {
+                for (int width : new int[] {320, 640}) for (int inset : new int[] {24, 44}) {
+                    container.setPadding(0, dp(base, inset), 0, dp(base, 24));
+                    for (int extra : new int[] {0, 32}) {
+                        toolbar.setPadding(0, dp(base, extra), 0, 0); layout(container, width, 480);
+                        android.graphics.Rect bounds = new android.graphics.Rect(0, 0, toolbar.getWidth(), toolbar.getHeight());
+                        container.offsetDescendantRectToMyCoords(toolbar, bounds);
+                        assertEquals(bounds.bottom, sheet.view.getTop() + ((ViewGroup) sheet.view.getChildAt(0)).getTop());
+                    }
+                }
+                sheet.dismiss();
+                InspectorScreen page = InspectorDialogs.screen(context, "Detail", new View(context)); page.show();
+                InspectorToolbar detailBar = (InspectorToolbar) ((ViewGroup) page.view.getChildAt(0)).getChildAt(0);
+                detailBar.setPadding(0, dp(base, 18), 0, dp(base, 12));
+                sheet.show(); layout(container, 320, 640);
+                android.graphics.Rect bounds = new android.graphics.Rect(0, 0, detailBar.getWidth(), detailBar.getHeight());
+                container.offsetDescendantRectToMyCoords(detailBar, bounds);
+                assertEquals(bounds.bottom, sheet.view.getTop() + ((ViewGroup) sheet.view.getChildAt(0)).getTop());
+                container.setPadding(0, dp(base, 24), 0, dp(base, 280)); layout(container, 320, 420);
+                ViewGroup card = (ViewGroup) sheet.view.getChildAt(0);
+                assertTrue("A short keyboard viewport must retain the sheet controls", card.getHeight() >= dp(base, 96));
+                assertTrue(card.getTop() >= 0);
+            } finally { navigation.dispose(); }
+        });
+    }
+
     @Test public void logContextSelectionIsOptInAndDoesNotReadAgainAfterEviction() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             String id = "11111111-1111-1111-1111-111111111111", value = "{\"arguments\":[\"captured\"]}";

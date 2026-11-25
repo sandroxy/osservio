@@ -15,6 +15,8 @@ final class InspectorNavigation extends FrameLayout {
     private final View rootPage;
     private final FrameLayout modalContainer;
     private final View workspace;
+    private InspectorToolbar rootToolbar;
+    private int measuredToolbarHeight = -1;
     private Runnable minimize;
     private Runnable changed;
     private int selection;
@@ -32,6 +34,15 @@ final class InspectorNavigation extends FrameLayout {
     void setBottomInset(int value) {
         if (bottomInset == value) return;
         bottomInset = value; requestLayout();
+    }
+    @Override protected void onMeasure(int widthSpec, int heightSpec) {
+        super.onMeasure(widthSpec, heightSpec);
+        int height = sheetToolbarHeight(getContext());
+        if (measuredToolbarHeight == height) return;
+        measuredToolbarHeight = height;
+        // The modal sibling can otherwise reuse its previous measurement when only
+        // this page's toolbar changes size. Its parent measures it after this workspace.
+        for (InspectorScreen screen : stacks.get(selection)) if (screen.coversTabs()) screen.view.forceLayout();
     }
     @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
@@ -71,6 +82,16 @@ final class InspectorNavigation extends FrameLayout {
         addView(rootPage, new LayoutParams(-1, -1));
     }
     void setChanged(Runnable action) { changed = action; }
+    void setRootToolbar(InspectorToolbar toolbar) { rootToolbar = toolbar; }
+    int sheetToolbarHeight(Context context) {
+        int tab = tab(context);
+        List<InspectorScreen> active = stacks.get(tab < 0 ? selection : tab);
+        for (int index = active.size() - 1; index >= 0; index--) {
+            InspectorScreen screen = active.get(index);
+            if (!screen.isTransient()) return screen.toolbarHeight();
+        }
+        return rootToolbar == null ? 0 : rootToolbar.getMeasuredHeight();
+    }
     void select(int tab) { selection = tab; reconcile(); }
     boolean isAtRoot() { return stacks.get(selection).isEmpty(); }
     boolean coversNavigation() {
@@ -137,7 +158,7 @@ final class InspectorNavigation extends FrameLayout {
     void dispose() {
         disposing = true;
         for (List<InspectorScreen> stack : stacks) if (!stack.isEmpty()) remove(stack.get(0));
-        removeAllViews(); minimize = null; changed = null;
+        removeAllViews(); rootToolbar = null; minimize = null; changed = null;
     }
     private void reconcile() {
         List<InspectorScreen> active = stacks.get(selection);
