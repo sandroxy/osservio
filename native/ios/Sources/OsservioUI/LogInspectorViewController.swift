@@ -172,7 +172,8 @@ public final class LogInspectorViewController: UITableViewController {
     public override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         table.deselectRow(at: indexPath, animated: true)
         let event = events[indexPath.row]
-        let detail = LogDetailViewController(event: event, history: history as? any LogDetailsHistory)
+        let detail = LogDetailViewController(event: event, history: history as? any LogDetailsHistory,
+            neighbors: InspectorLogContext(source: latest?.events ?? [], target: event))
         detail.searchHit = result?.hit(.log(event), term: query.text)
         inspectorPush(detail)
     }
@@ -183,8 +184,9 @@ final class LogDetailViewController: InspectorDetailViewController {
     private let event: LogEvent
     private let history: (any LogDetailsHistory)?
     private let saved: [String: IncidentPayload]?
-    init(event: LogEvent, history: (any LogDetailsHistory)? = nil, saved: [String: IncidentPayload]? = nil) {
-        self.event = event; self.history = history; self.saved = saved; super.init()
+    private let neighbors: InspectorLogContext?
+    init(event: LogEvent, history: (any LogDetailsHistory)? = nil, saved: [String: IncidentPayload]? = nil, neighbors: InspectorLogContext? = nil) {
+        self.event = event; self.history = history; self.saved = saved; self.neighbors = neighbors; super.init()
     }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }
@@ -213,6 +215,12 @@ final class LogDetailViewController: InspectorDetailViewController {
             sections.insert(Section(title: InspectorLocalization.text("ui_log_context"), rows: [
                 Row(InspectorLocalization.text(InspectorLogDetails.label(reference.state)), action: action)
             ]), at: 1)
+        }
+        if let neighbors {
+            sections.insert(Section(title: "", rows: [Row(InspectorLocalization.text("ui_log_neighbors"), action: { [weak self] in
+                guard let self else { return }
+                self.inspectorPush(LogContextViewController(window: neighbors, history: self.history, saved: self.saved))
+            })]), at: sections.count - 1)
         }
     }
     @objc private func copyMessage() { UIPasteboard.general.string = event.message }

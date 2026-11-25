@@ -487,3 +487,16 @@ arguments, attributes and supplied error/call-site fields without expanding the
 list row. Context participates in the message search scope and JSON-field
 matching through the same bounded background worker. Missing content remains
 unknown for exclusions. Saved context searches use the frozen attachment only.
+
+## Surrounding logs
+
+Log details opened from a live or saved log list offer **Surrounding logs**.
+The separate page shows up to 20 retained records on either side of the selected
+record, restricted to the same capture session and a combined 128 KiB metadata
+text budget. It preserves recorded order and identifies the selected record;
+proximity does not establish causation. The window is fixed when opening details,
+ignores the source list's filters, and never subscribes to subsequent capture.
+Saved evidence uses only the saved attachment. Missing or evicted records are not
+reconstructed. Each row opens the ordinary detail reader; returning preserves
+the original list's query and reading position. Structured log context remains
+a separate, explicitly opened payload.

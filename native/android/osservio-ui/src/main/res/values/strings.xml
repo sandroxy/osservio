@@ -52,4 +52,7 @@
     <string name="osservio_http_phase_response">Response transfer</string>
     <string name="osservio_http_phase_response_headers">Response headers</string>
     <string name="osservio_http_phase_response_body">Response body reads</string>
+    <string name="osservio_ui_log_neighbors">Surrounding logs</string>
+    <string name="osservio_ui_log_neighbors_hint">Up to 20 retained logs before and after this record, from the same capture session. Order does not imply causation.</string>
+    <string name="osservio_ui_selected_record">Selected record</string>
 </resources>

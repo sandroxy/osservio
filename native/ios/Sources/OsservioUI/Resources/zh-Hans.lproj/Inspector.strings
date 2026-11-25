@@ -355,3 +355,7 @@
 "ui_before_1440" = "此前 24 小时";
 "ui_filter_exclusions_hint" = "按类型排除不需要的记录";
 "ui_filter_undo_notice" = "筛选已修改";
+
+"ui_log_neighbors" = "前后日志";
+"ui_log_neighbors_hint" = "同一采集会话中，前后各最多 20 条已留存日志；先后顺序不代表因果关系。";
+"ui_selected_record" = "所选记录";

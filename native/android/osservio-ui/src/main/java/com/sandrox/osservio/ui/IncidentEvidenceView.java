@@ -154,7 +154,8 @@ final class IncidentEvidenceView extends LinearLayout implements InspectorScreen
         if (detail != null) return;
         InspectorWidgets.hideKeyboard(this);
         InspectorRecordSearch.Hit hit = InspectorRecordSearch.Hit.from(result, records.get(index).key(), query.text);
-        if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index), null, logs.payloads, hit);
+        if (logs != null) detail = LogDetailDialog.create(getContext(), logs.events.get(index), null, logs.payloads, hit,
+            InspectorLogContext.select(logs.events, logs.events.get(index)));
         else if (http != null) detail = new HTTPDetailDialog(getContext(), http.events.get(index), http.payloads, hit).dialog;
         else {
             WebSocketDetailDialog message = new WebSocketDetailDialog(getContext(), sockets.events.get(index), null, sockets.payloads, hit);

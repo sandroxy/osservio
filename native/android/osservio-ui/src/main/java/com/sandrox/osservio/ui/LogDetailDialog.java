@@ -17,6 +17,10 @@ final class LogDetailDialog {
         return create(context, event, history, saved, null);
     }
     static InspectorScreen create(Context context, LogEvent event, LogDetailsHistory history, Map<String, IncidentPayload> saved, InspectorRecordSearch.Hit hit) {
+        return create(context, event, history, saved, hit, null);
+    }
+    static InspectorScreen create(Context context, LogEvent event, LogDetailsHistory history, Map<String, IncidentPayload> saved,
+                                  InspectorRecordSearch.Hit hit, InspectorLogContext neighbors) {
         InspectorDetailPage page = new InspectorDetailPage(context);
         page.section(R.string.osservio_ui_read_content);
         InspectorWidgets.ValueRow reader = page.value(() -> RuntimePresentation.message(context, InspectorRecordSearch.Hit.preview(hit, "log", event.message, 600), event.isPrivate),
@@ -35,6 +39,8 @@ final class LogDetailDialog {
         page.field(R.string.osservio_ui_level, event.level == com.sandrox.osservio.core.LogLevel.WARNING ? "WARN" : event.level.name());
         page.field(R.string.osservio_ui_category, event.category);
         page.field(R.string.osservio_ui_event_recorded, () -> InspectorValuePresentation.eventTime(event.timestampMillis, true));
+        if (neighbors != null) page.action(R.string.osservio_ui_log_neighbors, () ->
+            InspectorDialogs.screen(context, R.string.osservio_ui_log_neighbors, new LogContextView(context, neighbors, history, saved)).show());
         page.expandable(R.string.osservio_ui_technical_details, R.string.osservio_ui_show_details, R.string.osservio_ui_hide_details,
             () -> page.field(R.string.osservio_http_session, event.sessionId + " · #" + event.sequence));
         InspectorScreen screen = InspectorDialogs.screen(context, R.string.osservio_ui_log_details, page);

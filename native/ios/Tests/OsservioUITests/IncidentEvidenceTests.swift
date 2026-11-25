@@ -8,6 +8,27 @@ import XCTest
 
 final class IncidentEvidenceTests: XCTestCase {
     private let id = "12345678-1234-1234-1234-123456789abc"
+    @MainActor
+    func testSurroundingLogsKeepFrozenEvidenceAndReturnToDetail() async throws {
+        let events = try (1...50).map { try LogEvent.restore(sessionID: id, sequence: Int64($0), timestampMillis: 100,
+            level: $0 == 25 ? .error : .info, category: "context", message: "record \($0)", isPrivate: false, isTruncated: false) }
+        let neighbors = try XCTUnwrap(InspectorLogContext(source: events, target: events[24]))
+        let detail = LogDetailViewController(event: events[24], saved: [:], neighbors: neighbors)
+        let window = show(detail); defer { window.isHidden = true; window.rootViewController = nil }
+        let navigation = try XCTUnwrap(detail.navigationController)
+        let action = try XCTUnwrap(detail.sections.flatMap(\.rows).first { $0.label == InspectorLocalization.text("ui_log_neighbors") }?.action)
+        action(); try await settled(navigation)
+        let context = try XCTUnwrap(navigation.topViewController as? LogContextViewController)
+        XCTAssertEqual(context.tableView(context.tableView, numberOfRowsInSection: 0), 41)
+        let selected = context.tableView(context.tableView, cellForRowAt: IndexPath(row: 20, section: 0))
+        XCTAssertTrue(labels(selected).contains { $0.contains(InspectorLocalization.text("ui_selected_record")) })
+        context.tableView(context.tableView, didSelectRowAt: IndexPath(row: 19, section: 0)); try await settled(navigation)
+        let neighbor = try XCTUnwrap(navigation.topViewController as? LogDetailViewController)
+        XCTAssertTrue(neighbor.sections.flatMap(\.rows).contains { $0.label == "record 24" })
+        XCTAssertFalse(neighbor.sections.flatMap(\.rows).contains { $0.label == InspectorLocalization.text("ui_log_neighbors") }, "The bounded view must not recursively extend or query current history")
+        navigation.popToViewController(detail, animated: false)
+        XCTAssertTrue(navigation.topViewController === detail)
+    }
     @MainActor private func labels(_ view: UIView) -> [String] {
         ((view as? UILabel)?.text.map { [$0] } ?? []) + view.subviews.flatMap(labels)
     }

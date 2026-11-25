@@ -355,3 +355,7 @@
 "ui_before_1440" = "Preceding 24 hours";
 "ui_filter_exclusions_hint" = "Exclude records by type";
 "ui_filter_undo_notice" = "Filter changed";
+
+"ui_log_neighbors" = "Surrounding logs";
+"ui_log_neighbors_hint" = "Up to 20 retained logs before and after this record, from the same capture session. Order does not imply causation.";
+"ui_selected_record" = "Selected record";

@@ -157,7 +157,8 @@ final class IncidentEvidenceViewController: UITableViewController {
         let index = indices[indexPath.row], controller: UIViewController
         switch evidence {
         case .logs(let value):
-            let detail = LogDetailViewController(event: value.events[index], saved: value.payloads)
+            let detail = LogDetailViewController(event: value.events[index], saved: value.payloads,
+                neighbors: InspectorLogContext(source: value.events, target: value.events[index]))
             detail.searchHit = result?.hit(records[index], term: query.text); controller = detail
         case .http(let value):
             let detail = HTTPDetailViewController(event: value.events[index], savedPayloads: value.payloads)

@@ -50,4 +50,7 @@
     <string name="osservio_http_phase_response">接收响应</string>
     <string name="osservio_http_phase_response_headers">接收响应头</string>
     <string name="osservio_http_phase_response_body">读取响应体</string>
+    <string name="osservio_ui_log_neighbors">前后日志</string>
+    <string name="osservio_ui_log_neighbors_hint">同一采集会话中，前后各最多 20 条已留存日志；先后顺序不代表因果关系。</string>
+    <string name="osservio_ui_selected_record">所选记录</string>
 </resources>

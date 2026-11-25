@@ -83,7 +83,8 @@ public final class LogInspectorView extends LinearLayout implements InspectorToo
             InspectorWidgets.hideKeyboard(this);
             LogEvent event = events.get(index);
             InspectorRecordSearch.Hit hit = InspectorRecordSearch.Hit.from(result, new InspectorRecordSearch.Record(event).key(), state.query.text);
-            dialog = LogDetailDialog.create(context, event, history instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) history : null, null, hit); watchDialog(); dialog.show();
+            dialog = LogDetailDialog.create(context, event, history instanceof com.sandrox.osservio.core.LogDetailsHistory ? (com.sandrox.osservio.core.LogDetailsHistory) history : null,
+                null, hit, InspectorLogContext.select(retained(), event)); watchDialog(); dialog.show();
         });
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override public void onScrollStateChanged(AbsListView view, int scrollState) {
