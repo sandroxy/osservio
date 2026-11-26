@@ -239,14 +239,8 @@ final class InspectorWidgets {
         }
         row.setBackground(row instanceof CheckedTextView ? choiceFeedback(context, background, fill) : InspectorTheme.ripple(context, background, fill));
     }
-    private static android.graphics.drawable.RippleDrawable choiceFeedback(Context context, android.graphics.drawable.Drawable content, android.graphics.drawable.Drawable mask) {
-        return new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(InspectorTheme.color(context, R.color.osservio_press)), content, mask) {
-            @Override public void setHotspotBounds(int left, int top, int right, int bottom) {
-                // CheckedTextView normally confines its background ripple to the trailing checkmark.
-                android.graphics.Rect row = getBounds();
-                super.setHotspotBounds(row.left, row.top, row.right, row.bottom);
-            }
-        };
+    private static android.graphics.drawable.Drawable choiceFeedback(Context context, android.graphics.drawable.Drawable content, android.graphics.drawable.Drawable mask) {
+        return new InspectorPressFeedback(InspectorTheme.color(context, R.color.osservio_press), content, mask, true);
     }
     static CheckedTextView choice(Context context) {
         CheckedTextView row = new CheckedTextView(context); InspectorTheme.typography(row, 16, false);

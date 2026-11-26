@@ -1,13 +1,11 @@
 package com.sandrox.osservio.ui;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.annotation.SuppressLint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.TextView;
@@ -113,8 +111,8 @@ final class InspectorTheme {
         GradientDrawable fill = shape(context, surface(context), radius, false);
         view.setBackground(interactive ? ripple(context, fill, null) : fill);
     }
-    static RippleDrawable ripple(Context context, android.graphics.drawable.Drawable content, android.graphics.drawable.Drawable mask) {
-        return new RippleDrawable(ColorStateList.valueOf(color(context, R.color.osservio_press)), content, mask);
+    static android.graphics.drawable.Drawable ripple(Context context, android.graphics.drawable.Drawable content, android.graphics.drawable.Drawable mask) {
+        return new InspectorPressFeedback(color(context, R.color.osservio_press), content, mask, false);
     }
     static void feedback(View view, int radius) {
         Context context = view.getContext();

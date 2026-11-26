@@ -1,7 +1,9 @@
 package com.sandrox.osservio.ui;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
@@ -77,49 +79,115 @@ public final class InspectorScrollInteractionTest {
         });
     }
 
-    @Test public void ancestorHidingEndsSelectorFeedbackWithoutLosingNextClick() throws Exception {
+    @Test public void returningToThemedRowsDoesNotReplayUndrawnPressFeedback() throws Exception {
+        assertRowFeedback(true);
+    }
+
+    @Test public void returningToLightRowsDoesNotReplayUndrawnPressFeedback() throws Exception {
+        assertRowFeedback(false);
+    }
+
+    private static void assertRowFeedback(boolean dark) throws Exception {
         InspectorMaterialTestActivity host = InspectorWindowTestSupport.start(InspectorMaterialTestActivity.class);
         try {
             InspectorScroll.List[] list = {null}; FrameLayout[] parent = {null}; int[] clicks = {0};
             main(() -> {
                 host.entry.detach(); host.container.removeAllViews();
-                parent[0] = new FrameLayout(host); list[0] = new InspectorScroll.List(host);
+                Context context = InspectorTheme.context(host, dark);
+                parent[0] = new FrameLayout(context); list[0] = new InspectorScroll.List(context);
+                parent[0].setBackgroundColor(InspectorTheme.canvas(context));
                 list[0].setAdapter(new BaseAdapter() {
                     @Override public int getCount() { return 3; }
                     @Override public Object getItem(int position) { return position; }
                     @Override public long getItemId(int position) { return position; }
                     @Override public View getView(int position, View recycled, ViewGroup owner) {
-                        InspectorWidgets.EventRow row = new InspectorWidgets.EventRow(host);
-                        row.bind("INFO", "Record " + position, "Retained metadata", 1, InspectorTheme.accent(host));
+                        InspectorWidgets.EventRow row = recycled instanceof InspectorWidgets.EventRow
+                            ? (InspectorWidgets.EventRow) recycled : new InspectorWidgets.EventRow(context);
+                        row.bind("INFO", "Record " + position, "Retained metadata", 1, InspectorTheme.accent(context));
                         row.grouped(position == 0, position == 2); return row;
                     }
                 });
                 list[0].setOnItemClickListener((owner, view, position, id) -> { clicks[0]++; parent[0].setVisibility(View.GONE); });
-                parent[0].addView(list[0]); host.container.addView(parent[0]);
+                parent[0].addView(list[0]);
+                FrameLayout.LayoutParams placement = new FrameLayout.LayoutParams(-1, -1);
+                placement.topMargin = InspectorTheme.dp(context, 40);
+                host.container.addView(parent[0], placement);
             });
             await(() -> list[0].getChildCount() == 3);
-            for (int cycle = 0; cycle < 2; cycle++) {
-                tap(list[0].getChildAt(0)); final int expected = cycle + 1;
-                await(() -> clicks[0] == expected);
-                main(() -> {
-                    Drawable selector = list[0].getSelector(); assertNotNull(selector);
-                    ViewGroup row = (ViewGroup) list[0].getChildAt(0);
-                    assertFalse("The row background already follows ancestor visibility", row.getChildAt(0).getBackground().isVisible());
-                    assertFalse("The ListView selector must also stop while its page is hidden: " + selector.getClass(), selector.isVisible());
-                    assertFalse(list[0].isPressed()); assertFalse(row.isPressed());
-                    parent[0].setVisibility(View.VISIBLE);
-                    assertTrue(selector.isVisible());
-                });
-                InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            }
-            main(() -> {
-                Drawable selector = list[0].getSelector();
-                parent[0].setVisibility(View.INVISIBLE); assertFalse(selector.isVisible());
-                parent[0].setVisibility(View.VISIBLE); assertTrue(selector.isVisible());
-                host.container.removeView(parent[0]); assertFalse("Detached selectors must also stop", selector.isVisible());
-                host.container.addView(parent[0]); assertTrue(selector.isVisible());
-            });
+            View row = list[0].getChildAt(0); Rect area = bounds(row);
+            // Activity launch includes a system window transition, outside row feedback.
+            Thread.sleep(800);
+            Bitmap baseline = capture(area);
+            try {
+                // A press can finish and navigate away before HWUI ever draws its ripple.
+                // Test the real row background; the SDK theme disables the ListView selector.
+                for (int hidden : new int[] {View.GONE, View.INVISIBLE}) {
+                    main(() -> { row.setPressed(true); row.setPressed(false); parent[0].setVisibility(hidden); });
+                    Thread.sleep(200);
+                    main(() -> parent[0].setVisibility(View.VISIBLE));
+                    assertNoPulse(baseline, area);
+                    main(() -> assertSame(row, list[0].getChildAt(0)));
+                }
+                main(() -> { row.setPressed(true); row.setPressed(false); row.jumpDrawablesToCurrentState(); });
+                assertNoPulse(baseline, area);
+                Rect touch = bounds(row); long down = SystemClock.uptimeMillis();
+                input(down, MotionEvent.ACTION_DOWN, touch.centerX(), touch.centerY());
+                Thread.sleep(200);
+                main(() -> { assertSame(row, list[0].getChildAt(0)); assertTrue("A real touch must press the visible row", row.isPressed()); });
+                Bitmap pressed = capture(area);
+                try {
+                    int changed = changedPixels(baseline, pressed, 2);
+                    assertTrue("Normal held touches must still have visible feedback: " + changed, changed > baseline.getWidth() * baseline.getHeight() / 200);
+                }
+                finally { pressed.recycle(); }
+                input(down, MotionEvent.ACTION_UP, touch.centerX(), touch.centerY());
+                await(() -> clicks[0] == 1);
+                Thread.sleep(200);
+                main(() -> parent[0].setVisibility(View.VISIBLE));
+                assertNoPulse(baseline, area);
+                tap(row); await(() -> clicks[0] == 2);
+                main(() -> parent[0].setVisibility(View.VISIBLE));
+                assertNoPulse(baseline, area);
+                main(() -> { row.setPressed(true); row.setPressed(false); host.container.removeView(parent[0]); });
+                Thread.sleep(200);
+                main(() -> host.container.addView(parent[0]));
+                assertNoPulse(baseline, area);
+            } finally { baseline.recycle(); }
         } finally { main(host::finish); }
+    }
+
+    private static void assertNoPulse(Bitmap baseline, Rect area) throws Exception {
+        for (int frame = 0; frame < 8; frame++) {
+            Thread.sleep(45);
+            Bitmap current = capture(area);
+            try {
+                int changed = changedPixels(baseline, current, 8);
+                if (changed > baseline.getWidth() * baseline.getHeight() / 200) {
+                    save(baseline, "feedback-before.png"); save(current, "feedback-after.png");
+                }
+                assertTrue("Returning must not start a new press pulse, sample=" + frame + " changed=" + changed,
+                    changed <= baseline.getWidth() * baseline.getHeight() / 200);
+            }
+            finally { current.recycle(); }
+        }
+    }
+    private static void save(Bitmap image, String name) throws Exception {
+        java.io.File file = new java.io.File(InstrumentationRegistry.getInstrumentation().getTargetContext().getFilesDir(), name);
+        try (java.io.FileOutputStream stream = new java.io.FileOutputStream(file)) { image.compress(Bitmap.CompressFormat.PNG, 100, stream); }
+    }
+    private static Bitmap capture(Rect area) {
+        Bitmap screen = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        assertNotNull(screen);
+        try { return Bitmap.createBitmap(screen, area.left, area.top, area.width(), area.height()); }
+        finally { screen.recycle(); }
+    }
+    private static int changedPixels(Bitmap before, Bitmap after, int tolerance) {
+        int count = 0;
+        for (int y = 0; y < before.getHeight(); y++) for (int x = 0; x < before.getWidth(); x++) {
+            int a = before.getPixel(x, y), b = after.getPixel(x, y);
+            if (Math.abs(Color.red(a) - Color.red(b)) > tolerance || Math.abs(Color.green(a) - Color.green(b)) > tolerance || Math.abs(Color.blue(a) - Color.blue(b)) > tolerance) count++;
+        }
+        return count;
     }
 
     private static void tap(View view) throws Exception {

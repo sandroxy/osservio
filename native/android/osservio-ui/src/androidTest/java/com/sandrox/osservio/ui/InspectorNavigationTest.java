@@ -193,10 +193,11 @@ public final class InspectorNavigationTest {
                                 if (choice) {
                                     choices++; assertTrue(row.getHeight() >= InspectorTheme.dp(context, 50));
                                     if (android.os.Build.VERSION.SDK_INT >= 24) {
-                                        android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable) row.getBackground();
+                                        android.graphics.drawable.LayerDrawable feedback = (android.graphics.drawable.LayerDrawable) row.getBackground();
+                                        android.graphics.drawable.RippleDrawable ripple = (android.graphics.drawable.RippleDrawable) feedback.getDrawable(0);
                                         android.graphics.drawable.GradientDrawable mask = (android.graphics.drawable.GradientDrawable) ripple.findDrawableByLayerId(android.R.id.mask);
-                                        ripple.setBounds(0, 0, row.getWidth(), row.getHeight());
-                                        ripple.setHotspotBounds(row.getWidth() - 20, 10, row.getWidth() - 4, 32);
+                                        feedback.setBounds(0, 0, row.getWidth(), row.getHeight());
+                                        feedback.setHotspotBounds(row.getWidth() - 20, 10, row.getWidth() - 4, 32);
                                         android.graphics.Rect hotspot = new android.graphics.Rect();
                                         ripple.getHotspotBounds(hotspot);
                                         assertEquals(ripple.getBounds(), hotspot);

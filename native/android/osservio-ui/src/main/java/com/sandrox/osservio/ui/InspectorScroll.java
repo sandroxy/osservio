@@ -39,19 +39,6 @@ final class InspectorScroll {
     @android.annotation.SuppressLint("ViewConstructor")
     static class List extends ListView {
         List(Context context) { super(context); }
-        @Override protected void onVisibilityChanged(View changedView, int visibility) {
-            super.onVisibilityChanged(changedView, visibility); updateSelectorVisibility(getWindowVisibility());
-        }
-        @Override protected void onWindowVisibilityChanged(int visibility) {
-            super.onWindowVisibilityChanged(visibility); updateSelectorVisibility(visibility);
-        }
-        private void updateSelectorVisibility(int windowVisibility) {
-            // AbsListView owns its selector separately from View's background.
-            // It otherwise remains visible while an ancestor hides this page,
-            // allowing a hardware ripple to resume when navigation returns.
-            android.graphics.drawable.Drawable selector = getSelector();
-            if (selector != null) selector.setVisible(isShown() && windowVisibility == VISIBLE, false);
-        }
         interface Records { int count(); String key(int index); }
         /** Keep visible record identities and their pixel offsets across a bounded data refresh. */
         void preservingReadingPosition(Records records, Runnable update) {
