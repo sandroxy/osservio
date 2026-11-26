@@ -7,6 +7,8 @@ final class InspectorScopeControl: UIStackView {
     private let buttons: [UIButton]
     private let choices: InspectorControls
     private let segments: UISegmentedControl
+    private var appliedPalette: InspectorPalette?
+    private var appliedTransparency: Bool?
     private lazy var style = InspectorStyleObserver { [weak self] in self?.updateStyle() }
     var onSelect: ((Int) -> Void)?
     var selectedIndex = 0 { didSet { updateSelection() } }
@@ -55,7 +57,12 @@ final class InspectorScopeControl: UIStackView {
         super.traitCollectionDidChange(previousTraitCollection); updateStyle(); updateLayout()
     }
     private func updateStyle() {
-        if #available(iOS 26, *), InspectorTheme.allowsTransparentMaterial {
+        let palette = InspectorPreferences.shared.palette, transparent = InspectorTheme.allowsTransparentMaterial
+        // Dynamic colors follow light/dark traits themselves. Reassigning unchanged
+        // title attributes during a sheet transition restarts UIKit's label animation.
+        guard appliedPalette != palette || appliedTransparency != transparent else { return }
+        appliedPalette = palette; appliedTransparency = transparent
+        if #available(iOS 26, *), transparent {
             // Keep UIKit's interactive thumb instead of covering it with a custom fill.
             segments.selectedSegmentTintColor = nil; segments.backgroundColor = nil
         } else {
