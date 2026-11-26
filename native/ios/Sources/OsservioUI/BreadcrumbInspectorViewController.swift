@@ -65,6 +65,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         }
     }
     private func updateStatus() {
+        inspectorPrimaryAction?.isEnabled = !stale && latest?.events.isEmpty == false
         var notes: [String] = []
         if stale { notes.append(InspectorLocalization.text(latest == nil ? "busy" : "ui_previous_window")) }
         if (latest?.evictedCount ?? 0) > 0 || (recorder.status()?.rateLimitedCount ?? 0) > 0 { notes.append(InspectorLocalization.text("ui_retention_loss")) }
@@ -89,6 +90,7 @@ final class BreadcrumbInspectorViewController: UITableViewController {
         return header.recordMenu(field: .breadcrumbKind, value: events[indexPath.row].kind.rawValue, recent: recentFilters)
     }
     @objc private func showActions() {
+        guard !stale, latest?.events.isEmpty == false else { return }
         inspectorConfirm(InspectorLocalization.text("crumb_clear"), message: InspectorLocalization.text("ui_clear_hint")) { [weak self] in
             guard let self else { return }; self.history.clear(); self.latest = self.history.snapshot(); self.render()
         }

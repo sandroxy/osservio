@@ -251,13 +251,14 @@ extension UIViewController {
             ?? (self as? InspectorViewController)?.session
             ?? (self as? InspectorNavigationController)?.session
     }
-    /// Page-owned actions remain separate from the session's stable minimize affordance.
+    /// Actions use reading order in both the toolbar and menu, independent of the fixed exit.
     var inspectorActions: [UIBarButtonItem]? {
         get { InspectorNavigationActions.state(for: self).items }
         set {
             let state = InspectorNavigationActions.state(for: self)
             state.items = newValue?.filter { $0.accessibilityIdentifier != "Osservio.Minimize" } ?? []
             state.render()
+            (parent as? InspectorNavigationActionContainer)?.inspectorActionsDidChange(in: self)
         }
     }
     var inspectorPrimaryAction: UIBarButtonItem? {

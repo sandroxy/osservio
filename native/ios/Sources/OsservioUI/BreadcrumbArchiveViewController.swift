@@ -184,7 +184,7 @@ final class RetainedBreadcrumbViewController: UITableViewController {
         header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
         filters.feedbackTable = tableView as? InspectorTableView
-        inspectorActions = (deletion.map { [$0.button] } ?? []) + [copy]
+        inspectorActions = [copy] + (deletion.map { [$0.button] } ?? [])
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated); InspectorTheme.apply(self)

@@ -26,7 +26,8 @@ final class StorageValueViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) { super.viewWillDisappear(animated); generation += 1; request?.cancel(); request = nil; observation?.cancel(); observation = nil }
     override func viewDidDisappear(_ animated: Bool) { super.viewDidDisappear(animated); removeReader() }
     private func removeReader() {
-        inspectorPrimaryAction = nil; reader?.willMove(toParent: nil); reader?.view.removeFromSuperview(); reader?.removeFromParent(); reader = nil
+        reader?.inspectorActions?.forEach { $0.isEnabled = false }
+        inspectorActions = nil; reader?.willMove(toParent: nil); reader?.view.removeFromSuperview(); reader?.removeFromParent(); reader = nil
     }
     private func display(_ value: InspectorReadContent) {
         removeReader()
@@ -35,8 +36,7 @@ final class StorageValueViewController: UIViewController {
         NSLayoutConstraint.activate([reader.view.topAnchor.constraint(equalTo: view.topAnchor), reader.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             reader.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), reader.view.trailingAnchor.constraint(equalTo: view.trailingAnchor)])
         reader.didMove(toParent: self)
-        inspectorPrimaryAction = reader.inspectorPrimaryAction
-        inspectorActions = [refreshButton]; refreshButton.tintColor = InspectorTheme.accent
+        inspectorActions = (reader.inspectorActions ?? []) + [refreshButton]; refreshButton.tintColor = InspectorTheme.accent
         refreshButton.accessibilityLabel = InspectorLocalization.text("http_refresh")
     }
     @objc private func readValue() {

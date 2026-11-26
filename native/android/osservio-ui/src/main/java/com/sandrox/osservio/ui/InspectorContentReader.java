@@ -68,6 +68,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         notice = InspectorWidgets.caption(context); notice.setPadding(inset, gap, inset, gap); header.addView(notice);
         actions = new LinearLayout(context);
         copy = InspectorWidgets.icon(context, R.drawable.osservio_copy, R.string.osservio_ui_copy_all, this::copy);
+        copy.setEnabled(false);
         actions.setGravity(Gravity.END); actions.addView(copy); header.addView(actions);
         searching = new LinearLayout(context); searching.setOrientation(VERTICAL);
         search = InspectorWidgets.search(context, R.string.osservio_ui_search_content, "", value -> {
@@ -121,6 +122,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
     }
     void display(InspectorReadContent value, boolean code) {
         cancelParsing(); handler.removeCallbacks(searchContent); content = value.text; this.value = value;
+        copy.setEnabled(value.available);
         parsed = false; parserNotice = 0; structured = true; tree.clear(); form.display(null); mode.setVisibility(GONE);
         ((android.widget.RadioButton) mode.getChildAt(0)).setText(getContext().getString(value.isForm ? R.string.osservio_form_fields : R.string.osservio_json_structure));
         structured = !value.isForm || value.initialSearch.isEmpty();
@@ -162,6 +164,7 @@ final class InspectorContentReader extends LinearLayout implements InspectorScre
         });
     }
     private void copy() {
+        if (!value.available) return;
         ClipboardManager clipboard = getContext().getSystemService(ClipboardManager.class);
         if (clipboard != null) { clipboard.setPrimaryClip(ClipData.newPlainText("Osservio", content)); Toast.makeText(getContext(), R.string.osservio_ui_copied, Toast.LENGTH_SHORT).show(); }
     }

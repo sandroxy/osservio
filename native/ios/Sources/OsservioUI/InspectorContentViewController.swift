@@ -53,6 +53,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         super.viewDidLoad(); InspectorTheme.apply(self)
         inspectorPrimaryAction = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: self, action: #selector(copyContent))
         inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("ui_copy_all")
+        inspectorPrimaryAction?.isEnabled = value.isAvailable
         search.placeholder = InspectorLocalization.text("ui_search_content"); search.delegate = self
         search.font = .preferredFont(forTextStyle: .body); search.adjustsFontForContentSizeCategory = true
         search.autocorrectionType = .no; search.autocapitalizationType = .none; search.returnKeyType = .done
@@ -121,6 +122,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         super.viewWillAppear(animated); active = true; InspectorTheme.apply(self)
         if let titleKey { title = InspectorLocalization.text(titleKey) }
         inspectorPrimaryAction?.accessibilityLabel = InspectorLocalization.text("ui_copy_all")
+        inspectorPrimaryAction?.isEnabled = value.isAvailable
         search.placeholder = InspectorLocalization.text("ui_search_content")
         previous.setTitle(InspectorLocalization.text("ui_previous_match"), for: .normal)
         nextButton.setTitle(InspectorLocalization.text("ui_next_match"), for: .normal)
@@ -137,7 +139,7 @@ class InspectorContentViewController: UIViewController, UITextFieldDelegate {
         let intersection = view.bounds.intersection(view.convert(frame, from: nil))
         bottom?.constant = intersection.maxY >= view.bounds.maxY - 1 ? -max(0, intersection.height - view.safeAreaInsets.bottom) : 0
     }
-    @objc private func copyContent() { UIPasteboard.general.string = content }
+    @objc private func copyContent() { guard value.isAvailable else { return }; UIPasteboard.general.string = content }
     @objc private func suspendParsing() { generation &+= 1; parsing?.cancel(); parsing = nil; formParsing?.cancel(); formParsing = nil }
     @objc private func resumeParsing() {
         guard active, viewIfLoaded?.window?.isHidden == false else { return }; startParsing()

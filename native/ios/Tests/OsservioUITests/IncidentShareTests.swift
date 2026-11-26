@@ -101,7 +101,7 @@ final class IncidentShareTests: XCTestCase {
         navigation.pushViewController(viewer, animated: false); viewer.loadViewIfNeeded()
         inspector.view.window?.layoutIfNeeded()
         try await waitUntil { viewer.view.window != nil && navigation.transitionCoordinator == nil }
-        try send(XCTUnwrap(viewer.inspectorActions?.first))
+        try send(XCTUnwrap(viewer.inspectorActions?.first { $0.accessibilityLabel == RuntimePresentation.text("incident_share") }))
         try await waitUntil { exporter.count == 1 }
         session.dispose(); XCTAssertTrue(capture.close()); XCTAssertTrue(exporter.cancelled(at: 0))
         XCTAssertFalse(session.expand()); XCTAssertTrue(host.isKeyWindow)

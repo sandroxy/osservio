@@ -53,6 +53,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         setOrientation(VERTICAL); setBackgroundColor(InspectorTheme.canvas(context));
         header = new InspectorFeedHeader(context, R.string.osservio_crumb_search, "", value -> { state.query.text = value; state.dirty = true; refreshView(); },
             () -> setPaused(false), this::filters, this::actions, true, R.string.osservio_crumb_clear);
+        header.actions.setEnabled(false);
         header.onQueryChange = value -> { state.query = value; state.dirty = true; refreshView(); };
         list = new InspectorScroll.List(context); list.addHeaderView(header, null, false); list.setItemsCanFocus(true); list.setAdapter(rows);
         list.setDivider(null);
@@ -87,6 +88,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         detail = InspectorFilterSheet.show(getContext(), state.query, groups(), R.string.osservio_ui_time, false, target, state.recentFilters, value -> { state.query = value; state.dirty = true; refreshView(); }); watchDialog();
     }
     private void actions() {
+        if (stale || latest == null || latest.events.isEmpty()) return;
         detail = InspectorDialogs.confirm(getContext(), R.string.osservio_crumb_clear, R.string.osservio_ui_clear_hint, R.string.osservio_crumb_clear, (ignored, value) -> {
             history.clear(); latest = history.snapshot(); state.dirty = true; refreshView();
         }); watchDialog();
@@ -129,6 +131,7 @@ final class BreadcrumbInspectorView extends LinearLayout implements InspectorScr
         BreadcrumbRecorder.Status status = recorder.status();
         if (latest != null && latest.evictedCount > 0 || status != null && status.rateLimitedCount > 0)
             notice += (notice.isEmpty() ? "" : " · ") + getContext().getString(R.string.osservio_ui_retention_loss);
+        header.actions.setEnabled(!stale && latest != null && !latest.events.isEmpty());
         header.status.setText(notice); header.setPaused(paused);
     }
     private void setPaused(boolean value) {

@@ -39,7 +39,7 @@ final class EnvironmentInspectorViewController: InspectorDetailViewController {
     private func render() {
         title = InspectorLocalization.text("runtime_environment")
         let copy = inspectorCopyItem(target: self, action: #selector(copySnapshot), label: "runtime_copy_environment")
-        copy.isEnabled = snapshot != nil; inspectorActions = [refreshButton, copy]; refreshButton.tintColor = InspectorTheme.accent
+        copy.isEnabled = snapshot != nil; inspectorActions = [copy, refreshButton]; refreshButton.tintColor = InspectorTheme.accent
         refreshButton.accessibilityLabel = InspectorLocalization.text("http_refresh")
         refreshButton.isEnabled = !reading
         sections = [Section(title: InspectorLocalization.text("ui_snapshot_time"), rows: [

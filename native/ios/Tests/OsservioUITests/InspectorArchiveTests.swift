@@ -68,14 +68,14 @@ final class InspectorArchiveTests: XCTestCase {
         let snapshot = IncidentSnapshotViewController(snapshot: try IncidentSnapshot.capture(), archive: archive)
         snapshot.loadViewIfNeeded()
         XCTAssertEqual(snapshot.inspectorActions?.map(\.accessibilityLabel),
-            [RuntimePresentation.text("incident_delete"), RuntimePresentation.text("archive_copy_summary")])
+            [RuntimePresentation.text("archive_copy_summary"), RuntimePresentation.text("incident_delete")])
         let run = RetainedRun(id: UUID().uuidString, platform: .ios, processID: 321,
             recordingStartedAtMillis: 1_234, lastRecordedAtMillis: 5_678, eventCount: 0, evictedEvents: 42, isCurrent: false)
         let retained = RetainedBreadcrumbViewController(history: RetainedBreadcrumbs(run: run, events: []), archive: archive)
         retained.loadViewIfNeeded()
         XCTAssertEqual(retained.tableView.style, .insetGrouped)
         XCTAssertEqual(retained.inspectorActions?.map(\.accessibilityLabel),
-            [RuntimePresentation.text("archive_delete_run"), RuntimePresentation.text("archive_copy_summary")])
+            [RuntimePresentation.text("archive_copy_summary"), RuntimePresentation.text("archive_delete_run")])
         let metadata = RetainedRunDetailViewController(run: run)
         metadata.loadViewIfNeeded(); metadata.viewWillAppear(false)
         let values = metadata.sections.flatMap(\.rows).compactMap(\.value)

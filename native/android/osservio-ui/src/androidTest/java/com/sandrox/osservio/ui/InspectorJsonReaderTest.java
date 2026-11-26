@@ -16,6 +16,24 @@ import static org.junit.Assert.*;
 /** Row geometry and immutable reads; actual taps and retained windows are consumer tests. */
 @RunWith(AndroidJUnit4.class)
 public final class InspectorJsonReaderTest {
+    @Test public void copyAvailabilityDistinguishesMissingContentFromAnEmptyValue() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context context = context(); InspectorContentReader reader = new InspectorContentReader(context);
+            View copy = findCopy(reader, context.getString(R.string.osservio_ui_copy_all)); assertNotNull(copy);
+            assertFalse(copy.isEnabled());
+            reader.display("", false); assertTrue(copy.isEnabled());
+            reader.display("retained value", false); assertTrue(copy.isEnabled());
+            reader.display(InspectorReadContent.unavailable("Account closed"), false); assertFalse(copy.isEnabled());
+            reader.display("new value", false); assertTrue(copy.isEnabled());
+        });
+    }
+    private static View findCopy(View view, String label) {
+        if (label.contentEquals(view.getContentDescription() == null ? "" : view.getContentDescription())) return view;
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
+            View found = findCopy(((ViewGroup) view).getChildAt(i), label); if (found != null) return found;
+        }
+        return null;
+    }
     @Test public void wrappedNoticesLeaveReaderActionsFullyVisible() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context context = context();

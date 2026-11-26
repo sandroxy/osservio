@@ -4,7 +4,7 @@ import UIKit
 
 /// Runtime context uses only Core query contracts. Hosts own collectors and their lifetimes.
 @MainActor
-public final class RuntimeInspectorViewController: UIViewController {
+public final class RuntimeInspectorViewController: UIViewController, InspectorNavigationActionContainer {
     private let environment: EnvironmentInspectorViewController
     private let breadcrumbs: BreadcrumbInspectorViewController
     private let capture: CaptureController
@@ -12,6 +12,8 @@ public final class RuntimeInspectorViewController: UIViewController {
     private let content = UIView()
     private let selection = UISegmentedControl(items: [RuntimePresentation.text("runtime_environment"), RuntimePresentation.text("runtime_breadcrumbs")])
     private var current: UIViewController?
+    private lazy var settings = UIBarButtonItem(image: UIImage(systemName: "slider.horizontal.3"), style: .plain,
+                                               target: self, action: #selector(showSettings))
     public init(provider: any EnvironmentProvider, recorder: BreadcrumbRecorder, history: any BreadcrumbHistory,
                 archive: (any BreadcrumbArchive)? = nil) {
         capture = recorder.captureController
@@ -25,8 +27,6 @@ public final class RuntimeInspectorViewController: UIViewController {
     public override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
         title = RuntimePresentation.text("runtime_title")
-        let settings = UIBarButtonItem(image: UIImage(systemName: "slider.horizontal.3"), style: .plain, target: self, action: #selector(showSettings))
-        settings.accessibilityLabel = InspectorLocalization.text("ui_capture_settings"); inspectorPrimaryAction = settings
         view.backgroundColor = .systemBackground
         if archive != nil { selection.insertSegment(withTitle: RuntimePresentation.text("archive_title"), at: 2, animated: false) }
         selection.selectedSegmentIndex = 0
@@ -43,19 +43,26 @@ public final class RuntimeInspectorViewController: UIViewController {
         selectSection()
     }
     @objc private func showSettings() { inspectorPush(InspectorCaptureSettingsViewController(baseline: capture, controllers: [("runtime_breadcrumbs", capture)])) }
+    func inspectorActionsDidChange(in child: UIViewController) {
+        guard child === current else { return }
+        settings.accessibilityLabel = InspectorLocalization.text("ui_capture_settings")
+        inspectorActions = (child.inspectorActions ?? []) + [settings]
+    }
     @objc private func selectSection() {
-        current?.willMove(toParent: nil)
-        current?.view.removeFromSuperview(); current?.removeFromParent()
         let next: UIViewController
         if selection.selectedSegmentIndex == 0 { next = environment }
         else if selection.selectedSegmentIndex == 2, let archive { next = archive }
         else { next = breadcrumbs }
+        guard current !== next else { return }
+        current?.willMove(toParent: nil)
+        current?.view.removeFromSuperview(); current?.removeFromParent()
+        current = next
         addChild(next); next.view.translatesAutoresizingMaskIntoConstraints = false; content.addSubview(next.view)
         NSLayoutConstraint.activate([
             next.view.topAnchor.constraint(equalTo: content.topAnchor), next.view.bottomAnchor.constraint(equalTo: content.bottomAnchor),
             next.view.leadingAnchor.constraint(equalTo: content.leadingAnchor), next.view.trailingAnchor.constraint(equalTo: content.trailingAnchor)
         ])
-        next.didMove(toParent: self); current = next
+        next.didMove(toParent: self); inspectorActionsDidChange(in: next)
     }
 }
 #endif

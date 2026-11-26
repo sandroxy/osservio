@@ -2,6 +2,12 @@
 import ObjectiveC
 import UIKit
 
+/// Containers explicitly forward the visible child's actions when its page replaces them.
+@MainActor
+protocol InspectorNavigationActionContainer: AnyObject {
+    func inspectorActionsDidChange(in child: UIViewController)
+}
+
 /// Keeps page actions independent of their visible representation and the fixed exit control.
 @MainActor
 final class InspectorNavigationActions: NSObject {
@@ -31,7 +37,7 @@ final class InspectorNavigationActions: NSObject {
         let actions = items
         more.accessibilityLabel = InspectorLocalization.text("ui_actions")
         more.accessibilityIdentifier = "Osservio.MoreActions"
-        let visible = actions.count > (exit == nil ? 2 : 1) ? [more] : actions
+        let visible = actions.count > (exit == nil ? 2 : 1) ? [more] : Array(actions.reversed())
         // UIKit's trailing items are ordered from the outside edge inward.
         let result = (exit.map { [$0] } ?? []) + visible
         for item in result { InspectorTheme.apply(item) }
@@ -44,7 +50,7 @@ final class InspectorNavigationActions: NSObject {
     @objc private func openMenu() {
         guard let owner else { return }
         let panel = InspectorActionPanel(title: InspectorLocalization.text("ui_actions"), message: nil)
-        for item in items.reversed() where item.accessibilityIdentifier != "Osservio.CloseInspector" {
+        for item in items where item.accessibilityIdentifier != "Osservio.CloseInspector" {
             var action = InspectorActionPanel.Action(title: item.accessibilityLabel ?? item.title ?? "",
                 style: item.accessibilityIdentifier == "Osservio.DestructiveAction" ? .destructive : .default) { [weak item] _ in
                 guard let item, item.isEnabled, let selector = item.action else { return }

@@ -92,7 +92,12 @@ Minimize is always the rightmost visible action. Beside it, one page action is
 shown directly; two or more are collected together under More. Without a fixed
 exit, up to two page actions are visible; three or more all move into More.
 A standalone combined inspector's Close is also a fixed exit. Disabled actions
-keep their place and state. Temporary menus have no Minimize or retained draft.
+keep their place and state. Page actions use the same reading order in the toolbar
+and menu on both platforms: copy before refresh or problem recording, with sharing
+before deletion. Embedded runtime pages forward the visible page's actions alongside
+capture settings. Temporary menus have no Minimize or retained draft.
+Content copying requires an available value; a stored empty string remains copyable.
+Clearing requires a successful, nonempty retained window, independently of filters.
 
 ## Reading and filtering
 

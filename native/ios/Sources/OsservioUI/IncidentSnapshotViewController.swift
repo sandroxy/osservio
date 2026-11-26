@@ -54,7 +54,7 @@ final class IncidentSnapshotViewController: UITableViewController {
 
         tableView.tableHeaderView = header; tableView.keyboardDismissMode = .onDrag
         filters.feedbackTable = tableView as? InspectorTableView
-        inspectorActions = (deletion.map { [$0.button] } ?? []) + (sharing.map { [$0.button] } ?? []) + [copyButton]
+        inspectorActions = [copyButton] + (sharing.map { [$0.button] } ?? []) + (deletion.map { [$0.button] } ?? [])
         exportStatus.font = .preferredFont(forTextStyle: .footnote); exportStatus.adjustsFontForContentSizeCategory = true
         exportStatus.numberOfLines = 0; exportStatus.textColor = .secondaryLabel
     }
