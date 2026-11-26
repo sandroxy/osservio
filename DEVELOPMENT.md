@@ -37,6 +37,8 @@ native behavior and interaction validation. No artifacts have been published.
   reading, preferences and host presentation.
 - [Inspector materials](doc/inspector-materials.md) describes navigation surfaces,
   device admission, resource lifetime and native fallback.
+- [Read-only key-value inspection](doc/key-value-inspection.md) describes optional
+  registered domains, account ownership, native read costs and bounded local viewing.
 - [Architecture](doc/architecture.md) defines the intended runtime boundaries.
 - [Logging](doc/logging.md) describes the implemented native subset and limits.
 - [HTTP observation](doc/http.md) describes admission, privacy, body ownership,

@@ -27,6 +27,31 @@ public final class InspectorLayoutTest {
     @Test public void socketsRemainReachableInCompactAndLargeTextLayouts() { check("websocket"); }
     @Test public void breadcrumbsRemainReachableInCompactAndLargeTextLayouts() { check("breadcrumb"); }
 
+    @Test public void storageMetadataLeavesKeysReachableInShortLargeTextLayouts() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();
+            Configuration configuration = new Configuration(base.getResources().getConfiguration()); configuration.fontScale = 2;
+            Context context = new ContextThemeWrapper(base.createConfigurationContext(configuration), R.style.OsservioInspectorLight);
+            String description = new String(new char[512]).replace('\0', 'x');
+            KeyValueSource source = new KeyValueSource() {
+                @Override public boolean visitKeys(KeyVisitor visitor) { throw new AssertionError("Detached layout must not read storage"); }
+                @Override public KeyValueInspection.Value read(String key) { throw new AssertionError("Layout must not fetch values"); }
+            };
+            KeyValueInspection.Domain domain = new KeyValueInspection.Domain("settings", "Settings", description, description);
+            try (KeyValueInspection storage = new KeyValueInspection(java.util.UUID.randomUUID(), Collections.singletonList(new KeyValueInspection.Registration(domain, source)))) {
+                StorageInspectorView viewer = new StorageInspectorView(context, storage, domain);
+                for (int[] size : new int[][] {{320, 240}, {568, 180}, {320, 600}}) {
+                    layout(viewer, dp(context, size[0]), dp(context, size[1]));
+                    android.widget.ScrollView controls = first(viewer, android.widget.ScrollView.class);
+                    ListView list = first(viewer, ListView.class);
+                    assertTrue(list.getHeight() >= viewer.getHeight() / 2);
+                    assertTrue(controls.getChildAt(0).getHeight() > controls.getHeight());
+                    assertTrue(controls.canScrollVertically(1));
+                }
+            }
+        });
+    }
+
     @Test public void toolbarKeepsActionsReachableBesideLongLocalizedTitles() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Context base = InstrumentationRegistry.getInstrumentation().getTargetContext();

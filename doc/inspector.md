@@ -43,6 +43,10 @@ the target control's action; host application inputs are unaffected.
 
 ## Debug control and navigation
 
+App also exposes optional [read-only key-value storage](key-value-inspection.md).
+Only host-registered domains are available. Key search and value reads are
+independent of capture, with explicit refresh, source/type/read time and copying.
+
 A bug button at the top left of each root destination controls the same debug
 state. It is absent from child pages; Back occupies that position instead.
 Only the bug glyph changes color; its neutral container stays the same. Localized

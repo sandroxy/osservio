@@ -20,6 +20,7 @@ and observation points.
 | Runtime breadcrumbs | Optional activity and memory callbacks; explicit host markers | Optional application and memory notifications; explicit host markers | Native lifecycle is not business-page navigation or proof that a screen rendered correctly. |
 | Network-path breadcrumbs | Optional default-network callbacks from API 24; host declares network-state permission | Optional `NWPathMonitor` callbacks | Availability, transport and native cost flags are context, not endpoint reachability. API 23 and missing Android permission are explicit start results. |
 | Live inspection | Native Views | UIKit controllers | Logs, Network, Problems and App; combined filters, details, explicit content reading and independent view pause. Simplified Chinese/English and Light/Dark settings are independent of the host. See [inspector](inspector.md). |
+| Read-only key-value storage | Host-registered SharedPreferences or custom source | Host-registered persistent UserDefaults domain or custom source | Explicit scope, bounded key search and on-demand values; no mutation, automatic export, storage discovery or framework bridge. See [storage inspection](key-value-inspection.md). |
 
 A host's explicit private log text becomes `[private]` before storage. Default
 HTTP and WebSocket policies preserve valid URLs, header values and supported

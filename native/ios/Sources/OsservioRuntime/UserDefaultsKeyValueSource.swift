@@ -19,12 +19,12 @@ public final class UserDefaultsKeyValueSource: KeyValueSource {
         for key in keys as NSArray {
             visited += 1; if visited > KeyValueInspection.maxScannedKeys { return false }
             guard let key = key as? String else { throw KeyValueInspection.Failure.unavailable }
-            if key.hasPrefix(prefix), !visitor(key) { return false }
+            if key.utf8.starts(with: prefix.utf8), !visitor(key) { return false }
         }
         return true
     }
     public func read(key: String) throws -> KeyValueInspection.Value {
-        guard key.hasPrefix(prefix), let value = CFPreferencesCopyValue(key as CFString, domain as CFString,
+        guard key.utf8.starts(with: prefix.utf8), let value = CFPreferencesCopyValue(key as CFString, domain as CFString,
             kCFPreferencesCurrentUser, kCFPreferencesAnyHost) else { return .unavailable(.missing) }
         if let text = value as? String { return .text(.string, text) }
         if let number = value as? NSNumber {

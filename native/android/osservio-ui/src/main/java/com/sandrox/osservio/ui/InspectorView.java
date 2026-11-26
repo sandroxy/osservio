@@ -47,6 +47,7 @@ public final class InspectorView extends FrameLayout {
     private final BreadcrumbArchive breadcrumbArchive;
     private final IncidentArchive incidentArchive;
     private final IncidentExporter exporter;
+    private final com.sandrox.osservio.core.KeyValueInspection storage;
     private final LogInspectorView.State logState = new LogInspectorView.State();
     private final NetworkInspectorView.State networkState = new NetworkInspectorView.State();
     private final AppInspectorView.State appState = new AppInspectorView.State();
@@ -116,7 +117,16 @@ public final class InspectorView extends FrameLayout {
                          WebSocketRecorder socketRecorder, WebSocketHistory socketHistory, EnvironmentProvider environment,
                          BreadcrumbRecorder breadcrumbRecorder, BreadcrumbHistory breadcrumbHistory, BreadcrumbArchive breadcrumbArchive,
                          IncidentArchive incidentArchive, IncidentExporter exporter) {
+        this(context, logRecorder, logHistory, httpRecorder, httpHistory, socketRecorder, socketHistory, environment,
+            breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive, incidentArchive, exporter, null);
+    }
+    /** Storage belongs to one host-owned account. Dispose this inspector when replacing that owner. */
+    public InspectorView(Context context, LogRecorder logRecorder, LogHistory logHistory, HTTPRecorder httpRecorder, HTTPHistory httpHistory,
+                         WebSocketRecorder socketRecorder, WebSocketHistory socketHistory, EnvironmentProvider environment,
+                         BreadcrumbRecorder breadcrumbRecorder, BreadcrumbHistory breadcrumbHistory, BreadcrumbArchive breadcrumbArchive,
+                         IncidentArchive incidentArchive, IncidentExporter exporter, com.sandrox.osservio.core.KeyValueInspection storage) {
         super(new InspectorNavigation.OwnerContext(context));
+        this.storage = storage;
         this.logRecorder = Objects.requireNonNull(logRecorder, "logRecorder"); this.logHistory = Objects.requireNonNull(logHistory, "logHistory");
         this.httpRecorder = Objects.requireNonNull(httpRecorder, "httpRecorder"); this.httpHistory = Objects.requireNonNull(httpHistory, "httpHistory");
         if ((socketRecorder == null) != (socketHistory == null)) throw new IllegalArgumentException("WebSocket recorder and history must be supplied together");
@@ -254,7 +264,7 @@ public final class InspectorView extends FrameLayout {
             else if (index == 1) pages[index] = new NetworkInspectorView(pageContext, httpRecorder, httpHistory, socketRecorder, socketHistory, networkState);
             else if (index == 2) pages[index] = incidentArchive == null ? unavailable()
                 : new IncidentInspectorView(pageContext, incidentArchive, environment, breadcrumbHistory, logHistory, httpHistory, socketHistory, exporter, incidentState);
-            else pages[index] = new AppInspectorView(pageContext, environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive, logRecorder, httpRecorder, socketRecorder, appState);
+            else pages[index] = new AppInspectorView(pageContext, environment, breadcrumbRecorder, breadcrumbHistory, breadcrumbArchive, logRecorder, httpRecorder, socketRecorder, appState, storage);
             body.addView(pages[index], new FrameLayout.LayoutParams(-1, -1));
         }
         for (int i = 0; i < pages.length; i++) {

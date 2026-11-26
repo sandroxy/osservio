@@ -43,4 +43,13 @@ final class UserDefaultsKeyValueSourceTests: XCTestCase {
         XCTAssertEqual(try source.read(key: "data").state, .tooLarge)
         let text = try source.read(key: "text"); XCTAssertTrue(text.truncated); XCTAssertEqual(text.text.utf8.count, 65_536)
     }
+    func testPrefixScopeDoesNotNormalizeAccountKeys() throws {
+        let name = "osservio.storage.tests." + UUID().uuidString, defaults = UserDefaults.standard
+        defer { defaults.removePersistentDomain(forName: name) }
+        let key = "e\u{301}:profile"
+        defaults.setPersistentDomain([key: "another exact scope"], forName: name)
+        let source = try UserDefaultsKeyValueSource(domainName: name, keyPrefix: "\u{e9}:")
+        XCTAssertTrue(try source.visitKeys { _ in XCTFail("Scope must compare exact bytes"); return false })
+        XCTAssertEqual(try source.read(key: key).state, .missing)
+    }
 }

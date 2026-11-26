@@ -28,6 +28,11 @@ final class AppInspectorView extends InspectorScroll.Page {
     private InspectorScreen dialog;
     AppInspectorView(Context context, EnvironmentProvider environment, BreadcrumbRecorder recorder, BreadcrumbHistory history,
                      BreadcrumbArchive archive, LogRecorder logs, HTTPRecorder http, WebSocketRecorder sockets, State state) {
+        this(context, environment, recorder, history, archive, logs, http, sockets, state, null);
+    }
+    AppInspectorView(Context context, EnvironmentProvider environment, BreadcrumbRecorder recorder, BreadcrumbHistory history,
+                     BreadcrumbArchive archive, LogRecorder logs, HTTPRecorder http, WebSocketRecorder sockets, State state,
+                     com.sandrox.osservio.core.KeyValueInspection storage) {
         super(context); this.state = state; this.logs = logs; this.http = http; this.sockets = sockets; this.breadcrumbs = recorder;
         setFillViewport(true); setVerticalScrollBarEnabled(false); setBackgroundColor(InspectorTheme.canvas(context));
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
@@ -39,6 +44,8 @@ final class AppInspectorView extends InspectorScroll.Page {
             history == null || recorder == null ? null : () -> open(R.string.osservio_ui_current_timeline, new BreadcrumbInspectorView(context, recorder, history, state.breadcrumbs)));
         row(R.drawable.osservio_archive, R.string.osservio_ui_saved_runs, archive == null ? context.getString(R.string.osservio_ui_not_configured) : "",
             archive == null ? null : () -> open(R.string.osservio_ui_saved_runs, new BreadcrumbArchiveView(context, archive)));
+        row(R.drawable.osservio_archive, R.string.osservio_storage_title, storage == null ? context.getString(R.string.osservio_ui_not_configured) : "",
+            storage == null ? null : () -> open(R.string.osservio_storage_title, new StorageInspectorView(context, storage, null)));
         section(R.string.osservio_ui_inspector);
         row(R.drawable.osservio_globe, R.string.osservio_ui_language, context.getString(InspectorPreferences.english(context)
             ? R.string.osservio_ui_english : R.string.osservio_ui_chinese), () -> choose(false));

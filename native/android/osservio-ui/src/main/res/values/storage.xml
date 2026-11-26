@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="osservio_storage_empty_key">Empty key</string>
+    <string name="osservio_storage_copy_key">Copy key</string>
+    <string name="osservio_storage_title">Key-value storage</string>
+    <string name="osservio_storage_hint">Read-only · Host-registered domains. Values are read on demand and are not added to saved problems or exports.</string>
+    <string name="osservio_storage_search">Search key names</string>
+    <string name="osservio_storage_empty">No keys in this domain</string>
+    <string name="osservio_storage_no_domains">No storage domains registered</string>
+    <string name="osservio_storage_closed">This account’s storage session has ended. Reopen the inspector for the current account.</string>
+    <string name="osservio_storage_limited">Only part of the key index fits the reading budget. Search covers the loaded keys.</string>
+    <string name="osservio_storage_value">Stored value</string>
+    <string name="osservio_storage_read_at">Read at</string>
+    <string name="osservio_storage_read_hint">Current value from the storage API; not a guarantee that it has been flushed to disk.</string>
+    <string name="osservio_storage_missing">This key no longer exists in the registered scope.</string>
+    <string name="osservio_storage_unsupported">This value type cannot be displayed.</string>
+    <string name="osservio_storage_too_large">This value exceeds the reading budget. It has not been formatted or copied.</string>
+    <string name="osservio_storage_truncated">Preview only · The value exceeds 64 KiB. Copy includes only this preview.</string>
+    <string name="osservio_storage_empty_value">Empty string</string>
+    <string name="osservio_storage_kind_string">String</string>
+    <string name="osservio_storage_kind_boolean">Boolean</string>
+    <string name="osservio_storage_kind_integer">Integer</string>
+    <string name="osservio_storage_kind_number">Number</string>
+    <string name="osservio_storage_kind_stringset">String set · JSON</string>
+    <string name="osservio_storage_kind_array">Array · JSON</string>
+    <string name="osservio_storage_kind_object">Object · JSON</string>
+    <string name="osservio_storage_kind_data">Binary · Base64</string>
+    <string name="osservio_storage_kind_date">Date · ISO 8601</string>
+</resources>

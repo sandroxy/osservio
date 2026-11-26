@@ -42,6 +42,17 @@ final class KeyValueInspectionTests: XCTestCase {
         XCTAssertTrue(value.truncated); XCTAssertEqual(value.text.utf8.count, 65_535)
         XCTAssertEqual(KeyValueInspection.Value.text(.string, "").state, .available)
     }
+    func testCanonicallyEquivalentKeysKeepTheirExactIdentities() throws {
+        let source = Source(), expected = ["e\u{301}:key", "\u{e9}:key"]
+        source.list = { visit in for key in expected { if !visit(key) { return false } }; return true }
+        let storage = try inspection(source); defer { storage.close() }
+        let done = expectation(description: "exact keys")
+        storage.keys(domain: "settings") { result in
+            guard case .success(let keys) = result else { XCTFail(); done.fulfill(); return }
+            XCTAssertEqual(keys.keys.map { Data($0.utf8) }, expected.map { Data($0.utf8) }); done.fulfill()
+        }
+        wait(for: [done], timeout: 3)
+    }
     func testCloseRejectsLateAccountResultAndBusyDoesNotQueue() throws {
         let source = Source(), entered = DispatchSemaphore(value: 0), release = DispatchSemaphore(value: 0)
         source.value = { _ in entered.signal(); XCTAssertEqual(release.wait(timeout: .now() + 3), .success); return .text(.string, "old secret") }

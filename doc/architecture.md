@@ -35,6 +35,10 @@ modules encode them into [portable JSON documents](../protocol/README.md) and
 prepare [bounded temporary ZIP files](incident-export.md) through Core's export
 port. An optional host-owned exporter enables explicit native system sharing of
 saved evidence; UI depends on Core and rejects stale preparation callbacks.
+Core also owns optional [read-only key-value inspection](key-value-inspection.md)
+for explicitly registered, account-bound sources. Runtime supplies native
+preference adapters; UI reads keys and values on demand without capturing them
+into histories or incident archives.
 The broader boundaries below do not establish implemented
 capabilities, platform support, or performance guarantees.
 

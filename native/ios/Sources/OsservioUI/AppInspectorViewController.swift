@@ -8,11 +8,13 @@ final class AppInspectorViewController: UITableViewController {
     private let environment: (any EnvironmentProvider)?
     private let breadcrumbs: (recorder: BreadcrumbRecorder, history: any BreadcrumbHistory)?
     private let archive: (any BreadcrumbArchive)?
+    private let storage: KeyValueInspection?
     private let controllers: [(String, CaptureController)]
     private lazy var style = InspectorStyleObserver { [weak self] in self?.relabel() }
     init(environment: (any EnvironmentProvider)?, breadcrumbs: (BreadcrumbRecorder, any BreadcrumbHistory)?,
-         archive: (any BreadcrumbArchive)?, controllers: [(String, CaptureController)]) {
+         archive: (any BreadcrumbArchive)?, controllers: [(String, CaptureController)], storage: KeyValueInspection? = nil) {
         self.environment = environment; self.breadcrumbs = breadcrumbs; self.archive = archive; self.controllers = controllers
+        self.storage = storage
         super.init(style: .insetGrouped)
     }
     @available(*, unavailable)
@@ -30,7 +32,7 @@ final class AppInspectorViewController: UITableViewController {
     }
     private func relabel() { InspectorTheme.apply(self); title = InspectorLocalization.text("ui_app"); tableView.reloadData() }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 3 : section == 1 ? 2 : 1 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 4 : section == 1 ? 2 : 1 }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         InspectorLocalization.text(["ui_app_device", "ui_inspector", "ui_capture_status"][section])
     }
@@ -42,10 +44,10 @@ final class AppInspectorViewController: UITableViewController {
         PersistencePresentation.style(cell); cell.backgroundColor = InspectorTheme.surface
         var available = true
         if indexPath.section == 0 {
-            let keys = ["ui_environment", "ui_current_timeline", "ui_saved_runs"]
+            let keys = ["ui_environment", "ui_current_timeline", "ui_saved_runs", "storage_title"]
             cell.textLabel?.text = InspectorLocalization.text(keys[indexPath.row])
-            cell.imageView?.image = UIImage(systemName: ["iphone", "clock", "archivebox"][indexPath.row])
-            available = indexPath.row == 0 ? environment != nil : indexPath.row == 1 ? breadcrumbs != nil : archive != nil
+            cell.imageView?.image = UIImage(systemName: ["iphone", "clock", "archivebox", "externaldrive"][indexPath.row])
+            available = indexPath.row == 0 ? environment != nil : indexPath.row == 1 ? breadcrumbs != nil : indexPath.row == 2 ? archive != nil : storage != nil
             if !available { cell.detailTextLabel?.text = InspectorLocalization.text("ui_not_configured") }
         } else if indexPath.section == 1 {
             cell.textLabel?.text = InspectorLocalization.text(indexPath.row == 0 ? "ui_language" : "ui_appearance")
@@ -70,7 +72,8 @@ final class AppInspectorViewController: UITableViewController {
             switch indexPath.row {
             case 0: if let environment { inspectorPush(EnvironmentInspectorViewController(provider: environment)) }
             case 1: if let breadcrumbs { inspectorPush(BreadcrumbInspectorViewController(recorder: breadcrumbs.recorder, history: breadcrumbs.history, recent: recentBreadcrumbs)) }
-            default: if let archive { inspectorPush(BreadcrumbArchiveViewController(archive: archive)) }
+            case 2: if let archive { inspectorPush(BreadcrumbArchiveViewController(archive: archive)) }
+            default: if let storage { inspectorPush(StorageInspectorViewController(storage: storage)) }
             }
         } else if indexPath.section == 1 {
             inspectorPush(InspectorPreferenceViewController(language: indexPath.row == 0))
