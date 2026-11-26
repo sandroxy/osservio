@@ -27,12 +27,18 @@ final class InspectorActionPanel: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad(); InspectorTheme.apply(self)
         tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 56
-
     }
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        (navigationController as? InspectorNavigationController)?.configureSheet(
-            compact: !traitCollection.preferredContentSizeCategory.isAccessibilityCategory)
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews(); updateContentHeight()
+    }
+    private func updateContentHeight() {
+        let insets = tableView.adjustedContentInset
+        // Native sheet detents exclude the bottom safe area. The table includes
+        // its grouped spacing, wrapped rows and navigation inset in this fit.
+        let height = ceil(tableView.contentSize.height + insets.top + insets.bottom - view.safeAreaInsets.bottom)
+        guard height > 0, preferredContentSize.height != height else { return }
+        preferredContentSize = CGSize(width: tableView.bounds.width, height: height)
+        if #available(iOS 16, *) { navigationController?.sheetPresentationController?.invalidateDetents() }
     }
     override func accessibilityPerformEscape() -> Bool { dismiss(animated: true); return true }
     override func numberOfSections(in tableView: UITableView) -> Int { groups.count }
@@ -61,6 +67,15 @@ final class InspectorActionPanel: UITableViewController {
 func inspectorCopyItem(target: Any, action: Selector, label: String) -> UIBarButtonItem {
     let item = UIBarButtonItem(image: UIImage(systemName: "doc.on.doc"), style: .plain, target: target, action: action)
     item.accessibilityLabel = InspectorLocalization.text(label)
+    return item
+}
+
+@MainActor
+func inspectorRefreshItem(target: Any, action: Selector) -> UIBarButtonItem {
+    // System-item imagery is not exposed by UIBarButtonItem.image when an action
+    // moves into the shared menu. Keep the same explicit symbol in both places.
+    let item = UIBarButtonItem(image: UIImage(systemName: "arrow.clockwise"), style: .plain, target: target, action: action)
+    item.accessibilityLabel = InspectorLocalization.text("http_refresh")
     return item
 }
 

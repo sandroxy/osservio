@@ -10,7 +10,7 @@ final class EnvironmentInspectorViewController: InspectorDetailViewController {
     private var reading = false
     private var generation = 0
     private var noticeKey = "runtime_environment_hint"
-    private lazy var refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh))
+    private lazy var refreshButton = inspectorRefreshItem(target: self, action: #selector(refresh))
     init(provider: any EnvironmentProvider) { self.provider = provider; super.init() }
     @available(*, unavailable)
     required init?(coder: NSCoder) { return nil }

@@ -11,7 +11,7 @@ final class StorageValueViewController: UIViewController {
     private var observation: KeyValueInspection.Request?
     private var generation = 0
     private var reader: InspectorContentViewController?
-    private lazy var refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(readValue))
+    private lazy var refreshButton = inspectorRefreshItem(target: self, action: #selector(readValue))
     init(storage: KeyValueInspection, domain: KeyValueInspection.Domain, key: String) {
         self.storage = storage; self.domain = domain; self.key = key; super.init(nibName: nil, bundle: nil)
     }

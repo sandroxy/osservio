@@ -186,7 +186,7 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
         lastSheetHeight = height
         sheetPresentationController?.invalidateDetents()
     }
-    func configureSheet(compact: Bool = false) {
+    func configureSheet(contentSized: Bool = false) {
         guard #available(iOS 15, *), let sheet = sheetPresentationController else { return }
         let expanded: UISheetPresentationController.Detent
         if #available(iOS 16, *) {
@@ -198,7 +198,15 @@ final class InspectorNavigationController: UINavigationController, UINavigationC
                 return min(height, context.maximumDetentValue)
             }
         } else { expanded = .large() }
-        sheet.detents = compact ? [.medium(), expanded] : [expanded]
+        if contentSized, #available(iOS 16, *) {
+            sheet.detents = [.custom(identifier: .init("Osservio.ContentSheet")) { [weak self] context in
+                let limit = expanded.resolvedValue(in: context) ?? context.maximumDetentValue
+                let content = self?.topViewController?.preferredContentSize.height ?? 0
+                return content > 0 ? min(content, limit) : limit
+            }]
+        } else {
+            sheet.detents = contentSized ? [.medium(), expanded] : [expanded]
+        }
         sheet.prefersGrabberVisible = true; sheet.preferredCornerRadius = 28
         sheet.prefersEdgeAttachedInCompactHeight = true
     }
@@ -274,7 +282,7 @@ extension UIViewController {
         navigation.modalPresentationStyle = retainingPage ? .fullScreen : .pageSheet
         if !retainingPage {
             navigation.alignSheet(to: (self as? InspectorNavigationController) ?? (navigationController as? InspectorNavigationController))
-            navigation.configureSheet()
+            navigation.configureSheet(contentSized: controller is InspectorActionPanel)
         }
         present(navigation, animated: true)
     }

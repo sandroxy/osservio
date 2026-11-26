@@ -15,7 +15,7 @@ final class StorageInspectorViewController: UITableViewController {
     private var observation: KeyValueInspection.Request?
     private var generation = 0
     private var searchWork: DispatchWorkItem?
-    private lazy var refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(readKeys))
+    private lazy var refreshButton = inspectorRefreshItem(target: self, action: #selector(readKeys))
     init(storage: KeyValueInspection, domain: KeyValueInspection.Domain? = nil) {
         self.storage = storage; self.domain = domain; super.init(style: .insetGrouped)
     }

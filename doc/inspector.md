@@ -76,8 +76,10 @@ fixed gap. Short viewports remain constrained by the available space for control
 iOS 16 and later use a native custom detent, accounting for the system's sheet
 scaling and safe areas; older iOS versions and centered tablet sheets retain
 their system-provided heights and placement.
-Short action panels retain their compact sizing. Dark sheets have a static
-theme-colored upper edge; light sheets keep their plain boundary. The sheet's
+Short action panels fit their rows and grouped spacing, up to the same navigation
+limit; longer content remains scrollable. iOS 15 retains native medium/large
+detents, while iOS 16 and later use a content-sized native detent. Dark sheets have
+a static theme-colored upper edge; light sheets keep their plain boundary. The sheet's
 header and content share a continuous opaque base without a persistent header rule.
 Filter drafts remain provisional
 until Apply. Copy and Back use icons with contextual
@@ -95,7 +97,8 @@ A standalone combined inspector's Close is also a fixed exit. Disabled actions
 keep their place and state. Page actions use the same reading order in the toolbar
 and menu on both platforms: copy before refresh or problem recording, with sharing
 before deletion. Embedded runtime pages forward the visible page's actions alongside
-capture settings. Temporary menus have no Minimize or retained draft.
+capture settings. Icons remain attached to their actions when moved into More.
+Temporary menus have no Minimize or retained draft.
 Content copying requires an available value; a stored empty string remains copyable.
 Clearing requires a successful, nonempty retained window, independently of filters.
 

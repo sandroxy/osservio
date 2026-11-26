@@ -33,6 +33,7 @@ final class InspectorNavigationActionsTests: XCTestCase {
         window.rootViewController = UINavigationController(rootViewController: page); window.makeKeyAndVisible()
         defer { window.isHidden = true; window.rootViewController = nil }
         let items = ["Copy", "Refresh", "Settings"].map { UIBarButtonItem(title: $0, style: .plain, target: nil, action: nil) }
+        items[1].image = inspectorRefreshItem(target: page, action: #selector(UIViewController.loadViewIfNeeded)).image
         items[0].isEnabled = false; page.inspectorActions = items
         let more = try XCTUnwrap(page.navigationItem.rightBarButtonItems?.first)
         _ = try XCTUnwrap(more.target as? NSObject).perform(try XCTUnwrap(more.action), with: more)
@@ -43,6 +44,7 @@ final class InspectorNavigationActionsTests: XCTestCase {
             let cell = panel.tableView(panel.tableView, cellForRowAt: IndexPath(row: row, section: 0))
             XCTAssertEqual(cell.textLabel?.text, title)
             XCTAssertEqual(cell.isUserInteractionEnabled, row != 0)
+            if row == 1 { XCTAssertNotNil(cell.imageView?.image) }
         }
     }
 }

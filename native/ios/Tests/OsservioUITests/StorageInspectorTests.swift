@@ -62,6 +62,7 @@ final class StorageInspectorTests: XCTestCase {
             XCTAssertTrue(item.target === viewer.children.first)
             XCTAssertEqual(item.action, NSSelectorFromString("copyContent"))
         } else if label == "http_refresh" {
+            XCTAssertNotNil(item.image, "Refresh must keep its icon when represented as a menu row")
             XCTAssertTrue(item.target === viewer)
             XCTAssertEqual(item.action, NSSelectorFromString("readValue"))
         }
